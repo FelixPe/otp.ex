@@ -78,7 +78,7 @@ defmodule :m_sshd_sup do
   )
 
   Record.defrecord(:r_ssh_pty, :ssh_pty,
-    term: '',
+    term: ~c"",
     width: 80,
     height: 25,
     pixel_width: 1024,

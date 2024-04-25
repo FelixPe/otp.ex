@@ -1,5 +1,6 @@
 defmodule :m_format_lib_supp do
   use Bitwise
+
   def print_info(device, format) do
     print_info(device, 79, format)
   end
@@ -14,12 +15,12 @@ defmodule :m_format_lib_supp do
   end
 
   defp print_header(device, line, _) do
-    print_header2(device, line, '')
+    print_header2(device, line, ~c"")
   end
 
   defp print_header2(device, line, header) do
-    format1 = :lists.concat(['~n~', line, '.', line, 's~n'])
-    format2 = :lists.concat(['~', line, 'c~n'])
+    format1 = :lists.concat([~c"~n~", line, ~c".", line, ~c"s~n"])
+    format2 = :lists.concat([~c"~", line, ~c"c~n"])
     :io.format(device, format1, [header])
     :io.format(device, format2, [?=])
   end
@@ -58,13 +59,13 @@ defmodule :m_format_lib_supp do
 
   defp print_data(device, line, [value | t]) do
     modifier = :misc_supp.modifier(device)
-    :io.format(device, '~' ++ modifier ++ 'p~n', [value])
+    :io.format(device, ~c"~" ++ modifier ++ ~c"p~n", [value])
     print_data(device, line, t)
   end
 
   defp print_data(device, _Line, value) do
     modifier = :misc_supp.modifier(device)
-    :io.format(device, '~' ++ modifier ++ 'p~n', [value])
+    :io.format(device, ~c"~" ++ modifier ++ ~c"p~n", [value])
   end
 
   defp print_items(device, line, {name, items}) do
@@ -85,17 +86,19 @@ defmodule :m_format_lib_supp do
     strKey = term_to_string(key, modifier)
     keyLen = :lists.min([:string.length(strKey), line])
     valueLen = line - keyLen
-    format1 = :lists.concat(['~-', keyLen, modifier, 's'])
-    format2 = :lists.concat(['~', valueLen, modifier, 's~n'])
+    format1 = :lists.concat([~c"~-", keyLen, modifier, ~c"s"])
+    format2 = :lists.concat([~c"~", valueLen, modifier, ~c"s~n"])
     :io.format(device, format1, [strKey])
     try = term_to_string(value, modifier)
     length = :string.length(try)
+
     cond do
       length < valueLen ->
         :io.format(device, format2, [try])
+
       true ->
-        :io.format(device, '~n         ', [])
-        format3 = :lists.concat(['~', line, '.9', modifier, 'p~n'])
+        :io.format(device, ~c"~n         ", [])
+        format3 = :lists.concat([~c"~", line, ~c".9", modifier, ~c"p~n"])
         :io.format(device, format3, [value])
     end
   end
@@ -105,20 +108,21 @@ defmodule :m_format_lib_supp do
   end
 
   defp get_format([], _) do
-    '~p'
+    ~c"~p"
   end
 
   defp get_format(value, modifier) do
-    case (:io_lib.printable_list(value)) do
+    case :io_lib.printable_list(value) do
       true ->
-        '~' ++ modifier ++ 's'
+        ~c"~" ++ modifier ++ ~c"s"
+
       false ->
-        '~' ++ modifier ++ 'p'
+        ~c"~" ++ modifier ++ ~c"p"
     end
   end
 
   defp print_items(device, line, name, items) do
-    print_one_line(device, line, name, ' ')
+    print_one_line(device, line, name, ~c" ")
     print_item_elements(device, line, items)
   end
 
@@ -127,9 +131,7 @@ defmodule :m_format_lib_supp do
   end
 
   defp print_item_elements(device, line, [{key, value} | t]) do
-    print_one_line(device, line, :lists.concat(['   ', key]),
-                     value)
+    print_one_line(device, line, :lists.concat([~c"   ", key]), value)
     print_item_elements(device, line, t)
   end
-
 end

@@ -2,92 +2,136 @@ defmodule :m_gen_tcp do
   use Bitwise
   import Kernel, except: [send: 2]
   require Record
-  Record.defrecord(:r_connect_opts, :connect_opts, ifaddr: :undefined,
-                                        port: 0, fd: - 1, opts: [])
-  Record.defrecord(:r_listen_opts, :listen_opts, ifaddr: :undefined,
-                                       port: 0, backlog: 5, fd: - 1, opts: [])
-  Record.defrecord(:r_udp_opts, :udp_opts, ifaddr: :undefined,
-                                    port: 0, fd: - 1, opts: [{:active, true}])
-  Record.defrecord(:r_sctp_opts, :sctp_opts, ifaddr: :undefined,
-                                     port: 0, fd: - 1, type: :seqpacket,
-                                     opts: [{:mode, :binary}, {:buffer, 65536},
-                                                                  {:sndbuf,
-                                                                     65536},
-                                                                      {:recbuf,
-                                                                         1024},
-                                                                          {:sctp_events,
-                                                                             :undefined}])
-  Record.defrecord(:r_file_info, :file_info, size: :undefined,
-                                     type: :undefined, access: :undefined,
-                                     atime: :undefined, mtime: :undefined,
-                                     ctime: :undefined, mode: :undefined,
-                                     links: :undefined,
-                                     major_device: :undefined,
-                                     minor_device: :undefined,
-                                     inode: :undefined, uid: :undefined,
-                                     gid: :undefined)
-  Record.defrecord(:r_file_descriptor, :file_descriptor, module: :undefined,
-                                           data: :undefined)
+  Record.defrecord(:r_connect_opts, :connect_opts, ifaddr: :undefined, port: 0, fd: -1, opts: [])
+
+  Record.defrecord(:r_listen_opts, :listen_opts,
+    ifaddr: :undefined,
+    port: 0,
+    backlog: 5,
+    fd: -1,
+    opts: []
+  )
+
+  Record.defrecord(:r_udp_opts, :udp_opts,
+    ifaddr: :undefined,
+    port: 0,
+    fd: -1,
+    opts: [{:active, true}]
+  )
+
+  Record.defrecord(:r_sctp_opts, :sctp_opts,
+    ifaddr: :undefined,
+    port: 0,
+    fd: -1,
+    type: :seqpacket,
+    opts: [
+      {:mode, :binary},
+      {:buffer, 65536},
+      {:sndbuf, 65536},
+      {:recbuf, 1024},
+      {:sctp_events, :undefined}
+    ]
+  )
+
+  Record.defrecord(:r_file_info, :file_info,
+    size: :undefined,
+    type: :undefined,
+    access: :undefined,
+    atime: :undefined,
+    mtime: :undefined,
+    ctime: :undefined,
+    mode: :undefined,
+    links: :undefined,
+    major_device: :undefined,
+    minor_device: :undefined,
+    inode: :undefined,
+    uid: :undefined,
+    gid: :undefined
+  )
+
+  Record.defrecord(:r_file_descriptor, :file_descriptor,
+    module: :undefined,
+    data: :undefined
+  )
+
   def connect(sockAddr, opts) do
     connect(sockAddr, opts, :infinity)
   end
 
   def connect(address, port, opts)
-      when is_tuple(address) or is_list(address) or is_atom(address) or address === :any or address === :loopback do
+      when is_tuple(address) or is_list(address) or is_atom(address) or address === :any or
+             address === :loopback do
     connect(address, port, opts, :infinity)
   end
 
   def connect(%{family: fam} = sockAddr, opts, timeout)
       when fam === :inet or fam === :inet6 do
     sockAddr2 = :inet.ensure_sockaddr(sockAddr)
-    case (:inet.gen_tcp_module(opts)) do
+
+    case :inet.gen_tcp_module(opts) do
       {:gen_tcp, opts2} ->
         timer = :inet.start_timer(timeout)
-        res = ((try do
-                 connect2(sockAddr2, opts2, timer)
-               catch
-                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                 :exit, e -> {:EXIT, e}
-                 e -> e
-               end))
+
+        res =
+          try do
+            connect2(sockAddr2, opts2, timer)
+          catch
+            :error, e -> {:EXIT, {e, __STACKTRACE__}}
+            :exit, e -> {:EXIT, e}
+            e -> e
+          end
+
         _ = :inet.stop_timer(timer)
-        case (res) do
+
+        case res do
           {:ok, s} ->
             {:ok, s}
+
           {:error, :einval} ->
             exit(:badarg)
+
           {:EXIT, reason} ->
             exit(reason)
+
           error ->
             error
         end
+
       {genTcpMod, opts3} ->
         genTcpMod.connect(sockAddr2, opts3, timeout)
     end
   end
 
   def connect(address, port, opts0, timeout) do
-    case (:inet.gen_tcp_module(opts0)) do
+    case :inet.gen_tcp_module(opts0) do
       {:gen_tcp, opts} ->
         timer = :inet.start_timer(timeout)
-        res = ((try do
-                 connect1(address, port, opts, timer)
-               catch
-                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                 :exit, e -> {:EXIT, e}
-                 e -> e
-               end))
+
+        res =
+          try do
+            connect1(address, port, opts, timer)
+          catch
+            :error, e -> {:EXIT, {e, __STACKTRACE__}}
+            :exit, e -> {:EXIT, e}
+            e -> e
+          end
+
         _ = :inet.stop_timer(timer)
-        case (res) do
+
+        case res do
           {:ok, s} ->
             {:ok, s}
+
           {:error, :einval} ->
             exit(:badarg)
+
           {:EXIT, reason} ->
             exit(reason)
+
           error ->
             error
         end
+
       {genTcpMod, opts} ->
         genTcpMod.connect(address, port, opts, timeout)
     end
@@ -95,15 +139,17 @@ defmodule :m_gen_tcp do
 
   defp connect1(address, port, opts0, timer) do
     {mod, opts} = :inet.tcp_module(opts0, address)
-    case (mod.getaddrs(address, timer)) do
+
+    case mod.getaddrs(address, timer) do
       {:ok, iPs} ->
-        case (mod.getserv(port)) do
+        case mod.getserv(port) do
           {:ok, tP} ->
-            try_connect(iPs, tP, opts, timer, mod,
-                          {:error, :einval})
+            try_connect(iPs, tP, opts, timer, mod, {:error, :einval})
+
           error ->
             error
         end
+
       error ->
         error
     end
@@ -116,13 +162,17 @@ defmodule :m_gen_tcp do
 
   defp try_connect([iP | iPs], port, opts, timer, mod, _) do
     time = :inet.timeout(timer)
-    case (mod.connect(iP, port, opts, time)) do
+
+    case mod.connect(iP, port, opts, time) do
       {:ok, s} ->
         {:ok, s}
+
       {:error, :einval} ->
         {:error, :einval}
+
       {:error, :timeout} ->
         {:error, :timeout}
+
       err1 ->
         try_connect(iPs, port, opts, timer, mod, err1)
     end
@@ -133,17 +183,21 @@ defmodule :m_gen_tcp do
   end
 
   def listen(port, opts0) do
-    case (:inet.gen_tcp_module(opts0)) do
+    case :inet.gen_tcp_module(opts0) do
       {:gen_tcp, opts1} ->
         {mod, opts} = :inet.tcp_module(opts1)
-        case (mod.getserv(port)) do
+
+        case mod.getserv(port) do
           {:ok, tP} ->
             mod.listen(tP, opts)
+
           {:error, :einval} ->
             exit(:badarg)
+
           other ->
             other
         end
+
       {genTcpMod, opts} ->
         genTcpMod.listen(port, opts)
     end
@@ -155,9 +209,10 @@ defmodule :m_gen_tcp do
   end
 
   def accept(s) when is_port(s) do
-    case (:inet_db.lookup_socket(s)) do
+    case :inet_db.lookup_socket(s) do
       {:ok, mod} ->
         mod.accept(s)
+
       error ->
         error
     end
@@ -169,9 +224,10 @@ defmodule :m_gen_tcp do
   end
 
   def accept(s, time) when is_port(s) do
-    case (:inet_db.lookup_socket(s)) do
+    case :inet_db.lookup_socket(s) do
       {:ok, mod} ->
         mod.accept(s, time)
+
       error ->
         error
     end
@@ -183,9 +239,10 @@ defmodule :m_gen_tcp do
   end
 
   def shutdown(s, how) when is_port(s) do
-    case (:inet_db.lookup_socket(s)) do
+    case :inet_db.lookup_socket(s) do
       {:ok, mod} ->
         mod.shutdown(s, how)
+
       error ->
         error
     end
@@ -206,9 +263,10 @@ defmodule :m_gen_tcp do
   end
 
   def send(s, packet) when is_port(s) do
-    case (:inet_db.lookup_socket(s)) do
+    case :inet_db.lookup_socket(s) do
       {:ok, mod} ->
         mod.send(s, packet)
+
       error ->
         error
     end
@@ -220,9 +278,10 @@ defmodule :m_gen_tcp do
   end
 
   def recv(s, length) when is_port(s) do
-    case (:inet_db.lookup_socket(s)) do
+    case :inet_db.lookup_socket(s) do
       {:ok, mod} ->
         mod.recv(s, length)
+
       error ->
         error
     end
@@ -234,9 +293,10 @@ defmodule :m_gen_tcp do
   end
 
   def recv(s, length, time) when is_port(s) do
-    case (:inet_db.lookup_socket(s)) do
+    case :inet_db.lookup_socket(s) do
       {:ok, mod} ->
         mod.recv(s, length, time)
+
       error ->
         error
     end
@@ -248,9 +308,10 @@ defmodule :m_gen_tcp do
   end
 
   def unrecv(s, data) when is_port(s) do
-    case (:inet_db.lookup_socket(s)) do
+    case :inet_db.lookup_socket(s) do
       {:ok, mod} ->
         mod.unrecv(s, data)
+
       error ->
         error
     end
@@ -262,22 +323,23 @@ defmodule :m_gen_tcp do
   end
 
   def controlling_process(s, newOwner) do
-    case (:inet_db.lookup_socket(s)) do
+    case :inet_db.lookup_socket(s) do
       {:ok, _Mod} ->
         :inet.tcp_controlling_process(s, newOwner)
+
       error ->
         error
     end
   end
 
   def fdopen(fd, opts0) do
-    case (:inet.gen_tcp_module(opts0)) do
+    case :inet.gen_tcp_module(opts0) do
       {:gen_tcp, opts1} ->
         {mod, opts} = :inet.tcp_module(opts1)
         mod.fdopen(fd, opts)
+
       {genTcpMod, opts} ->
         genTcpMod.fdopen(fd, opts)
     end
   end
-
 end

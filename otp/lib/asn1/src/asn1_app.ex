@@ -8,5 +8,4 @@ defmodule :m_asn1_app do
   def stop(_State) do
     :ok
   end
-
 end

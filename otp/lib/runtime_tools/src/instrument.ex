@@ -1,21 +1,30 @@
 defmodule :m_instrument do
   use Bitwise
+
   def allocations() do
     allocations(%{})
   end
 
   def allocations(options) do
     ref = make_ref()
-    defaults = %{scheduler_ids:
-                 :lists.seq(0, :erts_internal.no_aux_work_threads() - 1),
-                   allocator_types:
-                   :erlang.system_info(:alloc_util_allocators),
-                   histogram_start: 128, histogram_width: 18}
-    {histStart,
-       msgCount} = dispatch_gather(:maps.merge(defaults,
-                                                 options),
-                                     ref,
-                                     &:erts_internal.gather_alloc_histograms/1)
+
+    defaults = %{
+      scheduler_ids: :lists.seq(0, :erts_internal.no_aux_work_threads() - 1),
+      allocator_types: :erlang.system_info(:alloc_util_allocators),
+      histogram_start: 128,
+      histogram_width: 18
+    }
+
+    {histStart, msgCount} =
+      dispatch_gather(
+        :maps.merge(
+          defaults,
+          options
+        ),
+        ref,
+        &:erts_internal.gather_alloc_histograms/1
+      )
+
     alloc_hist_receive(histStart, msgCount, ref)
   end
 
@@ -24,8 +33,7 @@ defmodule :m_instrument do
   end
 
   defp alloc_hist_receive(histStart, msgCount, ref) when msgCount > 0 do
-    {unscanned, histograms} = alloc_hist_receive_1(msgCount,
-                                                     ref, 0, %{})
+    {unscanned, histograms} = alloc_hist_receive_1(msgCount, ref, 0, %{})
     {:ok, {histStart, unscanned, histograms}}
   end
 
@@ -36,22 +44,23 @@ defmodule :m_instrument do
   defp alloc_hist_receive_1(msgCount, ref, unscanned0, result0) do
     receive do
       {^ref, unscanned, tags} ->
-        result = :lists.foldl(&alloc_hist_fold_result/2,
-                                result0, tags)
-        alloc_hist_receive_1(msgCount - 1, ref,
-                               unscanned0 + unscanned, result)
+        result = :lists.foldl(&alloc_hist_fold_result/2, result0, tags)
+        alloc_hist_receive_1(msgCount - 1, ref, unscanned0 + unscanned, result)
     end
   end
 
   defp alloc_hist_fold_result({id, type, blockHist}, result0) do
     idAllocs0 = :maps.get(id, result0, %{})
-    mergedHists = (case (:maps.find(type, idAllocs0)) do
-                     {:ok, prevHist} ->
-                       alloc_hist_merge_hist(tuple_size(blockHist), blockHist,
-                                               prevHist)
-                     :error ->
-                       blockHist
-                   end)
+
+    mergedHists =
+      case :maps.find(type, idAllocs0) do
+        {:ok, prevHist} ->
+          alloc_hist_merge_hist(tuple_size(blockHist), blockHist, prevHist)
+
+        :error ->
+          blockHist
+      end
+
     idAllocs = Map.put(idAllocs0, type, mergedHists)
     Map.put(result0, id, idAllocs)
   end
@@ -61,10 +70,20 @@ defmodule :m_instrument do
   end
 
   defp alloc_hist_merge_hist(index, a, b) do
-    merged = :erlang.setelement(index, a,
-                                  :erlang.element(index,
-                                                    a) + :erlang.element(index,
-                                                                           b))
+    merged =
+      :erlang.setelement(
+        index,
+        a,
+        :erlang.element(
+          index,
+          a
+        ) +
+          :erlang.element(
+            index,
+            b
+          )
+      )
+
     alloc_hist_merge_hist(index - 1, merged, b)
   end
 
@@ -74,15 +93,24 @@ defmodule :m_instrument do
 
   def carriers(options) do
     ref = make_ref()
-    defaults = %{scheduler_ids:
-                 :lists.seq(0, :erts_internal.no_aux_work_threads() - 1),
-                   allocator_types:
-                   :erlang.system_info(:alloc_util_allocators),
-                   histogram_start: 512, histogram_width: 14}
-    {histStart,
-       msgCount} = dispatch_gather(:maps.merge(defaults,
-                                                 options),
-                                     ref, &:erts_internal.gather_carrier_info/1)
+
+    defaults = %{
+      scheduler_ids: :lists.seq(0, :erts_internal.no_aux_work_threads() - 1),
+      allocator_types: :erlang.system_info(:alloc_util_allocators),
+      histogram_start: 512,
+      histogram_width: 14
+    }
+
+    {histStart, msgCount} =
+      dispatch_gather(
+        :maps.merge(
+          defaults,
+          options
+        ),
+        ref,
+        &:erts_internal.gather_carrier_info/1
+      )
+
     carrier_info_receive(histStart, msgCount, ref)
   end
 
@@ -91,8 +119,7 @@ defmodule :m_instrument do
   end
 
   defp carrier_info_receive(histStart, msgCount, ref) do
-    {:ok,
-       {histStart, carrier_info_receive_1(msgCount, ref, [])}}
+    {:ok, {histStart, carrier_info_receive_1(msgCount, ref, [])}}
   end
 
   defp carrier_info_receive_1(0, _Ref, result) do
@@ -102,29 +129,36 @@ defmodule :m_instrument do
   defp carrier_info_receive_1(msgCount, ref, result0) do
     receive do
       {^ref, carriers} ->
-        carrier_info_receive_1(msgCount - 1, ref,
-                                 [carriers, result0])
+        carrier_info_receive_1(msgCount - 1, ref, [carriers, result0])
     end
   end
 
-  defp dispatch_gather(%{allocator_types: allocatorTypes,
-              scheduler_ids: schedulerIds, histogram_start: histStart,
-              histogram_width: histWidth},
-            ref, gather)
-      when (is_list(allocatorTypes) and
+  defp dispatch_gather(
+         %{
+           allocator_types: allocatorTypes,
+           scheduler_ids: schedulerIds,
+           histogram_start: histStart,
+           histogram_width: histWidth
+         },
+         ref,
+         gather
+       )
+       when is_list(allocatorTypes) and
               is_list(schedulerIds) and histStart >= 1 and
               histStart <= 1 <<< 28 and histWidth >= 1 and
-              histWidth <= 32) do
-    msgCount = :lists.sum(for schedId <- schedulerIds,
-                                allocatorType <- allocatorTypes do
-                            gather.({allocatorType, schedId, histWidth,
-                                       histStart, ref})
-                          end)
+              histWidth <= 32 do
+    msgCount =
+      :lists.sum(
+        for schedId <- schedulerIds,
+            allocatorType <- allocatorTypes do
+          gather.({allocatorType, schedId, histWidth, histStart, ref})
+        end
+      )
+
     {histStart, msgCount}
   end
 
   defp dispatch_gather(_, _, _) do
     :erlang.error(:badarg)
   end
-
 end

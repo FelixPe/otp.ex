@@ -2,13 +2,21 @@ defmodule :m_asn1ct_imm do
   use Bitwise
   import :asn1ct_gen, only: [emit: 1]
   require Record
-  Record.defrecord(:r_st, :st, var: :undefined,
-                              base: :undefined)
+
+  Record.defrecord(:r_st, :st,
+    var: :undefined,
+    base: :undefined
+  )
+
   def dec_slim_cg(imm0, bytesVar) do
     {imm, _} = optimize_alignment(imm0)
     :asn1ct_name.new(:v)
-    [h |
-         t] = :erlang.atom_to_list(:asn1ct_name.curr(:v)) ++ '@'
+
+    [
+      h
+      | t
+    ] = :erlang.atom_to_list(:asn1ct_name.curr(:v)) ++ ~c"@"
+
     varBase = [h - (?a - ?A) | t]
     st0 = r_st(var: 0, base: varBase)
     {res, pre, _} = flatten(imm, bytesVar, st0)
@@ -17,9 +25,9 @@ defmodule :m_asn1ct_imm do
   end
 
   def dec_code_gen(imm, bytesVar) do
-    emit(['begin', :nl])
+    emit([~c"begin", :nl])
     {dst, dstBuf} = dec_slim_cg(imm, bytesVar)
-    emit([',', :nl, '{', dst, ',', dstBuf, '}', :nl, 'end'])
+    emit([~c",", :nl, ~c"{", dst, ~c",", dstBuf, ~c"}", :nl, ~c"end"])
     :ok
   end
 
@@ -43,17 +51,14 @@ defmodule :m_asn1ct_imm do
     ub = length(namedList0) - 1
     constraint = [{:ValueRange, {0, ub}}]
     int = per_dec_integer(constraint, aligned)
-    namedList = per_dec_enumerated_fix_list(namedList0,
-                                              [:enum_error], 0)
+    namedList = per_dec_enumerated_fix_list(namedList0, [:enum_error], 0)
     {:map, int, opt_map(namedList, int)}
   end
 
   def per_dec_enumerated(baseNamedList, namedListExt0, aligned) do
     base = per_dec_enumerated(baseNamedList, aligned)
-    namedListExt = per_dec_enumerated_fix_list(namedListExt0,
-                                                 [:enum_default], 0)
-    ext = {:map, per_dec_normally_small_number(aligned),
-             namedListExt}
+    namedListExt = per_dec_enumerated_fix_list(namedListExt0, [:enum_default], 0)
+    ext = {:map, per_dec_normally_small_number(aligned), namedListExt}
     bit_case(base, ext)
   end
 
@@ -73,17 +78,21 @@ defmodule :m_asn1ct_imm do
   end
 
   def per_dec_length({{fixed, fixed}, []}, allowZero, aligned) do
-    bit_case(per_dec_length(fixed, allowZero, aligned),
-               per_dec_length(:no, allowZero, aligned))
+    bit_case(
+      per_dec_length(fixed, allowZero, aligned),
+      per_dec_length(:no, allowZero, aligned)
+    )
   end
 
   def per_dec_length({{_, _} = constr, []}, allowZero, aligned) do
-    bit_case(per_dec_length(constr, allowZero, aligned),
-               per_dec_length(:no, allowZero, aligned))
+    bit_case(
+      per_dec_length(constr, allowZero, aligned),
+      per_dec_length(:no, allowZero, aligned)
+    )
   end
 
   def per_dec_length({lb, ub}, _AllowZero, aligned)
-      when (is_integer(lb) and is_integer(lb)) do
+      when is_integer(lb) and is_integer(lb) do
     per_dec_constrained(lb, ub, aligned)
   end
 
@@ -93,9 +102,12 @@ defmodule :m_asn1ct_imm do
 
   def per_dec_named_integer(constraint, namedList0, aligned) do
     int = per_dec_integer(constraint, aligned)
-    namedList = (for {v, k} <- namedList0 do
-                   {k, v}
-                 end) ++ [:integer_default]
+
+    namedList =
+      for {v, k} <- namedList0 do
+        {k, v}
+      end ++ [:integer_default]
+
     {:map, int, opt_map(namedList, int)}
   end
 
@@ -121,12 +133,11 @@ defmodule :m_asn1ct_imm do
 
   def per_dec_real(aligned) do
     dec = fn v, buf ->
-               emit(['{', {:call, :real_common, :decode_real, [v]}, :com,
-                                                                      buf, '}'])
-          end
+      emit([~c"{", {:call, :real_common, :decode_real, [v]}, :com, buf, ~c"}"])
+    end
+
     {:call, dec,
-       {:get_bits, decode_unconstrained_length(true, aligned),
-          [8, :binary, {:align, aligned}]}}
+     {:get_bits, decode_unconstrained_length(true, aligned), [8, :binary, {:align, aligned}]}}
   end
 
   def per_dec_restricted_string(aligned) do
@@ -136,107 +147,155 @@ defmodule :m_asn1ct_imm do
 
   def per_enc_bit_string(val, [], constraint0, aligned) do
     {b, [[], bits]} = mk_vars([], [:bits])
-    constraint = effective_constraint(:bitstring,
-                                        constraint0)
-    b ++ [{:call, :erlang, :bit_size, [val], bits} |
-              per_enc_length(val, 1, bits, constraint, aligned, :"BIT STRING")]
+
+    constraint =
+      effective_constraint(
+        :bitstring,
+        constraint0
+      )
+
+    b ++
+      [
+        {:call, :erlang, :bit_size, [val], bits}
+        | per_enc_length(val, 1, bits, constraint, aligned, :"BIT STRING")
+      ]
   end
 
   def per_enc_bit_string(val0, nNL0, constraint0, aligned) do
-    {b, [val, bs, bits, positions]} = mk_vars(val0,
-                                                [:bs, :bits, :positions])
+    {b, [val, bs, bits, positions]} =
+      mk_vars(
+        val0,
+        [:bs, :bits, :positions]
+      )
+
     nNL = :lists.keysort(2, nNL0)
-    constraint = effective_constraint(:bitstring,
-                                        constraint0)
-    extraArgs = (case (constr_min_size(constraint)) do
-                   :no ->
-                     []
-                   lb ->
-                     [lb]
-                 end)
-    toBs = (case (extraArgs) do
-              [] ->
-                {:call, :per_common, :bs_drop_trailing_zeroes, [val]}
-              [0] ->
-                {:call, :per_common, :bs_drop_trailing_zeroes, [val]}
-              [lower] ->
-                {:call, :per_common, :adjust_trailing_zeroes,
-                   [val, lower]}
-            end)
-    b ++ [{:try, [bit_string_name2pos_fun(nNL, val)],
-             {positions,
-                [{:call, :per_common, :bitstring_from_positions,
-                    [positions | extraArgs]}]},
-             [toBs], bs},
-              {:call, :erlang, :bit_size, [bs], bits} |
-                  per_enc_length(bs, 1, bits, constraint, aligned, :"BIT STRING")]
+
+    constraint =
+      effective_constraint(
+        :bitstring,
+        constraint0
+      )
+
+    extraArgs =
+      case constr_min_size(constraint) do
+        :no ->
+          []
+
+        lb ->
+          [lb]
+      end
+
+    toBs =
+      case extraArgs do
+        [] ->
+          {:call, :per_common, :bs_drop_trailing_zeroes, [val]}
+
+        [0] ->
+          {:call, :per_common, :bs_drop_trailing_zeroes, [val]}
+
+        [lower] ->
+          {:call, :per_common, :adjust_trailing_zeroes, [val, lower]}
+      end
+
+    b ++
+      [
+        {:try, [bit_string_name2pos_fun(nNL, val)],
+         {positions, [{:call, :per_common, :bitstring_from_positions, [positions | extraArgs]}]},
+         [toBs], bs},
+        {:call, :erlang, :bit_size, [bs], bits}
+        | per_enc_length(bs, 1, bits, constraint, aligned, :"BIT STRING")
+      ]
   end
 
   def per_enc_legacy_bit_string(val0, [], constraint0, aligned) do
     {b, [val, bs, bits]} = mk_vars(val0, [:bs, :bits])
-    constraint = effective_constraint(:bitstring,
-                                        constraint0)
-    extraArgs = (case (constr_min_size(constraint)) do
-                   :no ->
-                     []
-                   lb ->
-                     [lb]
-                 end)
-    b ++ [{:call, :per_common, :to_bitstring,
-             [val | extraArgs], bs},
-              {:call, :erlang, :bit_size, [bs], bits} |
-                  per_enc_length(bs, 1, bits, constraint, aligned, :"BIT STRING")]
+
+    constraint =
+      effective_constraint(
+        :bitstring,
+        constraint0
+      )
+
+    extraArgs =
+      case constr_min_size(constraint) do
+        :no ->
+          []
+
+        lb ->
+          [lb]
+      end
+
+    b ++
+      [
+        {:call, :per_common, :to_bitstring, [val | extraArgs], bs},
+        {:call, :erlang, :bit_size, [bs], bits}
+        | per_enc_length(bs, 1, bits, constraint, aligned, :"BIT STRING")
+      ]
   end
 
   def per_enc_legacy_bit_string(val0, nNL0, constraint0, aligned) do
-    {b, [val, bs, bits, positions]} = mk_vars(val0,
-                                                [:bs, :bits, :positions])
+    {b, [val, bs, bits, positions]} =
+      mk_vars(
+        val0,
+        [:bs, :bits, :positions]
+      )
+
     nNL = :lists.keysort(2, nNL0)
-    constraint = effective_constraint(:bitstring,
-                                        constraint0)
-    extraArgs = (case (constr_min_size(constraint)) do
-                   :no ->
-                     []
-                   0 ->
-                     []
-                   lb ->
-                     [lb]
-                 end)
-    b ++ [{:try, [bit_string_name2pos_fun(nNL, val)],
-             {positions,
-                [{:call, :per_common, :bitstring_from_positions,
-                    [positions | extraArgs]}]},
-             [{:call, :per_common, :to_named_bitstring,
-                 [val | extraArgs]}],
-             bs},
-              {:call, :erlang, :bit_size, [bs], bits} |
-                  per_enc_length(bs, 1, bits, constraint, aligned, :"BIT STRING")]
+
+    constraint =
+      effective_constraint(
+        :bitstring,
+        constraint0
+      )
+
+    extraArgs =
+      case constr_min_size(constraint) do
+        :no ->
+          []
+
+        0 ->
+          []
+
+        lb ->
+          [lb]
+      end
+
+    b ++
+      [
+        {:try, [bit_string_name2pos_fun(nNL, val)],
+         {positions, [{:call, :per_common, :bitstring_from_positions, [positions | extraArgs]}]},
+         [{:call, :per_common, :to_named_bitstring, [val | extraArgs]}], bs},
+        {:call, :erlang, :bit_size, [bs], bits}
+        | per_enc_length(bs, 1, bits, constraint, aligned, :"BIT STRING")
+      ]
   end
 
   def per_enc_boolean(val0, _Aligned) do
     {b, [val]} = mk_vars(val0, [])
-    b ++ build_cond([[{:eq, val, false}, {:put_bits, 0, 1,
-                                            [1]}],
-                         [{:eq, val, true}, {:put_bits, 1, 1, [1]}], [:_,
-                                                                          {:error,
-                                                                             {:illegal_boolean,
-                                                                                val}}]])
+
+    b ++
+      build_cond([
+        [{:eq, val, false}, {:put_bits, 0, 1, [1]}],
+        [{:eq, val, true}, {:put_bits, 1, 1, [1]}],
+        [:_, {:error, {:illegal_boolean, val}}]
+      ])
   end
 
   def per_enc_choice(val0, cs0, _Aligned) do
     {b, [val]} = mk_vars(val0, [])
-    cs = (for {tag, imm} <- cs0 do
-            [{:eq, val, tag} | opt_choice(imm)]
-          end)
+
+    cs =
+      for {tag, imm} <- cs0 do
+        [{:eq, val, tag} | opt_choice(imm)]
+      end
+
     b ++ build_cond(cs)
   end
 
   def per_enc_enumerated(val0, {root, ext}, aligned) do
     {b, [val]} = mk_vars(val0, [])
     constr = enumerated_constraint(root)
-    rootCs = per_enc_enumerated_root(root,
-                                       [{:put_bits, 0, 1, [1]}], val, constr,
-                                       aligned)
+    rootCs = per_enc_enumerated_root(root, [{:put_bits, 0, 1, [1]}], val, constr, aligned)
     extCs = per_enc_enumerated_ext(ext, val, aligned)
     b ++ [{:cond, rootCs ++ extCs ++ enumerated_error(val)}]
   end
@@ -244,8 +303,7 @@ defmodule :m_asn1ct_imm do
   def per_enc_enumerated(val0, root, aligned) do
     {b, [val]} = mk_vars(val0, [])
     constr = enumerated_constraint(root)
-    cs = per_enc_enumerated_root(root, [], val, constr,
-                                   aligned)
+    cs = per_enc_enumerated_root(root, [], val, constr, aligned)
     b ++ [{:cond, cs ++ enumerated_error(val)}]
   end
 
@@ -262,13 +320,16 @@ defmodule :m_asn1ct_imm do
   def per_enc_integer(val0, nNL, constraint0, aligned) do
     {b, [val]} = mk_vars(val0, [])
     constraint = effective_constraint(:integer, constraint0)
-    cs = (for {n, v} <- nNL do
-            [{:eq, val, n} | per_enc_integer_1(v, constraint,
-                                                 aligned)]
-          end)
-    case (per_enc_integer_1(val, constraint, aligned)) do
+
+    cs =
+      for {n, v} <- nNL do
+        [{:eq, val, n} | per_enc_integer_1(v, constraint, aligned)]
+      end
+
+    case per_enc_integer_1(val, constraint, aligned) do
       [{:cond, intCs}] ->
         b ++ [{:cond, cs ++ intCs}]
+
       other ->
         b ++ [{:cond, cs ++ [[:_ | other]]}]
     end
@@ -280,161 +341,228 @@ defmodule :m_asn1ct_imm do
 
   def per_enc_k_m_string(val0, stringType, constraint, aligned) do
     {b, [val, bin, len]} = mk_vars(val0, [:bin, :len])
-    szConstraint = effective_constraint(:bitstring,
-                                          constraint)
+
+    szConstraint =
+      effective_constraint(
+        :bitstring,
+        constraint
+      )
+
     unit = string_num_bits(stringType, constraint, aligned)
     chars0 = char_tab(constraint, stringType, unit)
-    enc = (case (unit) do
-             16 ->
-               {:call, :per_common, :encode_chars_16bit, [val], bin}
-             32 ->
-               {:call, :per_common, :encode_big_chars, [val], bin}
-             8 ->
-               {:call, :erlang, :list_to_binary, [val], bin}
-             _ ->
-               case (enc_char_tab(chars0)) do
-                 :notab ->
-                   {:call, :per_common, :encode_chars, [val, unit], bin}
-                 {:tab, tab} ->
-                   {:call, :per_common, :encode_chars, [val, unit, tab],
-                      bin}
-                 {:compact_map, map} ->
-                   {:call, :per_common, :encode_chars_compact_map,
-                      [val, unit, map], bin}
-               end
-           end)
-    (case (unit) do
-       8 ->
-         (b ++ [enc, {:call, :erlang, :byte_size, [bin], len}])
-       _ ->
-         (b ++ [{:call, :erlang, :length, [val], len}, enc])
-     end) ++ per_enc_length(bin, unit, len, szConstraint,
-                              aligned, :k_m_string)
+
+    enc =
+      case unit do
+        16 ->
+          {:call, :per_common, :encode_chars_16bit, [val], bin}
+
+        32 ->
+          {:call, :per_common, :encode_big_chars, [val], bin}
+
+        8 ->
+          {:call, :erlang, :list_to_binary, [val], bin}
+
+        _ ->
+          case enc_char_tab(chars0) do
+            :notab ->
+              {:call, :per_common, :encode_chars, [val, unit], bin}
+
+            {:tab, tab} ->
+              {:call, :per_common, :encode_chars, [val, unit, tab], bin}
+
+            {:compact_map, map} ->
+              {:call, :per_common, :encode_chars_compact_map, [val, unit, map], bin}
+          end
+      end
+
+    case unit do
+      8 ->
+        b ++ [enc, {:call, :erlang, :byte_size, [bin], len}]
+
+      _ ->
+        b ++ [{:call, :erlang, :length, [val], len}, enc]
+    end ++ per_enc_length(bin, unit, len, szConstraint, aligned, :k_m_string)
   end
 
   def per_enc_open_type(imm0, aligned) do
-    imm = (case (aligned) do
-             true ->
-               imm0 ++ [{:put_bits, 0, 0, [1, :align]}]
-             false ->
-               imm0
-           end)
-    {[], [[], val, len, bin]} = mk_vars([],
-                                          [:output, :len, :bin])
-    [{:list, imm, val}, {:call, enc_mod(aligned), :complete,
-                           [val], bin},
-                            {:call, :erlang, :byte_size, [bin], len} |
-                                per_enc_length(bin, 8, len, aligned)]
+    imm =
+      case aligned do
+        true ->
+          imm0 ++ [{:put_bits, 0, 0, [1, :align]}]
+
+        false ->
+          imm0
+      end
+
+    {[], [[], val, len, bin]} =
+      mk_vars(
+        [],
+        [:output, :len, :bin]
+      )
+
+    [
+      {:list, imm, val},
+      {:call, enc_mod(aligned), :complete, [val], bin},
+      {:call, :erlang, :byte_size, [bin], len}
+      | per_enc_length(bin, 8, len, aligned)
+    ]
   end
 
   def per_enc_octet_string(bin, constraint0, aligned) do
     {b, [[], len]} = mk_vars([], [:len])
-    constraint = effective_constraint(:bitstring,
-                                        constraint0)
-    b ++ [{:call, :erlang, :byte_size, [bin], len} |
-              per_enc_length(bin, 8, len, constraint, aligned, :"OCTET STRING")]
+
+    constraint =
+      effective_constraint(
+        :bitstring,
+        constraint0
+      )
+
+    b ++
+      [
+        {:call, :erlang, :byte_size, [bin], len}
+        | per_enc_length(bin, 8, len, constraint, aligned, :"OCTET STRING")
+      ]
   end
 
   def per_enc_legacy_octet_string(val0, constraint0, aligned) do
     {b, [val, bin, len]} = mk_vars(val0, [:bin, :len])
-    constraint = effective_constraint(:bitstring,
-                                        constraint0)
-    b ++ [{:call, :erlang, :iolist_to_binary, [val], bin},
-              {:call, :erlang, :byte_size, [bin], len} |
-                  per_enc_length(bin, 8, len, constraint, aligned, :"OCTET STRING")]
+
+    constraint =
+      effective_constraint(
+        :bitstring,
+        constraint0
+      )
+
+    b ++
+      [
+        {:call, :erlang, :iolist_to_binary, [val], bin},
+        {:call, :erlang, :byte_size, [bin], len}
+        | per_enc_length(bin, 8, len, constraint, aligned, :"OCTET STRING")
+      ]
   end
 
   def per_enc_restricted_string(val0, {m, f}, aligned) do
     {b, [val, bin, len]} = mk_vars(val0, [:bin, :len])
-    b ++ [{:call, m, f, [val], bin}, {:call, :erlang,
-                                        :byte_size, [bin], len} |
-                                         per_enc_length(bin, 8, len, aligned)]
+
+    b ++
+      [
+        {:call, m, f, [val], bin},
+        {:call, :erlang, :byte_size, [bin], len}
+        | per_enc_length(bin, 8, len, aligned)
+      ]
   end
 
   def per_enc_small_number(val, aligned) do
-    build_cond([[{:lt, val, 64}, {:put_bits, val, 7, [1]}],
-                    [:_, {:put_bits, 1, 1, [1]} | per_enc_unsigned(val,
-                                                                     aligned)]])
+    build_cond([
+      [{:lt, val, 64}, {:put_bits, val, 7, [1]}],
+      [
+        :_,
+        {:put_bits, 1, 1, [1]}
+        | per_enc_unsigned(
+            val,
+            aligned
+          )
+      ]
+    ])
   end
 
   def per_enc_extension_bit(val0, _Aligned) do
     {b, [val]} = mk_vars(val0, [])
-    b ++ build_cond([[{:eq, val, []}, {:put_bits, 0, 1,
-                                         [1]}],
-                         [:_, {:put_bits, 1, 1, [1]}]])
+    b ++ build_cond([[{:eq, val, []}, {:put_bits, 0, 1, [1]}], [:_, {:put_bits, 1, 1, [1]}]])
   end
 
   def per_enc_extensions(val0, pos0, numBits, aligned) when numBits > 0 do
     pos = pos0 + 1
     {b, [val, bitmap]} = mk_vars(val0, [:bitmap])
     length = per_enc_small_length(numBits, aligned)
-    putBits = (case (numBits) do
-                 1 ->
-                   [{:put_bits, 1, 1, [1]}]
-                 _ ->
-                   [{:put_bits, bitmap, numBits, [1]}]
-               end)
-    b ++ [{:call, :per_common, :extension_bitmap,
-             [val, pos, pos + numBits], bitmap},
-              {:list,
-                 [{:cond,
-                     [[{:eq, bitmap, 0}], [:_ | length ++ putBits]]}],
-                 {:var, 'Extensions'}}]
+
+    putBits =
+      case numBits do
+        1 ->
+          [{:put_bits, 1, 1, [1]}]
+
+        _ ->
+          [{:put_bits, bitmap, numBits, [1]}]
+      end
+
+    b ++
+      [
+        {:call, :per_common, :extension_bitmap, [val, pos, pos + numBits], bitmap},
+        {:list, [{:cond, [[{:eq, bitmap, 0}], [:_ | length ++ putBits]]}], {:var, ~c"Extensions"}}
+      ]
   end
 
   def per_enc_extensions_map(val0, vars, undefined, aligned) do
     numBits = length(vars)
     {b, [_Val, bitmap]} = mk_vars(val0, [:bitmap])
     length = per_enc_small_length(numBits, aligned)
-    putBits = (case (numBits) do
-                 1 ->
-                   [{:put_bits, 1, 1, [1]}]
-                 _ ->
-                   [{:put_bits, bitmap, numBits, [1]}]
-               end)
+
+    putBits =
+      case numBits do
+        1 ->
+          [{:put_bits, 1, 1, [1]}]
+
+        _ ->
+          [{:put_bits, bitmap, numBits, [1]}]
+      end
+
     bitmapExpr = extensions_bitmap(vars, undefined)
-    b ++ [{:assign, bitmap, bitmapExpr}, {:list,
-                                            [{:cond,
-                                                [[{:eq, bitmap, 0}], [:_ |
-                                                                          length ++ putBits]]}],
-                                            {:var, 'Extensions'}}]
+
+    b ++
+      [
+        {:assign, bitmap, bitmapExpr},
+        {:list,
+         [
+           {:cond,
+            [
+              [{:eq, bitmap, 0}],
+              [
+                :_
+                | length ++ putBits
+              ]
+            ]}
+         ], {:var, ~c"Extensions"}}
+      ]
   end
 
   def per_enc_optional(val, defVals) when is_list(defVals) do
     zero = {:put_bits, 0, 1, [1]}
     one = {:put_bits, 1, 1, [1]}
-    [{:cond,
-        (for defVal <- defVals do
-           [{:eq, val, defVal}, zero]
-         end) ++ [[:_, one]]}]
+
+    [
+      {:cond,
+       for defVal <- defVals do
+         [{:eq, val, defVal}, zero]
+       end ++ [[:_, one]]}
+    ]
   end
 
   def per_enc_optional(val, {:call, m, f, a}) do
     {[], [[], tmp]} = mk_vars([], [:tmp])
     zero = {:put_bits, 0, 1, [1]}
     one = {:put_bits, 1, 1, [1]}
-    [{:call, m, f, [val | a], tmp}, {:cond,
-                                       [[{:eq, tmp, true}, zero], [:_, one]]}]
+    [{:call, m, f, [val | a], tmp}, {:cond, [[{:eq, tmp, true}, zero], [:_, one]]}]
   end
 
-  def per_enc_sof(val0, constraint, elementVar, elementImm,
-           aligned) do
-    case (effective_constraint(:bitstring, constraint)) do
+  def per_enc_sof(val0, constraint, elementVar, elementImm, aligned) do
+    case effective_constraint(:bitstring, constraint) do
       :no ->
-        per_enc_sof_fragmented(val0, elementVar, elementImm,
-                                 aligned)
+        per_enc_sof_fragmented(val0, elementVar, elementImm, aligned)
+
       szConstraint ->
         {b, [val, len]} = mk_vars(val0, [:len])
         lenImm = enc_sof_length(len, szConstraint, aligned)
-        lc0 = [{:lc, elementImm,
-                  {:var, :erlang.atom_to_list(elementVar)}, val}]
+        lc0 = [{:lc, elementImm, {:var, :erlang.atom_to_list(elementVar)}, val}]
         lc = opt_lc(lc0, lenImm)
         preBlock = b ++ [{:call, :erlang, :length, [val], len}]
-        case (lenImm) do
+
+        case lenImm do
           [{:cond, [[c | action]]}] ->
             preBlock ++ [{:cond, [[c | action ++ lc]]}]
+
           [{:sub, _, _, _} = sub, {:cond, [[c | action]]}] ->
             preBlock ++ [sub, {:cond, [[c | action ++ lc]]}]
+
           encLen ->
             preBlock ++ encLen ++ lc
         end
@@ -443,37 +571,47 @@ defmodule :m_asn1ct_imm do
 
   defp per_enc_sof_fragmented(val0, elementVar, elementImm, aligned) do
     {b, [val, len, fun]} = mk_vars(val0, [:len, :fn])
-    lc = [{:lc, elementImm,
-             {:var, :erlang.atom_to_list(elementVar)}, val}]
+    lc = [{:lc, elementImm, {:var, :erlang.atom_to_list(elementVar)}, val}]
     preBlock = b ++ [{:call, :erlang, :length, [val], len}]
     u = unit(1, aligned)
-    encFragmented = [{:fun,
-                        [{:var, :erlang.atom_to_list(elementVar)}], elementImm,
-                        fun},
-                         {:call, enc_mod(aligned), :encode_fragmented_sof,
-                            [fun, val, len]}]
-    condImm = build_cond([[{:lt, len, 128}, {:put_bits, len,
-                                               8, u} |
-                                                lc],
-                              [{:lt, len, 16384}, {:put_bits, 2, 2, u},
-                                                      {:put_bits, len, 14,
-                                                         [1]} |
-                                                          lc],
-                                  [:_ | encFragmented]])
+
+    encFragmented = [
+      {:fun, [{:var, :erlang.atom_to_list(elementVar)}], elementImm, fun},
+      {:call, enc_mod(aligned), :encode_fragmented_sof, [fun, val, len]}
+    ]
+
+    condImm =
+      build_cond([
+        [
+          {:lt, len, 128},
+          {:put_bits, len, 8, u}
+          | lc
+        ],
+        [
+          {:lt, len, 16384},
+          {:put_bits, 2, 2, u},
+          {:put_bits, len, 14, [1]}
+          | lc
+        ],
+        [:_ | encFragmented]
+      ])
+
     preBlock ++ condImm
   end
 
   def enc_absent(val0, {:call, m, f, a}, body) do
     {b, [var, tmp]} = mk_vars(val0, [:tmp])
-    b ++ [{:call, m, f, [var | a], tmp}, {:cond,
-                                            [[{:eq, tmp, true}], [:_ | body]]}]
+    b ++ [{:call, m, f, [var | a], tmp}, {:cond, [[{:eq, tmp, true}], [:_ | body]]}]
   end
 
   def enc_absent(val0, absVals, body) when is_list(absVals) do
     {b, [var]} = mk_vars(val0, [])
-    cs = (for aval <- absVals do
-            [{:eq, var, aval}]
-          end) ++ [[:_ | body]]
+
+    cs =
+      for aval <- absVals do
+        [{:eq, var, aval}]
+      end ++ [[:_ | body]]
+
     b ++ build_cond(cs)
   end
 
@@ -481,11 +619,17 @@ defmodule :m_asn1ct_imm do
     enc_append(t)
   end
 
-  def enc_append([[{:put_bits, _, _, _} | _] = pb | [imm |
-                                                 t] = t0]) do
-    case (opt_choice(pb ++ imm)) do
+  def enc_append([
+        [{:put_bits, _, _, _} | _] = pb
+        | [
+            imm
+            | t
+          ] = t0
+      ]) do
+    case opt_choice(pb ++ imm) do
       [{:put_bits, _, _, _} | _] ->
         [{:block, pb} | enc_append(t0)]
+
       opt ->
         enc_append([opt | t])
     end
@@ -519,7 +663,7 @@ defmodule :m_asn1ct_imm do
   def enc_maps_get(n, val0) do
     {[], [val, dst0]} = mk_vars(val0, [:element])
     {:var, dst} = dst0
-    dstExpr = {:expr, :lists.concat(['\#{', n, ':=', dst, '}'])}
+    dstExpr = {:expr, :lists.concat([~c"\#{", n, ~c":=", dst, ~c"}"])}
     {:var, srcVar} = val
     {[{:assign, dstExpr, srcVar}], dst0}
   end
@@ -560,13 +704,17 @@ defmodule :m_asn1ct_imm do
   end
 
   defp dec_string({{sv, sv}, []}, u, aligned, t) do
-    bit_case(dec_string(sv, u, aligned, t),
-               dec_string(:no, u, aligned, t))
+    bit_case(
+      dec_string(sv, u, aligned, t),
+      dec_string(:no, u, aligned, t)
+    )
   end
 
   defp dec_string({{_, _} = c, []}, u, aligned, t) do
-    bit_case(dec_string(c, u, aligned, t),
-               dec_string(:no, u, aligned, t))
+    bit_case(
+      dec_string(c, u, aligned, t),
+      dec_string(:no, u, aligned, t)
+    )
   end
 
   defp dec_string({lb, ub}, u, aligned0, t) do
@@ -577,21 +725,20 @@ defmodule :m_asn1ct_imm do
 
   defp dec_string(_, u, aligned, _T) do
     al = [{:align, aligned}]
+
     decRest = fn v, buf ->
-                   :asn1ct_func.call(:per_common, :decode_fragmented,
-                                       [v, buf, u])
-              end
+      :asn1ct_func.call(:per_common, :decode_fragmented, [v, buf, u])
+    end
+
     {:case,
-       [{:test, {:get_bits, 1, [1 | al]}, 0,
-           {:value,
-              {:get_bits, {:get_bits, 7, [1]}, [u, :binary]}}},
-            {:test, {:get_bits, 1, [1 | al]}, 1,
-               {:test, {:get_bits, 1, [1]}, 0,
-                  {:value,
-                     {:get_bits, {:get_bits, 14, [1]}, [u, :binary]}}}},
-                {:test, {:get_bits, 1, [1 | al]}, 1,
-                   {:test, {:get_bits, 1, [1]}, 1,
-                      {:value, {:call, decRest, {:get_bits, 6, [1]}}}}}]}
+     [
+       {:test, {:get_bits, 1, [1 | al]}, 0,
+        {:value, {:get_bits, {:get_bits, 7, [1]}, [u, :binary]}}},
+       {:test, {:get_bits, 1, [1 | al]}, 1,
+        {:test, {:get_bits, 1, [1]}, 0, {:value, {:get_bits, {:get_bits, 14, [1]}, [u, :binary]}}}},
+       {:test, {:get_bits, 1, [1 | al]}, 1,
+        {:test, {:get_bits, 1, [1]}, 1, {:value, {:call, decRest, {:get_bits, 6, [1]}}}}}
+     ]}
   end
 
   defp per_dec_enumerated_fix_list([{v, _} | t], tail, n) do
@@ -611,19 +758,22 @@ defmodule :m_asn1ct_imm do
   end
 
   defp per_dec_integer_1([{:ValueRange, {lb, :MAX}}], aligned)
-      when is_integer(lb) do
+       when is_integer(lb) do
     per_decode_semi_constrained(lb, aligned)
   end
 
   defp per_dec_integer_1([{:ValueRange, {lb, ub}}], aligned)
-      when (is_integer(lb) and is_integer(ub)) do
+       when is_integer(lb) and is_integer(ub) do
     per_dec_constrained(lb, ub, aligned)
   end
 
   defp per_dec_integer_1([{{_, _} = constr0, _}], aligned) do
     constr = effective_constraint(:integer, [constr0])
-    bit_case(per_dec_integer(constr, aligned),
-               per_dec_unconstrained(aligned))
+
+    bit_case(
+      per_dec_integer(constr, aligned),
+      per_dec_unconstrained(aligned)
+    )
   end
 
   defp per_dec_integer_1([], aligned) do
@@ -631,8 +781,7 @@ defmodule :m_asn1ct_imm do
   end
 
   defp per_dec_unconstrained(aligned) do
-    {:get_bits, decode_unconstrained_length(false, aligned),
-       [8, :signed]}
+    {:get_bits, decode_unconstrained_length(false, aligned), [8, :signed]}
   end
 
   def per_dec_constrained(lb, ub, false) do
@@ -643,19 +792,25 @@ defmodule :m_asn1ct_imm do
 
   def per_dec_constrained(lb, ub, true) do
     range = ub - lb + 1
-    get = (cond do
-             range <= 255 ->
-               {:get_bits, per_num_bits(range), [1, :unsigned]}
-             range == 256 ->
-               {:get_bits, 1, [8, :unsigned, {:align, true}]}
-             range <= 65536 ->
-               {:get_bits, 2, [8, :unsigned, {:align, true}]}
-             true ->
-               rangeOctLen = byte_size(:binary.encode_unsigned(range - 1))
-               {:get_bits,
-                  per_dec_length({1, rangeOctLen}, false, true),
-                  [8, :unsigned, {:align, true}]}
-           end)
+
+    get =
+      cond do
+        range <= 255 ->
+          {:get_bits, per_num_bits(range), [1, :unsigned]}
+
+        range == 256 ->
+          {:get_bits, 1, [8, :unsigned, {:align, true}]}
+
+        range <= 65536 ->
+          {:get_bits, 2, [8, :unsigned, {:align, true}]}
+
+        true ->
+          rangeOctLen = byte_size(:binary.encode_unsigned(range - 1))
+
+          {:get_bits, per_dec_length({1, rangeOctLen}, false, true),
+           [8, :unsigned, {:align, true}]}
+      end
+
     add_lb(lb, get)
   end
 
@@ -680,34 +835,36 @@ defmodule :m_asn1ct_imm do
   end
 
   defp per_decode_semi_constrained(lb, aligned) do
-    add_lb(lb,
-             {:get_bits, decode_unconstrained_length(false, aligned),
-                [8]})
+    add_lb(
+      lb,
+      {:get_bits, decode_unconstrained_length(false, aligned), [8]}
+    )
   end
 
   defp bit_case(base, ext) do
-    {:case,
-       [{:test, {:get_bits, 1, [1]}, 0, base}, {:test,
-                                                  {:get_bits, 1, [1]}, 1, ext}]}
+    {:case, [{:test, {:get_bits, 1, [1]}, 0, base}, {:test, {:get_bits, 1, [1]}, 1, ext}]}
   end
 
   defp decode_unconstrained_length(allowZero, aligned) do
     al = [{:align, aligned}]
-    zero = (case (allowZero) do
-              false ->
-                [:non_zero]
-              true ->
-                []
-            end)
+
+    zero =
+      case allowZero do
+        false ->
+          [:non_zero]
+
+        true ->
+          []
+      end
+
     {:case,
-       [{:test, {:get_bits, 1, [1 | al]}, 0,
-           {:value, {:get_bits, 7, [1 | zero]}}},
-            {:test, {:get_bits, 1, [1 | al]}, 1,
-               {:test, {:get_bits, 1, [1]}, 0,
-                  {:value, {:get_bits, 14, [1 | zero]}}}},
-                {:test, {:get_bits, 1, [1 | al]}, 1,
-                   {:test, {:get_bits, 1, [1]}, 1,
-                      {:value, {:mul, {:get_bits, 6, [1 | zero]}, 16384}}}}]}
+     [
+       {:test, {:get_bits, 1, [1 | al]}, 0, {:value, {:get_bits, 7, [1 | zero]}}},
+       {:test, {:get_bits, 1, [1 | al]}, 1,
+        {:test, {:get_bits, 1, [1]}, 0, {:value, {:get_bits, 14, [1 | zero]}}}},
+       {:test, {:get_bits, 1, [1 | al]}, 1,
+        {:test, {:get_bits, 1, [1]}, 1, {:value, {:mul, {:get_bits, 6, [1 | zero]}, 16384}}}}
+     ]}
   end
 
   defp uper_num_bits(n) do
@@ -755,9 +912,10 @@ defmodule :m_asn1ct_imm do
   end
 
   defp opt_map(map, imm) do
-    case (matched_range(imm)) do
+    case matched_range(imm) do
       :unknown ->
         map
+
       {lb, ub} ->
         opt_map_1(map, lb, ub)
     end
@@ -765,10 +923,12 @@ defmodule :m_asn1ct_imm do
 
   defp opt_map_1([{i, _} = pair | t], lb, ub) do
     cond do
-      (i === lb and i <= ub) ->
+      i === lb and i <= ub ->
         [pair | opt_map_1(t, lb + 1, ub)]
-      (lb < i and i <= ub) ->
+
+      lb < i and i <= ub ->
         [pair | opt_map_1(t, lb, ub)]
+
       true ->
         opt_map_1(t, lb, ub)
     end
@@ -778,27 +938,29 @@ defmodule :m_asn1ct_imm do
     cond do
       lb <= ub ->
         map
+
       true ->
         []
     end
   end
 
   defp matched_range({:get_bits, bits0, [u | flags]})
-      when is_integer(u) do
-    case (not
-          :lists.member(:signed, flags) and is_integer(bits0)) do
+       when is_integer(u) do
+    case not :lists.member(:signed, flags) and is_integer(bits0) do
       true ->
         bits = u * bits0
-        {0, 1 <<< bits - 1}
+        {0, 1 <<< (bits - 1)}
+
       false ->
         :unknown
     end
   end
 
   defp matched_range({:add, imm, add}) do
-    case (matched_range(imm)) do
+    case matched_range(imm) do
       :unknown ->
         :unknown
+
       {lb, ub} ->
         {lb + add, ub + add}
     end
@@ -809,21 +971,27 @@ defmodule :m_asn1ct_imm do
   end
 
   defp string_num_bits(stringType, constraint, aligned) do
-    case (get_constraint(constraint, :PermittedAlphabet)) do
+    case get_constraint(constraint, :PermittedAlphabet) do
       {:SingleValue, sv} ->
         charbits(length(sv), aligned)
+
       :no ->
-        case (stringType) do
+        case stringType do
           :IA5String ->
             charbits(128, aligned)
+
           :VisibleString ->
             charbits(95, aligned)
+
           :PrintableString ->
             charbits(74, aligned)
+
           :NumericString ->
             charbits(11, aligned)
+
           :UniversalString ->
             32
+
           :BMPString ->
             16
         end
@@ -844,56 +1012,65 @@ defmodule :m_asn1ct_imm do
 
   defp convert_string(numBits, :notab, imm) when numBits < 8 do
     dec = fn v, buf ->
-               emit(['{', {:call, :per_common, :decode_chars,
-                           [v, numBits]},
-                            :com, buf, '}'])
-          end
+      emit([~c"{", {:call, :per_common, :decode_chars, [v, numBits]}, :com, buf, ~c"}"])
+    end
+
     {:call, dec, imm}
   end
 
   defp convert_string(numBits, :notab, imm) when numBits === 16 do
     dec = fn v, buf ->
-               emit(['{', {:call, :per_common, :decode_chars_16bit, [v]},
-                            :com, buf, '}'])
-          end
+      emit([~c"{", {:call, :per_common, :decode_chars_16bit, [v]}, :com, buf, ~c"}"])
+    end
+
     {:call, dec, imm}
   end
 
   defp convert_string(numBits, :notab, imm) do
     dec = fn v, buf ->
-               emit(['{', {:call, :per_common, :decode_big_chars,
-                           [v, numBits]},
-                            :com, buf, '}'])
-          end
+      emit([~c"{", {:call, :per_common, :decode_big_chars, [v, numBits]}, :com, buf, ~c"}"])
+    end
+
     {:call, dec, imm}
   end
 
   defp convert_string(numBits, chars, imm) do
     dec = fn v, buf ->
-               emit(['{', {:call, :per_common, :decode_chars,
-                           [v, numBits, {:asis, chars}]},
-                            :com, buf, '}'])
-          end
+      emit([
+        ~c"{",
+        {:call, :per_common, :decode_chars, [v, numBits, {:asis, chars}]},
+        :com,
+        buf,
+        ~c"}"
+      ])
+    end
+
     {:call, dec, imm}
   end
 
   defp char_tab(c, stringType, numBits) do
-    case (get_constraint(c, :PermittedAlphabet)) do
+    case get_constraint(c, :PermittedAlphabet) do
       {:SingleValue, sv} ->
         char_tab_1(sv, numBits)
+
       :no ->
-        case (stringType) do
+        case stringType do
           :IA5String ->
             :notab
+
           :VisibleString ->
             :notab
+
           :PrintableString ->
-            chars = ' \'()+,-./0123456789:=?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+            chars = ~c" '()+,-./0123456789:=?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
             char_tab_1(chars, numBits)
+
           :NumericString ->
-            char_tab_1(' 0123456789', numBits)
+            char_tab_1(~c" 0123456789", numBits)
+
           :UniversalString ->
             :notab
+
           :BMPString ->
             :notab
         end
@@ -902,10 +1079,12 @@ defmodule :m_asn1ct_imm do
 
   defp char_tab_1(chars, numBits) do
     max = :lists.max(chars)
-    bitValMax = 1 <<< numBits - 1
+    bitValMax = 1 <<< (numBits - 1)
+
     cond do
       max <= bitValMax ->
         :notab
+
       true ->
         :erlang.list_to_tuple(:lists.sort(chars))
     end
@@ -928,8 +1107,9 @@ defmodule :m_asn1ct_imm do
     {{:convert, op, e}, a}
   end
 
-  defp opt_al({:value, v} = term, a) when is_integer(v) or
-                                        is_atom(v) do
+  defp opt_al({:value, v} = term, a)
+       when is_integer(v) or
+              is_atom(v) do
     {term, a}
   end
 
@@ -991,9 +1171,10 @@ defmodule :m_asn1ct_imm do
   end
 
   defp merge_al(i0, i1) do
-    case ({rem(i0, 8), rem(i1, 8)}) do
+    case {rem(i0, 8), rem(i1, 8)} do
       {i, i} ->
         i
+
       {_, _} ->
         :unknown
     end
@@ -1004,48 +1185,60 @@ defmodule :m_asn1ct_imm do
   end
 
   defp opt_al_1(a, opts0) do
-    case (alignment(opts0)) do
+    case alignment(opts0) do
       :none ->
         opts0
+
       :full ->
-        case (rem(a, 8)) do
+        case rem(a, 8) do
           0 ->
             :proplists.delete(:align, opts0)
+
           bits ->
             opts1 = :proplists.delete(:align, opts0)
             [{:align, 8 - bits} | opts1]
         end
+
       ^a ->
         opts0
     end
   end
 
   defp update_al(a0, e, opts) do
-    a = (case (alignment(opts)) do
-           :none ->
-             a0
-           :full ->
-             0
-           bits when is_integer(a0) ->
-             0 = rem(a0 + bits, 8)
-           _ ->
-             0
-         end)
-    [u] = (for u <- opts, is_integer(u) do
-             u
-           end)
+    a =
+      case alignment(opts) do
+        :none ->
+          a0
+
+        :full ->
+          0
+
+        bits when is_integer(a0) ->
+          0 = rem(a0 + bits, 8)
+
+        _ ->
+          0
+      end
+
+    [u] =
+      for u <- opts, is_integer(u) do
+        u
+      end
+
     cond do
       rem(u, 8) === 0 ->
         a
-      (is_integer(a) and is_integer(e)) ->
+
+      is_integer(a) and is_integer(e) ->
         a + u * e
+
       true ->
         :unknown
     end
   end
 
   defp flatten({:get_bits, i, u}, buf0, st0)
-      when is_integer(i) do
+       when is_integer(i) do
     {dst, st} = new_var_pair(st0)
     gb = {:get_bits, {i, buf0}, u, dst}
     flatten_align(gb, [], st)
@@ -1059,8 +1252,8 @@ defmodule :m_asn1ct_imm do
   end
 
   defp flatten({:test, {:get_bits, i, u}, v, e0}, buf0, st0)
-      when is_integer(i) do
-    {dstBuf0, st1} = new_var('Buf', st0)
+       when is_integer(i) do
+    {dstBuf0, st1} = new_var(~c"Buf", st0)
     gb = {:get_bits, {i, buf0}, u, {v, dstBuf0}}
     {{_Dst, dstBuf}, pre0, st2} = flatten_align(gb, [], st1)
     {e, pre1, st3} = flatten(e0, dstBuf, st2)
@@ -1069,13 +1262,13 @@ defmodule :m_asn1ct_imm do
 
   defp flatten({:add, e0, i}, buf0, st0) do
     {{src, buf}, pre, st1} = flatten(e0, buf0, st0)
-    {dst, st} = new_var('Add', st1)
+    {dst, st} = new_var(~c"Add", st1)
     {{dst, buf}, pre ++ [{:add, src, i, dst}], st}
   end
 
   defp flatten({:mul, e0, i}, buf0, st0) do
     {{src, buf}, pre, st1} = flatten(e0, buf0, st0)
-    {dst, st} = new_var('Mul', st1)
+    {dst, st} = new_var(~c"Mul", st1)
     {{dst, buf}, pre ++ [{:mul, src, i, dst}], st}
   end
 
@@ -1088,14 +1281,13 @@ defmodule :m_asn1ct_imm do
 
   defp flatten({:map, e0, cs0}, buf0, st0) do
     {{e, dstBuf}, pre, st1} = flatten(e0, buf0, st0)
-    {dst, st2} = new_var('Int', st1)
+    {dst, st2} = new_var(~c"Int", st1)
     cs = flatten_map_cs(cs0, e)
-    {{dst, dstBuf}, pre ++ [{:map, e, cs, {dst, dstBuf}}],
-       st2}
+    {{dst, dstBuf}, pre ++ [{:map, e, cs, {dst, dstBuf}}], st2}
   end
 
   defp flatten({:value, v}, buf0, st0) when is_atom(v) do
-    {{'\'' ++ :erlang.atom_to_list(v) ++ '\'', buf0}, [], st0}
+    {{~c"'" ++ :erlang.atom_to_list(v) ++ ~c"'", buf0}, [], st0}
   end
 
   defp flatten({:value, v0}, buf0, st0) when is_integer(v0) do
@@ -1108,7 +1300,7 @@ defmodule :m_asn1ct_imm do
 
   defp flatten({:convert, op, e0}, buf0, st0) do
     {{e, buf}, pre, st1} = flatten(e0, buf0, st0)
-    {dst, st2} = new_var('Conv', st1)
+    {dst, st2} = new_var(~c"Conv", st1)
     {{dst, buf}, pre ++ [{:convert, op, e, dst}], st2}
   end
 
@@ -1134,8 +1326,13 @@ defmodule :m_asn1ct_imm do
   end
 
   defp flatten_map_cs_1([{k, v} | cs], defData) do
-    [{{:asis, k}, {:asis, v}} | flatten_map_cs_1(cs,
-                                                   defData)]
+    [
+      {{:asis, k}, {:asis, v}}
+      | flatten_map_cs_1(
+          cs,
+          defData
+        )
+    ]
   end
 
   defp flatten_map_cs_1([:integer_default], {int, _}) do
@@ -1143,11 +1340,11 @@ defmodule :m_asn1ct_imm do
   end
 
   defp flatten_map_cs_1([:enum_default], {int, _}) do
-    [{:_, ['{asn1_enum,', int, '}']}]
+    [{:_, [~c"{asn1_enum,", int, ~c"}"]}]
   end
 
   defp flatten_map_cs_1([:enum_error], {var, _}) do
-    [{:_, ['exit({error,{asn1,{decode_enumerated,', var, '}}})']}]
+    [{:_, [~c"exit({error,{asn1,{decode_enumerated,", var, ~c"}}})"]}]
   end
 
   defp flatten_map_cs_1([], _) do
@@ -1170,20 +1367,21 @@ defmodule :m_asn1ct_imm do
     {[ab], :lists.reverse(acc)}
   end
 
-  defp flatten_align({:get_bits, {srcBits, srcBuf}, u, dst} = gb0,
-            pre, st0) do
-    case (alignment(u)) do
+  defp flatten_align({:get_bits, {srcBits, srcBuf}, u, dst} = gb0, pre, st0) do
+    case alignment(u) do
       :none ->
         flatten_align_1(u, dst, pre ++ [gb0], st0)
+
       :full ->
-        {padBits, st1} = new_var('Pad', st0)
-        {dstBuf, st2} = new_var('Buf', st1)
+        {padBits, st1} = new_var(~c"Pad", st0)
+        {dstBuf, st2} = new_var(~c"Buf", st1)
         ab = {:align_bits, srcBuf, padBits}
         agb = {:get_bits, {padBits, srcBuf}, [1], {:_, dstBuf}}
         gb = {:get_bits, {srcBits, dstBuf}, u, dst}
         flatten_align_1(u, dst, pre ++ [ab, agb, gb], st2)
-      padBits when (is_integer(padBits) and padBits > 0) ->
-        {dstBuf, st1} = new_var('Buf', st0)
+
+      padBits when is_integer(padBits) and padBits > 0 ->
+        {dstBuf, st1} = new_var(~c"Buf", st0)
         agb = {:get_bits, {padBits, srcBuf}, [1], {:_, dstBuf}}
         gb = {:get_bits, {srcBits, dstBuf}, u, dst}
         flatten_align_1(u, dst, pre ++ [agb, gb], st1)
@@ -1191,23 +1389,23 @@ defmodule :m_asn1ct_imm do
   end
 
   defp flatten_align_1(u, {d, _} = dst, pre, st) do
-    case (is_non_zero(u)) do
+    case is_non_zero(u) do
       false ->
         {dst, pre, st}
+
       true ->
         {dst, pre ++ [{:non_zero, d}], st}
     end
   end
 
   defp new_var_pair(st0) do
-    {var, st1} = new_var('V', st0)
-    {buf, st2} = new_var('Buf', st1)
+    {var, st1} = new_var(~c"V", st0)
+    {buf, st2} = new_var(~c"Buf", st1)
     {{var, buf}, st2}
   end
 
   defp new_var(tag, r_st(base: varBase, var: n) = st) do
-    {varBase ++ tag ++ :erlang.integer_to_list(n),
-       r_st(st, var: n + 1)}
+    {varBase ++ tag ++ :erlang.integer_to_list(n), r_st(st, var: n + 1)}
   end
 
   defp alignment([{:align, false} | _]) do
@@ -1235,7 +1433,7 @@ defmodule :m_asn1ct_imm do
   end
 
   defp dcg_list_outside([{:align_bits, buf, szVar} | t]) do
-    emit([szVar, ' = bit_size(', buf, ') band 7'])
+    emit([szVar, ~c" = bit_size(", buf, ~c") band 7"])
     iter_dcg_list_outside(t)
   end
 
@@ -1250,50 +1448,50 @@ defmodule :m_asn1ct_imm do
   end
 
   defp dcg_list_outside([{:add, s1, s2, dst} | t]) do
-    emit([dst, ' = ', s1, ' + ', s2])
+    emit([dst, ~c" = ", s1, ~c" + ", s2])
     iter_dcg_list_outside(t)
   end
 
   defp dcg_list_outside([{:mul, s1, s2, dst} | t]) do
-    emit([dst, ' = ', s1, ' * ', s2])
+    emit([dst, ~c" = ", s1, ~c" * ", s2])
     iter_dcg_list_outside(t)
   end
 
   defp dcg_list_outside([{:return, {v, buf}} | t]) do
-    emit(['{', v, ',', buf, '}'])
+    emit([~c"{", v, ~c",", buf, ~c"}"])
     iter_dcg_list_outside(t)
   end
 
   defp dcg_list_outside([{:call, fun, {v, buf}, {dst, dstBuf}} | t]) do
-    emit(['{', dst, ',', dstBuf, '}  = '])
+    emit([~c"{", dst, ~c",", dstBuf, ~c"}  = "])
     fun.(v, buf)
     iter_dcg_list_outside(t)
   end
 
   defp dcg_list_outside([{:convert, {m, f}, v, dst} | t]) do
-    emit([dst, ' = ', {:asis, m}, ':', {:asis, f}, '(', v, ')'])
+    emit([dst, ~c" = ", {:asis, m}, ~c":", {:asis, f}, ~c"(", v, ~c")"])
     iter_dcg_list_outside(t)
   end
 
   defp dcg_list_outside([{:convert, op, v, dst} | t]) do
-    emit([dst, ' = ', op, '(', v, ')'])
+    emit([dst, ~c" = ", op, ~c"(", v, ~c")"])
     iter_dcg_list_outside(t)
   end
 
   defp dcg_list_outside([{:get_bits, {_, buf0}, _, _} | _] = l0) do
-    emit('<<')
+    emit(~c"<<")
     {l, buf} = dcg_list_inside(l0, :buf)
-    emit([buf, '/bitstring>> = ', buf0])
+    emit([buf, ~c"/bitstring>> = ", buf0])
     iter_dcg_list_outside(l)
   end
 
   defp dcg_list_outside([]) do
-    emit('ignore')
+    emit(~c"ignore")
     :ok
   end
 
   defp iter_dcg_list_outside([_ | _] = t) do
-    emit([',', :nl])
+    emit([~c",", :nl])
     dcg_list_outside(t)
   end
 
@@ -1302,23 +1500,26 @@ defmodule :m_asn1ct_imm do
   end
 
   defp dcg_case(buf, cs, {dst, dstBuf}) do
-    emit(['{', dst, ',', dstBuf, '} = case ', buf, ' of', :nl])
+    emit([~c"{", dst, ~c",", dstBuf, ~c"} = case ", buf, ~c" of", :nl])
     dcg_case_cs(cs)
-    emit('end')
+    emit(~c"end")
   end
 
   defp dcg_case_cs([c | cs]) do
-    emit('<<')
+    emit(~c"<<")
     {t0, dstBuf} = dcg_list_inside(c, :buf)
-    emit([dstBuf, '/bitstring>>'])
+    emit([dstBuf, ~c"/bitstring>>"])
     t1 = dcg_guard(t0)
     dcg_list_outside(t1)
-    case (cs) do
+
+    case cs do
       [] ->
         emit([:nl])
+
       [_ | _] ->
-        emit([';', :nl])
+        emit([~c";", :nl])
     end
+
     dcg_case_cs(cs)
   end
 
@@ -1327,34 +1528,36 @@ defmodule :m_asn1ct_imm do
   end
 
   defp dcg_guard([{:non_zero, src} | t]) do
-    emit([' when ', src, ' =/= 0 ->', :nl])
+    emit([~c" when ", src, ~c" =/= 0 ->", :nl])
     t
   end
 
   defp dcg_guard(t) do
-    emit([' ->', :nl])
+    emit([~c" ->", :nl])
     t
   end
 
   defp dcg_map(val, cs, {dst, _}) do
-    emit([dst, ' = case ', val, ' of', :nl])
+    emit([dst, ~c" = case ", val, ~c" of", :nl])
     dcg_map_cs(cs)
-    emit('end')
+    emit(~c"end")
   end
 
   defp dcg_map_cs([{k, v}]) do
-    emit([k, ' -> ', v, :nl])
+    emit([k, ~c" -> ", v, :nl])
   end
 
   defp dcg_map_cs([{k, v} | cs]) do
-    emit([k, ' -> ', v, ';', :nl])
+    emit([k, ~c" -> ", v, ~c";", :nl])
     dcg_map_cs(cs)
   end
 
-  defp dcg_list_inside([{:get_bits, {sz, _}, fl0, {dst, dstBuf}} | t],
-            _) do
+  defp dcg_list_inside(
+         [{:get_bits, {sz, _}, fl0, {dst, dstBuf}} | t],
+         _
+       ) do
     fl = bit_flags(fl0, [])
-    emit([mk_dest(dst), ':', sz, fl, ','])
+    emit([mk_dest(dst), ~c":", sz, fl, ~c","])
     dcg_list_inside(t, dstBuf)
   end
 
@@ -1371,7 +1574,7 @@ defmodule :m_asn1ct_imm do
   end
 
   defp bit_flags([u | t], acc) when is_integer(u) do
-    bit_flags(t, ['unit:' ++ :erlang.integer_to_list(u) | acc])
+    bit_flags(t, [~c"unit:" ++ :erlang.integer_to_list(u) | acc])
   end
 
   defp bit_flags([h | t], acc) do
@@ -1379,20 +1582,21 @@ defmodule :m_asn1ct_imm do
   end
 
   defp bit_flags([], []) do
-    ''
+    ~c""
   end
 
   defp bit_flags([], acc) do
-    case ('/' ++ bit_flags_1(acc, '')) do
-      '/unit:1' ->
+    case ~c"/" ++ bit_flags_1(acc, ~c"") do
+      ~c"/unit:1" ->
         []
+
       opts ->
         opts
     end
   end
 
   defp bit_flags_1([h | t], sep) do
-    sep ++ h ++ bit_flags_1(t, '-')
+    sep ++ h ++ bit_flags_1(t, ~c"-")
   end
 
   defp bit_flags_1([], _) do
@@ -1455,12 +1659,15 @@ defmodule :m_asn1ct_imm do
     :asn1ct_name.new(:enc)
     curr = :asn1ct_name.curr(:enc)
     [h | t] = :erlang.atom_to_list(curr)
-    base = [h - (?a - ?A) | t ++ '@']
-    case (input0) do
+    base = [h - (?a - ?A) | t ++ ~c"@"]
+
+    case input0 do
       {:var, name} when is_list(name) ->
         {[], [input0 | mk_vars_1(base, temps)]}
+
       [] ->
         {[], [input0 | mk_vars_1(base, temps)]}
+
       _ when is_integer(input0) ->
         {[], [input0 | mk_vars_1(base, temps)]}
     end
@@ -1480,57 +1687,73 @@ defmodule :m_asn1ct_imm do
     [{:cond, [[:_ | per_enc_unconstrained(val, aligned)]]}]
   end
 
-  defp per_enc_integer_1(val,
-            [{{:SingleValue, [_ | _] = svs} = constr, []}],
-            aligned) do
-    [{:ValueRange,
-        {lb, ub}}] = effective_constraint(:integer, [constr])
-    root = (for sv <- svs do
-              (
-                {[], _, put} = per_enc_constrained(sv, lb, ub, aligned)
-                [{:eq, val, sv}, {:put_bits, 0, 1, [1]} | put]
-              )
-            end)
-    cs = root ++ [[:_, {:put_bits, 1, 1, [1]} |
-                           per_enc_unconstrained(val, aligned)]]
+  defp per_enc_integer_1(
+         val,
+         [{{:SingleValue, [_ | _] = svs} = constr, []}],
+         aligned
+       ) do
+    [{:ValueRange, {lb, ub}}] = effective_constraint(:integer, [constr])
+
+    root =
+      for sv <- svs do
+        {[], _, put} = per_enc_constrained(sv, lb, ub, aligned)
+        [{:eq, val, sv}, {:put_bits, 0, 1, [1]} | put]
+      end
+
+    cs =
+      root ++
+        [
+          [
+            :_,
+            {:put_bits, 1, 1, [1]}
+            | per_enc_unconstrained(val, aligned)
+          ]
+        ]
+
     build_cond(cs)
   end
 
   defp per_enc_integer_1(val0, [{{_, _} = constr, []}], aligned) do
-    {prefix, check, action} = per_enc_integer_2(val0,
-                                                  constr, aligned)
-    prefix ++ build_cond([[check, {:put_bits, 0, 1, [1]} |
-                                      action],
-                              [:_, {:put_bits, 1, 1, [1]} |
-                                       per_enc_unconstrained(val0, aligned)]])
+    {prefix, check, action} = per_enc_integer_2(val0, constr, aligned)
+
+    prefix ++
+      build_cond([
+        [
+          check,
+          {:put_bits, 0, 1, [1]}
+          | action
+        ],
+        [
+          :_,
+          {:put_bits, 1, 1, [1]}
+          | per_enc_unconstrained(val0, aligned)
+        ]
+      ])
   end
 
   defp per_enc_integer_1(val0, [constr], aligned) do
-    {prefix, check, action} = per_enc_integer_2(val0,
-                                                  constr, aligned)
-    prefix ++ build_cond([[check | action], [:_, {:error,
-                                                    {:illegal_integer, val0}}]])
+    {prefix, check, action} = per_enc_integer_2(val0, constr, aligned)
+    prefix ++ build_cond([[check | action], [:_, {:error, {:illegal_integer, val0}}]])
   end
 
   defp per_enc_integer_2(val, {:SingleValue, sv}, aligned)
-      when is_integer(sv) do
+       when is_integer(sv) do
     per_enc_constrained(val, sv, sv, aligned)
   end
 
   defp per_enc_integer_2(val, {:ValueRange, {:MIN, ub}}, aligned)
-      when is_integer(ub) do
-    {[], {:lt, val, ub + 1},
-       per_enc_unconstrained(val, aligned)}
+       when is_integer(ub) do
+    {[], {:lt, val, ub + 1}, per_enc_unconstrained(val, aligned)}
   end
 
   defp per_enc_integer_2(val0, {:ValueRange, {lb, :MAX}}, aligned)
-      when is_integer(lb) do
+       when is_integer(lb) do
     {prefix, val} = sub_lb(val0, lb)
     {prefix, {:ge, val, 0}, per_enc_unsigned(val, aligned)}
   end
 
   defp per_enc_integer_2(val, {:ValueRange, {lb, ub}}, aligned)
-      when (is_integer(lb) and is_integer(ub)) do
+       when is_integer(lb) and is_integer(ub) do
     per_enc_constrained(val, lb, ub, aligned)
   end
 
@@ -1551,79 +1774,77 @@ defmodule :m_asn1ct_imm do
     {prefix, val} = sub_lb(val0, lb)
     range = ub - lb + 1
     check = {:ult, val, range}
+
     cond do
       range < 256 ->
         numBits = per_num_bits(range)
         put = [{:put_bits, val, numBits, [1]}]
         {prefix, check, put}
+
       range === 256 ->
         numBits = 8
         put = [{:put_bits, val, numBits, [1, :align]}]
         {prefix, check, put}
+
       range <= 65536 ->
         put = [{:put_bits, val, 16, [1, :align]}]
         {prefix, check, put}
+
       true ->
         rangeOctsLen = byte_size(:binary.encode_unsigned(range - 1))
         bitsNeeded = per_num_bits(rangeOctsLen)
-        {prefix, check,
-           per_enc_constrained_huge(bitsNeeded, val)}
+        {prefix, check, per_enc_constrained_huge(bitsNeeded, val)}
     end
   end
 
   defp per_enc_constrained_huge(bitsNeeded, {:var, varBase} = val) do
-    bin = {:var, varBase ++ '@bin'}
-    binSize0 = {:var, varBase ++ '@bin_size0'}
-    binSize = {:var, varBase ++ '@bin_size'}
-    [{:call, :binary, :encode_unsigned, [val], bin}, {:call,
-                                                        :erlang, :byte_size,
-                                                        [bin], binSize0},
-                                                         {:sub, binSize0, 1,
-                                                            binSize},
-                                                             {:cond,
-                                                                [[:_,
-                                                                      {:put_bits,
-                                                                         binSize,
-                                                                         bitsNeeded,
-                                                                         [1]},
-                                                                          {:put_bits,
-                                                                             bin,
-                                                                             :binary,
-                                                                             [8,
-                                                                                  :align]}]]}]
+    bin = {:var, varBase ++ ~c"@bin"}
+    binSize0 = {:var, varBase ++ ~c"@bin_size0"}
+    binSize = {:var, varBase ++ ~c"@bin_size"}
+
+    [
+      {:call, :binary, :encode_unsigned, [val], bin},
+      {:call, :erlang, :byte_size, [bin], binSize0},
+      {:sub, binSize0, 1, binSize},
+      {:cond,
+       [[:_, {:put_bits, binSize, bitsNeeded, [1]}, {:put_bits, bin, :binary, [8, :align]}]]}
+    ]
   end
 
   defp per_enc_constrained_huge(bitsNeeded, val) when is_integer(val) do
     bin = :binary.encode_unsigned(val)
     binSize = :erlang.byte_size(bin)
-    [{:put_bits, binSize - 1, bitsNeeded, [1]}, {:put_bits,
-                                                   val, 8 * binSize,
-                                                   [1, :align]}]
+    [{:put_bits, binSize - 1, bitsNeeded, [1]}, {:put_bits, val, 8 * binSize, [1, :align]}]
   end
 
   defp per_enc_unconstrained(val, aligned) do
-    (case (aligned) do
-       false ->
-         []
-       true ->
-         [{:put_bits, 0, 0, [1, :align]}]
-     end) ++ [{:call, :per_common,
-                 :encode_unconstrained_number, [val]}]
+    case aligned do
+      false ->
+        []
+
+      true ->
+        [{:put_bits, 0, 0, [1, :align]}]
+    end ++ [{:call, :per_common, :encode_unconstrained_number, [val]}]
   end
 
   defp per_enc_unsigned(val, aligned) do
-    case (is_integer(val)) do
+    case is_integer(val) do
       false ->
         {:var, varBase} = val
-        bin = {:var, varBase ++ '@bin'}
-        binSize = {:var, varBase ++ '@bin_size'}
-        [{:call, :binary, :encode_unsigned, [val], bin}, {:call,
-                                                            :erlang, :byte_size,
-                                                            [bin], binSize} |
-                                                             per_enc_length(bin,
-                                                                              8,
-                                                                              binSize,
-                                                                              aligned)]
+        bin = {:var, varBase ++ ~c"@bin"}
+        binSize = {:var, varBase ++ ~c"@bin_size"}
+
+        [
+          {:call, :binary, :encode_unsigned, [val], bin},
+          {:call, :erlang, :byte_size, [bin], binSize}
+          | per_enc_length(
+              bin,
+              8,
+              binSize,
+              aligned
+            )
+        ]
+
       true ->
         bin = :binary.encode_unsigned(val)
         len = byte_size(bin)
@@ -1634,59 +1855,64 @@ defmodule :m_asn1ct_imm do
   defp per_enc_length(bin, unit, len, aligned) do
     u = unit(1, aligned)
     putBits = put_bits_binary(bin, unit, aligned)
-    encFragmented = {:call, :per_common, :encode_fragmented,
-                       [bin, unit]}
-    al = (case (aligned) do
-            false ->
-              []
-            true ->
-              [{:put_bits, 0, 0, [1, :align]}]
-          end)
-    build_cond([[{:lt, len, 128}, {:put_bits, len, 8, u},
-                                      putBits],
-                    [{:lt, len, 16384}, {:put_bits, 2, 2, u}, {:put_bits,
-                                                                 len, 14, [1]},
-                                                                  putBits],
-                        [:_ | al ++ [encFragmented]]])
+    encFragmented = {:call, :per_common, :encode_fragmented, [bin, unit]}
+
+    al =
+      case aligned do
+        false ->
+          []
+
+        true ->
+          [{:put_bits, 0, 0, [1, :align]}]
+      end
+
+    build_cond([
+      [{:lt, len, 128}, {:put_bits, len, 8, u}, putBits],
+      [{:lt, len, 16384}, {:put_bits, 2, 2, u}, {:put_bits, len, 14, [1]}, putBits],
+      [:_ | al ++ [encFragmented]]
+    ])
   end
 
   defp per_enc_length(bin, unit, len, :no, aligned, _Type) do
     per_enc_length(bin, unit, len, aligned)
   end
 
-  defp per_enc_length(bin, unit, len, {{lb, ub}, []}, aligned,
-            type) do
-    {prefix, check, putLen} = per_enc_constrained(len, lb,
-                                                    ub, aligned)
+  defp per_enc_length(bin, unit, len, {{lb, ub}, []}, aligned, type) do
+    {prefix, check, putLen} = per_enc_constrained(len, lb, ub, aligned)
     noExt = {:put_bits, 0, 1, [1]}
     u = unit(unit, aligned, type, lb * unit, ub * unit)
     putBits = [{:put_bits, bin, :binary, u}]
-    [{:cond, extConds0}] = per_enc_length(bin, unit, len,
-                                            aligned)
+    [{:cond, extConds0}] = per_enc_length(bin, unit, len, aligned)
     ext = {:put_bits, 1, 1, [1]}
     extConds = prepend_to_cond(extConds0, ext)
-    build_length_cond(prefix,
-                        [[check, noExt | putLen ++ putBits] | extConds])
+
+    build_length_cond(
+      prefix,
+      [[check, noExt | putLen ++ putBits] | extConds]
+    )
   end
 
   defp per_enc_length(bin, unit, len, {lb, ub}, aligned, type)
-      when is_integer(lb) do
-    {prefix, check, putLen} = per_enc_constrained(len, lb,
-                                                    ub, aligned)
+       when is_integer(lb) do
+    {prefix, check, putLen} = per_enc_constrained(len, lb, ub, aligned)
     u = unit(unit, aligned, type, lb * unit, ub * unit)
     putBits = [{:put_bits, bin, :binary, u}]
     build_length_cond(prefix, [[check | putLen ++ putBits]])
   end
 
   defp per_enc_length(bin, unit0, len, sv, aligned, type)
-      when is_integer(sv) do
+       when is_integer(sv) do
     numBits = sv * unit0
-    unit = (case (rem(numBits, 8)) do
-              0 ->
-                8
-              _ ->
-                unit0
-            end)
+
+    unit =
+      case rem(numBits, 8) do
+        0 ->
+          8
+
+        _ ->
+          unit0
+      end
+
     u = unit(unit, aligned, type, numBits, numBits)
     pb = {:put_bits, bin, :binary, u}
     [{:cond, [[{:eq, len, sv}, pb]]}]
@@ -1694,26 +1920,28 @@ defmodule :m_asn1ct_imm do
 
   defp enc_sof_length(len, :no, aligned) do
     u = unit(1, aligned)
-    build_cond([[{:lt, len, 128}, {:put_bits, len, 8, u}],
-                    [{:lt, len, 16384}, {:put_bits, 2, 2, u}, {:put_bits,
-                                                                 len, 14,
-                                                                 [1]}]])
+
+    build_cond([
+      [{:lt, len, 128}, {:put_bits, len, 8, u}],
+      [{:lt, len, 16384}, {:put_bits, 2, 2, u}, {:put_bits, len, 14, [1]}]
+    ])
   end
 
   defp enc_sof_length(len, {{lb, ub}, []}, aligned) do
-    {prefix, check, putLen} = per_enc_constrained(len, lb,
-                                                    ub, aligned)
+    {prefix, check, putLen} = per_enc_constrained(len, lb, ub, aligned)
     noExt = {:put_bits, 0, 1, [1]}
     [{:cond, extConds0}] = enc_sof_length(len, :no, aligned)
     ext = {:put_bits, 1, 1, [1]}
     extConds = prepend_to_cond(extConds0, ext)
-    build_length_cond(prefix,
-                        [[check, noExt | putLen] | extConds])
+
+    build_length_cond(
+      prefix,
+      [[check, noExt | putLen] | extConds]
+    )
   end
 
   defp enc_sof_length(len, {lb, ub}, aligned) when is_integer(lb) do
-    {prefix, check, putLen} = per_enc_constrained(len, lb,
-                                                    ub, aligned)
+    {prefix, check, putLen} = per_enc_constrained(len, lb, ub, aligned)
     build_length_cond(prefix, [[check | putLen]])
   end
 
@@ -1724,12 +1952,21 @@ defmodule :m_asn1ct_imm do
   defp extensions_bitmap(vs, undefined) do
     highest = 1 <<< (length(vs) - 1)
     cs = extensions_bitmap_1(vs, undefined, highest)
-    :lists.flatten(:lists.join(' bor ', cs))
+    :lists.flatten(:lists.join(~c" bor ", cs))
   end
 
   defp extensions_bitmap_1([{:var, v} | vs], undefined, power) do
-    s = ['case ', v, ' of\n', '  ', undefined, ' -> 0;\n  _ -> ',
-                                    :erlang.integer_to_list(power), '\nend']
+    s = [
+      ~c"case ",
+      v,
+      ~c" of\n",
+      ~c"  ",
+      undefined,
+      ~c" -> 0;\n  _ -> ",
+      :erlang.integer_to_list(power),
+      ~c"\nend"
+    ]
+
     [s | extensions_bitmap_1(vs, undefined, power >>> 1)]
   end
 
@@ -1739,7 +1976,7 @@ defmodule :m_asn1ct_imm do
 
   defp put_bits_binary(bin, _Unit, aligned) when is_binary(bin) do
     sz = byte_size(bin)
-    <<int :: size(sz) - unit(8)>> = bin
+    <<int::size(sz)-unit(8)>> = bin
     {:put_bits, int, 8 * sz, unit(1, aligned)}
   end
 
@@ -1752,7 +1989,7 @@ defmodule :m_asn1ct_imm do
   end
 
   defp sub_lb({:var, var} = val0, lb) do
-    val = {:var, var ++ '@sub'}
+    val = {:var, var ++ ~c"@sub"}
     {[{:sub, val0, lb, val}], val}
   end
 
@@ -1761,8 +1998,7 @@ defmodule :m_asn1ct_imm do
   end
 
   defp build_length_cond([{:sub, var0, base, var}] = prefix, cs) do
-    prefix ++ [{:cond,
-                  opt_length_nzlb(cs, {var0, var, base}, 0)}]
+    prefix ++ [{:cond, opt_length_nzlb(cs, {var0, var, base}, 0)}]
   end
 
   defp build_length_cond([], cs) do
@@ -1777,6 +2013,7 @@ defmodule :m_asn1ct_imm do
     cond do
       val <= ub ->
         opt_length_zlb(t, ub)
+
       true ->
         [h | opt_length_zlb(t, max(ub, val))]
     end
@@ -1790,16 +2027,15 @@ defmodule :m_asn1ct_imm do
     []
   end
 
-  defp opt_length_nzlb([[{:ult, var, val} | _] = h | t],
-            {_, var, base} = st, _Ub) do
+  defp opt_length_nzlb([[{:ult, var, val} | _] = h | t], {_, var, base} = st, _Ub) do
     [h | opt_length_nzlb(t, st, base + val)]
   end
 
-  defp opt_length_nzlb([[{:lt, var0, val} | _] = h | t],
-            {var0, _, _} = st, ub) do
+  defp opt_length_nzlb([[{:lt, var0, val} | _] = h | t], {var0, _, _} = st, ub) do
     cond do
       val <= ub ->
         opt_length_nzlb(t, st, ub)
+
       true ->
         [h | opt_length_nzlb(t, st, val)]
     end
@@ -1814,9 +2050,10 @@ defmodule :m_asn1ct_imm do
   end
 
   defp build_cond(conds0) do
-    case (eval_cond(conds0, :gb_sets.empty())) do
+    case eval_cond(conds0, :gb_sets.empty()) do
       [[:_ | actions]] ->
         actions
+
       conds ->
         [{:cond, conds}]
     end
@@ -1827,17 +2064,21 @@ defmodule :m_asn1ct_imm do
   end
 
   defp eval_cond([[cond__ | actions] = h | t], seen0) do
-    case (:gb_sets.is_element(cond__, seen0)) do
+    case :gb_sets.is_element(cond__, seen0) do
       false ->
         seen = :gb_sets.insert(cond__, seen0)
-        case (eval_cond_1(cond__)) do
+
+        case eval_cond_1(cond__) do
           false ->
             eval_cond(t, seen)
+
           true ->
             [[:_ | actions]]
+
           :maybe ->
             [h | eval_cond(t, seen)]
         end
+
       true ->
         eval_cond(t, seen0)
     end
@@ -1847,8 +2088,9 @@ defmodule :m_asn1ct_imm do
     []
   end
 
-  defp eval_cond_1({:ult, i, n}) when (is_integer(i) and
-                                is_integer(n)) do
+  defp eval_cond_1({:ult, i, n})
+       when is_integer(i) and
+              is_integer(n) do
     0 <= i and i < n
   end
 
@@ -1856,18 +2098,21 @@ defmodule :m_asn1ct_imm do
     true
   end
 
-  defp eval_cond_1({:eq, i, n}) when (is_integer(i) and
-                               is_integer(n)) do
+  defp eval_cond_1({:eq, i, n})
+       when is_integer(i) and
+              is_integer(n) do
     i === n
   end
 
-  defp eval_cond_1({:ge, i, n}) when (is_integer(i) and
-                               is_integer(n)) do
+  defp eval_cond_1({:ge, i, n})
+       when is_integer(i) and
+              is_integer(n) do
     i >= n
   end
 
-  defp eval_cond_1({:lt, i, n}) when (is_integer(i) and
-                               is_integer(n)) do
+  defp eval_cond_1({:lt, i, n})
+       when is_integer(i) and
+              is_integer(n) do
     i < n
   end
 
@@ -1895,9 +2140,11 @@ defmodule :m_asn1ct_imm do
     tab1 = :erlang.tuple_to_list(tab0)
     first = hd(tab1)
     tab = enc_char_tab_1(tab1, first, 0)
-    case (:lists.member(:ill, tab)) do
+
+    case :lists.member(:ill, tab) do
       false ->
         {:compact_map, {first, tuple_size(tab0)}}
+
       true ->
         {:tab, {first - 1, :erlang.list_to_tuple(tab)}}
     end
@@ -1924,16 +2171,14 @@ defmodule :m_asn1ct_imm do
   end
 
   defp per_enc_enumerated_root(nNL, prefix, val, constr, aligned) do
-    per_enc_enumerated_root_1(nNL, prefix, val, constr,
-                                aligned, 0)
+    per_enc_enumerated_root_1(nNL, prefix, val, constr, aligned, 0)
   end
 
-  defp per_enc_enumerated_root_1([{h, _} | t], prefix, val, constr, aligned,
-            n) do
-    [[{:eq, val, h} | prefix ++ per_enc_integer_1(n, constr,
-                                                    aligned)] |
-         per_enc_enumerated_root_1(t, prefix, val, constr,
-                                     aligned, n + 1)]
+  defp per_enc_enumerated_root_1([{h, _} | t], prefix, val, constr, aligned, n) do
+    [
+      [{:eq, val, h} | prefix ++ per_enc_integer_1(n, constr, aligned)]
+      | per_enc_enumerated_root_1(t, prefix, val, constr, aligned, n + 1)
+    ]
   end
 
   defp per_enc_enumerated_root_1([], _, _, _, _, _) do
@@ -1945,9 +2190,14 @@ defmodule :m_asn1ct_imm do
   end
 
   defp per_enc_enumerated_ext_1([{h, _} | t], val, aligned, n) do
-    [[{:eq, val, h}, {:put_bits, 1, 1, [1]} |
-                         per_enc_small_number(n, aligned)] |
-         per_enc_enumerated_ext_1(t, val, aligned, n + 1)]
+    [
+      [
+        {:eq, val, h},
+        {:put_bits, 1, 1, [1]}
+        | per_enc_small_number(n, aligned)
+      ]
+      | per_enc_enumerated_ext_1(t, val, aligned, n + 1)
+    ]
   end
 
   defp per_enc_enumerated_ext_1([], _, _, _) do
@@ -1957,15 +2207,13 @@ defmodule :m_asn1ct_imm do
   defp per_enc_small_length(val0, aligned) do
     {sub, val} = sub_lb(val0, 1)
     u = unit(1, aligned)
-    sub ++ build_cond([[{:lt, val, 64}, {:put_bits, val, 7,
-                                           [1]}],
-                           [{:lt, val0, 128}, {:put_bits, 1, 1, [1]},
-                                                  {:put_bits, val0, 8, u}],
-                               [:_, {:put_bits, 1, 1, [1]}, {:put_bits, 2, 2,
-                                                               u},
-                                                                {:put_bits,
-                                                                   val0, 14,
-                                                                   [1]}]])
+
+    sub ++
+      build_cond([
+        [{:lt, val, 64}, {:put_bits, val, 7, [1]}],
+        [{:lt, val0, 128}, {:put_bits, 1, 1, [1]}, {:put_bits, val0, 8, u}],
+        [:_, {:put_bits, 1, 1, [1]}, {:put_bits, 2, 2, u}, {:put_bits, val0, 14, [1]}]
+      ])
   end
 
   defp constr_min_size(:no) do
@@ -2001,22 +2249,29 @@ defmodule :m_asn1ct_imm do
   end
 
   defp unit(u, aligned, type, lb, ub) do
-    case (aligned and is_aligned(type, lb, ub)) do
+    case aligned and is_aligned(type, lb, ub) do
       true ->
         [u, :align]
+
       false ->
         [u]
     end
   end
 
   defp opt_choice(imm) do
-    {pb, t0} = :lists.splitwith(fn {:put_bits, v, _, _}
-                                       when is_integer(v) ->
-                                     true
-                                   _ ->
-                                     false
-                                end,
-                                  imm)
+    {pb, t0} =
+      :lists.splitwith(
+        fn
+          {:put_bits, v, _, _}
+          when is_integer(v) ->
+            true
+
+          _ ->
+            false
+        end,
+        imm
+      )
+
     try do
       {prefix, t} = split_off_nonbuilding(t0)
       prefix ++ opt_choice_1(t, pb)
@@ -2027,11 +2282,13 @@ defmodule :m_asn1ct_imm do
   end
 
   defp opt_choice_1([{:cond, cs0}], pb) do
-    case (cs0) do
+    case cs0 do
       [[c | act]] ->
         [{:cond, [[c | pb ++ act]]}]
+
       [[c | act], [:_, {:error, _}] = error] ->
         [{:cond, [[c | pb ++ act], error]}]
+
       _ ->
         [{:cond, opt_choice_2(cs0, pb)}]
     end
@@ -2041,8 +2298,10 @@ defmodule :m_asn1ct_imm do
     throw(:impossible)
   end
 
-  defp opt_choice_2([[c | [{:put_bits, _, _, _} | _] = act] | t],
-            pb) do
+  defp opt_choice_2(
+         [[c | [{:put_bits, _, _, _} | _] = act] | t],
+         pb
+       ) do
     [[c | pb ++ act] | opt_choice_2(t, pb)]
   end
 
@@ -2058,61 +2317,78 @@ defmodule :m_asn1ct_imm do
     []
   end
 
-  defp opt_lc([{:lc,
-              [{:call, :erlang, :iolist_to_binary, [var], bin},
-                   {:call, :erlang, :byte_size, [bin], lenVar}, {:cond,
-                                                                   [[{:eq,
-                                                                        lenVar,
-                                                                        len},
-                                                                         {:put_bits,
-                                                                            bin,
-                                                                            _,
-                                                                            [_ |
-                                                                                 align]}]]}],
-              var, val}] = lc,
-            lenImm) do
-    checkImm = [{:cond,
-                   [[{:eq, {:expr, 'length(' ++ mk_val(var) ++ ')'}, len}], [{:eq,
-                                                                      {:expr,
-                                                                         'byte_size(' ++ mk_val(var) ++ ')'},
-                                                                      len}]]}]
-    al = (case (align) do
-            [] ->
-              []
-            [:align] ->
-              [{:put_bits, 0, 0, [1 | align]}]
-          end)
-    case (al === [] or is_end_aligned(lenImm) or lb_is_nonzero(lenImm)) do
+  defp opt_lc(
+         [
+           {:lc,
+            [
+              {:call, :erlang, :iolist_to_binary, [var], bin},
+              {:call, :erlang, :byte_size, [bin], lenVar},
+              {:cond,
+               [
+                 [
+                   {:eq, lenVar, len},
+                   {:put_bits, bin, _,
+                    [
+                      _
+                      | align
+                    ]}
+                 ]
+               ]}
+            ], var, val}
+         ] = lc,
+         lenImm
+       ) do
+    checkImm = [
+      {:cond,
+       [
+         [{:eq, {:expr, ~c"length(" ++ mk_val(var) ++ ~c")"}, len}],
+         [{:eq, {:expr, ~c"byte_size(" ++ mk_val(var) ++ ~c")"}, len}]
+       ]}
+    ]
+
+    al =
+      case align do
+        [] ->
+          []
+
+        [:align] ->
+          [{:put_bits, 0, 0, [1 | align]}]
+      end
+
+    case al === [] or is_end_aligned(lenImm) or lb_is_nonzero(lenImm) do
       false ->
         lc
+
       true ->
-        al ++ [{:lc, checkImm, var, val, {:var, '_'}}, {:call,
-                                                        :erlang,
-                                                        :iolist_to_binary,
-                                                        [val]}]
+        al ++
+          [{:lc, checkImm, var, val, {:var, ~c"_"}}, {:call, :erlang, :iolist_to_binary, [val]}]
     end
   end
 
   defp opt_lc([{:lc, elementImm0, v, l}] = lc, lenImm) do
-    case (enc_opt_al_1(elementImm0, 0)) do
+    case enc_opt_al_1(elementImm0, 0) do
       {elementImm, 0} ->
-        case (is_end_aligned(lenImm) or is_beginning_aligned(elementImm0) and lb_is_nonzero(lenImm)) do
+        case is_end_aligned(lenImm) or
+               (is_beginning_aligned(elementImm0) and lb_is_nonzero(lenImm)) do
           false ->
             lc
+
           true ->
-            [{:put_bits, 0, 0, [1, :align]}, {:lc, elementImm, v,
-                                                l}]
+            [{:put_bits, 0, 0, [1, :align]}, {:lc, elementImm, v, l}]
         end
+
       _ ->
         lc
     end
   end
 
   defp is_beginning_aligned([{:cond, cs}]) do
-    :lists.all(fn [_ | act] ->
-                    is_beginning_aligned(act)
-               end,
-                 cs)
+    :lists.all(
+      fn [_ | act] ->
+        is_beginning_aligned(act)
+      end,
+      cs
+    )
   end
 
   defp is_beginning_aligned([{:error, _} | _]) do
@@ -2120,27 +2396,30 @@ defmodule :m_asn1ct_imm do
   end
 
   defp is_beginning_aligned([{:put_bits, _, _, u} | _]) do
-    case (u) do
+    case u do
       [_, :align] ->
         true
+
       [_] ->
         false
     end
   end
 
   defp is_beginning_aligned(imm0) do
-    case (split_off_nonbuilding(imm0)) do
+    case split_off_nonbuilding(imm0) do
       {[], _} ->
         false
+
       {[_ | _], imm} ->
         is_beginning_aligned(imm)
     end
   end
 
   defp is_end_aligned(imm) do
-    case (enc_opt_al_1(imm, :unknown)) do
+    case enc_opt_al_1(imm, :unknown) do
       {_, 0} ->
         true
+
       {_, _} ->
         false
     end
@@ -2168,14 +2447,17 @@ defmodule :m_asn1ct_imm do
 
   defp do_combine([{:cond, cs0} | t], budget0) do
     budget = debit(budget0, num_clauses(cs0, 0))
-    cs = (for [c | act] <- cs0 do
-            [c | do_combine(act ++ t, budget)]
-          end)
+
+    cs =
+      for [c | act] <- cs0 do
+        [c | do_combine(act ++ t, budget)]
+      end
+
     [{:cond, cs}]
   end
 
   defp do_combine([{:put_bits, v, _, _} | _] = l, budget)
-      when is_integer(v) do
+       when is_integer(v) do
     {pb, t} = collect_put_bits(l)
     do_combine_put_bits(pb, t, budget)
   end
@@ -2189,14 +2471,17 @@ defmodule :m_asn1ct_imm do
   end
 
   defp do_combine_put_bits(pb, [{:cond, cs0} | t], budget) do
-    cs = (for [c | act] <- cs0 do
-            case (act) do
-              [{:error, _}] ->
-                [c | act]
-              _ ->
-                [c | do_combine(pb ++ act, budget)]
-            end
-          end)
+    cs =
+      for [c | act] <- cs0 do
+        case act do
+          [{:error, _}] ->
+            [c | act]
+
+          _ ->
+            [c | do_combine(pb ++ act, budget)]
+        end
+      end
+
     do_combine([{:cond, cs} | t], budget)
   end
 
@@ -2205,9 +2490,10 @@ defmodule :m_asn1ct_imm do
   end
 
   defp debit(budget0, alternatives) do
-    case (budget0 - :math.log2(alternatives)) do
+    case budget0 - :math.log2(alternatives) do
       budget when budget > 0.0 ->
         budget
+
       _ ->
         throw(:impossible)
     end
@@ -2226,17 +2512,23 @@ defmodule :m_asn1ct_imm do
   end
 
   defp collect_put_bits(imm) do
-    :lists.splitwith(fn {:put_bits, v, _, _}
-                            when is_integer(v) ->
-                          true
-                        _ ->
-                          false
-                     end,
-                       imm)
+    :lists.splitwith(
+      fn
+        {:put_bits, v, _, _}
+        when is_integer(v) ->
+          true
+
+        _ ->
+          false
+      end,
+      imm
+    )
   end
 
-  defp enc_cse([{:call, :erlang, :element, args, v} = h |
-               t]) do
+  defp enc_cse([
+         {:call, :erlang, :element, args, v} = h
+         | t
+       ]) do
     [h | enc_cse_1(t, args, v)]
   end
 
@@ -2244,14 +2536,12 @@ defmodule :m_asn1ct_imm do
     imm
   end
 
-  defp enc_cse_1([{:call, :erlang, :element, args, dst} | t],
-            args, v) do
+  defp enc_cse_1([{:call, :erlang, :element, args, dst} | t], args, v) do
     [{:set, v, dst} | enc_cse_1(t, args, v)]
   end
 
   defp enc_cse_1([{:block, bl} | t], args, v) do
-    [{:block, enc_cse_1(bl, args, v)} | enc_cse_1(t, args,
-                                                    v)]
+    [{:block, enc_cse_1(bl, args, v)} | enc_cse_1(t, args, v)]
   end
 
   defp enc_cse_1([h | t], args, v) do
@@ -2275,16 +2565,19 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_pre_cg_1([h0 | t0], stL, stB) do
-    case (is_nonbuilding(h0)) do
+    case is_nonbuilding(h0) do
       true ->
         h = enc_pre_cg_nonbuilding(h0, stL)
         seq = {:seq, h, enc_pre_cg_1(t0, stL, :in_seq)}
-        case (stB) do
+
+        case stB do
           :outside_seq ->
             {:block, seq}
+
           :in_seq ->
             seq
         end
+
       false ->
         h = enc_pre_cg_2(h0, :in_head, :outside_seq)
         t = enc_pre_cg_1(t0, :in_tail, :outside_seq)
@@ -2293,9 +2586,10 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_pre_cg_2(:align, stL, _StB) do
-    case (stL) do
+    case stL do
       :in_head ->
         :align
+
       :in_tail ->
         {:cons, :align, nil}
     end
@@ -2318,9 +2612,11 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_pre_cg_2({:cond, cs0}, stL, _StB) do
-    cs = (for [c | act] <- cs0 do
-            {c, enc_pre_cg_1(act, stL, :outside_seq)}
-          end)
+    cs =
+      for [c | act] <- cs0 do
+        {c, enc_pre_cg_1(act, stL, :outside_seq)}
+      end
+
     {:cond, cs}
   end
 
@@ -2334,11 +2630,13 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_pre_cg_2({:put_bits, v, 8, [1]}, stL, _StB) do
-    case (stL) do
+    case stL do
       :in_head ->
         {:integer, v}
+
       :in_tail ->
         {:cons, {:integer, v}, nil}
+
       :outside_list ->
         {:cons, {:integer, v}, nil}
     end
@@ -2365,9 +2663,10 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_make_cons({:binary, h}, {:cons, {:integer, int}, t}) do
-    enc_make_cons({:binary,
-                     h ++ [{:put_bits, int, 8, [1]}]},
-                    t)
+    enc_make_cons(
+      {:binary, h ++ [{:put_bits, int, 8, [1]}]},
+      t
+    )
   end
 
   defp enc_make_cons({:integer, int}, {:binary, t}) do
@@ -2375,8 +2674,10 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_make_cons({:integer, int}, {:cons, {:binary, h}, t}) do
-    enc_make_cons({:binary, [{:put_bits, int, 8, [1]} | h]},
-                    t)
+    enc_make_cons(
+      {:binary, [{:put_bits, int, 8, [1]} | h]},
+      t
+    )
   end
 
   defp enc_make_cons(h, t) do
@@ -2409,8 +2710,11 @@ defmodule :m_asn1ct_imm do
     imm
   end
 
-  Record.defrecord(:r_ost, :ost, sym: :undefined,
-                               t: :undefined)
+  Record.defrecord(:r_ost, :ost,
+    sym: :undefined,
+    t: :undefined
+  )
+
   defp enc_opt(imm0) do
     {imm, _} = enc_opt(imm0, r_ost(sym: :gb_trees.empty()))
     imm
@@ -2429,14 +2733,20 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_opt({:binary, putBits0}, st) do
-    putBits = (for {:put_bits, v, sz, f} <- putBits0 do
-                 {:put_bits, subst(v, st), sz, f}
-               end)
-    numBits = :lists.foldl(fn {:put_bits, _, bits, _},
-                                sum ->
-                                sum + bits
-                           end,
-                             0, putBits)
+    putBits =
+      for {:put_bits, v, sz, f} <- putBits0 do
+        {:put_bits, subst(v, st), sz, f}
+      end
+
+    numBits =
+      :lists.foldl(
+        fn {:put_bits, _, bits, _}, sum ->
+          sum + bits
+        end,
+        0,
+        putBits
+      )
+
     {{:binary, putBits}, r_ost(st, t: t_bitstring(numBits))}
   end
 
@@ -2445,99 +2755,143 @@ defmodule :m_asn1ct_imm do
     {{:block, bl}, st}
   end
 
-  defp enc_opt({:call, :binary, :encode_unsigned, [int],
-             bin} = imm,
-            st0) do
+  defp enc_opt(
+         {:call, :binary, :encode_unsigned, [int], bin} = imm,
+         st0
+       ) do
     type = get_type(int, st0)
-    st = (case (t_range(type)) do
-            :any ->
-              set_type(bin, t_binary(), st0)
-            {lb0, ub0} ->
-              lb = bit_size(:binary.encode_unsigned(lb0))
-              ub = bit_size(:binary.encode_unsigned(ub0))
-              set_type(bin, t_binary({lb, ub}), st0)
-          end)
+
+    st =
+      case t_range(type) do
+        :any ->
+          set_type(bin, t_binary(), st0)
+
+        {lb0, ub0} ->
+          lb = bit_size(:binary.encode_unsigned(lb0))
+          ub = bit_size(:binary.encode_unsigned(ub0))
+          set_type(bin, t_binary({lb, ub}), st0)
+      end
+
     {imm, st}
   end
 
-  defp enc_opt({:call, :erlang, :bit_size, [bin], dst} = imm0,
-            st0) do
+  defp enc_opt(
+         {:call, :erlang, :bit_size, [bin], dst} = imm0,
+         st0
+       ) do
     type = get_type(bin, st0)
-    case (t_range(type)) do
+
+    case t_range(type) do
       :any ->
         st1 = set_type(bin, t_bitstring(), st0)
-        st = propagate(dst,
-                         fn t, s ->
-                              bit_size_propagate(bin, t, s)
-                         end,
-                         st1)
+
+        st =
+          propagate(
+            dst,
+            fn t, s ->
+              bit_size_propagate(bin, t, s)
+            end,
+            st1
+          )
+
         {imm0, st}
+
       {lb, ub} = range ->
         st = set_type(dst, t_integer(range), st0)
-        imm = (case (lb) do
-                 ^ub ->
-                   :none
-                 _ ->
-                   imm0
-               end)
+
+        imm =
+          case lb do
+            ^ub ->
+              :none
+
+            _ ->
+              imm0
+          end
+
         {imm, st}
     end
   end
 
-  defp enc_opt({:call, :erlang, :byte_size, [bin], dst} = imm0,
-            st0) do
+  defp enc_opt(
+         {:call, :erlang, :byte_size, [bin], dst} = imm0,
+         st0
+       ) do
     type = get_type(bin, st0)
-    case (t_range(type)) do
+
+    case t_range(type) do
       :any ->
         st1 = set_type(bin, t_binary(), st0)
-        st = propagate(dst,
-                         fn t, s ->
-                              byte_size_propagate(bin, t, s)
-                         end,
-                         st1)
+
+        st =
+          propagate(
+            dst,
+            fn t, s ->
+              byte_size_propagate(bin, t, s)
+            end,
+            st1
+          )
+
         {imm0, st}
+
       {lb0, ub0} ->
         lb = div(lb0 + 7, 8)
         ub = div(ub0 + 7, 8)
         st = set_type(dst, t_integer({lb, ub}), st0)
-        imm = (case (lb) do
-                 ^ub ->
-                   :none
-                 _ ->
-                   imm0
-               end)
+
+        imm =
+          case lb do
+            ^ub ->
+              :none
+
+            _ ->
+              imm0
+          end
+
         {imm, st}
     end
   end
 
-  defp enc_opt({:call, :erlang, :iolist_to_binary, _} = imm,
-            st) do
+  defp enc_opt(
+         {:call, :erlang, :iolist_to_binary, _} = imm,
+         st
+       ) do
     {imm, r_ost(st, t: t_binary())}
   end
 
-  defp enc_opt({:call, :erlang, :length, [list], dst} = imm0,
-            st0) do
-    st1 = propagate(dst,
-                      fn t, s ->
-                           length_propagate(list, t, s)
-                      end,
-                      st0)
+  defp enc_opt(
+         {:call, :erlang, :length, [list], dst} = imm0,
+         st0
+       ) do
+    st1 =
+      propagate(
+        dst,
+        fn t, s ->
+          length_propagate(list, t, s)
+        end,
+        st0
+      )
+
     {imm0, st1}
   end
 
   defp enc_opt({:call, :per, :complete, [data], dst}, st0) do
     type = get_type(data, st0)
     st = set_type(dst, t_binary(t_range(type)), st0)
-    case (t_type(type)) do
+
+    case t_type(type) do
       :binary ->
         {{:set, data, dst}, st}
+
       :bitlist ->
         {{:call, :erlang, :list_to_bitstring, [data], dst}, st}
+
       :iolist ->
         {{:call, :erlang, :iolist_to_binary, [data], dst}, st}
+
       nil ->
         imm = {:list, {:binary, [{:put_bits, 0, 8, [1]}]}, dst}
         enc_opt(imm, st0)
+
       _ ->
         {{:call, :per, :complete, [data], dst}, st}
     end
@@ -2546,82 +2900,111 @@ defmodule :m_asn1ct_imm do
   defp enc_opt({:call, :uper, :complete, [data], dst}, st0) do
     type = get_type(data, st0)
     st = set_type(dst, t_binary(t_range(type)), st0)
-    case (t_type(type)) do
+
+    case t_type(type) do
       :binary ->
         {{:set, data, dst}, st0}
+
       :iolist ->
         {{:call, :erlang, :iolist_to_binary, [data], dst}, st}
+
       nil ->
         imm = {:list, {:binary, [{:put_bits, 0, 8, [1]}]}, dst}
         enc_opt(imm, st0)
+
       _ ->
         {{:call, :uper, :complete, [data], dst}, st}
     end
   end
 
-  defp enc_opt({:call, :per_common, :encode_chars,
-             [list, numBits | _], dst} = imm,
-            st0) do
+  defp enc_opt(
+         {:call, :per_common, :encode_chars, [list, numBits | _], dst} = imm,
+         st0
+       ) do
     st1 = set_type(dst, t_bitstring(), st0)
-    st = propagate(list,
-                     fn t, s ->
-                          char_propagate(dst, t, numBits, s)
-                     end,
-                     st1)
+
+    st =
+      propagate(
+        list,
+        fn t, s ->
+          char_propagate(dst, t, numBits, s)
+        end,
+        st1
+      )
+
     {imm, st}
   end
 
-  defp enc_opt({:call, :per_common, :encode_chars_16bit,
-             [list], dst} = imm,
-            st0) do
+  defp enc_opt(
+         {:call, :per_common, :encode_chars_16bit, [list], dst} = imm,
+         st0
+       ) do
     st1 = set_type(dst, t_binary(), st0)
-    st = propagate(list,
-                     fn t, s ->
-                          char_propagate(dst, t, 16, s)
-                     end,
-                     st1)
+
+    st =
+      propagate(
+        list,
+        fn t, s ->
+          char_propagate(dst, t, 16, s)
+        end,
+        st1
+      )
+
     {imm, st}
   end
 
-  defp enc_opt({:call, :per_common, :encode_big_chars, [list],
-             dst} = imm,
-            st0) do
+  defp enc_opt(
+         {:call, :per_common, :encode_big_chars, [list], dst} = imm,
+         st0
+       ) do
     st1 = set_type(dst, t_binary(), st0)
-    st = propagate(list,
-                     fn t, s ->
-                          char_propagate(dst, t, 32, s)
-                     end,
-                     st1)
+
+    st =
+      propagate(
+        list,
+        fn t, s ->
+          char_propagate(dst, t, 32, s)
+        end,
+        st1
+      )
+
     {imm, st}
   end
 
-  defp enc_opt({:call, :per_common, :encode_fragmented,
-             [_, unit]} = imm,
-            st) do
-    t = (case (rem(unit, 8)) do
-           0 ->
-             t_iolist()
-           _ ->
-             t_bitlist()
-         end)
+  defp enc_opt(
+         {:call, :per_common, :encode_fragmented, [_, unit]} = imm,
+         st
+       ) do
+    t =
+      case rem(unit, 8) do
+        0 ->
+          t_iolist()
+
+        _ ->
+          t_bitlist()
+      end
+
     {imm, r_ost(st, t: t)}
   end
 
-  defp enc_opt({:call, :per_common,
-             :encode_unconstrained_number, _} = imm,
-            st) do
+  defp enc_opt(
+         {:call, :per_common, :encode_unconstrained_number, _} = imm,
+         st
+       ) do
     {imm, r_ost(st, t: t_iolist())}
   end
 
-  defp enc_opt({:call, :per_common, :bitstring_from_positions,
-             _} = imm,
-            st) do
+  defp enc_opt(
+         {:call, :per_common, :bitstring_from_positions, _} = imm,
+         st
+       ) do
     {imm, r_ost(st, t: t_bitstring())}
   end
 
-  defp enc_opt({:call, :per_common, :to_named_bitstring,
-             _} = imm,
-            st) do
+  defp enc_opt(
+         {:call, :per_common, :to_named_bitstring, _} = imm,
+         st
+       ) do
     {imm, r_ost(st, t: t_bitstring())}
   end
 
@@ -2634,14 +3017,14 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_opt({:call_gen, n, k, f, l, as}, st) do
-    {{:call_gen, n, k, f, l, subst(as, st)},
-       r_ost(st, t: t_any())}
+    {{:call_gen, n, k, f, l, subst(as, st)}, r_ost(st, t: t_any())}
   end
 
   defp enc_opt({:cond, cs0}, st0) do
-    case (enc_opt_cs(cs0, st0)) do
+    case enc_opt_cs(cs0, st0) do
       [{:_, imm, type}] ->
         {imm, r_ost(st0, t: type)}
+
       [{cond__, imm, type0} | cs1] ->
         {cs, type} = enc_opt_cond_1(cs1, type0, [{cond__, imm}])
         {{:cond, cs}, r_ost(st0, t: type)}
@@ -2704,16 +3087,22 @@ defmodule :m_asn1ct_imm do
   defp enc_opt({:sub, src0, int, dst}, st0) do
     src = subst(src0, st0)
     type = get_type(src, st0)
-    st = (case (t_range(type)) do
-            :any ->
-              propagate(dst,
-                          fn t, s ->
-                               set_type(src, t_add(t, int), s)
-                          end,
-                          st0)
-            {lb, ub} ->
-              set_type(dst, t_integer({lb - int, ub - int}), st0)
-          end)
+
+    st =
+      case t_range(type) do
+        :any ->
+          propagate(
+            dst,
+            fn t, s ->
+              set_type(src, t_add(t, int), s)
+            end,
+            st0
+          )
+
+        {lb, ub} ->
+          set_type(dst, t_integer({lb - int, ub - int}), st0)
+      end
+
     {{:sub, src, int, dst}, r_ost(st, t: :undefined)}
   end
 
@@ -2721,8 +3110,7 @@ defmodule :m_asn1ct_imm do
     {try, _} = enc_opt(try0, st0)
     {succ, _} = enc_opt(succ0, st0)
     {else__, _} = enc_opt(else0, st0)
-    {{:try, try, {p, succ}, else__, dst},
-       r_ost(st0, t: :undefined)}
+    {{:try, try, {p, succ}, else__, dst}, r_ost(st0, t: :undefined)}
   end
 
   defp enc_opt({:var, _} = imm, st) do
@@ -2750,15 +3138,18 @@ defmodule :m_asn1ct_imm do
     t
   end
 
-  defp enc_opt_seq({:list, imm, data},
-            {:seq, {:call, :per, :complete, [data], _}, _} = t) do
+  defp enc_opt_seq(
+         {:list, imm, data},
+         {:seq, {:call, :per, :complete, [data], _}, _} = t
+       ) do
     {:seq, {:list, remove_trailing_align(imm), data}, t}
   end
 
   defp enc_opt_seq({:call, _, _, _, {:var, _} = dst} = h, t) do
-    case (is_var_unused(dst, t)) do
+    case is_var_unused(dst, t) do
       false ->
         {:seq, h, t}
+
       true ->
         t
     end
@@ -2785,35 +3176,41 @@ defmodule :m_asn1ct_imm do
   end
 
   defp bit_size_propagate(bin, type, st) do
-    case (t_range(type)) do
+    case t_range(type) do
       :any ->
         st
+
       {lb, ub} ->
         set_type(bin, t_bitstring({lb, ub}), st)
     end
   end
 
   defp byte_size_propagate(bin, type, st) do
-    case (t_range(type)) do
+    case t_range(type) do
       :any ->
         st
+
       {lb, ub} ->
         set_type(bin, t_binary({lb * 8, ub * 8}), st)
     end
   end
 
   defp char_propagate(dst, t, numBits, st) do
-    case (t_range(t)) do
+    case t_range(t) do
       :any ->
         st
+
       {sz, sz} when rem(sz * numBits, 8) === 0 ->
         bits = sz * numBits
         set_type(dst, t_binary({bits, bits}), st)
+
       {lb, ub} ->
         range = {lb * numBits, ub * numBits}
-        case (rem(numBits, 8)) do
+
+        case rem(numBits, 8) do
           0 ->
             set_type(dst, t_binary(range), st)
+
           _ ->
             set_type(dst, t_bitstring(range), st)
         end
@@ -2824,8 +3221,7 @@ defmodule :m_asn1ct_imm do
     set_type(list, t_list(t_range(type)), st)
   end
 
-  defp enc_opt_cond_1([{cond__, {:error, _} = imm, _} | t], st,
-            acc) do
+  defp enc_opt_cond_1([{cond__, {:error, _} = imm, _} | t], st, acc) do
     enc_opt_cond_1(t, st, [{cond__, imm} | acc])
   end
 
@@ -2839,12 +3235,14 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_opt_cs([{cond__, imm0} | t], st0) do
-    case (eo_eval_cond(cond__, st0)) do
+    case eo_eval_cond(cond__, st0) do
       false ->
         enc_opt_cs(t, st0)
+
       true ->
         {imm, r_ost(t: type)} = enc_opt(imm0, st0)
         [{:_, imm, type}]
+
       :maybe ->
         st = update_type_info(cond__, st0)
         {imm, r_ost(t: type)} = enc_opt(imm0, st)
@@ -2862,9 +3260,11 @@ defmodule :m_asn1ct_imm do
 
   defp eo_eval_cond({op, {:var, _} = var, val}, st) do
     type = get_type(var, st)
-    case (t_range(type)) do
+
+    case t_range(type) do
       :any ->
         :maybe
+
       {_, _} = range ->
         eval_cond_range(op, range, val)
     end
@@ -2878,8 +3278,10 @@ defmodule :m_asn1ct_imm do
     cond do
       ub < val ->
         true
+
       val <= lb ->
         false
+
       true ->
         :maybe
     end
@@ -2902,7 +3304,7 @@ defmodule :m_asn1ct_imm do
   end
 
   defp update_type_info({:eq, {:var, _} = var, val}, st)
-      when is_integer(val) do
+       when is_integer(val) do
     int = t_integer(val)
     type = t_meet(get_type(var, st), int)
     set_type(var, type, st)
@@ -2924,16 +3326,20 @@ defmodule :m_asn1ct_imm do
 
   defp subst({:var, _} = var, st) do
     type = get_type(var, st)
-    case (t_type(type)) do
+
+    case t_type(type) do
       :integer ->
-        case (t_range(type)) do
+        case t_range(type) do
           :any ->
             var
+
           {val, val} ->
             val
+
           {_, _} ->
             var
         end
+
       _ ->
         var
     end
@@ -2943,12 +3349,13 @@ defmodule :m_asn1ct_imm do
     v
   end
 
-  defp set_type({:var, var}, {_, _} = type,
-            r_ost(sym: sym0) = st0) do
+  defp set_type({:var, var}, {_, _} = type, r_ost(sym: sym0) = st0) do
     sym1 = :gb_trees.enter(var, type, sym0)
-    case (:gb_trees.lookup({:propagate, var}, sym1)) do
+
+    case :gb_trees.lookup({:propagate, var}, sym1) do
       :none ->
         r_ost(st0, sym: sym1)
+
       {:value, propagate} ->
         sym = :gb_trees.delete({:propagate, var}, sym1)
         st = r_ost(st0, sym: sym)
@@ -2957,18 +3364,18 @@ defmodule :m_asn1ct_imm do
   end
 
   defp get_type({:var, v}, r_ost(sym: sym)) do
-    case (:gb_trees.lookup(v, sym)) do
+    case :gb_trees.lookup(v, sym) do
       :none ->
         t_any()
+
       {:value, t} ->
         t
     end
   end
 
   defp propagate({:var, var}, propagate, r_ost(sym: sym0) = st)
-      when is_function(propagate, 2) do
-    sym = :gb_trees.enter({:propagate, var}, propagate,
-                            sym0)
+       when is_function(propagate, 2) do
+    sym = :gb_trees.enter({:propagate, var}, propagate, sym0)
     r_ost(st, sym: sym)
   end
 
@@ -2997,9 +3404,10 @@ defmodule :m_asn1ct_imm do
   end
 
   defp t_bitstring(range0) do
-    case (t__range(range0)) do
+    case t__range(range0) do
       {bits, bits} = range when rem(bits, 8) === 0 ->
         {:binary, range}
+
       range ->
         {:bitstring, range}
     end
@@ -3010,26 +3418,34 @@ defmodule :m_asn1ct_imm do
   end
 
   defp t_cons({_, _} = t1, {_, _} = t2) do
-    t = (case ({t__cons_type(t1), t__cons_type(t2)}) do
-           {_, :any} ->
-             :any
-           {:any, _} ->
-             :any
-           {:align, _} ->
-             :align
-           {_, :align} ->
-             :align
-           {:binary, :binary} ->
-             :iolist
-           {:binary, :bitstring} ->
-             :bitlist
-           {:bitstring, :binary} ->
-             :bitlist
-           {:bitstring, :bitstring} ->
-             :bitlist
-         end)
-    {t,
-       t__cons_ranges(t__cons_range(t1), t__cons_range(t2))}
+    t =
+      case {t__cons_type(t1), t__cons_type(t2)} do
+        {_, :any} ->
+          :any
+
+        {:any, _} ->
+          :any
+
+        {:align, _} ->
+          :align
+
+        {_, :align} ->
+          :align
+
+        {:binary, :binary} ->
+          :iolist
+
+        {:binary, :bitstring} ->
+          :bitlist
+
+        {:bitstring, :binary} ->
+          :bitlist
+
+        {:bitstring, :bitstring} ->
+          :bitlist
+      end
+
+    {t, t__cons_ranges(t__cons_range(t1), t__cons_range(t2))}
   end
 
   defp t_integer() do
@@ -3070,9 +3486,10 @@ defmodule :m_asn1ct_imm do
 
   defp t_meet_ranges({lb1, ub1}, {lb2, ub2}) do
     cond do
-      (lb1 <= ub2 and lb2 <= ub1) ->
+      lb1 <= ub2 and lb2 <= ub1 ->
         {max(lb1, lb2), ub1}
-      (lb2 <= ub1 and lb1 <= ub2) ->
+
+      lb2 <= ub1 and lb1 <= ub2 ->
         {max(lb1, lb2), ub2}
     end
   end
@@ -3227,8 +3644,9 @@ defmodule :m_asn1ct_imm do
     :any
   end
 
-  defp t__range({lb, ub} = range) when (is_integer(lb) and
-                                    is_integer(ub)) do
+  defp t__range({lb, ub} = range)
+       when is_integer(lb) and
+              is_integer(ub) do
     range
   end
 
@@ -3245,13 +3663,13 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_cg({:block, imm}) do
-    emit(['begin', :nl])
+    emit([~c"begin", :nl])
     enc_cg(imm)
-    emit([:nl, 'end'])
+    emit([:nl, ~c"end"])
   end
 
   defp enc_cg({:seq, {:comment, comment}, then}) do
-    emit(['%% ', comment, :nl])
+    emit([~c"%% ", comment, :nl])
     enc_cg(then)
   end
 
@@ -3266,43 +3684,51 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_cg({:apply, f0, as0}) do
-    as = enc_call_args(as0, '')
-    case (f0) do
+    as = enc_call_args(as0, ~c"")
+
+    case f0 do
       {:local, f, _} when is_atom(f) ->
-        emit([{:asis, f}, '(', as, ')'])
+        emit([{:asis, f}, ~c"(", as, ~c")"])
+
       {m, f, _} ->
-        emit([{:asis, m}, ':', {:asis, f}, '(', as, ')'])
+        emit([{:asis, m}, ~c":", {:asis, f}, ~c"(", as, ~c")"])
     end
   end
 
   defp enc_cg({:assign, dst0, expr}) do
     dst = mk_val(dst0)
-    emit([dst, ' = ', expr])
+    emit([dst, ~c" = ", expr])
   end
 
   defp enc_cg({:binary, putBits}) do
-    emit(['<<', enc_cg_put_bits(putBits, ''), '>>'])
+    emit([~c"<<", enc_cg_put_bits(putBits, ~c""), ~c">>"])
   end
 
   defp enc_cg({:call, m, f, as0}) do
-    as = (for a <- as0 do
-            mk_val(a)
-          end)
+    as =
+      for a <- as0 do
+        mk_val(a)
+      end
+
     :asn1ct_func.call(m, f, as)
   end
 
   defp enc_cg({:call, m, f, as0, dst}) do
-    as = (for a <- as0 do
-            mk_val(a)
-          end)
-    emit([mk_val(dst), ' = '])
+    as =
+      for a <- as0 do
+        mk_val(a)
+      end
+
+    emit([mk_val(dst), ~c" = "])
     :asn1ct_func.call(m, f, as)
   end
 
   defp enc_cg({:call_gen, prefix, key, gen, _, as0}) do
-    as = (for a <- as0 do
-            mk_val(a)
-          end)
+    as =
+      for a <- as0 do
+        mk_val(a)
+      end
+
     :asn1ct_func.call_gen(prefix, key, gen, as)
   end
 
@@ -3316,18 +3742,21 @@ defmodule :m_asn1ct_imm do
 
   defp enc_cg({:error, {tag, var0}}) do
     var = mk_val(var0)
-    emit(['exit({error,{asn1,{', tag, ',', var, '}}})'])
+    emit([~c"exit({error,{asn1,{", tag, ~c",", var, ~c"}}})"])
   end
 
   defp enc_cg({:fun, args, body, dst0}) do
     dst = mk_val(dst0)
-    emit([dst, ' = fun('])
-    _ = (for a <- args do
-           emit(mk_val(a))
-         end)
-    emit(') -> ')
+    emit([dst, ~c" = fun("])
+
+    _ =
+      for a <- args do
+        emit(mk_val(a))
+      end
+
+    emit(~c") -> ")
     enc_cg(body)
-    emit(' end')
+    emit(~c" end")
   end
 
   defp enc_cg({:integer, int}) do
@@ -3335,44 +3764,44 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_cg({:lc, body, var, list}) do
-    emit('[')
+    emit(~c"[")
     enc_cg(body)
-    emit([' || ', mk_val(var), ' <- ', mk_val(list), ']'])
+    emit([~c" || ", mk_val(var), ~c" <- ", mk_val(list), ~c"]"])
   end
 
   defp enc_cg({:lc, body, var, list, dst}) do
-    emit([mk_val(dst), ' = ['])
+    emit([mk_val(dst), ~c" = ["])
     enc_cg(body)
-    emit([' || ', mk_val(var), ' <- ', mk_val(list), ']'])
+    emit([~c" || ", mk_val(var), ~c" <- ", mk_val(list), ~c"]"])
   end
 
   defp enc_cg({:list, list, dst}) do
-    emit([mk_val(dst), ' = '])
+    emit([mk_val(dst), ~c" = "])
     enc_cg(list)
   end
 
   defp enc_cg(nil) do
-    emit('[]')
+    emit(~c"[]")
   end
 
   defp enc_cg({:sub, src0, int, dst0}) do
     src = mk_val(src0)
     dst = mk_val(dst0)
-    emit([dst, ' = ', src, ' - ', int])
+    emit([dst, ~c" = ", src, ~c" - ", int])
   end
 
   defp enc_cg({:set, {:var, src}, {:var, dst}}) do
-    emit([dst, ' = ', src])
+    emit([dst, ~c" = ", src])
   end
 
   defp enc_cg({:try, try, {p, succ}, else__, dst}) do
-    emit([mk_val(dst), ' = try '])
+    emit([mk_val(dst), ~c" = try "])
     enc_cg(try)
-    emit([' of', :nl, mk_val(p), ' ->', :nl])
+    emit([~c" of", :nl, mk_val(p), ~c" ->", :nl])
     enc_cg(succ)
-    emit([:nl, 'catch throw:invalid ->', :nl])
+    emit([:nl, ~c"catch throw:invalid ->", :nl])
     enc_cg(else__)
-    emit([:nl, 'end'])
+    emit([:nl, ~c"end"])
   end
 
   defp enc_cg({:var, v}) do
@@ -3380,9 +3809,9 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_cg_cons(cons) do
-    emit('[')
+    emit(~c"[")
     enc_cg_cons_1(cons)
-    emit(']')
+    emit(~c"]")
   end
 
   defp enc_cg_cons_1({:cons, h, {:cons, _, _} = t}) do
@@ -3397,12 +3826,12 @@ defmodule :m_asn1ct_imm do
 
   defp enc_cg_cons_1({:cons, h, t}) do
     enc_cg(h)
-    emit('|')
+    emit(~c"|")
     enc_cg(t)
   end
 
   defp enc_call_args([a | as], sep) do
-    [sep, mk_val(a) | enc_call_args(as, ', ')]
+    [sep, mk_val(a) | enc_call_args(as, ~c", ")]
   end
 
   defp enc_call_args([], _) do
@@ -3410,15 +3839,15 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_cg_cond(cs) do
-    emit('if ')
-    enc_cg_cond(cs, '')
-    emit([:nl, 'end'])
+    emit(~c"if ")
+    enc_cg_cond(cs, ~c"")
+    emit([:nl, ~c"end"])
   end
 
   defp enc_cg_cond([c | cs], sep) do
     emit(sep)
     enc_cg_cond_1(c)
-    enc_cg_cond(cs, [';', :nl])
+    enc_cg_cond(cs, [~c";", :nl])
   end
 
   defp enc_cg_cond([], _) do
@@ -3427,44 +3856,49 @@ defmodule :m_asn1ct_imm do
 
   defp enc_cg_cond_1({cond__, action}) do
     enc_cond_term(cond__)
-    emit([' ->', :nl])
+    emit([~c" ->", :nl])
     enc_cg(action)
   end
 
   defp enc_cond_term(:_) do
-    emit('true')
+    emit(~c"true")
   end
 
   defp enc_cond_term({:ult, var0, int}) do
     var = mk_val(var0)
     n = uper_num_bits(int)
-    case (1 <<< n) do
+
+    case 1 <<< n do
       ^int ->
-        emit([var, ' bsr ', n, ' =:= 0'])
+        emit([var, ~c" bsr ", n, ~c" =:= 0"])
+
       _ ->
-        emit(['0 =< ', var, ', ', var, ' < ', int])
+        emit([~c"0 =< ", var, ~c", ", var, ~c" < ", int])
     end
   end
 
   defp enc_cond_term({:eq, var0, term}) do
     var = mk_val(var0)
-    emit([var, ' =:= ', {:asis, term}])
+    emit([var, ~c" =:= ", {:asis, term}])
   end
 
   defp enc_cond_term({:ge, var0, int}) do
     var = mk_val(var0)
-    emit([var, ' >= ', int])
+    emit([var, ~c" >= ", int])
   end
 
   defp enc_cond_term({:lt, var0, int}) do
     var = mk_val(var0)
-    emit([var, ' < ', int])
+    emit([var, ~c" < ", int])
   end
 
   defp enc_cg_put_bits([{:put_bits, val0, n, [1]} | t], sep) do
     val = mk_val(val0)
-    [[sep, val, ':', :erlang.integer_to_list(n)] |
-         enc_cg_put_bits(t, ',')]
+
+    [
+      [sep, val, ~c":", :erlang.integer_to_list(n)]
+      | enc_cg_put_bits(t, ~c",")
+    ]
   end
 
   defp enc_cg_put_bits([], _) do
@@ -3488,17 +3922,15 @@ defmodule :m_asn1ct_imm do
   end
 
   defp bit_string_name2pos_fun(nNL, src) do
-    {:call_gen, 'bit_string_name2pos_', nNL,
-       fn fd, name ->
-            gen_name2pos(fd, name, nNL)
-       end,
-       [], [src]}
+    {:call_gen, ~c"bit_string_name2pos_", nNL,
+     fn fd, name ->
+       gen_name2pos(fd, name, nNL)
+     end, [], [src]}
   end
 
   defp gen_name2pos(fd, name, names) do
     cs0 = gen_name2pos_cs(names, name)
-    cs = cs0 ++ [bit_clause(name), nil_clause(),
-                                       invalid_clause()]
+    cs = cs0 ++ [bit_clause(name), nil_clause(), invalid_clause()]
     f0 = {:function, 1, name, 1, cs}
     f = :erl_parse.new_anno(f0)
     :file.write(fd, [:erl_pp.function(f)])
@@ -3506,8 +3938,7 @@ defmodule :m_asn1ct_imm do
 
   defp gen_name2pos_cs([{k, v} | t], name) do
     p = [{:cons, 0, {:atom, 0, k}, {:var, 0, :T}}]
-    b = [{:cons, 0, {:integer, 0, v},
-            {:call, 0, {:atom, 0, name}, [{:var, 0, :T}]}}]
+    b = [{:cons, 0, {:integer, 0, v}, {:call, 0, {:atom, 0, name}, [{:var, 0, :T}]}}]
     [{:clause, 0, p, [], b} | gen_name2pos_cs(t, name)]
   end
 
@@ -3518,23 +3949,20 @@ defmodule :m_asn1ct_imm do
   defp bit_clause(name) do
     varT = {:var, 0, :T}
     varPos = {:var, 0, :Pos}
-    p = [{:cons, 0, {:tuple, 0, [{:atom, 0, :bit}, varPos]},
-            varT}]
+    p = [{:cons, 0, {:tuple, 0, [{:atom, 0, :bit}, varPos]}, varT}]
     g = [[{:call, 0, {:atom, 0, :is_integer}, [varPos]}]]
-    b = [{:cons, 0, varPos,
-            {:call, 0, {:atom, 0, name}, [varT]}}]
+    b = [{:cons, 0, varPos, {:call, 0, {:atom, 0, name}, [varT]}}]
     {:clause, 0, p, g, b}
   end
 
   defp nil_clause() do
-    p = (b = [{nil, 0}])
+    p = b = [{nil, 0}]
     {:clause, 0, p, [], b}
   end
 
   defp invalid_clause() do
     p = [{:var, 0, :_}]
-    b = [{:call, 0, {:atom, 0, :throw},
-            [{:atom, 0, :invalid}]}]
+    b = [{:call, 0, {:atom, 0, :throw}, [{:atom, 0, :invalid}]}]
     {:clause, 0, p, [], b}
   end
 
@@ -3544,9 +3972,10 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_hoist_align_reverse([h | t], acc) do
-    case (enc_opt_al_1([h], 0)) do
+    case enc_opt_al_1([h], 0) do
       {[^h], _} ->
         enc_hoist_align_reverse(t, [h | acc])
+
       {_, _} ->
         :lists.reverse(t, [h, :stop | acc])
     end
@@ -3561,18 +3990,21 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_hoist_align([{:block, bl0} | t], aligned, acc) do
-    bl = (case (aligned) do
-            false ->
-              bl0
-            true ->
-              enc_hoist_block(bl0)
-          end)
-    case (is_beginning_aligned(bl)) do
+    bl =
+      case aligned do
+        false ->
+          bl0
+
+        true ->
+          enc_hoist_block(bl0)
+      end
+
+    case is_beginning_aligned(bl) do
       false ->
         enc_hoist_align(t, false, [{:block, bl} | acc])
+
       true ->
-        enc_hoist_align(t, true,
-                          [{:put_bits, 0, 0, [1, :align]}, {:block, bl} | acc])
+        enc_hoist_align(t, true, [{:put_bits, 0, 0, [1, :align]}, {:block, bl} | acc])
     end
   end
 
@@ -3594,9 +4026,11 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_hoist_block_1([{:cond, cs0} | t]) do
-    cs = (for [c | act] <- cs0 do
-            [c | enc_hoist_block_2(act)]
-          end)
+    cs =
+      for [c | act] <- cs0 do
+        [c | enc_hoist_block_2(act)]
+      end
+
     h = {:cond, cs}
     :lists.reverse(t, [h])
   end
@@ -3618,9 +4052,10 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_hoist_block_2(l) do
-    case (:lists.last(l)) do
+    case :lists.last(l) do
       {:put_bits, _, _, _} ->
         l ++ [{:put_bits, 0, 0, [1, :align]}]
+
       _ ->
         throw(:impossible)
     end
@@ -3650,25 +4085,30 @@ defmodule :m_asn1ct_imm do
     {[{:block, bl}], al}
   end
 
-  defp enc_opt_al({:call, :erlang, :iolist_to_binary, [_]} = imm,
-            al) do
+  defp enc_opt_al(
+         {:call, :erlang, :iolist_to_binary, [_]} = imm,
+         al
+       ) do
     {[imm], al}
   end
 
-  defp enc_opt_al({:call, :per_common, :encode_fragmented,
-             [_, u]} = call,
-            al) do
-    case (rem(u, 8)) do
+  defp enc_opt_al(
+         {:call, :per_common, :encode_fragmented, [_, u]} = call,
+         al
+       ) do
+    case rem(u, 8) do
       0 ->
         {[call], al}
+
       _ ->
         {[call], :unknown}
     end
   end
 
-  defp enc_opt_al({:call, :per_common,
-             :encode_unconstrained_number, [_]} = call,
-            _) do
+  defp enc_opt_al(
+         {:call, :per_common, :encode_unconstrained_number, [_]} = call,
+         _
+       ) do
     {[call], 0}
   end
 
@@ -3696,56 +4136,65 @@ defmodule :m_asn1ct_imm do
   end
 
   defp enc_opt_al({:put_bits, v, n, [u, :align]}, al0)
-      when rem(al0, 8) === 0 do
-    al = (cond do
-            is_integer(n) ->
-              n * u
-            (n === :binary and rem(u, 8) === 0) ->
-              0
-            true ->
-              :unknown
-          end)
+       when rem(al0, 8) === 0 do
+    al =
+      cond do
+        is_integer(n) ->
+          n * u
+
+        n === :binary and rem(u, 8) === 0 ->
+          0
+
+        true ->
+          :unknown
+      end
+
     {[{:put_bits, v, n, [u]}], al}
   end
 
   defp enc_opt_al({:put_bits, v, :binary, [u, :align]}, al0)
-      when is_integer(al0) do
+       when is_integer(al0) do
     n = 8 - rem(al0, 8)
-    al = (case (rem(u, 8)) do
-            0 ->
-              0
-            _ ->
-              :unknown
-          end)
-    {[{:put_bits, 0, n, [1]}, {:put_bits, v, :binary, [u]}],
-       al}
+
+    al =
+      case rem(u, 8) do
+        0 ->
+          0
+
+        _ ->
+          :unknown
+      end
+
+    {[{:put_bits, 0, n, [1]}, {:put_bits, v, :binary, [u]}], al}
   end
 
   defp enc_opt_al({:put_bits, v, n0, [u, :align]}, al0)
-      when (is_integer(n0) and is_integer(al0)) do
+       when is_integer(n0) and is_integer(al0) do
     n = n0 + (8 - rem(al0, 8))
     al = n0 * u
     {[{:put_bits, v, n, [1]}], al}
   end
 
   defp enc_opt_al({:put_bits, _, n, [u, :align]} = putBits, _)
-      when is_integer(n) do
+       when is_integer(n) do
     {[putBits], n * u}
   end
 
-  defp enc_opt_al({:put_bits, _, :binary, [u, :align]} = putBits,
-            _)
-      when rem(u, 8) === 0 do
+  defp enc_opt_al(
+         {:put_bits, _, :binary, [u, :align]} = putBits,
+         _
+       )
+       when rem(u, 8) === 0 do
     {[putBits], 0}
   end
 
   defp enc_opt_al({:put_bits, _, n, [u]} = putBits, al)
-      when (is_integer(n) and is_integer(al)) do
+       when is_integer(n) and is_integer(al) do
     {[putBits], al + n * u}
   end
 
   defp enc_opt_al({:put_bits, _, :binary, [u]} = putBits, al)
-      when rem(u, 8) === 0 do
+       when rem(u, 8) === 0 do
     {[putBits], al}
   end
 
@@ -3775,34 +4224,42 @@ defmodule :m_asn1ct_imm do
 
   defp enc_opt_al_cond_1([[c | act0] | cs0], al0, cAcc, aAcc) do
     {act, al1} = enc_opt_al_1(act0, al0)
-    al = (cond do
-            al1 === :unknown ->
-              al1
-            true ->
-              rem(al1, 8)
-          end)
-    enc_opt_al_cond_1(cs0, al0, [[c | act] | cAcc],
-                        [al | aAcc])
+
+    al =
+      cond do
+        al1 === :unknown ->
+          al1
+
+        true ->
+          rem(al1, 8)
+      end
+
+    enc_opt_al_cond_1(cs0, al0, [[c | act] | cAcc], [al | aAcc])
   end
 
   defp enc_opt_al_cond_1([], _, cAcc, aAcc) do
-    al = (case (:lists.usort(aAcc)) do
-            [] ->
-              :unknown
-            [al0] ->
-              al0
-            [_ | _] ->
-              :unknown
-          end)
+    al =
+      case :lists.usort(aAcc) do
+        [] ->
+          :unknown
+
+        [al0] ->
+          al0
+
+        [_ | _] ->
+          :unknown
+      end
+
     {:lists.reverse(cAcc), al}
   end
 
-  defp enc_opt_hoist_align([{:cond, cs0}, {:put_bits, 0, 0,
-                            [1, :align]}] = imm) do
+  defp enc_opt_hoist_align([{:cond, cs0}, {:put_bits, 0, 0, [1, :align]}] = imm) do
     try do
-      cs = (for c <- cs0 do
-              insert_align_last(c)
-            end)
+      cs =
+        for c <- cs0 do
+          insert_align_last(c)
+        end
+
       [{:cond, cs}]
     catch
       :impossible ->
@@ -3819,9 +4276,10 @@ defmodule :m_asn1ct_imm do
   end
 
   defp insert_align_last([h | t]) do
-    case (:lists.last(t)) do
+    case :lists.last(t) do
       {:put_bits, _, _, _} ->
         [h | t ++ [{:put_bits, 0, 0, [1, :align]}]]
+
       _ ->
         throw(:impossible)
     end
@@ -3844,9 +4302,11 @@ defmodule :m_asn1ct_imm do
   end
 
   defp per_fixup([{:cond, cs0} | t]) do
-    cs = (for [c | act] <- cs0 do
-            [c | per_fixup(act)]
-          end)
+    cs =
+      for [c | act] <- cs0 do
+        [c | per_fixup(act)]
+      end
+
     [{:cond, cs} | per_fixup(t)]
   end
 
@@ -3942,26 +4402,31 @@ defmodule :m_asn1ct_imm do
   end
 
   def effective_constraint(:bitstring, c) do
-    case (get_constraint(c, :SizeConstraint)) do
+    case get_constraint(c, :SizeConstraint) do
       {{lb, ub}, []} = range when is_integer(lb) ->
         cond do
-          (is_integer(ub) and ub < 65536) ->
+          is_integer(ub) and ub < 65536 ->
             range
+
           true ->
             :no
         end
+
       {lb, ub} = range when is_integer(lb) ->
         cond do
-          (is_integer(ub) and ub < 65536) ->
+          is_integer(ub) and ub < 65536 ->
             cond do
               lb === ub ->
                 lb
+
               true ->
                 range
             end
+
           true ->
             :no
         end
+
       :no ->
         :no
     end
@@ -3972,27 +4437,42 @@ defmodule :m_asn1ct_imm do
   end
 
   defp effective_constr(:SingleValue, list) do
-    sVList = :lists.flatten(:lists.map(fn x ->
-                                            :erlang.element(2, x)
-                                       end,
-                                         list))
-    case (:lists.usort(sVList)) do
+    sVList =
+      :lists.flatten(
+        :lists.map(
+          fn x ->
+            :erlang.element(2, x)
+          end,
+          list
+        )
+      )
+
+    case :lists.usort(sVList) do
       [n] ->
         [{:SingleValue, n}]
+
       [_ | _] = l ->
         [{:ValueRange, {least_Lb(l), greatest_Ub(l)}}]
     end
   end
 
   defp effective_constr(:ValueRange, list) do
-    lBs = :lists.map(fn {_, {lb, _}} ->
-                          lb
-                     end,
-                       list)
-    uBs = :lists.map(fn {_, {_, ub}} ->
-                          ub
-                     end,
-                       list)
+    lBs =
+      :lists.map(
+        fn {_, {lb, _}} ->
+          lb
+        end,
+        list
+      )
+
+    uBs =
+      :lists.map(
+        fn {_, {_, ub}} ->
+          ub
+        end,
+        list
+      )
+
     lb = least_Lb(lBs)
     [{:ValueRange, {lb, :lists.max(uBs)}}]
   end
@@ -4006,17 +4486,17 @@ defmodule :m_asn1ct_imm do
   end
 
   defp greatest_common_range([{_, int}], [{_, {:MIN, ub}}])
-      when (is_integer(int) and int > ub) do
+       when is_integer(int) and int > ub do
     [{:ValueRange, {:MIN, int}}]
   end
 
   defp greatest_common_range([{_, int}], [{_, {lb, ub}}])
-      when (is_integer(int) and int < lb) do
+       when is_integer(int) and int < lb do
     [{:ValueRange, {int, ub}}]
   end
 
   defp greatest_common_range([{_, int}], vR = [{_, {_Lb, _Ub}}])
-      when is_integer(int) do
+       when is_integer(int) do
     vR
   end
 
@@ -4033,27 +4513,30 @@ defmodule :m_asn1ct_imm do
   end
 
   defp least_Lb(l) do
-    case (:lists.member(:MIN, l)) do
+    case :lists.member(:MIN, l) do
       true ->
         :MIN
+
       false ->
         :lists.min(l)
     end
   end
 
   defp greatest_Ub(l) do
-    case (:lists.member(:MAX, l)) do
+    case :lists.member(:MAX, l) do
       true ->
         :MAX
+
       false ->
         :lists.max(l)
     end
   end
 
   defp get_constraint(c, key) do
-    case (:lists.keyfind(key, 1, c)) do
+    case :lists.keyfind(key, 1, c) do
       false ->
         :no
+
       {_, v} ->
         v
     end
@@ -4070,5 +4553,4 @@ defmodule :m_asn1ct_imm do
   defp get_constraints([], _) do
     []
   end
-
 end

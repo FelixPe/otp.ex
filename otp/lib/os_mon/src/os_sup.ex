@@ -2,24 +2,27 @@ defmodule :m_os_sup do
   use Bitwise
   @behaviour :gen_server
   require Record
-  Record.defrecord(:r_state, :state, port: :undefined,
-                                 mfa: :undefined, config: :undefined,
-                                 path: :undefined, conf: :undefined)
+
+  Record.defrecord(:r_state, :state,
+    port: :undefined,
+    mfa: :undefined,
+    config: :undefined,
+    path: :undefined,
+    conf: :undefined
+  )
+
   def start_link({:win32, _OSname}) do
     identifier = :os_sup
     mFA = :os_mon.get_env(:os_sup, :os_sup_mfa)
-    :gen_server.start_link({:local, :os_sup_server},
-                             :nteventlog, [identifier, mFA], [])
+    :gen_server.start_link({:local, :os_sup_server}, :nteventlog, [identifier, mFA], [])
   end
 
   def start_link(_OS) do
-    :gen_server.start_link({:local, :os_sup_server},
-                             :os_sup, [], [])
+    :gen_server.start_link({:local, :os_sup_server}, :os_sup, [], [])
   end
 
   def start() do
-    :gen_server.start({:local, :os_sup_server}, :os_sup, [],
-                        [])
+    :gen_server.start({:local, :os_sup_server}, :os_sup, [], [])
   end
 
   def stop() do
@@ -58,14 +61,15 @@ defmodule :m_os_sup do
     :io_lib.printable_list(val)
   end
 
-  def param_type(:os_sup_enable, val) when val == true or
-                                     val == false do
+  def param_type(:os_sup_enable, val)
+      when val == true or
+             val == false do
     true
   end
 
   def param_type(:os_sup_mfa, {mod, func, args})
-      when (is_atom(mod) and is_atom(func) and
-              is_list(args)) do
+      when is_atom(mod) and is_atom(func) and
+             is_list(args) do
     true
   end
 
@@ -78,11 +82,11 @@ defmodule :m_os_sup do
   end
 
   def param_default(:os_sup_own) do
-    '/etc'
+    ~c"/etc"
   end
 
   def param_default(:os_sup_syslogconf) do
-    '/etc/syslog.conf'
+    ~c"/etc/syslog.conf"
   end
 
   def param_default(:os_sup_enable) do
@@ -96,9 +100,11 @@ defmodule :m_os_sup do
   def init([]) do
     :erlang.process_flag(:trap_exit, true)
     :erlang.process_flag(:priority, :low)
-    case (:os.type()) do
+
+    case :os.type() do
       {:unix, :sunos} ->
         init2()
+
       oS ->
         {:stop, {:unsupported_os, oS}}
     end
@@ -106,16 +112,20 @@ defmodule :m_os_sup do
 
   defp init2() do
     configP = :os_mon.get_env(:os_sup, :os_sup_enable)
-    case (configP) do
+
+    case configP do
       true ->
         path = :os_mon.get_env(:os_sup, :os_sup_own)
         conf = :os_mon.get_env(:os_sup, :os_sup_syslogconf)
-        case (enable(path, conf)) do
+
+        case enable(path, conf) do
           :ok ->
             init3(r_state(config: configP, path: path, conf: conf))
+
           {:error, error} ->
             {:stop, {:mod_syslog, error}}
         end
+
       false ->
         init3(r_state(config: configP))
     end
@@ -123,14 +133,18 @@ defmodule :m_os_sup do
 
   defp init3(state0) do
     port = start_portprogram()
-    mFA = (case (:os_mon.get_env(:os_sup, :os_sup_mfa)) do
-             {:os_sup, :error_report, _} ->
-               tag = :os_mon.get_env(:os_sup, :os_sup_errortag)
-               {:os_sup, :error_report, [tag]}
-             mFA0 ->
-               mFA0
-           end)
-    {:ok, r_state(state0, port: port,  mfa: mFA)}
+
+    mFA =
+      case :os_mon.get_env(:os_sup, :os_sup_mfa) do
+        {:os_sup, :error_report, _} ->
+          tag = :os_mon.get_env(:os_sup, :os_sup_errortag)
+          {:os_sup, :error_report, [tag]}
+
+        mFA0 ->
+          mFA0
+      end
+
+    {:ok, r_state(state0, port: port, mfa: mFA)}
   end
 
   def handle_call(:stop, _From, state) do
@@ -141,8 +155,10 @@ defmodule :m_os_sup do
     {:noreply, state}
   end
 
-  def handle_info({_Port, {:data, data}},
-           r_state(mfa: {m, f, a}) = state) do
+  def handle_info(
+        {_Port, {:data, data}},
+        r_state(mfa: {m, f, a}) = state
+      ) do
     apply(m, f, [data | a])
     {:noreply, state}
   end
@@ -156,28 +172,35 @@ defmodule :m_os_sup do
   end
 
   def terminate(_Reason, r_state(port: port) = state) do
-    case (r_state(state, :config)) do
+    case r_state(state, :config) do
       true when is_port(port) ->
-        send(port, {self(), {:command, 'only_stdin'}})
+        send(port, {self(), {:command, ~c"only_stdin"}})
         res = disable(r_state(state, :path), r_state(state, :conf))
         :erlang.port_close(port)
+
         cond do
-          res != '0' ->
+          res != ~c"0" ->
             exit({:mod_syslog, res})
+
           true ->
             :ok
         end
+
       true ->
         res = disable(r_state(state, :path), r_state(state, :conf))
+
         cond do
-          res != '0' ->
+          res != ~c"0" ->
             exit({:mod_syslog, res})
+
           true ->
             :ok
         end
+
       false when is_port(port) ->
-        send(port, {self(), {:command, 'only_stdin'}})
+        send(port, {self(), {:command, ~c"only_stdin"}})
         :erlang.port_close(port)
+
       false ->
         :ok
     end
@@ -185,19 +208,23 @@ defmodule :m_os_sup do
 
   defp start_portprogram() do
     ownPath = :os_mon.get_env(:os_sup, :os_sup_own)
-    command = '"' ++ :filename.join([:code.priv_dir(:os_mon),
-                                       'bin', 'ferrule']) ++ '" ' ++ ownPath
+
+    command =
+      ~c"\"" ++
+        :filename.join([:code.priv_dir(:os_mon), ~c"bin", ~c"ferrule"]) ++ ~c"\" " ++ ownPath
+
     :erlang.open_port({:spawn, command}, [{:packet, 2}])
   end
 
   defp command(mode) do
-    command(mode, '/etc', '/etc/syslog.conf')
+    command(mode, ~c"/etc", ~c"/etc/syslog.conf")
   end
 
   defp command(mode, path, conf) do
-    case (:os.cmd(cmd_str(mode, path, conf))) do
-      '0' ->
+    case :os.cmd(cmd_str(mode, path, conf)) do
+      ~c"0" ->
         :ok
+
       error ->
         {:error, error}
     end
@@ -205,13 +232,16 @@ defmodule :m_os_sup do
 
   defp cmd_str(mode, path, conf) do
     privDir = :code.priv_dir(:os_mon)
-    modeSw = (case (mode) do
-                :enable ->
-                  ' otp '
-                :disable ->
-                  ' nootp '
-              end)
-    privDir ++ '/bin/mod_syslog' ++ modeSw ++ path ++ ' ' ++ conf
-  end
 
+    modeSw =
+      case mode do
+        :enable ->
+          ~c" otp "
+
+        :disable ->
+          ~c" nootp "
+      end
+
+    privDir ++ ~c"/bin/mod_syslog" ++ modeSw ++ path ++ ~c" " ++ conf
+  end
 end

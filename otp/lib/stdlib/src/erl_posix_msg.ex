@@ -1,5 +1,6 @@
 defmodule :m_erl_posix_msg do
   use Bitwise
+
   def message(t) do
     :erlang.binary_to_list(message_1(t))
   end
@@ -577,7 +578,6 @@ defmodule :m_erl_posix_msg do
   end
 
   defp message_1(other) do
-    <<"unknown POSIX error: ", :erlang.atom_to_binary(other) :: binary>>
+    <<"unknown POSIX error: ", :erlang.atom_to_binary(other)::binary>>
   end
-
 end

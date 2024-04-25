@@ -1,6 +1,7 @@
 defmodule :m_asn1ct_pretty_format do
   use Bitwise
   import :io_lib, only: [write: 1, write_string: 1]
+
   def term(term) do
     :erlang.element(2, term(term, 0))
   end
@@ -10,13 +11,15 @@ defmodule :m_asn1ct_pretty_format do
   end
 
   defp term(l, indent) when is_list(l) do
-    case (is_string(l)) do
+    case is_string(l) do
       true ->
         {indent, write_string(l)}
+
       false ->
-        case (complex_list(l)) do
+        case complex_list(l) do
           true ->
             write_complex_list(l, indent)
+
           false ->
             write_simple_list(l, indent)
         end
@@ -24,9 +27,10 @@ defmodule :m_asn1ct_pretty_format do
   end
 
   defp term(t, indent) when is_tuple(t) do
-    case (complex_tuple(t)) do
+    case complex_tuple(t) do
       true ->
         write_complex_tuple(t, indent)
+
       false ->
         write_simple_tuple(t, indent)
     end
@@ -49,7 +53,7 @@ defmodule :m_asn1ct_pretty_format do
   end
 
   defp write_simple_list_tail([], indent) do
-    {indent, ']'}
+    {indent, ~c"]"}
   end
 
   defp write_simple_list_tail(other, indent) do
@@ -70,7 +74,7 @@ defmodule :m_asn1ct_pretty_format do
   end
 
   defp write_complex_list_tail([], indent) do
-    {indent, ']'}
+    {indent, ~c"]"}
   end
 
   defp write_complex_list_tail(other, indent) do
@@ -82,15 +86,17 @@ defmodule :m_asn1ct_pretty_format do
     false
   end
 
-  defp complex_list([h | t]) when (is_list(h) === false and
-                           is_tuple(h) === false) do
+  defp complex_list([h | t])
+       when is_list(h) === false and
+              is_tuple(h) === false do
     complex_list(t)
   end
 
   defp complex_list([h | t]) do
-    case (is_string(h)) do
+    case is_string(h) do
       true ->
         complex_list(t)
+
       false ->
         true
     end
@@ -105,13 +111,16 @@ defmodule :m_asn1ct_pretty_format do
   end
 
   defp write_simple_tuple({}, indent) do
-    {indent, '{}'}
+    {indent, ~c"{}"}
   end
 
   defp write_simple_tuple(tuple, indent) do
-    {_,
-       s} = write_simple_tuple_args(:erlang.tuple_to_list(tuple),
-                                      indent)
+    {_, s} =
+      write_simple_tuple_args(
+        :erlang.tuple_to_list(tuple),
+        indent
+      )
+
     {indent, [?{, s, ?}]}
   end
 
@@ -148,7 +157,7 @@ defmodule :m_asn1ct_pretty_format do
   end
 
   defp nl_indent(i) when i >= 0 do
-    ['\n' | indent(i)]
+    [~c"\n" | indent(i)]
   end
 
   defp nl_indent(_) do
@@ -175,7 +184,7 @@ defmodule :m_asn1ct_pretty_format do
     is_string(t)
   end
 
-  defp is_string([h | t]) when (h > 31 and h < 127) do
+  defp is_string([h | t]) when h > 31 and h < 127 do
     is_string(t)
   end
 
@@ -186,5 +195,4 @@ defmodule :m_asn1ct_pretty_format do
   defp is_string(_) do
     false
   end
-
 end

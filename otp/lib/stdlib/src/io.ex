@@ -1,52 +1,65 @@
 defmodule :m_io do
   use Bitwise
+
   defp o_request(function, origArgs) do
-    {io, request} = (cond do
-                       function === :format or function === :fwrite ->
-                         case (origArgs) do
-                           [format] ->
-                             {default_output(), {:format, format, []}}
-                           [format, args] ->
-                             {default_output(), {:format, format, args}}
-                           [d, format, args] ->
-                             {d, {:format, format, args}}
-                         end
-                       function === :put_chars ->
-                         case (origArgs) do
-                           [chars] ->
-                             {default_output(), {:put_chars, :unicode, chars}}
-                           [d, chars] ->
-                             {d, {:put_chars, :unicode, chars}}
-                           [d, encoding, chars] ->
-                             {d, {:put_chars, encoding, chars}}
-                         end
-                       function === :nl ->
-                         case (origArgs) do
-                           [] ->
-                             {default_output(), :nl}
-                           [d] ->
-                             {d, :nl}
-                         end
-                       function === :write ->
-                         case (origArgs) do
-                           [term] ->
-                             {default_output(), {:write, term}}
-                           [d, term] ->
-                             {d, {:write, term}}
-                         end
-                     end)
+    {io, request} =
+      cond do
+        function === :format or function === :fwrite ->
+          case origArgs do
+            [format] ->
+              {default_output(), {:format, format, []}}
+
+            [format, args] ->
+              {default_output(), {:format, format, args}}
+
+            [d, format, args] ->
+              {d, {:format, format, args}}
+          end
+
+        function === :put_chars ->
+          case origArgs do
+            [chars] ->
+              {default_output(), {:put_chars, :unicode, chars}}
+
+            [d, chars] ->
+              {d, {:put_chars, :unicode, chars}}
+
+            [d, encoding, chars] ->
+              {d, {:put_chars, encoding, chars}}
+          end
+
+        function === :nl ->
+          case origArgs do
+            [] ->
+              {default_output(), :nl}
+
+            [d] ->
+              {d, :nl}
+          end
+
+        function === :write ->
+          case origArgs do
+            [term] ->
+              {default_output(), {:write, term}}
+
+            [d, term] ->
+              {d, {:write, term}}
+          end
+      end
+
     errorRef = make_ref()
-    case (request(io, request, errorRef)) do
+
+    case request(io, request, errorRef) do
       {^errorRef, reason} ->
-        :erlang.error(conv_reason(reason), origArgs,
-                        [{:error_info,
-                            %{cause: {:io, reason},
-                                module: :erl_stdlib_errors}}])
+        :erlang.error(conv_reason(reason), origArgs, [
+          {:error_info, %{cause: {:io, reason}, module: :erl_stdlib_errors}}
+        ])
+
       {:error, reason} ->
-        :erlang.error(conv_reason(reason), origArgs,
-                        [{:error_info,
-                            %{cause: {:device, reason},
-                                module: :erl_stdlib_errors}}])
+        :erlang.error(conv_reason(reason), origArgs, [
+          {:error_info, %{cause: {:device, reason}, module: :erl_stdlib_errors}}
+        ])
+
       other ->
         other
     end
@@ -77,9 +90,10 @@ defmodule :m_io do
   end
 
   def columns(io) do
-    case (request(io, {:get_geometry, :columns})) do
-      n when (is_integer(n) and n > 0) ->
+    case request(io, {:get_geometry, :columns}) do
+      n when is_integer(n) and n > 0 ->
         {:ok, n}
+
       _ ->
         {:error, :enotsup}
     end
@@ -90,9 +104,10 @@ defmodule :m_io do
   end
 
   def rows(io) do
-    case (request(io, {:get_geometry, :rows})) do
-      n when (is_integer(n) and n > 0) ->
+    case request(io, {:get_geometry, :rows}) do
+      n when is_integer(n) and n > 0 ->
         {:ok, n}
+
       _ ->
         {:error, :enotsup}
     end
@@ -102,7 +117,7 @@ defmodule :m_io do
     get_chars(default_input(), prompt, n)
   end
 
-  def get_chars(io, prompt, n) when (is_integer(n) and n >= 0) do
+  def get_chars(io, prompt, n) when is_integer(n) and n >= 0 do
     request(io, {:get_chars, :unicode, prompt, n})
   end
 
@@ -151,15 +166,19 @@ defmodule :m_io do
   end
 
   def read(io, prompt) do
-    case (request(io,
-                    {:get_until, :unicode, prompt, :erl_scan, :tokens,
-                       [1]})) do
+    case request(
+           io,
+           {:get_until, :unicode, prompt, :erl_scan, :tokens, [1]}
+         ) do
       {:ok, toks, _EndLine} ->
         :erl_parse.parse_term(toks)
+
       {:error, e, _EndLine} ->
         {:error, e}
+
       {:eof, _EndLine} ->
         :eof
+
       other ->
         other
     end
@@ -171,20 +190,26 @@ defmodule :m_io do
 
   def read(io, prompt, pos0, options) do
     args = [pos0, options]
-    case (request(io,
-                    {:get_until, :unicode, prompt, :erl_scan, :tokens,
-                       args})) do
+
+    case request(
+           io,
+           {:get_until, :unicode, prompt, :erl_scan, :tokens, args}
+         ) do
       {:ok, toks, endLocation} ->
-        case (:erl_parse.parse_term(toks)) do
+        case :erl_parse.parse_term(toks) do
           {:ok, term} ->
             {:ok, term, endLocation}
+
           {:error, errorInfo} ->
             {:error, errorInfo, endLocation}
         end
+
       {:error, _E, _EndLocation} = error ->
         error
+
       {:eof, _EndLocation} = eof ->
         eof
+
       other ->
         other
     end
@@ -255,9 +280,10 @@ defmodule :m_io do
   end
 
   def scan_erl_exprs(io, prompt, pos0, options) do
-    request(io,
-              {:get_until, :unicode, prompt, :erl_scan, :tokens,
-                 [pos0, options]})
+    request(
+      io,
+      {:get_until, :unicode, prompt, :erl_scan, :tokens, [pos0, options]}
+    )
   end
 
   def scan_erl_form(prompt) do
@@ -273,9 +299,10 @@ defmodule :m_io do
   end
 
   def scan_erl_form(io, prompt, pos0, options) do
-    request(io,
-              {:get_until, :unicode, prompt, :erl_scan, :tokens,
-                 [pos0, options]})
+    request(
+      io,
+      {:get_until, :unicode, prompt, :erl_scan, :tokens, [pos0, options]}
+    )
   end
 
   def parse_erl_exprs(prompt) do
@@ -291,16 +318,19 @@ defmodule :m_io do
   end
 
   def parse_erl_exprs(io, prompt, pos0, options) do
-    case (request(io,
-                    {:get_until, :unicode, prompt, :erl_scan, :tokens,
-                       [pos0, options]})) do
+    case request(
+           io,
+           {:get_until, :unicode, prompt, :erl_scan, :tokens, [pos0, options]}
+         ) do
       {:ok, toks, endPos} ->
-        case (:erl_parse.parse_exprs(toks)) do
+        case :erl_parse.parse_exprs(toks) do
           {:ok, exprs} ->
             {:ok, exprs, endPos}
+
           {:error, e} ->
             {:error, e, endPos}
         end
+
       other ->
         other
     end
@@ -320,16 +350,20 @@ defmodule :m_io do
 
   def parse_erl_form(io, prompt, pos0, options) do
     args = [pos0, options]
-    case (request(io,
-                    {:get_until, :unicode, prompt, :erl_scan, :tokens,
-                       args})) do
+
+    case request(
+           io,
+           {:get_until, :unicode, prompt, :erl_scan, :tokens, args}
+         ) do
       {:ok, toks, endPos} ->
-        case (:erl_parse.parse_form(toks)) do
+        case :erl_parse.parse_form(toks) do
           {:ok, exprs} ->
             {:ok, exprs, endPos}
+
           {:error, e} ->
             {:error, e, endPos}
         end
+
       other ->
         other
     end
@@ -352,9 +386,10 @@ defmodule :m_io do
   end
 
   defp request(name, request, errorTag) when is_atom(name) do
-    case (:erlang.whereis(name)) do
+    case :erlang.whereis(name) do
       :undefined ->
         {errorTag, :arguments}
+
       pid ->
         request(pid, request, errorTag)
     end
@@ -367,22 +402,28 @@ defmodule :m_io do
   defp execute_request(pid, {convert, converted}, errorTag) do
     mref = :erlang.monitor(:process, pid)
     send(pid, {:io_request, self(), mref, converted})
+
     receive do
       {:io_reply, ^mref, reply} ->
         :erlang.demonitor(mref, [:flush])
+
         cond do
           convert ->
             convert_binaries(reply)
+
           true ->
             reply
         end
+
       {:DOWN, ^mref, _, _, _} ->
         receive do
           {:EXIT, ^pid, _What} ->
             true
-        after 0 ->
-          true
+        after
+          0 ->
+            true
         end
+
         {errorTag, :terminated}
     end
   end
@@ -397,14 +438,14 @@ defmodule :m_io do
 
   def requests(pid, requests) when is_pid(pid) do
     {convert, converted} = io_requests(pid, requests)
-    execute_request(pid, {convert, {:requests, converted}},
-                      :error)
+    execute_request(pid, {convert, {:requests, converted}}, :error)
   end
 
   def requests(name, requests) when is_atom(name) do
-    case (:erlang.whereis(name)) do
+    case :erlang.whereis(name) do
       :undefined ->
         {:error, :arguments}
+
       pid ->
         requests(pid, requests)
     end
@@ -446,13 +487,15 @@ defmodule :m_io do
   end
 
   defp bc_req(pid, req0, maybeConvert) do
-    case (:net_kernel.dflag_unicode_io(pid)) do
+    case :net_kernel.dflag_unicode_io(pid) do
       true ->
         {false, req0}
+
       false ->
-        case (:erlang.tuple_to_list(req0)) do
+        case :erlang.tuple_to_list(req0) do
           [op, _Enc] ->
             {maybeConvert, op}
+
           [op, _Enc | t] ->
             req = :erlang.list_to_tuple([op | t])
             {maybeConvert, req}
@@ -461,22 +504,23 @@ defmodule :m_io do
   end
 
   defp io_request(pid, {:write, term}) do
-    bc_req(pid,
-             {:put_chars, :unicode, :io_lib, :write, [term]}, false)
+    bc_req(pid, {:put_chars, :unicode, :io_lib, :write, [term]}, false)
   end
 
   defp io_request(pid, {:format, format, args}) do
-    bc_req(pid,
-             {:put_chars, :unicode, :io_lib, :format,
-                [format, args]},
-             false)
+    bc_req(
+      pid,
+      {:put_chars, :unicode, :io_lib, :format, [format, args]},
+      false
+    )
   end
 
   defp io_request(pid, {:fwrite, format, args}) do
-    bc_req(pid,
-             {:put_chars, :unicode, :io_lib, :fwrite,
-                [format, args]},
-             false)
+    bc_req(
+      pid,
+      {:put_chars, :unicode, :io_lib, :fwrite, [format, args]},
+      false
+    )
   end
 
   defp io_request(pid, :nl) do
@@ -484,48 +528,54 @@ defmodule :m_io do
   end
 
   defp io_request(pid, {:put_chars, enc, chars} = request0)
-      when (is_list(chars) and node(pid) === node()) do
-    request = (case ((try do
-                       :unicode.characters_to_binary(chars, enc)
-                     catch
-                       :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                       :exit, e -> {:EXIT, e}
-                       e -> e
-                     end)) do
-                 binary when is_binary(binary) ->
-                   {:put_chars, enc, binary}
-                 _ ->
-                   request0
-               end)
+       when is_list(chars) and node(pid) === node() do
+    request =
+      case (try do
+              :unicode.characters_to_binary(chars, enc)
+            catch
+              :error, e -> {:EXIT, {e, __STACKTRACE__}}
+              :exit, e -> {:EXIT, e}
+              e -> e
+            end) do
+        binary when is_binary(binary) ->
+          {:put_chars, enc, binary}
+
+        _ ->
+          request0
+      end
+
     {false, request}
   end
 
   defp io_request(pid, {:put_chars, enc, chars} = request0)
-      when is_list(chars) do
-    case (:net_kernel.dflag_unicode_io(pid)) do
+       when is_list(chars) do
+    case :net_kernel.dflag_unicode_io(pid) do
       true ->
-        case ((try do
+        case (try do
                 :unicode.characters_to_binary(chars, enc, :unicode)
               catch
                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
                 :exit, e -> {:EXIT, e}
                 e -> e
-              end)) do
+              end) do
           binary when is_binary(binary) ->
             {false, {:put_chars, :unicode, binary}}
+
           _ ->
             {false, request0}
         end
+
       false ->
-        case ((try do
+        case (try do
                 :unicode.characters_to_binary(chars, enc, :latin1)
               catch
                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
                 :exit, e -> {:EXIT, e}
                 e -> e
-              end)) do
+              end) do
           binary when is_binary(binary) ->
             {false, {:put_chars, binary}}
+
           _ ->
             {false, {:put_chars, chars}}
         end
@@ -533,10 +583,11 @@ defmodule :m_io do
   end
 
   defp io_request(pid, {:fread, prompt, format}) do
-    bc_req(pid,
-             {:get_until, :unicode, prompt, :io_lib, :fread,
-                [format]},
-             true)
+    bc_req(
+      pid,
+      {:get_until, :unicode, prompt, :io_lib, :fread, [format]},
+      true
+    )
   end
 
   defp io_request(pid, {:get_until, enc, prompt, m, f, a}) do
@@ -566,5 +617,4 @@ defmodule :m_io do
   defp convert_binaries(else__) do
     else__
   end
-
 end

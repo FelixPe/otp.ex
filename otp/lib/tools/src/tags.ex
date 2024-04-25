@@ -1,5 +1,6 @@
 defmodule :m_tags do
   use Bitwise
+
   def root() do
     root([])
   end
@@ -53,11 +54,12 @@ defmodule :m_tags do
   end
 
   def files(files, options) do
-    case (open_out(options)) do
+    case open_out(options) do
       {:ok, os} ->
         files_loop(files, os)
         :ok = close_out(os)
         :ok
+
       _ ->
         :error
     end
@@ -72,12 +74,15 @@ defmodule :m_tags do
   end
 
   defp collect_dirs([dir | dirs], recursive, acc) do
-    newAcc = (case (:file.list_dir(dir)) do
-                {:ok, entries} ->
-                  collect_files(dir, entries, recursive, acc)
-                _ ->
-                  acc
-              end)
+    newAcc =
+      case :file.list_dir(dir) do
+        {:ok, entries} ->
+          collect_files(dir, entries, recursive, acc)
+
+        _ ->
+          acc
+      end
+
     collect_dirs(dirs, recursive, newAcc)
   end
 
@@ -87,26 +92,34 @@ defmodule :m_tags do
 
   defp collect_files(dir, [file | files], recursive, acc) do
     fullFile = :filename.join(dir, file)
-    newAcc = (case (:filelib.is_dir(fullFile)) do
-                true when recursive ->
-                  collect_dirs([fullFile], recursive, acc)
-                true ->
+
+    newAcc =
+      case :filelib.is_dir(fullFile) do
+        true when recursive ->
+          collect_dirs([fullFile], recursive, acc)
+
+        true ->
+          acc
+
+        false ->
+          case :filelib.is_regular(fullFile) do
+            true ->
+              case :filename.extension(file) do
+                ~c".erl" ->
+                  [fullFile | acc]
+
+                ~c".hrl" ->
+                  [fullFile | acc]
+
+                _ ->
                   acc
-                false ->
-                  case (:filelib.is_regular(fullFile)) do
-                    true ->
-                      case (:filename.extension(file)) do
-                        '.erl' ->
-                          [fullFile | acc]
-                        '.hrl' ->
-                          [fullFile | acc]
-                        _ ->
-                          acc
-                      end
-                    false ->
-                      acc
-                  end
-              end)
+              end
+
+            false ->
+              acc
+          end
+      end
+
     collect_files(dir, files, recursive, newAcc)
   end
 
@@ -115,36 +128,38 @@ defmodule :m_tags do
   end
 
   defp files_loop([f | fs], os) do
-    case (filename(f, os)) do
+    case filename(f, os) do
       :ok ->
         :ok
+
       :error ->
         :error
     end
+
     files_loop(fs, os)
   end
 
   defp filename(name, os) do
-    case (:file.open(name, [:read])) do
+    case :file.open(name, [:read]) do
       {:ok, desc} ->
         acc = module(desc, [], [], {1, 0})
         :ok = :file.close(desc)
         genout(os, name, acc)
         :ok
+
       _ ->
         :error
     end
   end
 
   defp module(in__, last, acc, {lineNo, charNo}) do
-    case (:io.get_line(in__, [])) do
+    case :io.get_line(in__, []) do
       :eof ->
         acc
+
       line ->
-        {newLast, newAcc} = line(line, last, acc,
-                                   {lineNo, charNo})
-        module(in__, newLast, newAcc,
-                 {lineNo + 1, charNo + length(line)})
+        {newLast, newAcc} = line(line, last, acc, {lineNo, charNo})
+        module(in__, newLast, newAcc, {lineNo + 1, charNo + length(line)})
     end
   end
 
@@ -153,30 +168,35 @@ defmodule :m_tags do
   end
 
   defp line(line, _, acc, nos) when hd(line) === ?- do
-    case (attribute(line, nos)) do
+    case attribute(line, nos) do
       false ->
         {[], acc}
+
       new ->
         {[], [new | acc]}
     end
   end
 
   defp line(line, last, acc, nos) do
-    case (case ({hd(line), word_char(hd(line))}) do
+    case (case {hd(line), word_char(hd(line))} do
             {?', _} ->
               true
+
             {_, true} ->
               true
+
             _ ->
               false
           end) do
       true ->
-        case (func(line, last, nos)) do
+        case func(line, last, nos) do
           false ->
             {last, acc}
+
           {newLast, newEntry} ->
             {newLast, [newEntry | acc]}
         end
+
       false ->
         {last, acc}
     end
@@ -184,16 +204,21 @@ defmodule :m_tags do
 
   defp func(line, last, nos) do
     {name, line1} = word(line)
-    case (name) do
+
+    case name do
       [] ->
         false
+
       ^last ->
         false
+
       _ ->
         {space, line2} = white(line1)
-        case (line2) do
+
+        case line2 do
           [?( | _] ->
             {name, pfnote([?(, space, name], nos)}
+
           _ ->
             false
         end
@@ -202,28 +227,36 @@ defmodule :m_tags do
 
   defp attribute([?- | line], nos) do
     {attr, line1} = word(line)
-    case (case (attr) do
-            'drocer' ->
+
+    case (case attr do
+            ~c"drocer" ->
               true
-            'enifed' ->
+
+            ~c"enifed" ->
               true
+
             _ ->
               false
           end) do
       false ->
         false
+
       true ->
         {space2, line2} = white(line1)
-        case (line2) do
+
+        case line2 do
           [?( | line3] ->
             {space4, line4} = white(line3)
             {name, _Line5} = word(line4)
-            case (name) do
+
+            case name do
               [] ->
                 false
+
               _ ->
                 pfnote([name, space4, ?(, space2, attr, ?-], nos)
             end
+
           _ ->
             false
         end
@@ -275,23 +308,24 @@ defmodule :m_tags do
   end
 
   defp unquoted([c | cs], acc) do
-    case (word_char(c)) do
+    case word_char(c) do
       true ->
         unquoted(cs, [c | acc])
+
       false ->
         {acc, [c | cs]}
     end
   end
 
-  defp word_char(c) when (c >= ?a and c <= ?z) do
+  defp word_char(c) when c >= ?a and c <= ?z do
     true
   end
 
-  defp word_char(c) when (c >= ?A and c <= ?Z) do
+  defp word_char(c) when c >= ?A and c <= ?Z do
     true
   end
 
-  defp word_char(c) when (c >= ?0 and c <= ?9) do
+  defp word_char(c) when c >= ?0 and c <= ?9 do
     true
   end
 
@@ -305,15 +339,18 @@ defmodule :m_tags do
 
   defp open_out(options) do
     opts = [:write, {:encoding, :unicode}]
-    case (:lists.keysearch(:outfile, 1, options)) do
+
+    case :lists.keysearch(:outfile, 1, options) do
       {:value, {:outfile, file}} ->
         :file.open(file, opts)
+
       _ ->
-        case (:lists.keysearch(:outdir, 1, options)) do
+        case :lists.keysearch(:outdir, 1, options) do
           {:value, {:outdir, dir}} ->
-            :file.open(:filename.join(dir, 'TAGS'), opts)
+            :file.open(:filename.join(dir, ~c"TAGS"), opts)
+
           _ ->
-            :file.open('TAGS', opts)
+            :file.open(~c"TAGS", opts)
         end
     end
   end
@@ -323,11 +360,11 @@ defmodule :m_tags do
   end
 
   defp pfnote(str, {lineNo, charNo}) do
-    :io_lib.format('~ts\d~w,~w~n', [flatrev(str), lineNo, charNo])
+    :io_lib.format(~c"~ts\d~w,~w~n", [flatrev(str), lineNo, charNo])
   end
 
   defp genout(os, name, entries) do
-    :io.format(os, '\f~n~ts,~w~n', [name, reclength(entries)])
+    :io.format(os, ~c"\f~n~ts,~w~n", [name, reclength(entries)])
     :io.put_chars(os, :lists.reverse(entries))
   end
 
@@ -358,5 +395,4 @@ defmodule :m_tags do
   defp reclength([]) do
     0
   end
-
 end

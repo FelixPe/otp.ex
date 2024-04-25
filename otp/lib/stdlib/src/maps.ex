@@ -1,5 +1,6 @@
 defmodule :m_maps do
   use Bitwise
+
   def get(_, _) do
     :erlang.nif_error(:undef)
   end
@@ -16,21 +17,23 @@ defmodule :m_maps do
     :erlang.nif_error(:undef)
   end
 
-  def intersect(map1, map2) when (is_map(map1) and
-                             is_map(map2)) do
-    case (map_size(map1) <= map_size(map2)) do
+  def intersect(map1, map2)
+      when is_map(map1) and
+             is_map(map2) do
+    case map_size(map1) <= map_size(map2) do
       true ->
-        intersect_with_small_map_first(&intersect_combiner_v2/3,
-                                         map1, map2)
+        intersect_with_small_map_first(&intersect_combiner_v2/3, map1, map2)
+
       false ->
-        intersect_with_small_map_first(&intersect_combiner_v1/3,
-                                         map2, map1)
+        intersect_with_small_map_first(&intersect_combiner_v1/3, map2, map1)
     end
   end
 
   def intersect(map1, map2) do
-    error_with_info(error_type_two_maps(map1, map2),
-                      [map1, map2])
+    error_with_info(
+      error_type_two_maps(map1, map2),
+      [map1, map2]
+    )
   end
 
   defp intersect_combiner_v1(_K, v1, _V2) do
@@ -41,24 +44,28 @@ defmodule :m_maps do
     v2
   end
 
-  def intersect_with(combiner, map1, map2) when (is_map(map1) and
-                                       is_map(map2) and
-                                       is_function(combiner, 3)) do
-    case (map_size(map1) <= map_size(map2)) do
+  def intersect_with(combiner, map1, map2)
+      when is_map(map1) and
+             is_map(map2) and
+             is_function(combiner, 3) do
+    case map_size(map1) <= map_size(map2) do
       true ->
         intersect_with_small_map_first(combiner, map1, map2)
+
       false ->
         rCombiner = fn k, v1, v2 ->
-                         combiner.(k, v2, v1)
-                    end
+          combiner.(k, v2, v1)
+        end
+
         intersect_with_small_map_first(rCombiner, map2, map1)
     end
   end
 
   def intersect_with(combiner, map1, map2) do
-    error_with_info(error_type_merge_intersect(map1, map2,
-                                                 combiner),
-                      [combiner, map1, map2])
+    error_with_info(
+      error_type_merge_intersect(map1, map2, combiner),
+      [combiner, map1, map2]
+    )
   end
 
   defp intersect_with_small_map_first(combiner, smallMap, bigMap) do
@@ -68,11 +75,12 @@ defmodule :m_maps do
 
   defp intersect_with_iterate({k, v1, iterator}, keep, bigMap, combiner) do
     next = :maps.next(iterator)
-    case (bigMap) do
+
+    case bigMap do
       %{^k => v2} ->
         v = combiner.(k, v1, v2)
-        intersect_with_iterate(next, [{k, v} | keep], bigMap,
-                                 combiner)
+        intersect_with_iterate(next, [{k, v} | keep], bigMap, combiner)
+
       _ ->
         intersect_with_iterate(next, keep, bigMap, combiner)
     end
@@ -94,37 +102,39 @@ defmodule :m_maps do
     :erlang.nif_error(:undef)
   end
 
-  def merge_with(combiner, map1, map2) when (is_map(map1) and
-                                       is_map(map2) and
-                                       is_function(combiner, 3)) do
-    case (map_size(map1) > map_size(map2)) do
+  def merge_with(combiner, map1, map2)
+      when is_map(map1) and
+             is_map(map2) and
+             is_function(combiner, 3) do
+    case map_size(map1) > map_size(map2) do
       true ->
         iterator = :maps.iterator(map2)
         merge_with_1(:maps.next(iterator), map1, map2, combiner)
+
       false ->
         iterator = :maps.iterator(map1)
-        merge_with_1(:maps.next(iterator), map2, map1,
-                       fn k, v1, v2 ->
-                            combiner.(k, v2, v1)
-                       end)
+
+        merge_with_1(:maps.next(iterator), map2, map1, fn k, v1, v2 ->
+          combiner.(k, v2, v1)
+        end)
     end
   end
 
   def merge_with(combiner, map1, map2) do
-    error_with_info(error_type_merge_intersect(map1, map2,
-                                                 combiner),
-                      [combiner, map1, map2])
+    error_with_info(
+      error_type_merge_intersect(map1, map2, combiner),
+      [combiner, map1, map2]
+    )
   end
 
   defp merge_with_1({k, v2, iterator}, map1, map2, combiner) do
-    case (map1) do
+    case map1 do
       %{^k => v1} ->
         newMap1 = %{map1 | k => combiner.(k, v1, v2)}
-        merge_with_1(:maps.next(iterator), newMap1, map2,
-                       combiner)
+        merge_with_1(:maps.next(iterator), newMap1, map2, combiner)
+
       %{} ->
-        merge_with_1(:maps.next(iterator),
-                       :maps.put(k, v2, map1), map2, combiner)
+        merge_with_1(:maps.next(iterator), :maps.put(k, v2, map1), map2, combiner)
     end
   end
 
@@ -166,8 +176,7 @@ defmodule :m_maps do
   end
 
   defp to_list_internal([iter, map | acc]) when is_integer(iter) do
-    to_list_internal(:erts_internal.map_next(iter, map,
-                                               acc))
+    to_list_internal(:erts_internal.map_next(iter, map, acc))
   end
 
   defp to_list_internal(acc) do
@@ -186,11 +195,13 @@ defmodule :m_maps do
     %{}
   end
 
-  def update_with(key, fun, map) when (is_function(fun, 1) and
-                                is_map(map)) do
-    case (map) do
+  def update_with(key, fun, map)
+      when is_function(fun, 1) and
+             is_map(map) do
+    case map do
       %{^key => value} ->
         %{map | key => fun.(value)}
+
       %{} ->
         :erlang.error({:badkey, key}, [key, fun, map])
     end
@@ -200,12 +211,16 @@ defmodule :m_maps do
     error_with_info(error_type(map), [key, fun, map])
   end
 
-  def update_with(key, fun, init, map) when (is_function(fun,
-                                                  1) and
-                                      is_map(map)) do
-    case (map) do
+  def update_with(key, fun, init, map)
+      when is_function(
+             fun,
+             1
+           ) and
+             is_map(map) do
+    case map do
       %{^key => value} ->
         %{map | key => fun.(value)}
+
       %{} ->
         Map.put(map, key, init)
     end
@@ -216,9 +231,10 @@ defmodule :m_maps do
   end
 
   def get(key, map, default) when is_map(map) do
-    case (map) do
+    case map do
       %{^key => value} ->
         value
+
       %{} ->
         default
     end
@@ -228,14 +244,15 @@ defmodule :m_maps do
     error_with_info({:badmap, map}, [key, map, default])
   end
 
-  def filter(pred, map) when (is_map(map) and
-                            is_function(pred, 2)) do
-    :maps.from_list(filter_1(pred, next(iterator(map)),
-                               :undefined))
+  def filter(pred, map)
+      when is_map(map) and
+             is_function(pred, 2) do
+    :maps.from_list(filter_1(pred, next(iterator(map)), :undefined))
   end
 
   def filter(pred, iter) when is_function(pred, 2) do
     errorTag = make_ref()
+
     try do
       filter_1(pred, try_next(iter, errorTag), errorTag)
     catch
@@ -252,10 +269,10 @@ defmodule :m_maps do
   end
 
   defp filter_1(pred, {k, v, iter}, errorTag) do
-    case (pred.(k, v)) do
+    case pred.(k, v) do
       true ->
-        [{k, v} | filter_1(pred, try_next(iter, errorTag),
-                             errorTag)]
+        [{k, v} | filter_1(pred, try_next(iter, errorTag), errorTag)]
+
       false ->
         filter_1(pred, try_next(iter, errorTag), errorTag)
     end
@@ -265,14 +282,15 @@ defmodule :m_maps do
     []
   end
 
-  def filtermap(fun, map) when (is_map(map) and
-                           is_function(fun, 2)) do
-    :maps.from_list(filtermap_1(fun, next(iterator(map)),
-                                  :undefined))
+  def filtermap(fun, map)
+      when is_map(map) and
+             is_function(fun, 2) do
+    :maps.from_list(filtermap_1(fun, next(iterator(map)), :undefined))
   end
 
   def filtermap(fun, iter) when is_function(fun, 2) do
     errorTag = make_ref()
+
     try do
       filtermap_1(fun, try_next(iter, errorTag), errorTag)
     catch
@@ -289,13 +307,13 @@ defmodule :m_maps do
   end
 
   defp filtermap_1(fun, {k, v, iter}, errorTag) do
-    case (fun.(k, v)) do
+    case fun.(k, v) do
       true ->
-        [{k, v} | filtermap_1(fun, try_next(iter, errorTag),
-                                errorTag)]
+        [{k, v} | filtermap_1(fun, try_next(iter, errorTag), errorTag)]
+
       {true, newV} ->
-        [{k, newV} | filtermap_1(fun, try_next(iter, errorTag),
-                                   errorTag)]
+        [{k, newV} | filtermap_1(fun, try_next(iter, errorTag), errorTag)]
+
       false ->
         filtermap_1(fun, try_next(iter, errorTag), errorTag)
     end
@@ -305,13 +323,15 @@ defmodule :m_maps do
     []
   end
 
-  def foreach(fun, map) when (is_map(map) and
-                           is_function(fun, 2)) do
+  def foreach(fun, map)
+      when is_map(map) and
+             is_function(fun, 2) do
     foreach_1(fun, next(iterator(map)), :undefined)
   end
 
   def foreach(fun, iter) when is_function(fun, 2) do
     errorTag = make_ref()
+
     try do
       foreach_1(fun, try_next(iter, errorTag), errorTag)
     catch
@@ -333,13 +353,15 @@ defmodule :m_maps do
     :ok
   end
 
-  def fold(fun, init, map) when (is_map(map) and
-                                 is_function(fun, 3)) do
+  def fold(fun, init, map)
+      when is_map(map) and
+             is_function(fun, 3) do
     fold_1(fun, init, next(iterator(map)), :undefined)
   end
 
   def fold(fun, init, iter) when is_function(fun, 3) do
     errorTag = make_ref()
+
     try do
       fold_1(fun, init, try_next(iter, errorTag), errorTag)
     catch
@@ -353,22 +375,22 @@ defmodule :m_maps do
   end
 
   defp fold_1(fun, acc, {k, v, iter}, errorTag) do
-    fold_1(fun, fun.(k, v, acc), try_next(iter, errorTag),
-             errorTag)
+    fold_1(fun, fun.(k, v, acc), try_next(iter, errorTag), errorTag)
   end
 
   defp fold_1(_Fun, acc, :none, _ErrorTag) do
     acc
   end
 
-  def map(fun, map) when (is_map(map) and
-                           is_function(fun, 2)) do
-    :maps.from_list(map_1(fun, next(iterator(map)),
-                            :undefined))
+  def map(fun, map)
+      when is_map(map) and
+             is_function(fun, 2) do
+    :maps.from_list(map_1(fun, next(iterator(map)), :undefined))
   end
 
   def map(fun, iter) when is_function(fun, 2) do
     errorTag = make_ref()
+
     try do
       map_1(fun, try_next(iter, errorTag), errorTag)
     catch
@@ -385,8 +407,7 @@ defmodule :m_maps do
   end
 
   defp map_1(fun, {k, v, iter}, errorTag) do
-    [{k, fun.(k, v)} | map_1(fun, try_next(iter, errorTag),
-                               errorTag)]
+    [{k, fun.(k, v)} | map_1(fun, try_next(iter, errorTag), errorTag)]
   end
 
   defp map_1(_Fun, :none, _ErrorTag) do
@@ -416,22 +437,25 @@ defmodule :m_maps do
 
   def iterator(m, :ordered) when is_map(m) do
     cmpFun = fn a, b ->
-                  :erts_internal.cmp_term(a, b) <= 0
-             end
+      :erts_internal.cmp_term(a, b) <= 0
+    end
+
     keys = :lists.sort(cmpFun, :maps.keys(m))
     [keys | m]
   end
 
   def iterator(m, :reversed) when is_map(m) do
     cmpFun = fn a, b ->
-                  :erts_internal.cmp_term(b, a) <= 0
-             end
+      :erts_internal.cmp_term(b, a) <= 0
+    end
+
     keys = :lists.sort(cmpFun, :maps.keys(m))
     [keys | m]
   end
 
-  def iterator(m, cmpFun) when (is_map(m) and
-                            is_function(cmpFun, 2)) do
+  def iterator(m, cmpFun)
+      when is_map(m) and
+             is_function(cmpFun, 2) do
     keys = :lists.sort(cmpFun, :maps.keys(m))
     [keys | m]
   end
@@ -445,8 +469,9 @@ defmodule :m_maps do
   end
 
   def next([path | map] = iterator)
-      when (is_integer(path) or is_list(path) and
-              is_map(map)) do
+      when is_integer(path) or
+             (is_list(path) and
+                is_map(map)) do
     try do
       :erts_internal.map_next(path, map, :iterator)
     catch
@@ -466,7 +491,7 @@ defmodule :m_maps do
     badarg_with_info([iter])
   end
 
-  def without(ks, m) when (is_list(ks) and is_map(m)) do
+  def without(ks, m) when is_list(ks) and is_map(m) do
     :lists.foldl(&:maps.remove/2, m, ks)
   end
 
@@ -474,7 +499,7 @@ defmodule :m_maps do
     error_with_info(error_type(m), [ks, m])
   end
 
-  def with(ks, map1) when (is_list(ks) and is_map(map1)) do
+  def with(ks, map1) when is_list(ks) and is_map(map1) do
     :maps.from_list(with_1(ks, map1))
   end
 
@@ -483,9 +508,10 @@ defmodule :m_maps do
   end
 
   defp with_1([k | ks], map) do
-    case (map) do
+    case map do
       %{^k => v} ->
         [{k, v} | with_1(ks, map)]
+
       %{} ->
         with_1(ks, map)
     end
@@ -513,12 +539,16 @@ defmodule :m_maps do
 
   defp groups_from_list_1(fun, [h | tail], acc) do
     k = fun.(h)
-    newAcc = (case (acc) do
-                %{^k => vs} ->
-                  %{acc | k => [h | vs]}
-                %{} ->
-                  Map.put(acc, k, [h])
-              end)
+
+    newAcc =
+      case acc do
+        %{^k => vs} ->
+          %{acc | k => [h | vs]}
+
+        %{} ->
+          Map.put(acc, k, [h])
+      end
+
     groups_from_list_1(fun, tail, newAcc)
   end
 
@@ -526,9 +556,12 @@ defmodule :m_maps do
     acc
   end
 
-  def groups_from_list(fun, valueFun, list0) when (is_function(fun,
-                                                   1) and
-                                       is_function(valueFun, 1)) do
+  def groups_from_list(fun, valueFun, list0)
+      when is_function(
+             fun,
+             1
+           ) and
+             is_function(valueFun, 1) do
     try do
       :lists.reverse(list0)
     catch
@@ -547,12 +580,16 @@ defmodule :m_maps do
   defp groups_from_list_2(fun, valueFun, [h | tail], acc) do
     k = fun.(h)
     v = valueFun.(h)
-    newAcc = (case (acc) do
-                %{^k => vs} ->
-                  %{acc | k => [v | vs]}
-                %{} ->
-                  Map.put(acc, k, [v])
-              end)
+
+    newAcc =
+      case acc do
+        %{^k => vs} ->
+          %{acc | k => [v | vs]}
+
+        %{} ->
+          Map.put(acc, k, [v])
+      end
+
     groups_from_list_2(fun, valueFun, tail, newAcc)
   end
 
@@ -576,8 +613,11 @@ defmodule :m_maps do
     {:badmap, m1}
   end
 
-  defp error_type_merge_intersect(m1, m2, combiner) when is_function(combiner,
-                                               3) do
+  defp error_type_merge_intersect(m1, m2, combiner)
+       when is_function(
+              combiner,
+              3
+            ) do
     error_type_two_maps(m1, m2)
   end
 
@@ -586,13 +626,11 @@ defmodule :m_maps do
   end
 
   defp badarg_with_info(args) do
-    :erlang.error(:badarg, args,
-                    [{:error_info, %{module: :erl_stdlib_errors}}])
+    :erlang.error(:badarg, args, [{:error_info, %{module: :erl_stdlib_errors}}])
   end
 
   defp error_with_info(reason, args) do
-    :erlang.error(reason, args,
-                    [{:error_info, %{module: :erl_stdlib_errors}}])
+    :erlang.error(reason, args, [{:error_info, %{module: :erl_stdlib_errors}}])
   end
 
   def is_iterator_valid(iter) do
@@ -637,5 +675,4 @@ defmodule :m_maps do
         :erlang.error(errorTag)
     end
   end
-
 end

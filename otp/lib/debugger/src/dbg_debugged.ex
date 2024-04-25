@@ -1,5 +1,6 @@
 defmodule :m_dbg_debugged do
   use Bitwise
+
   def eval(mod, func, args) do
     meta = :dbg_ieval.eval(mod, func, args)
     mref = :erlang.monitor(:process, meta)
@@ -10,28 +11,37 @@ defmodule :m_dbg_debugged do
     receive do
       {:sys, ^meta, {:ready, val}} ->
         :erlang.demonitor(mref, [:flush])
-        case (val) do
+
+        case val do
           {:dbg_apply, m, f, a} ->
             apply(m, f, a)
+
           _ ->
             val
         end
-      {:sys, ^meta,
-         {:exception, {class, reason, stacktrace}}} ->
+
+      {:sys, ^meta, {:exception, {class, reason, stacktrace}}} ->
         :erlang.demonitor(mref, [:flush])
-        :erlang.error(:erlang.raise(class, reason, stacktrace),
-                        [class, reason, stacktrace])
+
+        :erlang.error(
+          :erlang.raise(class, reason, stacktrace),
+          [class, reason, stacktrace]
+        )
+
       {:sys, ^meta, {:receive, msg}} ->
         receive do
           ^msg ->
             send(meta, {self(), :rec_acked})
             :ok
         end
+
         msg_loop(meta, mref)
+
       {:sys, ^meta, {:command, command}} ->
         reply = handle_command(command)
         send(meta, {:sys, self(), reply})
         msg_loop(meta, mref)
+
       {:DOWN, ^mref, _, _, reason} ->
         {:interpreter_terminated, reason}
     end
@@ -42,8 +52,7 @@ defmodule :m_dbg_debugged do
       reply(command)
     catch
       class, reason ->
-        {:exception,
-           {class, reason, stacktrace_f(__STACKTRACE__)}}
+        {:exception, {class, reason, stacktrace_f(__STACKTRACE__)}}
     end
   end
 
@@ -66,5 +75,4 @@ defmodule :m_dbg_debugged do
   defp stacktrace_f([f | s]) do
     [f | stacktrace_f(s)]
   end
-
 end

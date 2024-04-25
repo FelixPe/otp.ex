@@ -1,27 +1,57 @@
 defmodule :m_edoc_report do
   use Bitwise
   require Record
-  Record.defrecord(:r_doclet_context, :doclet_context, dir: '',
-                                          env: :undefined, opts: [])
-  Record.defrecord(:r_doclet_gen, :doclet_gen, sources: [],
-                                      app: :no_app, modules: [])
-  Record.defrecord(:r_doclet_toc, :doclet_toc, paths: :undefined,
-                                      indir: :undefined)
-  Record.defrecord(:r_module, :module, name: [],
-                                  parameters: :none, functions: [], exports: [],
-                                  attributes: [], records: [],
-                                  encoding: :latin1, file: :undefined)
-  Record.defrecord(:r_env, :env, module: [], root: '',
-                               file_suffix: :undefined, apps: :undefined,
-                               modules: :undefined, app_default: :undefined,
-                               macros: [], includes: [])
-  Record.defrecord(:r_comment, :comment, line: 0,
-                                   text: :undefined)
-  Record.defrecord(:r_entry, :entry, name: :undefined, args: [],
-                                 line: 0, export: :undefined, data: :undefined)
-  Record.defrecord(:r_tag, :tag, name: :undefined, line: 0,
-                               origin: :comment, data: :undefined,
-                               form: :undefined)
+  Record.defrecord(:r_doclet_context, :doclet_context, dir: ~c"", env: :undefined, opts: [])
+  Record.defrecord(:r_doclet_gen, :doclet_gen, sources: [], app: :no_app, modules: [])
+
+  Record.defrecord(:r_doclet_toc, :doclet_toc,
+    paths: :undefined,
+    indir: :undefined
+  )
+
+  Record.defrecord(:r_module, :module,
+    name: [],
+    parameters: :none,
+    functions: [],
+    exports: [],
+    attributes: [],
+    records: [],
+    encoding: :latin1,
+    file: :undefined
+  )
+
+  Record.defrecord(:r_env, :env,
+    module: [],
+    root: ~c"",
+    file_suffix: :undefined,
+    apps: :undefined,
+    modules: :undefined,
+    app_default: :undefined,
+    macros: [],
+    includes: []
+  )
+
+  Record.defrecord(:r_comment, :comment,
+    line: 0,
+    text: :undefined
+  )
+
+  Record.defrecord(:r_entry, :entry,
+    name: :undefined,
+    args: [],
+    line: 0,
+    export: :undefined,
+    data: :undefined
+  )
+
+  Record.defrecord(:r_tag, :tag,
+    name: :undefined,
+    line: 0,
+    origin: :comment,
+    data: :undefined,
+    form: :undefined
+  )
+
   def error(what) do
     :erlang.error([], what)
   end
@@ -55,7 +85,7 @@ defmodule :m_edoc_report do
   end
 
   def warning(l, where, s, vs) do
-    report(l, where, 'warning: ' ++ s, vs)
+    report(l, where, ~c"warning: " ++ s, vs)
   end
 
   def report(s, vs) do
@@ -68,38 +98,40 @@ defmodule :m_edoc_report do
 
   def report(l, where, s, vs) do
     :io.put_chars(where(where))
+
     cond do
-      (is_integer(l) and l > 0) ->
-        :io.fwrite('at line ~w: ', [l])
+      is_integer(l) and l > 0 ->
+        :io.fwrite(~c"at line ~w: ", [l])
+
       true ->
         :ok
     end
+
     :io.fwrite(s, vs)
     :io.nl()
   end
 
   defp where({file, :module}) do
-    :io_lib.fwrite('~ts, in module header: ', [file])
+    :io_lib.fwrite(~c"~ts, in module header: ", [file])
   end
 
   defp where({file, :footer}) do
-    :io_lib.fwrite('~ts, in module footer: ', [file])
+    :io_lib.fwrite(~c"~ts, in module footer: ", [file])
   end
 
   defp where({file, :header}) do
-    :io_lib.fwrite('~ts, in header file: ', [file])
+    :io_lib.fwrite(~c"~ts, in header file: ", [file])
   end
 
   defp where({file, {f, a}}) do
-    :io_lib.fwrite('~ts, function ~ts/~w: ', [file, f, a])
+    :io_lib.fwrite(~c"~ts, function ~ts/~w: ", [file, f, a])
   end
 
   defp where([]) do
-    :io_lib.fwrite('~s: ', [:edoc])
+    :io_lib.fwrite(~c"~s: ", [:edoc])
   end
 
   defp where(file) when is_list(file) do
-    file ++ ': '
+    file ++ ~c": "
   end
-
 end

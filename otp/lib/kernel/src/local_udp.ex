@@ -2,21 +2,37 @@ defmodule :m_local_udp do
   use Bitwise
   import Kernel, except: [send: 2]
   require Record
-  Record.defrecord(:r_connect_opts, :connect_opts, ifaddr: :undefined,
-                                        port: 0, fd: - 1, opts: [])
-  Record.defrecord(:r_listen_opts, :listen_opts, ifaddr: :undefined,
-                                       port: 0, backlog: 5, fd: - 1, opts: [])
-  Record.defrecord(:r_udp_opts, :udp_opts, ifaddr: :undefined,
-                                    port: 0, fd: - 1, opts: [{:active, true}])
-  Record.defrecord(:r_sctp_opts, :sctp_opts, ifaddr: :undefined,
-                                     port: 0, fd: - 1, type: :seqpacket,
-                                     opts: [{:mode, :binary}, {:buffer, 65536},
-                                                                  {:sndbuf,
-                                                                     65536},
-                                                                      {:recbuf,
-                                                                         1024},
-                                                                          {:sctp_events,
-                                                                             :undefined}])
+  Record.defrecord(:r_connect_opts, :connect_opts, ifaddr: :undefined, port: 0, fd: -1, opts: [])
+
+  Record.defrecord(:r_listen_opts, :listen_opts,
+    ifaddr: :undefined,
+    port: 0,
+    backlog: 5,
+    fd: -1,
+    opts: []
+  )
+
+  Record.defrecord(:r_udp_opts, :udp_opts,
+    ifaddr: :undefined,
+    port: 0,
+    fd: -1,
+    opts: [{:active, true}]
+  )
+
+  Record.defrecord(:r_sctp_opts, :sctp_opts,
+    ifaddr: :undefined,
+    port: 0,
+    fd: -1,
+    type: :seqpacket,
+    opts: [
+      {:mode, :binary},
+      {:buffer, 65536},
+      {:sndbuf, 65536},
+      {:recbuf, 1024},
+      {:sctp_events, :undefined}
+    ]
+  )
+
   def getserv(0) do
     {:ok, 0}
   end
@@ -46,17 +62,19 @@ defmodule :m_local_udp do
   end
 
   def open(0, opts) do
-    case (:inet.udp_options([{:port, 0} | opts],
-                              :local_udp)) do
+    case :inet.udp_options(
+           [{:port, 0} | opts],
+           :local_udp
+         ) do
       {:error, reason} ->
         exit(reason)
+
       {:ok, r_udp_opts(fd: fd, ifaddr: bAddr, port: 0, opts: sockOpts)}
-          when (tuple_size(bAddr) === 2 and
-                  :erlang.element(1, bAddr) === :local) or
-                 bAddr === :undefined
-               ->
-        :inet.open(fd, bAddr, 0, sockOpts, :udp, :local, :dgram,
-                     :local_udp)
+      when (tuple_size(bAddr) === 2 and
+              :erlang.element(1, bAddr) === :local) or
+             bAddr === :undefined ->
+        :inet.open(fd, bAddr, 0, sockOpts, :udp, :local, :dgram, :local_udp)
+
       {:ok, _} ->
         exit(:badarg)
     end
@@ -98,5 +116,4 @@ defmodule :m_local_udp do
   def fdopen(fd, opts) do
     :inet.fdopen(fd, opts, :udp, :local, :dgram, :local_udp)
   end
-
 end

@@ -1,8 +1,12 @@
 defmodule :m_yeccparser do
   use Bitwise
   require Record
-  Record.defrecord(:r_symbol, :symbol, anno: :undefined,
-                                  name: :undefined)
+
+  Record.defrecord(:r_symbol, :symbol,
+    anno: :undefined,
+    name: :undefined
+  )
+
   defp symbol(symbol) do
     r_symbol(anno: anno_of(symbol), name: value_of(symbol))
   end
@@ -25,15 +29,14 @@ defmodule :m_yeccparser do
 
   def parse_and_scan({m, f, a}) do
     arity = length(a)
-    yeccpars0([],
-                {{Function.capture(m, f, arity), a}, :no_location}, 0,
-                [], [])
+    yeccpars0([], {{Function.capture(m, f, arity), a}, :no_location}, 0, [], [])
   end
 
   def format_error(message) do
-    case (:io_lib.deep_char_list(message)) do
+    case :io_lib.deep_char_list(message) do
       true ->
         message
+
       _ ->
         :io_lib.write(message)
     end
@@ -55,88 +58,101 @@ defmodule :m_yeccparser do
             :erlang.raise(:error, error, __STACKTRACE__)
         else
           desc ->
-            :erlang.raise(:error, {:yecc_bug, '1.4', desc},
-                            __STACKTRACE__)
+            :erlang.raise(:error, {:yecc_bug, ~c"1.4", desc}, __STACKTRACE__)
         end
+
       {:error, {_Location, :yeccparser, _M}} = error ->
         error
     end
   end
 
-  defp yecc_error_type(:function_clause,
-            [{:yeccparser, f, arityOrArgs, _} | _]) do
-    case (:erlang.atom_to_list(f)) do
-      'yeccgoto_' ++ symbolL ->
-        {:ok, [{:atom, _, symbol}],
-           _} = :erl_scan.string(symbolL)
-        state = (case (arityOrArgs) do
-                   [s, _, _, _, _, _, _] ->
-                     s
-                   _ ->
-                     :state_is_unknown
-                 end)
+  defp yecc_error_type(
+         :function_clause,
+         [{:yeccparser, f, arityOrArgs, _} | _]
+       ) do
+    case :erlang.atom_to_list(f) do
+      ~c"yeccgoto_" ++ symbolL ->
+        {:ok, [{:atom, _, symbol}], _} = :erl_scan.string(symbolL)
+
+        state =
+          case arityOrArgs do
+            [s, _, _, _, _, _, _] ->
+              s
+
+            _ ->
+              :state_is_unknown
+          end
+
         {symbol, state, :missing_in_goto_table}
     end
   end
 
   defp yeccpars1([token | tokens], tzr, state, states, vstack) do
-    yeccpars2(state, :erlang.element(1, token), states,
-                vstack, token, tokens, tzr)
+    yeccpars2(state, :erlang.element(1, token), states, vstack, token, tokens, tzr)
   end
 
-  defp yeccpars1([], {{f, a}, _Location}, state, states,
-            vstack) do
-    case (apply(f, a)) do
+  defp yeccpars1([], {{f, a}, _Location}, state, states, vstack) do
+    case apply(f, a) do
       {:ok, tokens, endLocation} ->
-        yeccpars1(tokens, {{f, a}, endLocation}, state, states,
-                    vstack)
+        yeccpars1(tokens, {{f, a}, endLocation}, state, states, vstack)
+
       {:eof, endLocation} ->
-        yeccpars1([], {:no_func, endLocation}, state, states,
-                    vstack)
+        yeccpars1([], {:no_func, endLocation}, state, states, vstack)
+
       {:error, descriptor, _EndLocation} ->
         {:error, descriptor}
     end
   end
 
-  defp yeccpars1([], {:no_func, :no_location}, state, states,
-            vstack) do
-    line = 999999
-    yeccpars2(state, :"$end", states, vstack, yecc_end(line), [],
-                {:no_func, line})
+  defp yeccpars1([], {:no_func, :no_location}, state, states, vstack) do
+    line = 999_999
+    yeccpars2(state, :"$end", states, vstack, yecc_end(line), [], {:no_func, line})
   end
 
-  defp yeccpars1([], {:no_func, endLocation}, state, states,
-            vstack) do
-    yeccpars2(state, :"$end", states, vstack,
-                yecc_end(endLocation), [], {:no_func, endLocation})
+  defp yeccpars1([], {:no_func, endLocation}, state, states, vstack) do
+    yeccpars2(state, :"$end", states, vstack, yecc_end(endLocation), [], {:no_func, endLocation})
   end
 
-  defp yeccpars1(state1, state, states, vstack, token0,
-            [token | tokens], tzr) do
-    yeccpars2(state, :erlang.element(1, token),
-                [state1 | states], [token0 | vstack], token, tokens,
-                tzr)
+  defp yeccpars1(state1, state, states, vstack, token0, [token | tokens], tzr) do
+    yeccpars2(
+      state,
+      :erlang.element(1, token),
+      [state1 | states],
+      [token0 | vstack],
+      token,
+      tokens,
+      tzr
+    )
   end
 
-  defp yeccpars1(state1, state, states, vstack, token0, [],
-            {{_F, _A}, _Location} = tzr) do
-    yeccpars1([], tzr, state, [state1 | states],
-                [token0 | vstack])
+  defp yeccpars1(state1, state, states, vstack, token0, [], {{_F, _A}, _Location} = tzr) do
+    yeccpars1([], tzr, state, [state1 | states], [token0 | vstack])
   end
 
-  defp yeccpars1(state1, state, states, vstack, token0, [],
-            {:no_func, :no_location}) do
+  defp yeccpars1(state1, state, states, vstack, token0, [], {:no_func, :no_location}) do
     location = yecctoken_end_location(token0)
-    yeccpars2(state, :"$end", [state1 | states],
-                [token0 | vstack], yecc_end(location), [],
-                {:no_func, location})
+
+    yeccpars2(
+      state,
+      :"$end",
+      [state1 | states],
+      [token0 | vstack],
+      yecc_end(location),
+      [],
+      {:no_func, location}
+    )
   end
 
-  defp yeccpars1(state1, state, states, vstack, token0, [],
-            {:no_func, location}) do
-    yeccpars2(state, :"$end", [state1 | states],
-                [token0 | vstack], yecc_end(location), [],
-                {:no_func, location})
+  defp yeccpars1(state1, state, states, vstack, token0, [], {:no_func, location}) do
+    yeccpars2(
+      state,
+      :"$end",
+      [state1 | states],
+      [token0 | vstack],
+      yecc_end(location),
+      [],
+      {:no_func, location}
+    )
   end
 
   defp yecc_end(location) do
@@ -152,6 +168,7 @@ defmodule :m_yeccparser do
     else
       :undefined ->
         yecctoken_location(token)
+
       loc ->
         loc
     end
@@ -160,7 +177,7 @@ defmodule :m_yeccparser do
   defp yeccerror(token) do
     text = yecctoken_to_string(token)
     location = yecctoken_location(token)
-    {:error, {location, :yeccparser, ['syntax error before: ', text]}}
+    {:error, {location, :yeccparser, [~c"syntax error before: ", text]}}
   end
 
   defp yecctoken_to_string(token) do
@@ -172,6 +189,7 @@ defmodule :m_yeccparser do
     else
       :undefined ->
         yecctoken2string(token)
+
       txt ->
         txt
     end
@@ -203,7 +221,7 @@ defmodule :m_yeccparser do
   end
 
   defp yecctoken2string({:var, _, v}) do
-    :io_lib.format('~s', [v])
+    :io_lib.format(~c"~s", [v])
   end
 
   defp yecctoken2string({:string, _, s}) do
@@ -215,11 +233,11 @@ defmodule :m_yeccparser do
   end
 
   defp yecctoken2string({_Cat, _, val}) do
-    :io_lib.format('~tp', [val])
+    :io_lib.format(~c"~tp", [val])
   end
 
   defp yecctoken2string({:dot, _}) do
-    '\'.\''
+    ~c"'.'"
   end
 
   defp yecctoken2string({:"$end", _}) do
@@ -231,7 +249,7 @@ defmodule :m_yeccparser do
   end
 
   defp yecctoken2string(other) do
-    :io_lib.format('~tp', [other])
+    :io_lib.format(~c"~tp", [other])
   end
 
   defp yeccpars2(0 = s, cat, ss, stack, t, ts, tzr) do
@@ -319,8 +337,7 @@ defmodule :m_yeccparser do
   end
 
   defp yeccpars2(other, _, _, _, _, _, _) do
-    :erlang.error({:yecc_bug, '1.4',
-                     {:missing_state_in_action_table, other}})
+    :erlang.error({:yecc_bug, ~c"1.4", {:missing_state_in_action_table, other}})
   end
 
   defp yeccpars2_0(s, :atom, ss, stack, t, ts, tzr) do
@@ -373,7 +390,7 @@ defmodule :m_yeccparser do
     yeccgoto_grammar(hd(ss), cat, ss, newStack, t, ts, tzr)
   end
 
-  defp yeccpars2_3(s, :"->", ss, stack, t, ts, tzr) do
+  defp yeccpars2_3(s, :->, ss, stack, t, ts, tzr) do
     yeccpars1(s, 10, ss, stack, t, ts, tzr)
   end
 
@@ -447,8 +464,7 @@ defmodule :m_yeccparser do
   defp yeccpars2_13(_S, cat, ss, stack, t, ts, tzr) do
     [_ | nss] = ss
     newStack = yeccpars2_13_(stack)
-    yeccgoto_symbols(hd(nss), cat, nss, newStack, t, ts,
-                       tzr)
+    yeccgoto_symbols(hd(nss), cat, nss, newStack, t, ts, tzr)
   end
 
   defp yeccpars2_14(s, :dot, ss, stack, t, ts, tzr) do
@@ -459,7 +475,7 @@ defmodule :m_yeccparser do
     yeccerror(t)
   end
 
-  defp yeccpars2_15(s, :"->", ss, stack, t, ts, tzr) do
+  defp yeccpars2_15(s, :->, ss, stack, t, ts, tzr) do
     yeccpars1(s, 18, ss, stack, t, ts, tzr)
   end
 
@@ -506,11 +522,10 @@ defmodule :m_yeccparser do
   defp yeccpars2_16(_S, cat, ss, stack, t, ts, tzr) do
     [_ | nss] = ss
     newStack = yeccpars2_16_(stack)
-    yeccgoto_attached_code(hd(nss), cat, nss, newStack, t,
-                             ts, tzr)
+    yeccgoto_attached_code(hd(nss), cat, nss, newStack, t, ts, tzr)
   end
 
-  defp yeccpars2_17(s, :"->", ss, stack, t, ts, tzr) do
+  defp yeccpars2_17(s, :->, ss, stack, t, ts, tzr) do
     yeccpars1(s, 18, ss, stack, t, ts, tzr)
   end
 
@@ -645,22 +660,19 @@ defmodule :m_yeccparser do
   defp yeccpars2_33(_S, cat, ss, stack, t, ts, tzr) do
     [_ | nss] = ss
     newStack = yeccpars2_33_(stack)
-    yeccgoto_strings(hd(nss), cat, nss, newStack, t, ts,
-                       tzr)
+    yeccgoto_strings(hd(nss), cat, nss, newStack, t, ts, tzr)
   end
 
   defp yeccpars2_34(_S, cat, ss, stack, t, ts, tzr) do
     [_, _ | nss] = ss
     newStack = yeccpars2_34_(stack)
-    yeccgoto_declaration(hd(nss), cat, nss, newStack, t, ts,
-                           tzr)
+    yeccgoto_declaration(hd(nss), cat, nss, newStack, t, ts, tzr)
   end
 
   defp yeccpars2_35(_S, cat, ss, stack, t, ts, tzr) do
     [_, _ | nss] = ss
     newStack = yeccpars2_35_(stack)
-    yeccgoto_declaration(hd(nss), cat, nss, newStack, t, ts,
-                           tzr)
+    yeccgoto_declaration(hd(nss), cat, nss, newStack, t, ts, tzr)
   end
 
   defp yeccgoto_attached_code(11, cat, ss, stack, t, ts, tzr) do
@@ -737,226 +749,252 @@ defmodule :m_yeccparser do
 
   defp yeccpars2_1_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       ___1
-     ) |
-         __Stack]
+
+    [
+      ___1
+      | __Stack
+    ]
   end
 
   defp yeccpars2_2_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       ___1
-     ) |
-         __Stack]
+
+    [
+      ___1
+      | __Stack
+    ]
   end
 
   defp yeccpars2_5_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       ___1
-     ) |
-         __Stack]
+
+    [
+      ___1
+      | __Stack
+    ]
   end
 
   defp yeccpars2_6_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       symbol(___1)
-     ) |
-         __Stack]
+
+    [
+      symbol(___1)
+      | __Stack
+    ]
   end
 
   defp yeccpars2_7_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       symbol(___1)
-     ) |
-         __Stack]
+
+    [
+      symbol(___1)
+      | __Stack
+    ]
   end
 
   defp yeccpars2_8_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       symbol(___1)
-     ) |
-         __Stack]
+
+    [
+      symbol(___1)
+      | __Stack
+    ]
   end
 
   defp yeccpars2_9_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       symbol(___1)
-     ) |
-         __Stack]
+
+    [
+      symbol(___1)
+      | __Stack
+    ]
   end
 
   defp yeccpars2_11_(__Stack0) do
-    [(
-       {:erlang_code,
-          [{:atom, :erl_anno.set_text('\'$undefined\'', :erl_anno.new(0)), :"$undefined"}]}
-     ) |
-         __Stack0]
+    [
+      {:erlang_code,
+       [{:atom, :erl_anno.set_text(~c"'$undefined'", :erl_anno.new(0)), :"$undefined"}]}
+      | __Stack0
+    ]
   end
 
   defp yeccpars2_12_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       [___1]
-     ) |
-         __Stack]
+
+    [
+      [___1]
+      | __Stack
+    ]
   end
 
   defp yeccpars2_13_(__Stack0) do
     [___2, ___1 | __Stack] = __Stack0
-    [(
-       [___1 | ___2]
-     ) |
-         __Stack]
+
+    [
+      [___1 | ___2]
+      | __Stack
+    ]
   end
 
   defp yeccpars2_16_(__Stack0) do
     [___2, ___1 | __Stack] = __Stack0
-    [(
-       {:erlang_code, ___2}
-     ) |
-         __Stack]
+
+    [
+      {:erlang_code, ___2}
+      | __Stack
+    ]
   end
 
   defp yeccpars2_17_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       [___1]
-     ) |
-         __Stack]
+
+    [
+      [___1]
+      | __Stack
+    ]
   end
 
   defp yeccpars2_18_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       {:"->", anno_of(___1)}
-     ) |
-         __Stack]
+
+    [
+      {:->, anno_of(___1)}
+      | __Stack
+    ]
   end
 
   defp yeccpars2_19_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       {:":", anno_of(___1)}
-     ) |
-         __Stack]
+
+    [
+      {:":", anno_of(___1)}
+      | __Stack
+    ]
   end
 
   defp yeccpars2_20_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       ___1
-     ) |
-         __Stack]
+
+    [
+      ___1
+      | __Stack
+    ]
   end
 
   defp yeccpars2_21_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       ___1
-     ) |
-         __Stack]
+
+    [
+      ___1
+      | __Stack
+    ]
   end
 
   defp yeccpars2_22_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       ___1
-     ) |
-         __Stack]
+
+    [
+      ___1
+      | __Stack
+    ]
   end
 
   defp yeccpars2_23_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       ___1
-     ) |
-         __Stack]
+
+    [
+      ___1
+      | __Stack
+    ]
   end
 
   defp yeccpars2_24_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       {value_of(___1), anno_of(___1)}
-     ) |
-         __Stack]
+
+    [
+      {value_of(___1), anno_of(___1)}
+      | __Stack
+    ]
   end
 
   defp yeccpars2_25_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       {value_of(___1), anno_of(___1)}
-     ) |
-         __Stack]
+
+    [
+      {value_of(___1), anno_of(___1)}
+      | __Stack
+    ]
   end
 
   defp yeccpars2_26_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       ___1
-     ) |
-         __Stack]
+
+    [
+      ___1
+      | __Stack
+    ]
   end
 
   defp yeccpars2_27_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       ___1
-     ) |
-         __Stack]
+
+    [
+      ___1
+      | __Stack
+    ]
   end
 
   defp yeccpars2_28_(__Stack0) do
     [___2, ___1 | __Stack] = __Stack0
-    [(
-       [___1 | ___2]
-     ) |
-         __Stack]
+
+    [
+      [___1 | ___2]
+      | __Stack
+    ]
   end
 
   defp yeccpars2_29_(__Stack0) do
     [___5, ___4, ___3, ___2, ___1 | __Stack] = __Stack0
-    [(
-       {:rule, [___1 | ___3], ___4}
-     ) |
-         __Stack]
+
+    [
+      {:rule, [___1 | ___3], ___4}
+      | __Stack
+    ]
   end
 
   defp yeccpars2_32_(__Stack0) do
     [___1 | __Stack] = __Stack0
-    [(
-       [___1]
-     ) |
-         __Stack]
+
+    [
+      [___1]
+      | __Stack
+    ]
   end
 
   defp yeccpars2_33_(__Stack0) do
     [___2, ___1 | __Stack] = __Stack0
-    [(
-       [___1 | ___2]
-     ) |
-         __Stack]
+
+    [
+      [___1 | ___2]
+      | __Stack
+    ]
   end
 
   defp yeccpars2_34_(__Stack0) do
     [___3, ___2, ___1 | __Stack] = __Stack0
-    [(
-       {___1, ___2}
-     ) |
-         __Stack]
+
+    [
+      {___1, ___2}
+      | __Stack
+    ]
   end
 
   defp yeccpars2_35_(__Stack0) do
     [___3, ___2, ___1 | __Stack] = __Stack0
-    [(
-       {___1, ___2}
-     ) |
-         __Stack]
-  end
 
+    [
+      {___1, ___2}
+      | __Stack
+    ]
+  end
 end

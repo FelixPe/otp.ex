@@ -1,10 +1,18 @@
 defmodule :m_dict do
   use Bitwise
   require Record
-  Record.defrecord(:r_dict, :dict, size: 0, n: 16, maxn: 16,
-                                bso: div(16, 2), exp_size: 16 * 5,
-                                con_size: 16 * 3, empty: :undefined,
-                                segs: :undefined)
+
+  Record.defrecord(:r_dict, :dict,
+    size: 0,
+    n: 16,
+    maxn: 16,
+    bso: div(16, 2),
+    exp_size: 16 * 5,
+    con_size: 16 * 3,
+    empty: :undefined,
+    segs: :undefined
+  )
+
   def new() do
     empty = mk_seg(16)
     r_dict(empty: empty, segs: {empty})
@@ -29,20 +37,26 @@ defmodule :m_dict do
   end
 
   def to_list(d) do
-    fold(fn key, val, list ->
-              [{key, val} | list]
-         end,
-           [], d)
+    fold(
+      fn key, val, list ->
+        [{key, val} | list]
+      end,
+      [],
+      d
+    )
   end
 
   def from_list(l) do
-    :lists.foldl(fn {k, v}, d ->
-                      store(k, v, d)
-                 end,
-                   new(), l)
+    :lists.foldl(
+      fn {k, v}, d ->
+        store(k, v, d)
+      end,
+      new(),
+      l
+    )
   end
 
-  def size(r_dict(size: n)) when (is_integer(n) and n >= 0) do
+  def size(r_dict(size: n)) when is_integer(n) and n >= 0 do
     n
   end
 
@@ -53,6 +67,7 @@ defmodule :m_dict do
   def fetch(key, d) do
     slot = get_slot(d, key)
     bkt = get_bucket(d, slot)
+
     try do
       fetch_val(key, bkt)
     catch
@@ -92,18 +107,27 @@ defmodule :m_dict do
   end
 
   def fetch_keys(d) do
-    fold(fn key, _Val, keys ->
-              [key | keys]
-         end,
-           [], d)
+    fold(
+      fn key, _Val, keys ->
+        [key | keys]
+      end,
+      [],
+      d
+    )
   end
 
   def erase(key, d0) do
     slot = get_slot(d0, key)
-    {d1, dc} = on_bucket(fn b0 ->
-                              erase_key(key, b0)
-                         end,
-                           d0, slot)
+
+    {d1, dc} =
+      on_bucket(
+        fn b0 ->
+          erase_key(key, b0)
+        end,
+        d0,
+        slot
+      )
+
     maybe_contract(d1, dc)
   end
 
@@ -122,12 +146,17 @@ defmodule :m_dict do
 
   def take(key, d0) do
     slot = get_slot(d0, key)
-    case (on_bucket(fn b0 ->
-                         take_key(key, b0)
-                    end,
-                      d0, slot)) do
+
+    case on_bucket(
+           fn b0 ->
+             take_key(key, b0)
+           end,
+           d0,
+           slot
+         ) do
       {d1, {value, dc}} ->
         {value, maybe_contract(d1, dc)}
+
       {_, :error} ->
         :error
     end
@@ -148,10 +177,16 @@ defmodule :m_dict do
 
   def store(key, val, d0) do
     slot = get_slot(d0, key)
-    {d1, ic} = on_bucket(fn b0 ->
-                              store_bkt_val(key, val, b0)
-                         end,
-                           d0, slot)
+
+    {d1, ic} =
+      on_bucket(
+        fn b0 ->
+          store_bkt_val(key, val, b0)
+        end,
+        d0,
+        slot
+      )
+
     maybe_expand(d1, ic)
   end
 
@@ -170,10 +205,16 @@ defmodule :m_dict do
 
   def append(key, val, d0) do
     slot = get_slot(d0, key)
-    {d1, ic} = on_bucket(fn b0 ->
-                              append_bkt(key, val, b0)
-                         end,
-                           d0, slot)
+
+    {d1, ic} =
+      on_bucket(
+        fn b0 ->
+          append_bkt(key, val, b0)
+        end,
+        d0,
+        slot
+      )
+
     maybe_expand(d1, ic)
   end
 
@@ -192,10 +233,16 @@ defmodule :m_dict do
 
   def append_list(key, l, d0) do
     slot = get_slot(d0, key)
-    {d1, ic} = on_bucket(fn b0 ->
-                              app_list_bkt(key, l, b0)
-                         end,
-                           d0, slot)
+
+    {d1, ic} =
+      on_bucket(
+        fn b0 ->
+          app_list_bkt(key, l, b0)
+        end,
+        d0,
+        slot
+      )
+
     maybe_expand(d1, ic)
   end
 
@@ -214,11 +261,15 @@ defmodule :m_dict do
 
   def update(key, f, d0) do
     slot = get_slot(d0, key)
+
     try do
-      on_bucket(fn b0 ->
-                     update_bkt(key, f, b0)
-                end,
-                  d0, slot)
+      on_bucket(
+        fn b0 ->
+          update_bkt(key, f, b0)
+        end,
+        d0,
+        slot
+      )
     catch
       :badarg ->
         :erlang.error(:badarg, [key, f, d0])
@@ -244,10 +295,16 @@ defmodule :m_dict do
 
   def update(key, f, init, d0) do
     slot = get_slot(d0, key)
-    {d1, ic} = on_bucket(fn b0 ->
-                              update_bkt(key, f, init, b0)
-                         end,
-                           d0, slot)
+
+    {d1, ic} =
+      on_bucket(
+        fn b0 ->
+          update_bkt(key, f, init, b0)
+        end,
+        d0,
+        slot
+      )
+
     maybe_expand(d1, ic)
   end
 
@@ -266,10 +323,16 @@ defmodule :m_dict do
 
   def update_counter(key, incr, d0) when is_number(incr) do
     slot = get_slot(d0, key)
-    {d1, ic} = on_bucket(fn b0 ->
-                              counter_bkt(key, incr, b0)
-                         end,
-                           d0, slot)
+
+    {d1, ic} =
+      on_bucket(
+        fn b0 ->
+          counter_bkt(key, incr, b0)
+        end,
+        d0,
+        slot
+      )
+
     maybe_expand(d1, ic)
   end
 
@@ -299,32 +362,46 @@ defmodule :m_dict do
   end
 
   def merge(f, d1, d2) when r_dict(d1, :size) < r_dict(d2, :size) do
-    fold_dict(fn k, v1, d ->
-                   update(k,
-                            fn v2 ->
-                                 f.(k, v1, v2)
-                            end,
-                            v1, d)
-              end,
-                d2, d1)
+    fold_dict(
+      fn k, v1, d ->
+        update(
+          k,
+          fn v2 ->
+            f.(k, v1, v2)
+          end,
+          v1,
+          d
+        )
+      end,
+      d2,
+      d1
+    )
   end
 
   def merge(f, d1, d2) do
-    fold_dict(fn k, v2, d ->
-                   update(k,
-                            fn v1 ->
-                                 f.(k, v1, v2)
-                            end,
-                            v2, d)
-              end,
-                d1, d2)
+    fold_dict(
+      fn k, v2, d ->
+        update(
+          k,
+          fn v1 ->
+            f.(k, v1, v2)
+          end,
+          v2,
+          d
+        )
+      end,
+      d1,
+      d2
+    )
   end
 
   defp get_slot(t, key) do
     h = :erlang.phash(key, r_dict(t, :maxn))
+
     cond do
       h > r_dict(t, :n) ->
         h - r_dict(t, :bso)
+
       true ->
         h
     end
@@ -341,9 +418,7 @@ defmodule :m_dict do
     seg = :erlang.element(segI, segs)
     b0 = :erlang.element(bktI, seg)
     {b1, res} = f.(b0)
-    {r_dict(t, segs: :erlang.setelement(segI, segs,
-                                     :erlang.setelement(bktI, seg, b1))),
-       res}
+    {r_dict(t, segs: :erlang.setelement(segI, segs, :erlang.setelement(bktI, seg, b1))), res}
   end
 
   defp fold_dict(f, acc, r_dict(size: 0)) when is_function(f, 3) do
@@ -357,8 +432,7 @@ defmodule :m_dict do
 
   defp fold_segs(f, acc, segs, i) when i >= 1 do
     seg = :erlang.element(i, segs)
-    fold_segs(f, fold_seg(f, acc, seg, tuple_size(seg)),
-                segs, i - 1)
+    fold_segs(f, fold_seg(f, acc, seg, tuple_size(seg)), segs, i - 1)
   end
 
   defp fold_segs(f, acc, _, 0) when is_function(f, 3) do
@@ -366,9 +440,7 @@ defmodule :m_dict do
   end
 
   defp fold_seg(f, acc, seg, i) when i >= 1 do
-    fold_seg(f,
-               fold_bucket(f, acc, :erlang.element(i, seg)), seg,
-               i - 1)
+    fold_seg(f, fold_bucket(f, acc, :erlang.element(i, seg)), seg, i - 1)
   end
 
   defp fold_seg(f, acc, _, 0) when is_function(f, 3) do
@@ -426,15 +498,17 @@ defmodule :m_dict do
   defp filter_dict(f, d) do
     segs0 = :erlang.tuple_to_list(r_dict(d, :segs))
     {segs1, fc} = filter_seg_list(f, segs0, [], 0)
-    maybe_contract(r_dict(d, segs: :erlang.list_to_tuple(segs1)),
-                     fc)
+
+    maybe_contract(
+      r_dict(d, segs: :erlang.list_to_tuple(segs1)),
+      fc
+    )
   end
 
   defp filter_seg_list(f, [seg | segs], fss, fc0) do
     bkts0 = :erlang.tuple_to_list(seg)
     {bkts1, fc1} = filter_bkt_list(f, bkts0, [], fc0)
-    filter_seg_list(f, segs,
-                      [:erlang.list_to_tuple(bkts1) | fss], fc1)
+    filter_seg_list(f, segs, [:erlang.list_to_tuple(bkts1) | fss], fc1)
   end
 
   defp filter_seg_list(f, [], fss, fc) when is_function(f, 2) do
@@ -451,9 +525,10 @@ defmodule :m_dict do
   end
 
   defp filter_bucket(f, [[key | val] = e | bkt], fb, fc) do
-    case (f.(key, val)) do
+    case f.(key, val) do
       true ->
         filter_bucket(f, bkt, [e | fb], fc)
+
       false ->
         filter_bucket(f, bkt, fb, fc + 1)
     end
@@ -472,8 +547,7 @@ defmodule :m_dict do
   defp put_bucket_s(segs, slot, bkt) do
     segI = div(slot - 1, 16) + 1
     bktI = rem(slot - 1, 16) + 1
-    seg = :erlang.setelement(bktI,
-                               :erlang.element(segI, segs), bkt)
+    seg = :erlang.setelement(bktI, :erlang.element(segI, segs), bkt)
     :erlang.setelement(segI, segs, seg)
   end
 
@@ -486,7 +560,7 @@ defmodule :m_dict do
   end
 
   defp maybe_expand_aux(t0, ic)
-      when r_dict(t0, :size) + ic > r_dict(t0, :exp_size) do
+       when r_dict(t0, :size) + ic > r_dict(t0, :exp_size) do
     t = maybe_expand_segs(t0)
     n = r_dict(t, :n) + 1
     segs0 = r_dict(t, :segs)
@@ -496,8 +570,7 @@ defmodule :m_dict do
     [b1 | b2] = rehash(b, slot1, slot2, r_dict(t, :maxn))
     segs1 = put_bucket_s(segs0, slot1, b1)
     segs2 = put_bucket_s(segs1, slot2, b2)
-    r_dict(t, size: r_dict(t, :size) + ic,  n: n,  exp_size: n * 5, 
-           con_size: n * 3,  segs: segs2)
+    r_dict(t, size: r_dict(t, :size) + ic, n: n, exp_size: n * 5, con_size: n * 3, segs: segs2)
   end
 
   defp maybe_expand_aux(t, ic) do
@@ -505,8 +578,11 @@ defmodule :m_dict do
   end
 
   defp maybe_expand_segs(t) when r_dict(t, :n) === r_dict(t, :maxn) do
-    r_dict(t, maxn: 2 * r_dict(t, :maxn),  bso: 2 * r_dict(t, :bso), 
-           segs: expand_segs(r_dict(t, :segs), r_dict(t, :empty)))
+    r_dict(t,
+      maxn: 2 * r_dict(t, :maxn),
+      bso: 2 * r_dict(t, :bso),
+      segs: expand_segs(r_dict(t, :segs), r_dict(t, :empty))
+    )
   end
 
   defp maybe_expand_segs(t) do
@@ -514,8 +590,8 @@ defmodule :m_dict do
   end
 
   defp maybe_contract(t, dc)
-      when (r_dict(t, :size) - dc < r_dict(t, :con_size) and
-              r_dict(t, :n) > 16) do
+       when r_dict(t, :size) - dc < r_dict(t, :con_size) and
+              r_dict(t, :n) > 16 do
     n = r_dict(t, :n)
     slot1 = n - r_dict(t, :bso)
     segs0 = r_dict(t, :segs)
@@ -525,9 +601,16 @@ defmodule :m_dict do
     segs1 = put_bucket_s(segs0, slot1, b1 ++ b2)
     segs2 = put_bucket_s(segs1, slot2, [])
     n1 = n - 1
-    maybe_contract_segs(r_dict(t, size: r_dict(t, :size) - dc, 
-                               n: n1,  exp_size: n1 * 5,  con_size: n1 * 3, 
-                               segs: segs2))
+
+    maybe_contract_segs(
+      r_dict(t,
+        size: r_dict(t, :size) - dc,
+        n: n1,
+        exp_size: n1 * 5,
+        con_size: n1 * 3,
+        segs: segs2
+      )
+    )
   end
 
   defp maybe_contract(t, dc) do
@@ -535,21 +618,24 @@ defmodule :m_dict do
   end
 
   defp maybe_contract_segs(t) when r_dict(t, :n) === r_dict(t, :bso) do
-    r_dict(t, maxn: div(r_dict(t, :maxn), 2), 
-           bso: div(r_dict(t, :bso), 2), 
-           segs: contract_segs(r_dict(t, :segs)))
+    r_dict(t,
+      maxn: div(r_dict(t, :maxn), 2),
+      bso: div(r_dict(t, :bso), 2),
+      segs: contract_segs(r_dict(t, :segs))
+    )
   end
 
   defp maybe_contract_segs(t) do
     t
   end
 
-  defp rehash([[key | _Bag] = keyBag | t], slot1, slot2,
-            maxN) do
+  defp rehash([[key | _Bag] = keyBag | t], slot1, slot2, maxN) do
     [l1 | l2] = rehash(t, slot1, slot2, maxN)
-    case (:erlang.phash(key, maxN)) do
+
+    case :erlang.phash(key, maxN) do
       ^slot1 ->
         [[keyBag | l1] | l2]
+
       ^slot2 ->
         [l1, keyBag | l2]
     end
@@ -560,8 +646,7 @@ defmodule :m_dict do
   end
 
   defp mk_seg(16) do
-    {[], [], [], [], [], [], [], [], [], [], [], [], [], [],
-       [], []}
+    {[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []}
   end
 
   defp expand_segs({b1}, empty) do
@@ -577,22 +662,25 @@ defmodule :m_dict do
   end
 
   defp expand_segs({b1, b2, b3, b4, b5, b6, b7, b8}, empty) do
-    {b1, b2, b3, b4, b5, b6, b7, b8, empty, empty, empty,
-       empty, empty, empty, empty, empty}
+    {b1, b2, b3, b4, b5, b6, b7, b8, empty, empty, empty, empty, empty, empty, empty, empty}
   end
 
-  defp expand_segs({b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11,
-             b12, b13, b14, b15, b16},
-            empty) do
-    {b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13,
-       b14, b15, b16, empty, empty, empty, empty, empty, empty,
-       empty, empty, empty, empty, empty, empty, empty, empty,
-       empty, empty}
+  defp expand_segs(
+         {b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15, b16},
+         empty
+       ) do
+    {b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15, b16, empty, empty, empty,
+     empty, empty, empty, empty, empty, empty, empty, empty, empty, empty, empty, empty, empty}
   end
 
   defp expand_segs(segs, empty) do
-    :erlang.list_to_tuple(:erlang.tuple_to_list(segs) ++ :lists.duplicate(tuple_size(segs),
-                                                                            empty))
+    :erlang.list_to_tuple(
+      :erlang.tuple_to_list(segs) ++
+        :lists.duplicate(
+          tuple_size(segs),
+          empty
+        )
+    )
   end
 
   defp contract_segs({b1, _}) do
@@ -607,22 +695,19 @@ defmodule :m_dict do
     {b1, b2, b3, b4}
   end
 
-  defp contract_segs({b1, b2, b3, b4, b5, b6, b7, b8, _, _, _, _, _,
-             _, _, _}) do
+  defp contract_segs({b1, b2, b3, b4, b5, b6, b7, b8, _, _, _, _, _, _, _, _}) do
     {b1, b2, b3, b4, b5, b6, b7, b8}
   end
 
-  defp contract_segs({b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11,
-             b12, b13, b14, b15, b16, _, _, _, _, _, _, _, _, _, _,
-             _, _, _, _, _, _}) do
-    {b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13,
-       b14, b15, b16}
+  defp contract_segs(
+         {b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15, b16, _, _, _, _, _, _,
+          _, _, _, _, _, _, _, _, _, _}
+       ) do
+    {b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15, b16}
   end
 
   defp contract_segs(segs) do
     ss = div(tuple_size(segs), 2)
-    :erlang.list_to_tuple(:lists.sublist(:erlang.tuple_to_list(segs),
-                                           1, ss))
+    :erlang.list_to_tuple(:lists.sublist(:erlang.tuple_to_list(segs), 1, ss))
   end
-
 end

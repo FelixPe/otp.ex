@@ -1,5 +1,6 @@
 defmodule :m_io_lib do
   use Bitwise
+
   def fwrite(format, args) do
     format(format, args)
   end
@@ -71,11 +72,12 @@ defmodule :m_io_lib do
   end
 
   defp test_modules_loaded(_C, _R, _S) do
-    modules = [:io_lib_format, :io_lib_pretty, :string,
-                                                   :unicode]
-    case (:code.ensure_modules_loaded(modules)) do
+    modules = [:io_lib_format, :io_lib_pretty, :string, :unicode]
+
+    case :code.ensure_modules_loaded(modules) do
       :ok ->
         :ok
+
       error ->
         :erlang.error(error)
     end
@@ -101,40 +103,42 @@ defmodule :m_io_lib do
     do_format_prompt(format, args)
   end
 
-  def format_prompt(prompt, encoding) when is_list(prompt) or
-                                  is_atom(prompt) or is_binary(prompt) do
-    do_format_prompt(add_modifier(encoding, 's'), [prompt])
+  def format_prompt(prompt, encoding)
+      when is_list(prompt) or
+             is_atom(prompt) or is_binary(prompt) do
+    do_format_prompt(add_modifier(encoding, ~c"s"), [prompt])
   end
 
   def format_prompt(prompt, encoding) do
-    do_format_prompt(add_modifier(encoding, 'p'), [prompt])
+    do_format_prompt(add_modifier(encoding, ~c"p"), [prompt])
   end
 
   defp do_format_prompt(format, args) do
-    case ((try do
+    case (try do
             format(format, args)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       {:EXIT, _} ->
-        '???'
+        ~c"???"
+
       list ->
         list
     end
   end
 
   defp add_modifier(:latin1, c) do
-    '~' ++ c
+    ~c"~" ++ c
   end
 
   defp add_modifier(_, c) do
-    '~t' ++ c
+    ~c"~t" ++ c
   end
 
   def write(term) do
-    write1(term, - 1, :latin1, :undefined)
+    write1(term, -1, :latin1, :undefined)
   end
 
   def write(term, d, true) do
@@ -146,24 +150,35 @@ defmodule :m_io_lib do
   end
 
   def write(term, options) when is_list(options) do
-    depth = get_option(:depth, options, - 1)
-    encoding = get_option(:encoding, options,
-                            :epp.default_encoding())
-    charsLimit = get_option(:chars_limit, options, - 1)
+    depth = get_option(:depth, options, -1)
+    encoding = get_option(:encoding, options, :epp.default_encoding())
+    charsLimit = get_option(:chars_limit, options, -1)
     mapsOrder = get_option(:maps_order, options, :undefined)
+
     cond do
       depth === 0 or charsLimit === 0 ->
-        '...'
-      (is_integer(charsLimit) and charsLimit < 0 and
-         is_integer(depth)) ->
+        ~c"..."
+
+      is_integer(charsLimit) and charsLimit < 0 and
+          is_integer(depth) ->
         write1(term, depth, encoding, mapsOrder)
-      (is_integer(charsLimit) and charsLimit > 0) ->
+
+      is_integer(charsLimit) and charsLimit > 0 ->
         recDefFun = fn _, _ ->
-                         :no
-                    end
-        if__ = :io_lib_pretty.intermediate(term, depth,
-                                             charsLimit, recDefFun, encoding,
-                                             _Str = false, mapsOrder)
+          :no
+        end
+
+        if__ =
+          :io_lib_pretty.intermediate(
+            term,
+            depth,
+            charsLimit,
+            recDefFun,
+            encoding,
+            _Str = false,
+            mapsOrder
+          )
+
         :io_lib_pretty.write(if__)
     end
   end
@@ -173,7 +188,7 @@ defmodule :m_io_lib do
   end
 
   defp write1(_Term, 0, _E, _O) do
-    '...'
+    ~c"..."
   end
 
   defp write1(term, _D, _E, _O) when is_integer(term) do
@@ -204,26 +219,25 @@ defmodule :m_io_lib do
     write_ref(term)
   end
 
-  defp write1(<<_ :: bitstring>> = term, d, _E, _O) do
+  defp write1(<<_::bitstring>> = term, d, _E, _O) do
     write_binary(term, d)
   end
 
   defp write1([], _D, _E, _O) do
-    '[]'
+    ~c"[]"
   end
 
   defp write1({}, _D, _E, _O) do
-    '{}'
+    ~c"{}"
   end
 
   defp write1([h | t], d, e, o) do
     cond do
       d === 1 ->
-        '[...]'
+        ~c"[...]"
+
       true ->
-        [?[, [write1(h, d - 1, e, o) | write_tail(t, d - 1, e,
-                                                    o)],
-                 ?]]
+        [?[, [write1(h, d - 1, e, o) | write_tail(t, d - 1, e, o)], ?]]
     end
   end
 
@@ -238,25 +252,30 @@ defmodule :m_io_lib do
   defp write1(t, d, e, o) when is_tuple(t) do
     cond do
       d === 1 ->
-        '{...}'
+        ~c"{...}"
+
       true ->
-        [?{, [write1(:erlang.element(1, t), d - 1, e, o) |
-                  write_tuple(t, 2, d - 1, e, o)],
-                 ?}]
+        [
+          ?{,
+          [
+            write1(:erlang.element(1, t), d - 1, e, o)
+            | write_tuple(t, 2, d - 1, e, o)
+          ],
+          ?}
+        ]
     end
   end
 
   defp write_tail([], _D, _E, _O) do
-    ''
+    ~c""
   end
 
   defp write_tail(_, 1, _E, _O) do
-    [?| | '...']
+    [?| | ~c"..."]
   end
 
   defp write_tail([h | t], d, e, o) do
-    [?,, write1(h, d - 1, e, o) | write_tail(t, d - 1, e,
-                                               o)]
+    [?,, write1(h, d - 1, e, o) | write_tail(t, d - 1, e, o)]
   end
 
   defp write_tail(other, d, e, o) do
@@ -264,16 +283,19 @@ defmodule :m_io_lib do
   end
 
   defp write_tuple(t, i, _D, _E, _O) when i > tuple_size(t) do
-    ''
+    ~c""
   end
 
   defp write_tuple(_, _I, 1, _E, _O) do
-    [?, | '...']
+    [?, | ~c"..."]
   end
 
   defp write_tuple(t, i, d, e, o) do
-    [?,, write1(:erlang.element(i, t), d - 1, e, o) |
-             write_tuple(t, i + 1, d - 1, e, o)]
+    [
+      ?,,
+      write1(:erlang.element(i, t), d - 1, e, o)
+      | write_tuple(t, i + 1, d - 1, e, o)
+    ]
   end
 
   defp write_port(port) do
@@ -285,41 +307,44 @@ defmodule :m_io_lib do
   end
 
   defp write_map(_, 1, _E, _O) do
-    '\#{}'
+    ~c"\#{}"
   end
 
   defp write_map(map, d, e, o) when is_integer(d) do
     i = :maps.iterator(map, o)
-    case (:maps.next(i)) do
+
+    case :maps.next(i) do
       {k, v, nextI} ->
         d0 = d - 1
         w = write_map_assoc(k, v, d0, e, o)
         [?#, ?{, [w | write_map_body(nextI, d0, d0, e, o)], ?}]
+
       :none ->
-        '\#{}'
+        ~c"\#{}"
     end
   end
 
   defp write_map_body(_, 1, _D0, _E, _O) do
-    ',...'
+    ~c",..."
   end
 
   defp write_map_body(i, d, d0, e, o) do
-    case (:maps.next(i)) do
+    case :maps.next(i) do
       {k, v, nextI} ->
         w = write_map_assoc(k, v, d0, e, o)
         [?,, w | write_map_body(nextI, d - 1, d0, e, o)]
+
       :none ->
-        ''
+        ~c""
     end
   end
 
   defp write_map_assoc(k, v, d, e, o) do
-    [write1(k, d, e, o), ' => ', write1(v, d, e, o)]
+    [write1(k, d, e, o), ~c" => ", write1(v, d, e, o)]
   end
 
   defp write_binary(b, d) when is_integer(d) do
-    {s, _} = write_binary(b, d, - 1)
+    {s, _} = write_binary(b, d, -1)
     s
   end
 
@@ -333,26 +358,22 @@ defmodule :m_io_lib do
   end
 
   defp write_binary_body(b, d, t, acc) when d === 1 or t === 0 do
-    {['...' | acc], b}
+    {[~c"..." | acc], b}
   end
 
-  defp write_binary_body(<<x :: size(8)>>, _D, _T, acc) do
+  defp write_binary_body(<<x::size(8)>>, _D, _T, acc) do
     {[:erlang.integer_to_list(x) | acc], <<>>}
   end
 
-  defp write_binary_body(<<x :: size(8), rest :: bitstring>>, d, t,
-            acc) do
+  defp write_binary_body(<<x::size(8), rest::bitstring>>, d, t, acc) do
     s = :erlang.integer_to_list(x)
-    write_binary_body(rest, d - 1, tsub(t, length(s) + 1),
-                        [?,, s | acc])
+    write_binary_body(rest, d - 1, tsub(t, length(s) + 1), [?,, s | acc])
   end
 
   defp write_binary_body(b, _D, _T, acc) do
     l = bit_size(b)
-    <<x :: size(l)>> = b
-    {[:erlang.integer_to_list(l), ?:,
-                                      :erlang.integer_to_list(x) | acc],
-       <<>>}
+    <<x::size(l)>> = b
+    {[:erlang.integer_to_list(l), ?:, :erlang.integer_to_list(x) | acc], <<>>}
   end
 
   defp tsub(t, _) when t < 0 do
@@ -368,11 +389,13 @@ defmodule :m_io_lib do
   end
 
   defp get_option(key, tupleList, default) do
-    case (:lists.keyfind(key, 1, tupleList)) do
+    case :lists.keyfind(key, 1, tupleList) do
       false ->
         default
+
       {^key, value} ->
         value
+
       _ ->
         default
     end
@@ -383,24 +406,29 @@ defmodule :m_io_lib do
   end
 
   def write_atom_as_latin1(atom) do
-    write_possibly_quoted_atom(atom,
-                                 &write_string_as_latin1/2)
+    write_possibly_quoted_atom(
+      atom,
+      &write_string_as_latin1/2
+    )
   end
 
   defp write_possibly_quoted_atom(atom, pFun) do
     chars = :erlang.atom_to_list(atom)
-    case (quote_atom(atom, chars)) do
+
+    case quote_atom(atom, chars) do
       true ->
         pFun.(chars, ?')
+
       false ->
         chars
     end
   end
 
   defp name_chars([c | cs]) when is_integer(c) do
-    case (name_char(c)) do
+    case name_char(c) do
       true ->
         name_chars(cs)
+
       false ->
         false
     end
@@ -454,27 +482,28 @@ defmodule :m_io_lib do
     [?\\, ?\\ | tail]
   end
 
-  defp string_char(_, c, _, tail) when (c >= ?\s and c <= ?~) do
+  defp string_char(_, c, _, tail) when c >= ?\s and c <= ?~ do
     [c | tail]
   end
 
-  defp string_char(:latin1, c, _, tail) when (c >= 160 and
-                                       c <= 255) do
+  defp string_char(:latin1, c, _, tail)
+       when c >= 160 and
+              c <= 255 do
     [c | tail]
   end
 
   defp string_char(:unicode_as_unicode, c, _, tail)
-      when c >= 160 do
+       when c >= 160 do
     [c | tail]
   end
 
   defp string_char(:unicode_as_latin1, c, _, tail)
-      when (c >= 160 and c <= 255) do
+       when c >= 160 and c <= 255 do
     [c | tail]
   end
 
   defp string_char(:unicode_as_latin1, c, _, tail) when c >= 255 do
-    '\\x{' ++ :erlang.integer_to_list(c, 16) ++ '}' ++ tail
+    ~c"\\x{" ++ :erlang.integer_to_list(c, 16) ++ ~c"}" ++ tail
   end
 
   defp string_char(_, ?\n, _, tail) do
@@ -510,35 +539,37 @@ defmodule :m_io_lib do
   end
 
   defp string_char(_, c, _, tail) when c < 160 do
-    c1 = c >>> 6 + ?0
-    c2 = (c >>> 3) &&& 7 + ?0
+    c1 = c >>> (6 + ?0)
+    c2 = c >>> 3 &&& 7 + ?0
     c3 = c &&& 7 + ?0
     [?\\, c1, c2, c3 | tail]
   end
 
   def write_char(?\s) do
-    '$\\s'
+    ~c"$\\s"
   end
 
-  def write_char(c) when (is_integer(c) and c >= ?\0) do
-    [?$ | string_char(:unicode_as_unicode, c, - 1, [])]
+  def write_char(c) when is_integer(c) and c >= ?\0 do
+    [?$ | string_char(:unicode_as_unicode, c, -1, [])]
   end
 
   def write_unicode_char(c) do
     write_char(c)
   end
 
-  def write_latin1_char(lat1) when (is_integer(lat1) and lat1 >= ?\0 and
-                       lat1 <= 255) do
-    [?$ | string_char(:latin1, lat1, - 1, [])]
+  def write_latin1_char(lat1)
+      when is_integer(lat1) and lat1 >= ?\0 and
+             lat1 <= 255 do
+    [?$ | string_char(:latin1, lat1, -1, [])]
   end
 
-  def write_char_as_latin1(uni) when (is_integer(uni) and uni >= ?\0) do
-    [?$ | string_char(:unicode_as_latin1, uni, - 1, [])]
+  def write_char_as_latin1(uni) when is_integer(uni) and uni >= ?\0 do
+    [?$ | string_char(:unicode_as_latin1, uni, -1, [])]
   end
 
-  def latin1_char_list([c | cs]) when (is_integer(c) and c >= ?\0 and
-                           c <= 255) do
+  def latin1_char_list([c | cs])
+      when is_integer(c) and c >= ?\0 and
+             c <= 255 do
     latin1_char_list(cs)
   end
 
@@ -550,10 +581,11 @@ defmodule :m_io_lib do
     false
   end
 
-  def char_list([c | cs]) when (is_integer(c) and c >= 0 and
-                           c < 55296) or
-                          (is_integer(c) and c > 57343 and c < 65534) or
-                          (is_integer(c) and c > 65535 and c <= 1114111) do
+  def char_list([c | cs])
+      when (is_integer(c) and c >= 0 and
+              c < 55296) or
+             (is_integer(c) and c > 57343 and c < 65534) or
+             (is_integer(c) and c > 65535 and c <= 1_114_111) do
     char_list(cs)
   end
 
@@ -573,8 +605,9 @@ defmodule :m_io_lib do
     deep_latin1_char_list(c, [cs | more])
   end
 
-  defp deep_latin1_char_list([c | cs], more) when (is_integer(c) and
-                                  c >= ?\0 and c <= 255) do
+  defp deep_latin1_char_list([c | cs], more)
+       when is_integer(c) and
+              c >= ?\0 and c <= 255 do
     deep_latin1_char_list(cs, more)
   end
 
@@ -598,11 +631,12 @@ defmodule :m_io_lib do
     deep_char_list(c, [cs | more])
   end
 
-  defp deep_char_list([c | cs], more) when (is_integer(c) and
-                                  c >= 0 and c < 55296) or
-                                 (is_integer(c) and c > 57343 and c < 65534) or
-                                 (is_integer(c) and c > 65535 and
-                                    c <= 1114111) do
+  defp deep_char_list([c | cs], more)
+       when (is_integer(c) and
+               c >= 0 and c < 55296) or
+              (is_integer(c) and c > 57343 and c < 65534) or
+              (is_integer(c) and c > 65535 and
+                 c <= 1_114_111) do
     deep_char_list(cs, more)
   end
 
@@ -622,13 +656,15 @@ defmodule :m_io_lib do
     deep_char_list(term)
   end
 
-  def printable_latin1_list([c | cs]) when (is_integer(c) and c >= ?\s and
-                           c <= ?~) do
+  def printable_latin1_list([c | cs])
+      when is_integer(c) and c >= ?\s and
+             c <= ?~ do
     printable_latin1_list(cs)
   end
 
-  def printable_latin1_list([c | cs]) when (is_integer(c) and c >= 160 and
-                           c <= 255) do
+  def printable_latin1_list([c | cs])
+      when is_integer(c) and c >= 160 and
+             c <= 255 do
     printable_latin1_list(cs)
   end
 
@@ -669,23 +705,26 @@ defmodule :m_io_lib do
   end
 
   def printable_list(l) do
-    case (:io.printable_range()) do
+    case :io.printable_range() do
       :latin1 ->
         printable_latin1_list(l)
+
       :unicode ->
         printable_unicode_list(l)
     end
   end
 
-  def printable_unicode_list([c | cs]) when (is_integer(c) and c >= ?\s and
-                           c <= ?~) do
+  def printable_unicode_list([c | cs])
+      when is_integer(c) and c >= ?\s and
+             c <= ?~ do
     printable_unicode_list(cs)
   end
 
-  def printable_unicode_list([c | cs]) when (is_integer(c) and c >= 160 and
-                           c < 55296) or
-                          (is_integer(c) and c > 57343 and c < 65534) or
-                          (is_integer(c) and c > 65535 and c <= 1114111) do
+  def printable_unicode_list([c | cs])
+      when (is_integer(c) and c >= 160 and
+              c < 55296) or
+             (is_integer(c) and c > 57343 and c < 65534) or
+             (is_integer(c) and c > 65535 and c <= 1_114_111) do
     printable_unicode_list(cs)
   end
 
@@ -726,7 +765,7 @@ defmodule :m_io_lib do
   end
 
   def nl() do
-    '\n'
+    ~c"\n"
   end
 
   defp count_and_find_utf8(bin, n) do
@@ -737,19 +776,16 @@ defmodule :m_io_lib do
     {count, savePos}
   end
 
-  defp cafu(<<_ :: utf8, rest :: binary>>, 0, count,
-            byteCount, _SavePos) do
-    cafu(rest, - 1, count + 1, 0, byteCount)
+  defp cafu(<<_::utf8, rest::binary>>, 0, count, byteCount, _SavePos) do
+    cafu(rest, -1, count + 1, 0, byteCount)
   end
 
-  defp cafu(<<_ :: utf8, rest :: binary>>, n, count,
-            _ByteCount, savePos)
-      when n < 0 do
-    cafu(rest, - 1, count + 1, 0, savePos)
+  defp cafu(<<_::utf8, rest::binary>>, n, count, _ByteCount, savePos)
+       when n < 0 do
+    cafu(rest, -1, count + 1, 0, savePos)
   end
 
-  defp cafu(<<_ :: utf8, rest :: binary>> = whole, n, count,
-            byteCount, savePos) do
+  defp cafu(<<_::utf8, rest::binary>> = whole, n, count, byteCount, savePos) do
     delta = byte_size(whole) - byte_size(rest)
     cafu(rest, n - 1, count + 1, byteCount + delta, savePos)
   end
@@ -763,35 +799,42 @@ defmodule :m_io_lib do
   end
 
   def collect_chars(:start, data, :unicode, n)
-      when (is_binary(data) and is_integer(n)) do
+      when is_binary(data) and is_integer(n) do
     {size, npos} = count_and_find_utf8(data, n)
+
     cond do
       size > n ->
         {b1, b2} = :erlang.split_binary(data, npos)
         {:stop, b1, b2}
+
       size < n ->
         {:binary, [data], n - size}
+
       true ->
         {:stop, data, <<>>}
     end
   end
 
   def collect_chars(:start, data, :latin1, n)
-      when (is_binary(data) and is_integer(n)) do
+      when is_binary(data) and is_integer(n) do
     size = byte_size(data)
+
     cond do
       size > n ->
         {b1, b2} = :erlang.split_binary(data, n)
         {:stop, b1, b2}
+
       size < n ->
         {:binary, [data], n - size}
+
       true ->
         {:stop, data, <<>>}
     end
   end
 
-  def collect_chars(:start, data, _, n) when (is_list(data) and
-                                     is_integer(n)) do
+  def collect_chars(:start, data, _, n)
+      when is_list(data) and
+             is_integer(n) do
     collect_chars_list([], n, data)
   end
 
@@ -810,12 +853,15 @@ defmodule :m_io_lib do
   def collect_chars({:binary, stack, n}, data, :unicode, _)
       when is_integer(n) do
     {size, npos} = count_and_find_utf8(data, n)
+
     cond do
       size > n ->
         {b1, b2} = :erlang.split_binary(data, npos)
         {:stop, binrev(stack, [b1]), b2}
+
       size < n ->
         {:binary, [data | stack], n - size}
+
       true ->
         {:stop, binrev(stack, [data]), <<>>}
     end
@@ -824,12 +870,15 @@ defmodule :m_io_lib do
   def collect_chars({:binary, stack, n}, data, :latin1, _)
       when is_integer(n) do
     size = byte_size(data)
+
     cond do
       size > n ->
         {b1, b2} = :erlang.split_binary(data, n)
         {:stop, binrev(stack, [b1]), b2}
+
       size < n ->
         {:binary, [data | stack], n - size}
+
       true ->
         {:stop, binrev(stack, [data]), <<>>}
     end
@@ -922,32 +971,35 @@ defmodule :m_io_lib do
     {:stop, :lists.reverse(stack, []), :eof}
   end
 
-  defp collect_line_bin(<<?\n, t :: binary>>, data, stack0, _) do
+  defp collect_line_bin(<<?\n, t::binary>>, data, stack0, _) do
     n = byte_size(data) - byte_size(t)
-    <<line :: size(n) - binary, _ :: binary>> = data
-    case (stack0) do
+    <<line::size(n)-binary, _::binary>> = data
+
+    case stack0 do
       [] ->
         {:stop, line, t}
+
       [<<?\r>> | stack] when n === 1 ->
         {:stop, binrev(stack, [?\n]), t}
+
       _ ->
         {:stop, binrev(stack0, [line]), t}
     end
   end
 
-  defp collect_line_bin(<<?\r, ?\n, t :: binary>>, data, stack, _) do
+  defp collect_line_bin(<<?\r, ?\n, t::binary>>, data, stack, _) do
     n = byte_size(data) - byte_size(t) - 2
-    <<line :: size(n) - binary, _ :: binary>> = data
+    <<line::size(n)-binary, _::binary>> = data
     {:stop, binrev(stack, [line, ?\n]), t}
   end
 
   defp collect_line_bin(<<?\r>>, data0, stack, _) do
     n = byte_size(data0) - 1
-    <<data :: size(n) - binary, _ :: binary>> = data0
+    <<data::size(n)-binary, _::binary>> = data0
     [<<?\r>>, data | stack]
   end
 
-  defp collect_line_bin(<<_, t :: binary>>, data, stack, enc) do
+  defp collect_line_bin(<<_, t::binary>>, data, stack, enc) do
     collect_line_bin(t, data, stack, enc)
   end
 
@@ -980,28 +1032,33 @@ defmodule :m_io_lib do
   end
 
   def get_until(cont, data, encoding, {mod, func, xtraArgs}) do
-    chars = (cond do
-               (is_binary(data) and encoding === :unicode) ->
-                 :unicode.characters_to_list(data, :utf8)
-               is_binary(data) ->
-                 :erlang.binary_to_list(data)
-               true ->
-                 data
-             end)
-    case (apply(mod, func, [cont, chars | xtraArgs])) do
+    chars =
+      cond do
+        is_binary(data) and encoding === :unicode ->
+          :unicode.characters_to_list(data, :utf8)
+
+        is_binary(data) ->
+          :erlang.binary_to_list(data)
+
+        true ->
+          data
+      end
+
+    case apply(mod, func, [cont, chars | xtraArgs]) do
       {:done, result, buf} ->
         {:stop,
-           cond do
-             (is_binary(data) and is_list(result) and
-                encoding === :unicode) ->
-               :unicode.characters_to_binary(result, :unicode,
-                                               :unicode)
-             (is_binary(data) and is_list(result)) ->
-               :erlang.iolist_to_binary(result)
-             true ->
-               result
-           end,
-           buf}
+         cond do
+           is_binary(data) and is_list(result) and
+               encoding === :unicode ->
+             :unicode.characters_to_binary(result, :unicode, :unicode)
+
+           is_binary(data) and is_list(result) ->
+             :erlang.iolist_to_binary(result)
+
+           true ->
+             result
+         end, buf}
+
       {:more, newCont} ->
         newCont
     end
@@ -1015,8 +1072,9 @@ defmodule :m_io_lib do
     :erlang.list_to_binary(:lists.reverse(l, t))
   end
 
-  def limit_term(term, depth) when (is_integer(depth) and
-                              depth >= - 1) do
+  def limit_term(term, depth)
+      when is_integer(depth) and
+             depth >= -1 do
     try do
       test_limit(term, depth)
     catch
@@ -1029,17 +1087,19 @@ defmodule :m_io_lib do
   end
 
   defp limit(_, 0) do
-    :"..."
+    :...
   end
 
   defp limit([h | t] = l, d) do
     cond do
       d === 1 ->
-        [:"..."]
+        [:...]
+
       true ->
-        case (printable_list(l)) do
+        case printable_list(l) do
           true ->
             l
+
           false ->
             [limit(h, d - 1) | limit_tail(t, d - 1)]
         end
@@ -1057,15 +1117,20 @@ defmodule :m_io_lib do
   defp limit(t, d) when is_tuple(t) do
     cond do
       d === 1 ->
-        {:"..."}
+        {:...}
+
       true ->
-        :erlang.list_to_tuple([limit(:erlang.element(1, t),
-                                       d - 1) |
-                                   limit_tuple(t, 2, d - 1)])
+        :erlang.list_to_tuple([
+          limit(
+            :erlang.element(1, t),
+            d - 1
+          )
+          | limit_tuple(t, 2, d - 1)
+        ])
     end
   end
 
-  defp limit(<<_ :: bitstring>> = term, d) do
+  defp limit(<<_::bitstring>> = term, d) do
     limit_bitstring(term, d)
   end
 
@@ -1078,7 +1143,7 @@ defmodule :m_io_lib do
   end
 
   defp limit_tail(_, 1) do
-    [:"..."]
+    [:...]
   end
 
   defp limit_tail([h | t], d) do
@@ -1094,12 +1159,11 @@ defmodule :m_io_lib do
   end
 
   defp limit_tuple(_, _I, 1) do
-    [:"..."]
+    [:...]
   end
 
   defp limit_tuple(t, i, d) do
-    [limit(:erlang.element(i, t), d - 1) | limit_tuple(t,
-                                                         i + 1, d - 1)]
+    [limit(:erlang.element(i, t), d - 1) | limit_tuple(t, i + 1, d - 1)]
   end
 
   defp limit_map(map, d) do
@@ -1111,10 +1175,10 @@ defmodule :m_io_lib do
   end
 
   defp limit_map_body(i, d, d0, acc) do
-    case (:maps.next(i)) do
+    case :maps.next(i) do
       {k, v, nextI} ->
-        limit_map_body(nextI, d - 1, d0,
-                         [limit_map_assoc(k, v, d0) | acc])
+        limit_map_body(nextI, d - 1, d0, [limit_map_assoc(k, v, d0) | acc])
+
       :none ->
         :maps.from_list(acc)
     end
@@ -1136,10 +1200,12 @@ defmodule :m_io_lib do
     cond do
       d === 1 ->
         throw(:limit)
+
       true ->
-        case (printable_list(l)) do
+        case printable_list(l) do
           true ->
             :ok
+
           false ->
             test_limit(h, d - 1)
             test_limit_tail(t, d - 1)
@@ -1159,7 +1225,7 @@ defmodule :m_io_lib do
     test_limit_tuple(t, 1, tuple_size(t), d)
   end
 
-  defp test_limit(<<_ :: bitstring>> = term, d) do
+  defp test_limit(<<_::bitstring>> = term, d) do
     test_limit_bitstring(term, d)
   end
 
@@ -1206,10 +1272,11 @@ defmodule :m_io_lib do
   end
 
   defp test_limit_map_body(i, d) do
-    case (:maps.next(i)) do
+    case :maps.next(i) do
       {k, v, nextI} ->
         test_limit_map_assoc(k, v, d)
         test_limit_map_body(nextI, d - 1)
+
       :none ->
         :ok
     end
@@ -1232,5 +1299,4 @@ defmodule :m_io_lib do
         :string.length(s)
     end
   end
-
 end

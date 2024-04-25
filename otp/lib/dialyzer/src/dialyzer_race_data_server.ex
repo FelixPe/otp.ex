@@ -16,7 +16,7 @@ defmodule :m_dialyzer_race_data_server do
     behaviours_chk: false,
     timing: false,
     timing_server: :none,
-    callgraph_file: '',
+    callgraph_file: ~c"",
     solvers: :undefined
   )
 
@@ -39,7 +39,7 @@ defmodule :m_dialyzer_race_data_server do
     output_format: :formatted,
     filename_opt: :basename,
     indent_opt: true,
-    callgraph_file: '',
+    callgraph_file: ~c"",
     check_plt: true,
     solvers: [],
     native: :maybe,

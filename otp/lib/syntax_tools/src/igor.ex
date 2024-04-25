@@ -54,7 +54,7 @@ defmodule :m_igor do
     ]
 
     {t, _} = merge_files(name, [forms], files, opts1)
-    verbose('done.', opts1)
+    verbose(~c"done.", opts1)
     :erl_syntax.revert_forms(t)
   end
 
@@ -66,19 +66,19 @@ defmodule :m_igor do
     opts1 =
       opts ++
         [
-          {:backup_suffix, '.bak'},
+          {:backup_suffix, ~c".bak"},
           :backups,
-          {:dir, ''},
+          {:dir, ~c""},
           {:printer, &default_printer/2},
-          {:stub_dir, 'stubs'},
+          {:stub_dir, ~c"stubs"},
           :stubs,
-          {:suffix, '.erl'},
+          {:suffix, ~c".erl"},
           {:verbose, false}
         ]
 
     {sources, enc} = merge_files1(files, opts1)
     {tree, stubs} = merge_sources(name, sources, opts1)
-    dir = :proplists.get_value(:dir, opts1, '')
+    dir = :proplists.get_value(:dir, opts1, ~c"")
     filename = :proplists.get_value(:outfile, opts1, name)
 
     encoding =
@@ -100,12 +100,12 @@ defmodule :m_igor do
   end
 
   defp merge_files1([], _) do
-    report_error('no files to merge.')
+    report_error(~c"no files to merge.")
     exit(:badarg)
   end
 
   defp merge_files1(files, opts) do
-    opts1 = opts ++ [{:includes, ['.']}, {:macros, []}, {:preprocess, false}, :comments]
+    opts1 = opts ++ [{:includes, [~c"."]}, {:macros, []}, {:preprocess, false}, :comments]
 
     sourceEncodings =
       for f <- files do
@@ -145,7 +145,7 @@ defmodule :m_igor do
     trees =
       case sources do
         [] ->
-          report_error('no sources to merge.')
+          report_error(~c"no sources to merge.")
           exit(:badarg)
 
         _ ->
@@ -191,7 +191,7 @@ defmodule :m_igor do
         :ok
 
       ns1 ->
-        report_error('same module names repeated in input: ~p.', [ns1])
+        report_error(~c"same module names repeated in input: ~p.", [ns1])
         exit(:error)
     end
 
@@ -225,8 +225,8 @@ defmodule :m_igor do
           :ordsets.union(sources, es)
       end
 
-    check_module_names(export, sources, 'declared as exported')
-    verbose('modules exported from `~w\': ~p.', [name, export], opts)
+    check_module_names(export, sources, ~c"declared as exported")
+    verbose(~c"modules exported from `~w': ~p.", [name, export], opts)
 
     static0 =
       :ordsets.from_list(
@@ -245,8 +245,8 @@ defmodule :m_igor do
           :ordsets.add_element(name, static0)
       end
 
-    check_module_names(static, all, 'declared \'static\'')
-    verbose('static modules: ~p.', [static], opts)
+    check_module_names(static, all, ~c"declared 'static'")
+    verbose(~c"static modules: ~p.", [static], opts)
 
     safe =
       case :proplists.is_defined(:safe, opts) do
@@ -265,8 +265,8 @@ defmodule :m_igor do
           )
       end
 
-    check_module_names(safe, all, 'declared \'safe\'')
-    verbose('safe modules: ~p.', [safe], opts)
+    check_module_names(safe, all, ~c"declared 'safe'")
+    verbose(~c"safe modules: ~p.", [safe], opts)
 
     preserved =
       (:ordsets.is_element(
@@ -301,14 +301,14 @@ defmodule :m_igor do
               :ok
 
             ms1 ->
-              report_error('cannot redirect calls to modules in input set: ~p.', [ms1])
+              report_error(~c"cannot redirect calls to modules in input set: ~p.", [ms1])
               exit(:error)
           end
 
           :dict.from_list(rs)
 
         false ->
-          report_error('bad value for `redirect\' option: ~tP.', [rs, 10])
+          report_error(~c"bad value for `redirect' option: ~tP.", [rs, 10])
           exit(:error)
       end
 
@@ -362,7 +362,7 @@ defmodule :m_igor do
         :ok
 
       xs ->
-        report_error('unknown modules ~s: ~p.', [txt, xs])
+        report_error(~c"unknown modules ~s: ~p.", [txt, xs])
         exit(:error)
     end
   end
@@ -401,13 +401,13 @@ defmodule :m_igor do
         [
           comment(
             [
-              '=====================================================================',
-              'This module was formed by merging the following modules:',
-              ''
+              ~c"=====================================================================",
+              ~c"This module was formed by merging the following modules:",
+              ~c""
             ] ++
               for m <- r_merge(env, :sources) do
-                :lists.flatten(:io_lib.fwrite('\t\t`~w\'', [m]))
-              end ++ ['', timestamp(), '']
+                :lists.flatten(:io_lib.fwrite(~c"\t\t`~w'", [m]))
+              end ++ [~c"", timestamp(), ~c""]
           ),
           :erl_syntax.attribute(
             :erl_syntax.atom(:module),
@@ -455,7 +455,7 @@ defmodule :m_igor do
       es ->
         [
           make_export(exports),
-          comment(['** The following exports are not official: **']),
+          comment([~c"** The following exports are not official: **"]),
           make_export(es)
         ]
     end
@@ -472,7 +472,7 @@ defmodule :m_igor do
 
     cond do
       es === [] ->
-        comment(['** Nothing is officially exported from this module! **'])
+        comment([~c"** Nothing is officially exported from this module! **"])
 
       true ->
         :erl_syntax.attribute(
@@ -596,7 +596,7 @@ defmodule :m_igor do
           :kill
 
         _ ->
-          report_error('invalid value for option `file_attributes\': ~tw.', [fileAttrsOpt])
+          report_error(~c"invalid value for option `file_attributes': ~tw.", [fileAttrsOpt])
           exit(:error)
       end
 
@@ -683,7 +683,7 @@ defmodule :m_igor do
 
   defp kill_form(f) do
     f1 = :erl_syntax.set_precomments(f, [])
-    f2 = :erl_syntax_lib.to_comment(f1, '%<<< ')
+    f2 = :erl_syntax_lib.to_comment(f1, ~c"%<<< ")
 
     :erl_syntax.set_precomments(
       f2,
@@ -712,7 +712,7 @@ defmodule :m_igor do
         :ok
 
       fs ->
-        report_warning('interface functions renamed:\n\t~tp.', [fs])
+        report_warning(~c"interface functions renamed:\n\t~tp.", [fs])
     end
 
     {m4, acc2} = merge_namespaces_1(m2, acc1)
@@ -831,7 +831,7 @@ defmodule :m_igor do
   end
 
   defp new_function_name(m, {f, a}, names) do
-    base = :erlang.atom_to_list(m) ++ '__' ++ :erlang.atom_to_list(f)
+    base = :erlang.atom_to_list(m) ++ ~c"__" ++ :erlang.atom_to_list(f)
     name = {:erlang.list_to_atom(base), a}
 
     case :sets.is_element(name, names) do
@@ -844,7 +844,7 @@ defmodule :m_igor do
   end
 
   defp new_function_name(n, arity, base, names) do
-    name = {:erlang.list_to_atom(base ++ '_' ++ :erlang.integer_to_list(n)), arity}
+    name = {:erlang.list_to_atom(base ++ ~c"_" ++ :erlang.integer_to_list(n)), arity}
 
     case :sets.is_element(name, names) do
       false ->
@@ -856,7 +856,7 @@ defmodule :m_igor do
   end
 
   defp new_record_name(m, r, fs, names) do
-    base = :erlang.atom_to_list(m) ++ '__' ++ :erlang.atom_to_list(r)
+    base = :erlang.atom_to_list(m) ++ ~c"__" ++ :erlang.atom_to_list(r)
     name = {:erlang.list_to_atom(base), fs}
 
     case :sets.is_element({:record, name}, names) do
@@ -869,7 +869,7 @@ defmodule :m_igor do
   end
 
   defp new_record_name_1(n, base, fs, names) do
-    name = {:erlang.list_to_atom(base ++ '_' ++ :erlang.integer_to_list(n)), fs}
+    name = {:erlang.list_to_atom(base ++ ~c"_" ++ :erlang.integer_to_list(n)), fs}
 
     case :sets.is_element({:record, name}, names) do
       false ->
@@ -1221,14 +1221,14 @@ defmodule :m_igor do
       n > 1 and name !== r_code(env, :target) and
         r_code(env, :notes) !== :no and
           r_code(env, :no_headers) !== true ->
-        text = :io_lib.fwrite('The following code stems from module `~w\'.', [name])
+        text = :io_lib.fwrite(~c"The following code stems from module `~w'.", [name])
 
         header =
           comment([
-            '=====================================================================',
-            '',
+            ~c"=====================================================================",
+            ~c"",
             :lists.flatten(text),
-            ''
+            ~c""
           ])
 
         :erl_syntax.form_list([header, tree])
@@ -1324,7 +1324,7 @@ defmodule :m_igor do
   end
 
   defp renaming_note(name) do
-    [:lists.flatten(:io_lib.fwrite('renamed function to `~tw\'', [name]))]
+    [:lists.flatten(:io_lib.fwrite(~c"renamed function to `~tw'", [name]))]
   end
 
   defp rename_atom(node, atom) do
@@ -1354,7 +1354,7 @@ defmodule :m_igor do
                 )
 
               t2 = :erl_syntax.implicit_fun(n)
-              {{:value, t2}, ['function was renamed']}
+              {{:value, t2}, [~c"function was renamed"]}
           end
 
         :module_qualifier ->
@@ -1393,7 +1393,7 @@ defmodule :m_igor do
   defp transform_application_1(name, f, as, t, env, st) do
     arity = length(as)
     {name1, f1} = expand_operator(name, arity, f, env)
-    f2 = maybe_modified_quiet(f1, f, 7, ['unfolded alias'], env)
+    f2 = maybe_modified_quiet(f1, f, 7, [~c"unfolded alias"], env)
     {v, st1} = transform_application_2(name1, arity, f2, as, env, st)
     t1 = rewrite(t, :erl_syntax.application(f2, as))
 
@@ -1483,7 +1483,7 @@ defmodule :m_igor do
               {n, a} when a === arity ->
                 f1 = rewrite(f, :erl_syntax.atom(n))
                 t = :erl_syntax.application(f1, as)
-                v = {t, 2, ['callee was renamed']}
+                v = {t, 2, [~c"callee was renamed"]}
                 {{:value, v}, st}
             end
         end
@@ -1654,7 +1654,7 @@ defmodule :m_igor do
         case :dict.find(module, r_code(env, :redirect)) do
           {:ok, module1} ->
             t = makeDynamic.(module1, name)
-            v = {t, depth, ['redirected call']}
+            v = {t, depth, [~c"redirected call"]}
             {{:value, v}, st}
 
           :error ->
@@ -1702,14 +1702,14 @@ defmodule :m_igor do
                   false ->
                     st1 = state__add_export(name1, arity, st)
                     t = makeDynamic.(target, name1)
-                    text = ['localised call']
+                    text = [~c"localised call"]
                     v = {t, depth, text}
                     {{:value, v}, st1}
                 end
 
               true ->
                 t = makeLocal.(name1)
-                text = ['localised safe call']
+                text = [~c"localised safe call"]
                 v = {t, depth, text}
                 {{:value, v}, st}
             end
@@ -1718,7 +1718,7 @@ defmodule :m_igor do
   end
 
   defp protect_call(_Module, _Local, remote) do
-    {remote, ['dynamic call']}
+    {remote, [~c"dynamic call"]}
   end
 
   defp transform_attribute(t, env, st) do
@@ -1806,7 +1806,7 @@ defmodule :m_igor do
         {:none, []}
 
       r1 ->
-        {{:value, f.(r1)}, ['record was renamed']}
+        {{:value, f.(r1)}, [~c"record was renamed"]}
     end
   end
 
@@ -1843,7 +1843,7 @@ defmodule :m_igor do
                   depth
                 )
               ),
-              '  '
+              ~c"  "
             )
           )
 
@@ -1852,7 +1852,7 @@ defmodule :m_igor do
             comment_note(
               message ++
                 [
-                  'Original code:'
+                  ~c"Original code:"
                   | code
                 ]
             )
@@ -1866,13 +1866,13 @@ defmodule :m_igor do
     opts1 =
       opts ++
         [
-          {:backup_suffix, '.bak'},
+          {:backup_suffix, ~c".bak"},
           :backups,
-          {:dir, ''},
+          {:dir, ~c""},
           {:printer, &default_printer/2},
-          {:stub_dir, 'stubs'},
+          {:stub_dir, ~c"stubs"},
           :stubs,
-          {:suffix, '.erl'},
+          {:suffix, ~c".erl"},
           {:verbose, false}
         ]
 
@@ -1908,8 +1908,8 @@ defmodule :m_igor do
       end
 
     forms = stub_header(name, exports, attrs) ++ defs
-    dir = :proplists.get_value(:stub_dir, opts, '')
-    verbose('creating stub file for module `~w\'.', [name], opts)
+    dir = :proplists.get_value(:stub_dir, opts, ~c"")
+    verbose(~c"creating stub file for module `~w'.", [name], opts)
     write_module(:erl_syntax.form_list(forms), name, dir, opts)
   end
 
@@ -1937,7 +1937,7 @@ defmodule :m_igor do
 
   defp var_list(n, i) when n > 0 do
     [
-      :erl_syntax.variable('X' ++ :erlang.integer_to_list(i))
+      :erl_syntax.variable(~c"X" ++ :erlang.integer_to_list(i))
       | var_list(n - 1, i + 1)
     ]
   end
@@ -1949,14 +1949,14 @@ defmodule :m_igor do
   defp stub_header(name, exports, attrs) do
     [
       comment([
-        '=====================================================================',
+        ~c"=====================================================================",
         :io_lib.fwrite(
-          'This is an automatically generated stub interface\nfor the module `~w\'.',
+          ~c"This is an automatically generated stub interface\nfor the module `~w'.",
           [name]
         ),
-        '',
+        ~c"",
         timestamp(),
-        ''
+        ~c""
       ]),
       :erl_syntax.attribute(
         :erl_syntax.atom(:module),
@@ -1977,7 +1977,7 @@ defmodule :m_igor do
           :dict.from_list(renamings)
 
         false ->
-          report_error('bad module renaming: ~tP.', [renamings, 10])
+          report_error(~c"bad module renaming: ~tP.", [renamings, 10])
           exit(:error)
       end
 
@@ -1985,11 +1985,11 @@ defmodule :m_igor do
       [{:find_src_rules, []}] ++
         opts ++
         [
-          {:backup_suffix, '.bak'},
+          {:backup_suffix, ~c".bak"},
           :backups,
           {:printer, &default_printer/2},
           :stubs,
-          {:suffix, '.erl'},
+          {:suffix, ~c".erl"},
           :comments,
           {:preprocess, false},
           {:tidy, false},
@@ -2058,7 +2058,7 @@ defmodule :m_igor do
           l1
 
         :syntax_error ->
-          report_error('syntax error in input.')
+          report_error(~c"syntax error in input.")
           :erlang.error(:badarg)
 
         {:EXIT, r} ->
@@ -2077,7 +2077,7 @@ defmodule :m_igor do
           {n, :none}
 
         false ->
-          report_error('in source code: module name missing.')
+          report_error(~c"in source code: module name missing.")
           exit(:error)
       end
 
@@ -2194,7 +2194,7 @@ defmodule :m_igor do
   end
 
   defp report_errors([d | ds], name) do
-    report_error('error: ' ++ error_text(d, name))
+    report_error(~c"error: " ++ error_text(d, name))
     report_errors(ds, name)
   end
 
@@ -2222,7 +2222,7 @@ defmodule :m_igor do
                 e -> e
               end) do
           s when is_list(s) ->
-            :io_lib.fwrite('`~w\', line ~w: ~ts.', [name, l, s])
+            :io_lib.fwrite(~c"`~w', line ~w: ~ts.", [name, l, s])
 
           _ ->
             error_text_1(d, name)
@@ -2234,7 +2234,7 @@ defmodule :m_igor do
   end
 
   defp error_text_1(d, name) do
-    :io_lib.fwrite('error: `~w\', ~tP.', [name, d, 15])
+    :io_lib.fwrite(~c"error: `~w', ~tP.", [name, d, 15])
   end
 
   defp check_records(rs, name) do
@@ -2247,7 +2247,7 @@ defmodule :m_igor do
         :ok
 
       ns ->
-        report_error('in module `~w\': multiply defined records: ~tp.', [name, ns])
+        report_error(~c"in module `~w': multiply defined records: ~tp.", [name, ns])
         exit(:error)
     end
   end
@@ -2275,7 +2275,7 @@ defmodule :m_igor do
         :ordsets.from_list(as)
 
       ns ->
-        report_error('in module `~w\': multiply imported functions: ~tp.', [name, ns])
+        report_error(~c"in module `~w': multiply imported functions: ~tp.", [name, ns])
         exit(:error)
     end
   end
@@ -2340,7 +2340,7 @@ defmodule :m_igor do
   end
 
   defp read_module_1(name, options) do
-    verbose('reading module `~ts\'.', [filename(name)], options)
+    verbose(~c"reading module `~ts'.", [filename(name)], options)
     {forms, enc} = read_module_2(name, options)
 
     case :proplists.get_bool(:comments, options) do
@@ -2381,7 +2381,7 @@ defmodule :m_igor do
       :proplists.append_values(
         :includes,
         options
-      ) ++ [:filename.dirname(name), '.']
+      ) ++ [:filename.dirname(name), ~c"."]
 
     macros =
       :proplists.append_values(
@@ -2401,11 +2401,11 @@ defmodule :m_igor do
               m.format_error(d)
 
             _ ->
-              'unknown error'
+              ~c"unknown error"
           end
 
         report_error(
-          'in file `~ts\' at line ~w:\n  ~ts',
+          ~c"in file `~ts' at line ~w:\n  ~ts",
           [filename(file), :erl_syntax.get_pos(f), s]
         )
 
@@ -2462,7 +2462,7 @@ defmodule :m_igor do
 
     base =
       cond do
-        dir1 === '' ->
+        dir1 === ~c"" ->
           name1
 
         true ->
@@ -2471,17 +2471,17 @@ defmodule :m_igor do
               :ok
 
             {:value, _} ->
-              report_error('`~ts\' is not a directory.', [dir1])
+              report_error(~c"`~ts' is not a directory.", [dir1])
               exit(:error)
 
             :none ->
               case :file.make_dir(dir1) do
                 :ok ->
-                  verbose('created directory `~ts\'.', [dir1], opts)
+                  verbose(~c"created directory `~ts'.", [dir1], opts)
                   :ok
 
                 e ->
-                  report_error('failed to create directory `~ts\'.', [dir1])
+                  report_error(~c"failed to create directory `~ts'.", [dir1])
                   exit({:make_dir, e})
               end
           end
@@ -2489,7 +2489,7 @@ defmodule :m_igor do
           :filename.join(dir1, name1)
       end
 
-    suffix = :proplists.get_value(:suffix, opts, '')
+    suffix = :proplists.get_value(:suffix, opts, ~c"")
     file = base ++ suffix
 
     case :proplists.get_bool(:backups, opts) do
@@ -2503,7 +2503,7 @@ defmodule :m_igor do
     printer = :proplists.get_value(:printer, opts)
     fD = open_output_file(file)
     :ok = output_encoding(fD, opts)
-    verbose('writing to file `~ts\'.', [file], opts)
+    verbose(~c"writing to file `~ts'.", [file], opts)
 
     v =
       try do
@@ -2551,7 +2551,7 @@ defmodule :m_igor do
 
   defp backup_file_1(name, opts) do
     name1 = filename(name)
-    suffix = :proplists.get_value(:backup_suffix, opts, '')
+    suffix = :proplists.get_value(:backup_suffix, opts, ~c"")
 
     dest =
       :filename.join(
@@ -2567,7 +2567,7 @@ defmodule :m_igor do
             e -> e
           end) do
       :ok ->
-        verbose('made backup of file `~ts\'.', [name1], opts)
+        verbose(~c"made backup of file `~ts'.", [name1], opts)
 
       {:error, r} ->
         error_backup_file(name1)
@@ -2586,7 +2586,7 @@ defmodule :m_igor do
   defp tidy(tree, opts) do
     case :proplists.get_bool(:tidy, opts) do
       true ->
-        verbose('tidying final module.', opts)
+        verbose(~c"tidying final module.", opts)
         :erl_tidy.module(tree, [:quiet])
 
       false ->
@@ -2616,7 +2616,7 @@ defmodule :m_igor do
 
     :lists.flatten(
       :io_lib.fwrite(
-        'Created by Igor ~w-~2.2.0w-~2.2.0w, ~2.2.0w:~2.2.0w:~2.2.0w.',
+        ~c"Created by Igor ~w-~2.2.0w-~2.2.0w, ~2.2.0w:~2.2.0w:~2.2.0w.",
         [yr, mth, dy, hr, mt, sc]
       )
     )
@@ -2639,7 +2639,7 @@ defmodule :m_igor do
   end
 
   defp filename(n) do
-    report_error('bad filename: `~tP\'.', [n, 25])
+    report_error(~c"bad filename: `~tP'.", [n, 25])
     exit(:error)
   end
 
@@ -2670,11 +2670,11 @@ defmodule :m_igor do
   end
 
   defp comment_note([l | ls]) do
-    comment(['Note from Igor: ' ++ l | ls], '%! ')
+    comment([~c"Note from Igor: " ++ l | ls], ~c"%! ")
   end
 
   defp comment(txt) do
-    comment(txt, '% ')
+    comment(txt, ~c"% ")
   end
 
   defp comment(txt, prefix) do
@@ -2731,7 +2731,7 @@ defmodule :m_igor do
   end
 
   defp warning_unsafe_call(name, module, target) do
-    report_warning('call to `~tw\' in module `~w\' possibly unsafe in `~s\'.', [
+    report_warning(~c"call to `~tw' in module `~w' possibly unsafe in `~s'.", [
       name,
       module,
       target
@@ -2739,30 +2739,30 @@ defmodule :m_igor do
   end
 
   defp warning_apply_2(module, target) do
-    report_warning('call to `apply/2\' in module `~w\' possibly unsafe in `~s\'.', [
+    report_warning(~c"call to `apply/2' in module `~w' possibly unsafe in `~s'.", [
       module,
       target
     ])
   end
 
   defp error_open_output(name) do
-    report_error('cannot open file `~ts\' for output.', [filename(name)])
+    report_error(~c"cannot open file `~ts' for output.", [filename(name)])
   end
 
   defp error_read_file(name) do
-    report_error('error reading file `~ts\'.', [filename(name)])
+    report_error(~c"error reading file `~ts'.", [filename(name)])
   end
 
   defp error_read_file_info(name) do
-    report_error('error getting file info: `~ts\'.', [filename(name)])
+    report_error(~c"error getting file info: `~ts'.", [filename(name)])
   end
 
   defp error_write_file(name) do
-    report_error('error writing to file `~ts\'.', [filename(name)])
+    report_error(~c"error writing to file `~ts'.", [filename(name)])
   end
 
   defp error_backup_file(name) do
-    report_error('could not create backup of file `~ts\'.', [filename(name)])
+    report_error(~c"could not create backup of file `~ts'.", [filename(name)])
   end
 
   defp verbose(s, opts) do
@@ -2792,10 +2792,10 @@ defmodule :m_igor do
   end
 
   defp report_warning(s, vs) do
-    report('warning: ' ++ s, vs)
+    report(~c"warning: " ++ s, vs)
   end
 
   defp report(s, vs) do
-    :io.fwrite(:lists.concat([:igor, ': ', s, '\n']), vs)
+    :io.fwrite(:lists.concat([:igor, ~c": ", s, ~c"\n"]), vs)
   end
 end

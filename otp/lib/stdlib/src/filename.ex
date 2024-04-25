@@ -1,38 +1,53 @@
 defmodule :m_filename do
   use Bitwise
   require Record
-  Record.defrecord(:r_file_info, :file_info, size: :undefined,
-                                     type: :undefined, access: :undefined,
-                                     atime: :undefined, mtime: :undefined,
-                                     ctime: :undefined, mode: :undefined,
-                                     links: :undefined,
-                                     major_device: :undefined,
-                                     minor_device: :undefined,
-                                     inode: :undefined, uid: :undefined,
-                                     gid: :undefined)
-  Record.defrecord(:r_file_descriptor, :file_descriptor, module: :undefined,
-                                           data: :undefined)
+
+  Record.defrecord(:r_file_info, :file_info,
+    size: :undefined,
+    type: :undefined,
+    access: :undefined,
+    atime: :undefined,
+    mtime: :undefined,
+    ctime: :undefined,
+    mode: :undefined,
+    links: :undefined,
+    major_device: :undefined,
+    minor_device: :undefined,
+    inode: :undefined,
+    uid: :undefined,
+    gid: :undefined
+  )
+
+  Record.defrecord(:r_file_descriptor, :file_descriptor,
+    module: :undefined,
+    data: :undefined
+  )
+
   def absname(name) do
     {:ok, cwd} = :file.get_cwd()
     absname(name, cwd)
   end
 
-  def absname(name, absBase) when (is_binary(name) and
-                                is_list(absBase)) do
+  def absname(name, absBase)
+      when is_binary(name) and
+             is_list(absBase) do
     absname(name, filename_string_to_binary(absBase))
   end
 
-  def absname(name, absBase) when (is_list(name) and
-                                is_binary(absBase)) do
+  def absname(name, absBase)
+      when is_list(name) and
+             is_binary(absBase) do
     absname(filename_string_to_binary(name), absBase)
   end
 
   def absname(name, absBase) do
-    case (pathtype(name)) do
+    case pathtype(name) do
       :relative ->
         absname_join(absBase, name)
+
       :absolute ->
         join([flatten(name)])
+
       :volumerelative ->
         absname_vr(split(name), split(absBase), absBase)
     end
@@ -42,22 +57,24 @@ defmodule :m_filename do
     join([volume | rest1])
   end
 
-  defp absname_vr([<<x, ?:>> | rest1], [<<x, _ :: binary>> | _],
-            absBase) do
+  defp absname_vr([<<x, ?:>> | rest1], [<<x, _::binary>> | _], absBase) do
     absname(join(rest1), absBase)
   end
 
   defp absname_vr([<<x, ?:>> | name], _, _AbsBase) do
-    dcwd = (case (:file.get_cwd([x, ?:])) do
-              {:ok, dir} ->
-                filename_string_to_binary(dir)
-              {:error, _} ->
-                <<x, ?:, ?/>>
-            end)
+    dcwd =
+      case :file.get_cwd([x, ?:]) do
+        {:ok, dir} ->
+          filename_string_to_binary(dir)
+
+        {:error, _} ->
+          <<x, ?:, ?/>>
+      end
+
     absname(join(name), dcwd)
   end
 
-  defp absname_vr(['/' | rest1], [volume | _], _AbsBase) do
+  defp absname_vr([~c"/" | rest1], [volume | _], _AbsBase) do
     join([volume | rest1])
   end
 
@@ -66,12 +83,15 @@ defmodule :m_filename do
   end
 
   defp absname_vr([[x, ?:] | name], _, _AbsBase) do
-    dcwd = (case (:file.get_cwd([x, ?:])) do
-              {:ok, dir} ->
-                dir
-              {:error, _} ->
-                [x, ?:, ?/]
-            end)
+    dcwd =
+      case :file.get_cwd([x, ?:]) do
+        {:ok, dir} ->
+          dir
+
+        {:error, _} ->
+          [x, ?:, ?/]
+      end
+
     absname(join(name), dcwd)
   end
 
@@ -80,9 +100,10 @@ defmodule :m_filename do
   end
 
   def basename(name) when is_binary(name) do
-    case (:os.type()) do
+    case :os.type() do
       {:win32, _} ->
         win_basenameb(name)
+
       _ ->
         basenameb(name, ["/"])
     end
@@ -95,8 +116,9 @@ defmodule :m_filename do
     basename1(name, name, dirSep2)
   end
 
-  defp win_basenameb(<<letter, ?:, rest :: binary>>)
-      when is_integer(letter) and (?A <= letter and letter <= ?Z or ?a <= letter and letter <= ?z) do
+  defp win_basenameb(<<letter, ?:, rest::binary>>)
+       when is_integer(letter) and
+              ((?A <= letter and letter <= ?Z) or (?a <= letter and letter <= ?z)) do
     basenameb(rest, ["/", "\\"])
   end
 
@@ -105,13 +127,16 @@ defmodule :m_filename do
   end
 
   defp basenameb(bin, sep) do
-    parts = (for x <- :binary.split(bin, sep, [:global]),
-                   x !== <<>> do
-               x
-             end)
+    parts =
+      for x <- :binary.split(bin, sep, [:global]),
+          x !== <<>> do
+        x
+      end
+
     cond do
       parts === [] ->
         <<>>
+
       true ->
         :lists.last(parts)
     end
@@ -127,12 +152,12 @@ defmodule :m_filename do
   end
 
   defp basename1([dirSep2 | rest], tail, dirSep2)
-      when is_integer(dirSep2) do
+       when is_integer(dirSep2) do
     basename1([?/ | rest], tail, dirSep2)
   end
 
   defp basename1([char | rest], tail, dirSep2)
-      when is_integer(char) do
+       when is_integer(char) do
     basename1(rest, tail, dirSep2)
   end
 
@@ -145,7 +170,7 @@ defmodule :m_filename do
   end
 
   defp skip_prefix([l, drvSep | name], drvSep)
-      when is_integer(l) and (?A <= l and l <= ?Z or ?a <= l and l <= ?z) do
+       when is_integer(l) and ((?A <= l and l <= ?Z) or (?a <= l and l <= ?z)) do
     name
   end
 
@@ -153,31 +178,37 @@ defmodule :m_filename do
     name
   end
 
-  def basename(name, ext) when (is_binary(name) and
-                            is_list(ext)) do
+  def basename(name, ext)
+      when is_binary(name) and
+             is_list(ext) do
     basename(name, filename_string_to_binary(ext))
   end
 
-  def basename(name, ext) when (is_list(name) and
-                            is_binary(ext)) do
+  def basename(name, ext)
+      when is_list(name) and
+             is_binary(ext) do
     basename(filename_string_to_binary(name), ext)
   end
 
-  def basename(name, ext) when (is_binary(name) and
-                            is_binary(ext)) do
+  def basename(name, ext)
+      when is_binary(name) and
+             is_binary(ext) do
     bName = basename(name)
     lAll = byte_size(name)
     lN = byte_size(bName)
     lE = byte_size(ext)
-    case (lN - lE) do
+
+    case lN - lE do
       neg when neg < 0 ->
         bName
+
       pos ->
         startLen = lAll - pos - lE
-        case (name) do
-          <<_ :: size(startLen) - binary,
-              part :: size(pos) - binary, ^ext :: binary>> ->
+
+        case name do
+          <<_::size(startLen)-binary, part::size(pos)-binary, ^ext::binary>> ->
             part
+
           _Other ->
             bName
         end
@@ -205,12 +236,12 @@ defmodule :m_filename do
   end
 
   defp basename([dirSep2 | rest], ext, tail, dirSep2)
-      when is_integer(dirSep2) do
+       when is_integer(dirSep2) do
     basename([?/ | rest], ext, tail, dirSep2)
   end
 
   defp basename([char | rest], ext, tail, drvSep2)
-      when is_integer(char) do
+       when is_integer(char) do
     basename(rest, ext, [char | tail], drvSep2)
   end
 
@@ -220,38 +251,52 @@ defmodule :m_filename do
 
   def dirname(name) when is_binary(name) do
     {dsep, drivesep} = separators()
-    sList = (case (dsep) do
-               sep when is_integer(sep) ->
-                 [<<sep>>]
-               _ ->
-                 []
-             end)
-    {xPart0, dirs} = (case (drivesep) do
-                        x when is_integer(x) ->
-                          case (name) do
-                            <<dL, ^x, rest :: binary>>
-                                when is_integer(dL) and (?A <= dL and dL <= ?Z or ?a <= dL and dL <= ?z)
-                                     ->
-                              {<<dL, x>>, rest}
-                            _ ->
-                              {<<>>, name}
-                          end
-                        _ ->
-                          {<<>>, name}
-                      end)
+
+    sList =
+      case dsep do
+        sep when is_integer(sep) ->
+          [<<sep>>]
+
+        _ ->
+          []
+      end
+
+    {xPart0, dirs} =
+      case drivesep do
+        x when is_integer(x) ->
+          case name do
+            <<dL, ^x, rest::binary>>
+            when is_integer(dL) and ((?A <= dL and dL <= ?Z) or (?a <= dL and dL <= ?z)) ->
+              {<<dL, x>>, rest}
+
+            _ ->
+              {<<>>, name}
+          end
+
+        _ ->
+          {<<>>, name}
+      end
+
     parts0 = :binary.split(dirs, ["/" | sList], [:global])
-    parts = (case (parts0) do
-               [] ->
-                 []
-               _ ->
-                 :lists.reverse(fstrip(tl(:lists.reverse(parts0))))
-             end)
-    xPart = (case ({parts, xPart0}) do
-               {[], <<>>} ->
-                 "."
-               _ ->
-                 xPart0
-             end)
+
+    parts =
+      case parts0 do
+        [] ->
+          []
+
+        _ ->
+          :lists.reverse(fstrip(tl(:lists.reverse(parts0))))
+      end
+
+    xPart =
+      case {parts, xPart0} do
+        {[], <<>>} ->
+          "."
+
+        _ ->
+          xPart0
+      end
+
     dirjoin(parts, xPart, "/")
   end
 
@@ -265,27 +310,28 @@ defmodule :m_filename do
   end
 
   defp dirname([dirSep | rest], dir, file, {dirSep, _} = seps)
-      when is_integer(dirSep) do
+       when is_integer(dirSep) do
     dirname(rest, file ++ dir, [?/], seps)
   end
 
   defp dirname([dl, drvSep | rest], [], [], {_, drvSep} = seps)
-      when (is_integer(drvSep) and
-              is_integer(dl) and (?A <= dl and dl <= ?Z or ?a <= dl and dl <= ?z)) do
+       when is_integer(drvSep) and
+              is_integer(dl) and ((?A <= dl and dl <= ?Z) or (?a <= dl and dl <= ?z)) do
     dirname(rest, [drvSep, dl], [], seps)
   end
 
   defp dirname([char | rest], dir, file, seps)
-      when is_integer(char) do
+       when is_integer(char) do
     dirname(rest, dir, [char | file], seps)
   end
 
   defp dirname([], [], file, _Seps) do
-    case (:lists.reverse(file)) do
+    case :lists.reverse(file) do
       [?/ | _] ->
         [?/]
+
       _ ->
-        '.'
+        ~c"."
     end
   end
 
@@ -294,9 +340,10 @@ defmodule :m_filename do
   end
 
   defp dirname([], [drvSep, dl], file, {_, drvSep}) do
-    case (:lists.reverse(file)) do
+    case :lists.reverse(file) do
       [?/ | _] ->
         [dl, drvSep, ?/]
+
       _ ->
         [dl, drvSep]
     end
@@ -315,7 +362,7 @@ defmodule :m_filename do
   end
 
   defp dirjoin([<<>> | t], acc, sep) do
-    dirjoin1(t, <<acc :: binary, "/">>, sep)
+    dirjoin1(t, <<acc::binary, "/">>, sep)
   end
 
   defp dirjoin(a, b, c) do
@@ -327,35 +374,42 @@ defmodule :m_filename do
   end
 
   defp dirjoin1([one], acc, _) do
-    <<acc :: binary, one :: binary>>
+    <<acc::binary, one::binary>>
   end
 
   defp dirjoin1([h | t], acc, sep) do
-    dirjoin(t,
-              <<acc :: binary, h :: binary, sep :: binary>>, sep)
+    dirjoin(t, <<acc::binary, h::binary, sep::binary>>, sep)
   end
 
   def extension(name) when is_binary(name) do
     {dsep, _} = separators()
-    sList = (case (dsep) do
-               sep when is_integer(sep) ->
-                 [<<sep>>]
-               _ ->
-                 []
-             end)
-    case (:binary.matches(name, ["."])) do
+
+    sList =
+      case dsep do
+        sep when is_integer(sep) ->
+          [<<sep>>]
+
+        _ ->
+          []
+      end
+
+    case :binary.matches(name, ["."]) do
       [] ->
         <<>>
+
       list ->
-        case (:lists.last(list)) do
+        case :lists.last(list) do
           {0, _} ->
             <<>>
+
           {pos, _} ->
-            <<_ :: size(pos - 1) - binary, part :: binary>> = name
-            case (:binary.match(part, ["/" | sList])) do
+            <<_::size(pos - 1)-binary, part::binary>> = name
+
+            case :binary.match(part, ["/" | sList]) do
               :nomatch ->
-                <<_ :: size(pos) - binary, result :: binary>> = name
+                <<_::size(pos)-binary, result::binary>> = name
                 result
+
               _ ->
                 <<>>
             end
@@ -381,7 +435,7 @@ defmodule :m_filename do
   end
 
   defp extension([char | rest], [], osType)
-      when is_integer(char) do
+       when is_integer(char) do
     extension(rest, [], osType)
   end
 
@@ -394,7 +448,7 @@ defmodule :m_filename do
   end
 
   defp extension([char | rest], result, osType)
-      when is_integer(char) do
+       when is_integer(char) do
     extension(rest, result, osType)
   end
 
@@ -418,33 +472,41 @@ defmodule :m_filename do
     join([:erlang.atom_to_list(name)])
   end
 
-  def join(name1, name2) when (is_list(name1) and
-                               is_list(name2)) do
+  def join(name1, name2)
+      when is_list(name1) and
+             is_list(name2) do
     osType = major_os_type()
-    case (pathtype(name2)) do
+
+    case pathtype(name2) do
       :relative ->
         join1(name1, name2, [], osType)
+
       _Other ->
         join1(name2, [], [], osType)
     end
   end
 
-  def join(name1, name2) when (is_binary(name1) and
-                               is_list(name2)) do
+  def join(name1, name2)
+      when is_binary(name1) and
+             is_list(name2) do
     join(name1, filename_string_to_binary(name2))
   end
 
-  def join(name1, name2) when (is_list(name1) and
-                               is_binary(name2)) do
+  def join(name1, name2)
+      when is_list(name1) and
+             is_binary(name2) do
     join(filename_string_to_binary(name1), name2)
   end
 
-  def join(name1, name2) when (is_binary(name1) and
-                               is_binary(name2)) do
+  def join(name1, name2)
+      when is_binary(name1) and
+             is_binary(name2) do
     osType = major_os_type()
-    case (pathtype(name2)) do
+
+    case pathtype(name2) do
       :relative ->
         join1b(name1, name2, [], osType)
+
       _Other ->
         join1b(name2, <<>>, [], osType)
     end
@@ -459,10 +521,9 @@ defmodule :m_filename do
   end
 
   defp join1([ucLetter, ?: | rest], relativeName, [], :win32)
-      when (is_integer(ucLetter) and ucLetter >= ?A and
-              ucLetter <= ?Z) do
-    join1(rest, relativeName, [?:, ucLetter + ?a - ?A],
-            :win32)
+       when is_integer(ucLetter) and ucLetter >= ?A and
+              ucLetter <= ?Z do
+    join1(rest, relativeName, [?:, ucLetter + ?a - ?A], :win32)
   end
 
   defp join1([?\\, ?\\ | rest], relativeName, [], :win32) do
@@ -477,13 +538,11 @@ defmodule :m_filename do
     join1([?/ | rest], relativeName, result, :win32)
   end
 
-  defp join1([?/ | rest], relativeName, [?., ?/ | result],
-            osType) do
+  defp join1([?/ | rest], relativeName, [?., ?/ | result], osType) do
     join1(rest, relativeName, [?/ | result], osType)
   end
 
-  defp join1([?/ | rest], relativeName, [?/ | result],
-            osType) do
+  defp join1([?/ | rest], relativeName, [?/ | result], osType) do
     join1(rest, relativeName, [?/ | result], osType)
   end
 
@@ -507,8 +566,7 @@ defmodule :m_filename do
     join1(relativeName, [], [?/ | result], osType)
   end
 
-  defp join1([[_ | _] = list | rest], relativeName, result,
-            osType) do
+  defp join1([[_ | _] = list | rest], relativeName, result, osType) do
     join1(list ++ rest, relativeName, result, osType)
   end
 
@@ -517,62 +575,55 @@ defmodule :m_filename do
   end
 
   defp join1([char | rest], relativeName, result, osType)
-      when is_integer(char) do
+       when is_integer(char) do
     join1(rest, relativeName, [char | result], osType)
   end
 
   defp join1([atom | rest], relativeName, result, osType)
-      when is_atom(atom) do
-    join1(:erlang.atom_to_list(atom) ++ rest, relativeName,
-            result, osType)
+       when is_atom(atom) do
+    join1(:erlang.atom_to_list(atom) ++ rest, relativeName, result, osType)
   end
 
-  defp join1b(<<ucLetter, ?:, rest :: binary>>, relativeName,
-            [], :win32)
-      when (is_integer(ucLetter) and ucLetter >= ?A and
-              ucLetter <= ?Z) do
-    join1b(rest, relativeName, [?:, ucLetter + ?a - ?A],
-             :win32)
+  defp join1b(<<ucLetter, ?:, rest::binary>>, relativeName, [], :win32)
+       when is_integer(ucLetter) and ucLetter >= ?A and
+              ucLetter <= ?Z do
+    join1b(rest, relativeName, [?:, ucLetter + ?a - ?A], :win32)
   end
 
-  defp join1b(<<?\\, ?\\, rest :: binary>>, relativeName, [],
-            :win32) do
-    join1b(<<?/, ?/, rest :: binary>>, relativeName, [],
-             :win32)
+  defp join1b(<<?\\, ?\\, rest::binary>>, relativeName, [], :win32) do
+    join1b(<<?/, ?/, rest::binary>>, relativeName, [], :win32)
   end
 
-  defp join1b(<<?/, ?/, rest :: binary>>, relativeName, [],
-            :win32) do
+  defp join1b(<<?/, ?/, rest::binary>>, relativeName, [], :win32) do
     join1b(rest, relativeName, [?/, ?/], :win32)
   end
 
-  defp join1b(<<?\\, rest :: binary>>, relativeName, result,
-            :win32) do
-    join1b(<<?/, rest :: binary>>, relativeName, result,
-             :win32)
+  defp join1b(<<?\\, rest::binary>>, relativeName, result, :win32) do
+    join1b(<<?/, rest::binary>>, relativeName, result, :win32)
   end
 
-  defp join1b(<<?/, rest :: binary>>, relativeName,
-            [?., ?/ | result], osType) do
+  defp join1b(<<?/, rest::binary>>, relativeName, [?., ?/ | result], osType) do
     join1b(rest, relativeName, [?/ | result], osType)
   end
 
-  defp join1b(<<?/, rest :: binary>>, relativeName,
-            [?/ | result], osType) do
+  defp join1b(<<?/, rest::binary>>, relativeName, [?/ | result], osType) do
     join1b(rest, relativeName, [?/ | result], osType)
   end
 
   defp join1b(<<>>, <<>>, result, osType) do
-    :erlang.list_to_binary(maybe_remove_dirsep(result,
-                                                 osType))
+    :erlang.list_to_binary(
+      maybe_remove_dirsep(
+        result,
+        osType
+      )
+    )
   end
 
   defp join1b(<<>>, relativeName, [?: | rest], :win32) do
     join1b(relativeName, <<>>, [?: | rest], :win32)
   end
 
-  defp join1b(<<>>, relativeName, [?/, ?/ | result],
-            :win32) do
+  defp join1b(<<>>, relativeName, [?/, ?/ | result], :win32) do
     join1b(relativeName, <<>>, [?/, ?/ | result], :win32)
   end
 
@@ -580,8 +631,7 @@ defmodule :m_filename do
     join1b(relativeName, <<>>, [?/ | result], osType)
   end
 
-  defp join1b(<<>>, relativeName, [?., ?/ | result],
-            osType) do
+  defp join1b(<<>>, relativeName, [?., ?/ | result], osType) do
     join1b(relativeName, <<>>, [?/ | result], osType)
   end
 
@@ -589,9 +639,8 @@ defmodule :m_filename do
     join1b(relativeName, <<>>, [?/ | result], osType)
   end
 
-  defp join1b(<<char, rest :: binary>>, relativeName, result,
-            osType)
-      when is_integer(char) do
+  defp join1b(<<char, rest::binary>>, relativeName, result, osType)
+       when is_integer(char) do
     join1b(rest, relativeName, [char | result], osType)
   end
 
@@ -615,9 +664,10 @@ defmodule :m_filename do
     :lists.reverse(name)
   end
 
-  def append(dir, name) when (is_binary(dir) and
-                            is_binary(name)) do
-    <<dir :: binary, ?/ :: size(8), name :: binary>>
+  def append(dir, name)
+      when is_binary(dir) and
+             is_binary(name) do
+    <<dir::binary, ?/::size(8), name::binary>>
   end
 
   def append(dir, name) when is_binary(dir) do
@@ -637,15 +687,16 @@ defmodule :m_filename do
   end
 
   def pathtype(name) when is_list(name) or is_binary(name) do
-    case (:os.type()) do
+    case :os.type() do
       {:win32, _} ->
         win32_pathtype(name)
+
       {_, _} ->
         unix_pathtype(name)
     end
   end
 
-  defp unix_pathtype(<<?/, _ :: binary>>) do
+  defp unix_pathtype(<<?/, _::binary>>) do
     :absolute
   end
 
@@ -677,39 +728,39 @@ defmodule :m_filename do
     win32_pathtype([char | list ++ rest])
   end
 
-  defp win32_pathtype(<<?/, ?/, _ :: binary>>) do
+  defp win32_pathtype(<<?/, ?/, _::binary>>) do
     :absolute
   end
 
-  defp win32_pathtype(<<?\\, ?/, _ :: binary>>) do
+  defp win32_pathtype(<<?\\, ?/, _::binary>>) do
     :absolute
   end
 
-  defp win32_pathtype(<<?/, ?\\, _ :: binary>>) do
+  defp win32_pathtype(<<?/, ?\\, _::binary>>) do
     :absolute
   end
 
-  defp win32_pathtype(<<?\\, ?\\, _ :: binary>>) do
+  defp win32_pathtype(<<?\\, ?\\, _::binary>>) do
     :absolute
   end
 
-  defp win32_pathtype(<<?/, _ :: binary>>) do
+  defp win32_pathtype(<<?/, _::binary>>) do
     :volumerelative
   end
 
-  defp win32_pathtype(<<?\\, _ :: binary>>) do
+  defp win32_pathtype(<<?\\, _::binary>>) do
     :volumerelative
   end
 
-  defp win32_pathtype(<<_Letter, ?:, ?/, _ :: binary>>) do
+  defp win32_pathtype(<<_Letter, ?:, ?/, _::binary>>) do
     :absolute
   end
 
-  defp win32_pathtype(<<_Letter, ?:, ?\\, _ :: binary>>) do
+  defp win32_pathtype(<<_Letter, ?:, ?\\, _::binary>>) do
     :absolute
   end
 
-  defp win32_pathtype(<<_Letter, ?:, _ :: binary>>) do
+  defp win32_pathtype(<<_Letter, ?:, _::binary>>) do
     :volumerelative
   end
 
@@ -779,16 +830,16 @@ defmodule :m_filename do
   end
 
   defp rootname([?. | rest], root, ext, osType) do
-    rootname(rest, ext ++ root, '.', osType)
+    rootname(rest, ext ++ root, ~c".", osType)
   end
 
   defp rootname([char | rest], root, [], osType)
-      when is_integer(char) do
+       when is_integer(char) do
     rootname(rest, [char | root], [], osType)
   end
 
   defp rootname([char | rest], root, ext, osType)
-      when is_integer(char) do
+       when is_integer(char) do
     rootname(rest, root, [char | ext], osType)
   end
 
@@ -796,10 +847,15 @@ defmodule :m_filename do
     :lists.reverse(root)
   end
 
-  def rootname(name, ext) when (is_binary(name) and
-                            is_binary(ext)) do
-    :erlang.list_to_binary(rootname(:erlang.binary_to_list(name),
-                                      :erlang.binary_to_list(ext)))
+  def rootname(name, ext)
+      when is_binary(name) and
+             is_binary(ext) do
+    :erlang.list_to_binary(
+      rootname(
+        :erlang.binary_to_list(name),
+        :erlang.binary_to_list(ext)
+      )
+    )
   end
 
   def rootname(name, ext) when is_binary(name) do
@@ -833,14 +889,15 @@ defmodule :m_filename do
   end
 
   defp rootname2([char | rest], ext, result, osType)
-      when is_integer(char) do
+       when is_integer(char) do
     rootname2(rest, ext, [char | result], osType)
   end
 
   def split(name) when is_binary(name) do
-    case (:os.type()) do
+    case :os.type() do
       {:win32, _} ->
         win32_splitb(name)
+
       _ ->
         unix_splitb(name)
     end
@@ -848,9 +905,11 @@ defmodule :m_filename do
 
   def split(name0) do
     name = flatten(name0)
-    case (:os.type()) do
+
+    case :os.type() do
       {:win32, _} ->
         win32_split(name)
+
       _ ->
         unix_split(name)
     end
@@ -858,12 +917,16 @@ defmodule :m_filename do
 
   defp unix_splitb(name) do
     l = :binary.split(name, ["/"], [:global])
-    lL = (case (l) do
-            [<<>> | rest] when rest !== [] ->
-              ["/" | rest]
-            _ ->
-              l
-          end)
+
+    lL =
+      case l do
+        [<<>> | rest] when rest !== [] ->
+          ["/" | rest]
+
+        _ ->
+          l
+      end
+
     for x <- lL, x !== <<>> do
       x
     end
@@ -871,49 +934,69 @@ defmodule :m_filename do
 
   defp fix_driveletter(letter0) do
     cond do
-      (letter0 >= ?A and letter0 <= ?Z) ->
+      letter0 >= ?A and letter0 <= ?Z ->
         letter0 + ?a - ?A
+
       true ->
         letter0
     end
   end
 
-  defp win32_splitb(<<letter0, ?:, slash, rest :: binary>>)
-      when (slash === ?\\ or slash === ?/) and is_integer(letter0) and (?A <= letter0 and letter0 <= ?Z or ?a <= letter0 and letter0 <= ?z) do
+  defp win32_splitb(<<letter0, ?:, slash, rest::binary>>)
+       when (slash === ?\\ or slash === ?/) and is_integer(letter0) and
+              ((?A <= letter0 and letter0 <= ?Z) or (?a <= letter0 and letter0 <= ?z)) do
     letter = fix_driveletter(letter0)
     l = :binary.split(rest, ["/", "\\"], [:global])
-    [<<letter, ?:, ?/>> | for x <- l, x !== <<>> do
-                            x
-                          end]
+
+    [
+      <<letter, ?:, ?/>>
+      | for x <- l, x !== <<>> do
+          x
+        end
+    ]
   end
 
-  defp win32_splitb(<<letter0, ?:, rest :: binary>>)
-      when is_integer(letter0) and (?A <= letter0 and letter0 <= ?Z or ?a <= letter0 and letter0 <= ?z) do
+  defp win32_splitb(<<letter0, ?:, rest::binary>>)
+       when is_integer(letter0) and
+              ((?A <= letter0 and letter0 <= ?Z) or (?a <= letter0 and letter0 <= ?z)) do
     letter = fix_driveletter(letter0)
     l = :binary.split(rest, ["/", "\\"], [:global])
-    [<<letter, ?:>> | for x <- l, x !== <<>> do
-                        x
-                      end]
+
+    [
+      <<letter, ?:>>
+      | for x <- l, x !== <<>> do
+          x
+        end
+    ]
   end
 
-  defp win32_splitb(<<slash, slash, rest :: binary>>)
-      when slash === ?\\ or slash === ?/ do
+  defp win32_splitb(<<slash, slash, rest::binary>>)
+       when slash === ?\\ or slash === ?/ do
     l = :binary.split(rest, ["/", "\\"], [:global])
-    ["//" | for x <- l, x !== <<>> do
-           x
-         end]
+
+    [
+      "//"
+      | for x <- l, x !== <<>> do
+          x
+        end
+    ]
   end
 
-  defp win32_splitb(<<slash, rest :: binary>>)
-      when slash === ?\\ or slash === ?/ do
+  defp win32_splitb(<<slash, rest::binary>>)
+       when slash === ?\\ or slash === ?/ do
     l = :binary.split(rest, ["/", "\\"], [:global])
-    [<<?/>> | for x <- l, x !== <<>> do
-                x
-              end]
+
+    [
+      <<?/>>
+      | for x <- l, x !== <<>> do
+          x
+        end
+    ]
   end
 
   defp win32_splitb(name) do
     l = :binary.split(name, ["/", "\\"], [:global])
+
     for x <- l, x !== <<>> do
       x
     end
@@ -924,7 +1007,7 @@ defmodule :m_filename do
   end
 
   defp win32_split([slash, slash | rest])
-      when slash === ?\\ or slash === ?/ do
+       when slash === ?\\ or slash === ?/ do
     split(rest, [[?/, ?/]], :win32)
   end
 
@@ -936,14 +1019,15 @@ defmodule :m_filename do
     win32_split([x, ?/ | rest])
   end
 
-  defp win32_split([x, y, ?\\ | rest]) when (is_integer(x) and
-                                      is_integer(y)) do
+  defp win32_split([x, y, ?\\ | rest])
+       when is_integer(x) and
+              is_integer(y) do
     win32_split([x, y, ?/ | rest])
   end
 
   defp win32_split([ucLetter, ?: | rest])
-      when (is_integer(ucLetter) and ?A <= ucLetter and
-              ucLetter <= ?Z) do
+       when is_integer(ucLetter) and ?A <= ucLetter and
+              ucLetter <= ?Z do
     win32_split([ucLetter + ?a - ?A, ?: | rest])
   end
 
@@ -980,12 +1064,11 @@ defmodule :m_filename do
   end
 
   defp split([?/ | rest], comp, components, osType) do
-    split(rest, [], [:lists.reverse(comp) | components],
-            osType)
+    split(rest, [], [:lists.reverse(comp) | components], osType)
   end
 
   defp split([char | rest], comp, components, osType)
-      when is_integer(char) do
+       when is_integer(char) do
     split(rest, [char | comp], components, osType)
   end
 
@@ -994,15 +1077,16 @@ defmodule :m_filename do
   end
 
   defp split([], comp, components, osType) do
-    split([], [], [:lists.reverse(comp) | components],
-            osType)
+    split([], [], [:lists.reverse(comp) | components], osType)
   end
 
   def nativename(name0) do
     name = join([name0])
-    case (:os.type()) do
+
+    case :os.type() do
       {:win32, _} ->
         win32_nativename(name)
+
       _ ->
         name
     end
@@ -1025,9 +1109,10 @@ defmodule :m_filename do
   end
 
   defp separators() do
-    case (:os.type()) do
+    case :os.type() do
       {:win32, _} ->
         {?\\, ?:}
+
       _ ->
         {false, false}
     end
@@ -1067,39 +1152,49 @@ defmodule :m_filename do
   end
 
   defp filename_string_to_binary(list) do
-    case (:unicode.characters_to_binary(flatten(list),
-                                          :unicode,
-                                          :file.native_name_encoding())) do
+    case :unicode.characters_to_binary(
+           flatten(list),
+           :unicode,
+           :file.native_name_encoding()
+         ) do
       {:error, _, _} ->
         :erlang.error(:badarg)
+
       bin when is_binary(bin) ->
         bin
     end
   end
 
-  def basedir(type, application) when (is_atom(type) and
-                                    is_list(application) or is_binary(application)) do
+  def basedir(type, application)
+      when (is_atom(type) and
+              is_list(application)) or is_binary(application) do
     basedir(type, application, %{})
   end
 
-  def basedir(type, application, opts) when (is_atom(type) and
-                                          is_map(opts) and
-                                          is_list(application) or is_binary(application)) do
+  def basedir(type, application, opts)
+      when (is_atom(type) and
+              is_map(opts) and
+              is_list(application)) or is_binary(application) do
     os = basedir_os_from_opts(opts)
     name = basedir_name_from_opts(os, application, opts)
     base = basedir_from_os(type, os)
-    case ({type, os}) do
+
+    case {type, os} do
       {:user_log, :linux} ->
-        :filename.join([base, name, 'log'])
+        :filename.join([base, name, ~c"log"])
+
       {:user_log, :windows} ->
-        :filename.join([base, name, 'Logs'])
+        :filename.join([base, name, ~c"Logs"])
+
       {:user_cache, :windows} ->
-        :filename.join([base, name, 'Cache'])
+        :filename.join([base, name, ~c"Cache"])
+
       {^type, _}
-          when type === :site_config or type === :site_data ->
+      when type === :site_config or type === :site_data ->
         for b <- base do
           :filename.join([b, name])
         end
+
       _ ->
         :filename.join([base, name])
     end
@@ -1121,8 +1216,7 @@ defmodule :m_filename do
     basedir_os_type()
   end
 
-  defp basedir_name_from_opts(:windows, app,
-            %{author: author, version: vsn}) do
+  defp basedir_name_from_opts(:windows, app, %{author: author, version: vsn}) do
     :filename.join([author, app, vsn])
   end
 
@@ -1139,81 +1233,104 @@ defmodule :m_filename do
   end
 
   defp basedir_from_os(type, os) do
-    case (os) do
+    case os do
       :linux ->
         basedir_linux(type)
+
       :darwin ->
         basedir_darwin(type)
+
       :windows ->
         basedir_windows(type)
     end
   end
 
   defp basedir_linux(type) do
-    case (type) do
+    case type do
       :user_data ->
-        getenv('XDG_DATA_HOME', '.local/share', true)
+        getenv(~c"XDG_DATA_HOME", ~c".local/share", true)
+
       :user_config ->
-        getenv('XDG_CONFIG_HOME', '.config', true)
+        getenv(~c"XDG_CONFIG_HOME", ~c".config", true)
+
       :user_cache ->
-        getenv('XDG_CACHE_HOME', '.cache', true)
+        getenv(~c"XDG_CACHE_HOME", ~c".cache", true)
+
       :user_log ->
-        getenv('XDG_CACHE_HOME', '.cache', true)
+        getenv(~c"XDG_CACHE_HOME", ~c".cache", true)
+
       :site_data ->
-        base = getenv('XDG_DATA_DIRS', '/usr/local/share/:/usr/share/', false)
-        :string.lexemes(base, ':')
+        base = getenv(~c"XDG_DATA_DIRS", ~c"/usr/local/share/:/usr/share/", false)
+        :string.lexemes(base, ~c":")
+
       :site_config ->
-        base = getenv('XDG_CONFIG_DIRS', '/etc/xdg', false)
-        :string.lexemes(base, ':')
+        base = getenv(~c"XDG_CONFIG_DIRS", ~c"/etc/xdg", false)
+        :string.lexemes(base, ~c":")
     end
   end
 
   defp basedir_darwin(type) do
-    case (type) do
+    case type do
       :user_data ->
-        basedir_join_home('Library/Application Support')
+        basedir_join_home(~c"Library/Application Support")
+
       :user_config ->
-        basedir_join_home('Library/Application Support')
+        basedir_join_home(~c"Library/Application Support")
+
       :user_cache ->
-        basedir_join_home('Library/Caches')
+        basedir_join_home(~c"Library/Caches")
+
       :user_log ->
-        basedir_join_home('Library/Logs')
+        basedir_join_home(~c"Library/Logs")
+
       :site_data ->
-        ['/Library/Application Support']
+        [~c"/Library/Application Support"]
+
       :site_config ->
-        ['/Library/Application Support']
+        [~c"/Library/Application Support"]
     end
   end
 
   defp basedir_windows(type) do
-    case (basedir_windows_appdata()) do
+    case basedir_windows_appdata() do
       :noappdata ->
-        case (type) do
+        case type do
           :user_data ->
-            basedir_join_home('Local')
+            basedir_join_home(~c"Local")
+
           :user_config ->
-            basedir_join_home('Roaming')
+            basedir_join_home(~c"Roaming")
+
           :user_cache ->
-            basedir_join_home('Local')
+            basedir_join_home(~c"Local")
+
           :user_log ->
-            basedir_join_home('Local')
+            basedir_join_home(~c"Local")
+
           :site_data ->
             []
+
           :site_config ->
             []
         end
+
       {:ok, appData} ->
-        case (type) do
+        case type do
           :user_data ->
-            getenv('LOCALAPPDATA', appData)
+            getenv(~c"LOCALAPPDATA", appData)
+
           :user_config ->
             appData
+
           :user_cache ->
-            getenv('LOCALAPPDATA', appData)
+            getenv(~c"LOCALAPPDATA", appData)
+
           :user_log ->
-            getenv('LOCALAPPDATA', appData)
+            getenv(~c"LOCALAPPDATA", appData)
+
           :site_data ->
             []
+
           :site_config ->
             []
         end
@@ -1221,9 +1338,10 @@ defmodule :m_filename do
   end
 
   defp basedir_windows_appdata() do
-    case (:os.getenv('APPDATA')) do
+    case :os.getenv(~c"APPDATA") do
       invalid when invalid === false or invalid === [] ->
         :noappdata
+
       val ->
         {:ok, val}
     end
@@ -1238,32 +1356,37 @@ defmodule :m_filename do
   end
 
   defp getenv(k, def__) do
-    case (:os.getenv(k)) do
+    case :os.getenv(k) do
       [] ->
         def__
+
       false ->
         def__
+
       val ->
         val
     end
   end
 
   defp basedir_join_home(dir) do
-    case (:os.getenv('HOME')) do
+    case :os.getenv(~c"HOME") do
       false ->
         {:ok, [[home]]} = :init.get_argument(:home)
         :filename.join(home, dir)
+
       home ->
         :filename.join(home, dir)
     end
   end
 
   defp basedir_os_type() do
-    case (:os.type()) do
+    case :os.type() do
       {:unix, :darwin} ->
         :darwin
+
       {:win32, _} ->
         :windows
+
       _ ->
         :linux
     end
@@ -1273,10 +1396,10 @@ defmodule :m_filename do
     validate_bin(fileName)
   end
 
-  def validate(fileName) when is_list(fileName) or
-                          is_atom(fileName) do
-    validate_list(fileName, :file.native_name_encoding(),
-                    :os.type())
+  def validate(fileName)
+      when is_list(fileName) or
+             is_atom(fileName) do
+    validate_list(fileName, :file.native_name_encoding(), :os.type())
   end
 
   defp validate_list(fileName, enc, os) do
@@ -1314,7 +1437,7 @@ defmodule :m_filename do
     throw(:invalid)
   end
 
-  defp validate_char(c, :utf8, _) when c >= 1114112 do
+  defp validate_char(c, :utf8, _) when c >= 1_114_112 do
     throw(:invalid)
   end
 
@@ -1326,7 +1449,7 @@ defmodule :m_filename do
     :ok
   end
 
-  defp validate_char(c, :utf8, _) when (55296 <= c and c <= 57343) do
+  defp validate_char(c, :utf8, _) when 55296 <= c and c <= 57343 do
     throw(:invalid)
   end
 
@@ -1347,12 +1470,11 @@ defmodule :m_filename do
     bs
   end
 
-  defp validate_bin(<<0, _Rest :: binary>>, _Bs) do
+  defp validate_bin(<<0, _Rest::binary>>, _Bs) do
     throw(:invalid)
   end
 
-  defp validate_bin(<<_B, rest :: binary>>, bs) do
+  defp validate_bin(<<_B, rest::binary>>, bs) do
     validate_bin(rest, bs + 1)
   end
-
 end

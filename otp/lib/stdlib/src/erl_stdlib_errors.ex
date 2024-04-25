@@ -1,29 +1,40 @@
 defmodule :m_erl_stdlib_errors do
   use Bitwise
+
   def format_error(_Reason, [{m, f, as, info} | _]) do
-    errorInfoMap = :proplists.get_value(:error_info, info,
-                                          %{})
+    errorInfoMap = :proplists.get_value(:error_info, info, %{})
     cause = :maps.get(:cause, errorInfoMap, :none)
-    res = (case (m) do
-             :binary ->
-               format_binary_error(f, as, cause)
-             :ets ->
-               format_ets_error(f, as, cause)
-             :lists ->
-               format_lists_error(f, as)
-             :maps ->
-               format_maps_error(f, as)
-             :math ->
-               format_math_error(f, as)
-             :re ->
-               format_re_error(f, as, cause)
-             :unicode ->
-               format_unicode_error(f, as)
-             :io ->
-               format_io_error(f, as, cause)
-             _ ->
-               []
-           end)
+
+    res =
+      case m do
+        :binary ->
+          format_binary_error(f, as, cause)
+
+        :ets ->
+          format_ets_error(f, as, cause)
+
+        :lists ->
+          format_lists_error(f, as)
+
+        :maps ->
+          format_maps_error(f, as)
+
+        :math ->
+          format_math_error(f, as)
+
+        :re ->
+          format_re_error(f, as, cause)
+
+        :unicode ->
+          format_unicode_error(f, as)
+
+        :io ->
+          format_io_error(f, as, cause)
+
+        _ ->
+          []
+      end
+
     format_error_map(res, 1, %{})
   end
 
@@ -56,8 +67,7 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_binary_error(:decode_unsigned, [subject, endianness], _) do
-    [must_be_binary(subject),
-         must_be_endianness(endianness)]
+    [must_be_binary(subject), must_be_endianness(endianness)]
   end
 
   defp format_binary_error(:encode_unsigned, [subject], _) do
@@ -65,8 +75,7 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_binary_error(:encode_unsigned, [subject, endianness], _) do
-    [must_be_non_neg_integer(subject),
-         must_be_endianness(endianness)]
+    [must_be_non_neg_integer(subject), must_be_endianness(endianness)]
   end
 
   defp format_binary_error(:encode_hex, [subject], _) do
@@ -83,34 +92,42 @@ defmodule :m_erl_stdlib_errors do
         cond do
           rem(byte_size(subject), 2) === 1 ->
             ["must contain an even number of bytes"]
+
           true ->
             ["must only contain hex digits 0-9, A-F, and a-f"]
         end
+
       true ->
         [must_be_binary(subject)]
     end
   end
 
   defp format_binary_error(:unhex, [subject], _) do
-    [<<subject :: binary, " is not a valid hex">>]
+    [<<subject::binary, " is not a valid hex">>]
   end
 
   defp format_binary_error(:first, [subject], _) do
-    [case (subject) do
-       <<>> ->
-         :empty_binary
-       _ ->
-         must_be_binary(subject)
-     end]
+    [
+      case subject do
+        <<>> ->
+          :empty_binary
+
+        _ ->
+          must_be_binary(subject)
+      end
+    ]
   end
 
   defp format_binary_error(:last, [subject], _) do
-    [case (subject) do
-       <<>> ->
-         :empty_binary
-       _ ->
-         must_be_binary(subject)
-     end]
+    [
+      case subject do
+        <<>> ->
+          :empty_binary
+
+        _ ->
+          must_be_binary(subject)
+      end
+    ]
   end
 
   defp format_binary_error(:list_to_bin, [_], _) do
@@ -130,17 +147,18 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_binary_error(:match, [subject, pattern, options], _) do
-    case ([must_be_binary(subject),
-               must_be_pattern(pattern)]) do
+    case [must_be_binary(subject), must_be_pattern(pattern)] do
       [[], []] ->
-        case (options) do
-          [{:scope, {start, len}}] when (is_integer(start) and
-                                           is_integer(len))
-                                        ->
+        case options do
+          [{:scope, {start, len}}]
+          when is_integer(start) and
+                 is_integer(len) ->
             [[], [], "specified part is not wholly inside binary"]
+
           _ ->
             [[], [], :bad_options]
         end
+
       errors ->
         errors
     end
@@ -151,36 +169,41 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_binary_error(:part = name, [subject, posLen], cause) do
-    case (posLen) do
-      {pos, len} when (is_integer(pos) and is_integer(len)) ->
-        case (format_binary_error(name, [subject, pos, len],
-                                    cause)) do
+    case posLen do
+      {pos, len} when is_integer(pos) and is_integer(len) ->
+        case format_binary_error(name, [subject, pos, len], cause) do
           [arg1, [], []] ->
             [arg1]
+
           [arg1, _, _] ->
             [arg1, :range]
         end
+
       _ ->
         [must_be_binary(subject), "not a valid {Pos,Length} tuple"]
     end
   end
 
   defp format_binary_error(:part, [subject, pos, len], _) do
-    case ([must_be_binary(subject), must_be_position(pos),
-                                        must_be_integer(len)]) do
+    case [must_be_binary(subject), must_be_position(pos), must_be_integer(len)] do
       [[], [], []] ->
-        arg2 = (cond do
-                  pos > byte_size(subject) ->
-                    :range
-                  true ->
-                    []
-                end)
-        case (arg2) do
+        arg2 =
+          cond do
+            pos > byte_size(subject) ->
+              :range
+
+            true ->
+              []
+          end
+
+        case arg2 do
           [] ->
             [[], [], :range]
+
           :range ->
             [[], arg2]
         end
+
       errors ->
         errors
     end
@@ -195,31 +218,31 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_binary_error(:split, [subject, pattern, _Options], _) do
-    case ([must_be_binary(subject),
-               must_be_pattern(pattern)]) do
+    case [must_be_binary(subject), must_be_pattern(pattern)] do
       [[], []] ->
         [[], [], :bad_options]
+
       errors ->
         errors
     end
   end
 
   defp format_binary_error(:replace, [subject, pattern, replacement], _) do
-    [must_be_binary(subject), must_be_pattern(pattern),
-                                  must_be_binary(replacement)]
+    [must_be_binary(subject), must_be_pattern(pattern), must_be_binary(replacement)]
   end
 
-  defp format_binary_error(:replace,
-            [subject, pattern, replacement, _Options], cause) do
-    errors = format_binary_error(:replace,
-                                   [subject, pattern, replacement], cause)
-    case (cause) do
+  defp format_binary_error(:replace, [subject, pattern, replacement, _Options], cause) do
+    errors = format_binary_error(:replace, [subject, pattern, replacement], cause)
+
+    case cause do
       :badopt ->
         errors ++ [:bad_options]
+
       _ ->
-        case (errors) do
+        case errors do
           [[], [], []] ->
             [[], [], [], :bad_options]
+
           _ ->
             errors
         end
@@ -227,17 +250,21 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_lists_error(:keyfind, [_Key, pos, list]) do
-    posError = (cond do
-                  is_integer(pos) ->
-                    cond do
-                      pos < 1 ->
-                        :range
-                      true ->
-                        []
-                    end
-                  true ->
-                    :not_integer
-                end)
+    posError =
+      cond do
+        is_integer(pos) ->
+          cond do
+            pos < 1 ->
+              :range
+
+            true ->
+              []
+          end
+
+        true ->
+          :not_integer
+      end
+
     [[], posError, must_be_list(list)]
   end
 
@@ -258,16 +285,19 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_lists_error(:seq, [first, last, inc]) do
-    case ([must_be_integer(first), must_be_integer(last),
-                                       must_be_integer(inc)]) do
+    case [must_be_integer(first), must_be_integer(last), must_be_integer(inc)] do
       [[], [], []] ->
-        incError = (cond do
-                      inc <= 0 and first - inc <= last ->
-                        "not a positive increment"
-                      inc >= 0 and first - inc >= last ->
-                        "not a negative increment"
-                    end)
+        incError =
+          cond do
+            inc <= 0 and first - inc <= last ->
+              "not a positive increment"
+
+            inc >= 0 and first - inc >= last ->
+              "not a negative increment"
+          end
+
         [[], [], incError]
+
       errors ->
         errors
     end
@@ -305,6 +335,7 @@ defmodule :m_erl_stdlib_errors do
     cond do
       is_map(map) ->
         ["not present in map"]
+
       true ->
         [[], :not_map]
     end
@@ -315,8 +346,7 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_maps_error(:groups_from_list, [fun1, fun2, list]) do
-    [must_be_fun(fun1, 1), must_be_fun(fun2, 1),
-                               must_be_list(list)]
+    [must_be_fun(fun1, 1), must_be_fun(fun2, 1), must_be_list(list)]
   end
 
   defp format_maps_error(:get, [_, _, _]) do
@@ -328,8 +358,7 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_maps_error(:intersect_with, [combiner, map1, map2]) do
-    [must_be_fun(combiner, 3), must_be_map(map1),
-                                   must_be_map(map2)]
+    [must_be_fun(combiner, 3), must_be_map(map1), must_be_map(map2)]
   end
 
   defp format_maps_error(:is_key, _Args) do
@@ -357,8 +386,7 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_maps_error(:merge_with, [combiner, map1, map2]) do
-    [must_be_fun(combiner, 3), must_be_map(map1),
-                                   must_be_map(map2)]
+    [must_be_fun(combiner, 3), must_be_map(map1), must_be_map(map2)]
   end
 
   defp format_maps_error(:next, _Args) do
@@ -442,14 +470,16 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_math_error(:fmod, [arg1, arg2]) do
-    case ([must_be_number(arg1), must_be_number(arg2)]) do
+    case [must_be_number(arg1), must_be_number(arg2)] do
       [[], []] ->
         cond do
           arg2 == 0 ->
             [[], :domain_error]
+
           true ->
             []
         end
+
       error ->
         error
     end
@@ -464,9 +494,10 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp maybe_domain_error([arg]) do
-    case (must_be_number(arg)) do
+    case must_be_number(arg) do
       [] ->
         [:domain_error]
+
       error ->
         [error]
     end
@@ -477,55 +508,61 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_re_error(:compile, [re, _Options], cause) do
-    reError = (try do
-                 :re.compile(re)
-               catch
-                 _, _ ->
-                   :not_iodata
-               else
-                 {:ok, _} ->
-                   []
-                 {:error, reason} ->
-                   {:bad_regexp, reason}
-               end)
-    case (cause) do
+    reError =
+      try do
+        :re.compile(re)
+      catch
+        _, _ ->
+          :not_iodata
+      else
+        {:ok, _} ->
+          []
+
+        {:error, reason} ->
+          {:bad_regexp, reason}
+      end
+
+    case cause do
       :badopt ->
         [reError, :bad_options]
+
       _ ->
         [reError]
     end
   end
 
   defp format_re_error(:inspect, [compiledRE, item], _) do
-    reError = (try do
-                 :re.inspect(compiledRE, :namelist)
-               catch
-                 :error, _ ->
-                   :not_compiled_regexp
-               else
-                 _ ->
-                   []
-               end)
+    reError =
+      try do
+        :re.inspect(compiledRE, :namelist)
+      catch
+        :error, _ ->
+          :not_compiled_regexp
+      else
+        _ ->
+          []
+      end
+
     cond do
       reError === [] or not is_atom(item) ->
         [reError, "not a valid item"]
+
       true ->
         [reError]
     end
   end
 
   defp format_re_error(:replace, [subject, rE, replacement], _) do
-    [must_be_iodata(subject), must_be_regexp(rE),
-                                  must_be_re_replacement(replacement)]
+    [must_be_iodata(subject), must_be_regexp(rE), must_be_re_replacement(replacement)]
   end
 
-  defp format_re_error(:replace, [subject, rE, replacement, _Options],
-            cause) do
-    errors = [must_be_iodata(subject), must_be_regexp(rE),
-                                           must_be_re_replacement(replacement)]
-    case (cause) do
+  defp format_re_error(:replace, [subject, rE, replacement, _Options], cause) do
+    errors = [must_be_iodata(subject), must_be_regexp(rE), must_be_re_replacement(replacement)]
+
+    case cause do
       :badopt ->
         errors ++ [:bad_options]
+
       _ ->
         errors
     end
@@ -537,9 +574,11 @@ defmodule :m_erl_stdlib_errors do
 
   defp format_re_error(:run, [subject, rE, _Options], cause) do
     errors = [must_be_iodata(subject), must_be_regexp(rE)]
-    case (cause) do
+
+    case cause do
       :badopt ->
         errors ++ [:bad_options]
+
       _ ->
         errors
     end
@@ -551,9 +590,11 @@ defmodule :m_erl_stdlib_errors do
 
   defp format_re_error(:split, [subject, rE, _Options], cause) do
     errors = [must_be_iodata(subject), must_be_regexp(rE)]
-    case (cause) do
+
+    case cause do
       :badopt ->
         errors ++ [:bad_options]
+
       _ ->
         errors
     end
@@ -567,10 +608,11 @@ defmodule :m_erl_stdlib_errors do
     [unicode_char_data(chars), unicode_encoding(inEnc)]
   end
 
-  defp format_unicode_error(:characters_to_binary,
-            [chars, inEnc, outEnc]) do
-    [unicode_char_data(chars), unicode_encoding(inEnc),
-                                   unicode_encoding(outEnc)]
+  defp format_unicode_error(
+         :characters_to_binary,
+         [chars, inEnc, outEnc]
+       ) do
+    [unicode_char_data(chars), unicode_encoding(inEnc), unicode_encoding(outEnc)]
   end
 
   defp format_unicode_error(:characters_to_list, args) do
@@ -618,8 +660,10 @@ defmodule :m_erl_stdlib_errors do
     else
       {:error, _, _} ->
         :bad_char_data
+
       {:incomplete, _, _} ->
         :bad_char_data
+
       _ ->
         []
     end
@@ -641,18 +685,15 @@ defmodule :m_erl_stdlib_errors do
     format_io_error(:format, args, cause)
   end
 
-  defp format_io_error(:format = fn__, [_Io, _Fmt, _Args] = args,
-            cause) do
+  defp format_io_error(:format = fn__, [_Io, _Fmt, _Args] = args, cause) do
     format_io_error(fn__, args, cause, true)
   end
 
-  defp format_io_error(:put_chars = fn__, [_Io, _Chars] = args,
-            cause) do
+  defp format_io_error(:put_chars = fn__, [_Io, _Chars] = args, cause) do
     format_io_error(fn__, args, cause, true)
   end
 
-  defp format_io_error(:put_chars = fn__,
-            [_Io, _Encoding, _Chars] = args, cause) do
+  defp format_io_error(:put_chars = fn__, [_Io, _Encoding, _Chars] = args, cause) do
     format_io_error(fn__, args, cause, true)
   end
 
@@ -705,46 +746,55 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_io_error_cause(:format, args, cause, hasDevice) do
-    case (maybe_posix_message(cause, hasDevice)) do
+    case maybe_posix_message(cause, hasDevice) do
       :unknown ->
         cond do
           hasDevice ->
             [[]] ++ check_io_format(tl(args), cause)
+
           not hasDevice ->
             check_io_format(args, cause)
         end
+
       posixError ->
         posixError
     end
   end
 
   defp format_io_error_cause(:put_chars, args, cause, hasDevice) do
-    data = (cond do
-              hasDevice ->
-                hd(tl(args))
-              not hasDevice ->
-                hd(args)
-            end)
-    case (maybe_posix_message(cause, hasDevice)) do
+    data =
+      cond do
+        hasDevice ->
+          hd(tl(args))
+
+        not hasDevice ->
+          hd(args)
+      end
+
+    case maybe_posix_message(cause, hasDevice) do
       :unknown ->
-        (for _ <- [:EFE_DUMMY_GEN], hasDevice do
-           []
-         end) ++ (case (unicode_char_data(data)) do
-                    [] ->
-                      [{:general, {:unknown_error, cause}}]
-                    invalidData ->
-                      [invalidData]
-                  end)
+        for _ <- [:EFE_DUMMY_GEN], hasDevice do
+          []
+        end ++
+          case unicode_char_data(data) do
+            [] ->
+              [{:general, {:unknown_error, cause}}]
+
+            invalidData ->
+              [invalidData]
+          end
+
       posixError ->
         posixError ++ [unicode_char_data(data)]
     end
   end
 
   defp format_io_error_cause(fn__, _Args, cause, hasDevice)
-      when fn__ === :write or fn__ === :nl do
-    case (maybe_posix_message(cause, hasDevice)) do
+       when fn__ === :write or fn__ === :nl do
+    case maybe_posix_message(cause, hasDevice) do
       :unknown ->
         [{:general, {:unknown_error, cause}}]
+
       posixError ->
         posixError
     end
@@ -755,13 +805,15 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp maybe_posix_message(cause, hasDevice) do
-    case (:erl_posix_msg.message(cause)) do
-      'unknown POSIX error' ++ _ ->
+    case :erl_posix_msg.message(cause) do
+      ~c"unknown POSIX error" ++ _ ->
         :unknown
+
       posixStr when hasDevice ->
-        [:io_lib.format('~ts (~tp)', [posixStr, cause])]
+        [:io_lib.format(~c"~ts (~tp)", [posixStr, cause])]
+
       posixStr when not hasDevice ->
-        [{:general, :io_lib.format('~ts (~tp)', [posixStr, cause])}]
+        [{:general, :io_lib.format(~c"~ts (~tp)", [posixStr, cause])}]
     end
   end
 
@@ -770,32 +822,42 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp check_io_format([fmt, args], cause) do
-    case (is_io_format(fmt)) do
+    case is_io_format(fmt) do
       false ->
-        [:invalid_format,
-             must_be_list(args)] ++ (case (:erlang.and(:erlang.or(is_pid(fmt),
-                                                                    is_atom(fmt)),
-                                                         is_io_format(args))) do
-                                       true ->
-                                         [{:general, :missing_argument_list}]
-                                       false ->
-                                         []
-                                     end)
+        [:invalid_format, must_be_list(args)] ++
+          case :erlang.and(
+                 :erlang.or(
+                   is_pid(fmt),
+                   is_atom(fmt)
+                 ),
+                 is_io_format(args)
+               ) do
+            true ->
+              [{:general, :missing_argument_list}]
+
+            false ->
+              []
+          end
+
       _ when not is_list(args) ->
         [[], must_be_list(args)]
+
       true ->
-        case (:erl_lint.check_format_string(fmt)) do
+        case :erl_lint.check_format_string(fmt) do
           {:error, s} ->
-            [:io_lib.format('format string invalid (~ts)', [s])]
-          {:ok, argTypes} when length(argTypes) !== length(args)
-                               ->
-            ["wrong number of arguments"] ++ (for _ <- [:EFE_DUMMY_GEN], is_atom(fmt) do
-                      {:general, :missing_argument_list}
-                    end)
+            [:io_lib.format(~c"format string invalid (~ts)", [s])]
+
+          {:ok, argTypes} when length(argTypes) !== length(args) ->
+            ["wrong number of arguments"] ++
+              for _ <- [:EFE_DUMMY_GEN], is_atom(fmt) do
+                {:general, :missing_argument_list}
+              end
+
           {:ok, argTypes} ->
-            case (check_io_arguments(argTypes, args)) do
+            case check_io_arguments(argTypes, args) do
               [] when cause === :format ->
                 [:format_failed]
+
               [] ->
                 try do
                   :io_lib.format(fmt, args)
@@ -806,6 +868,7 @@ defmodule :m_erl_stdlib_errors do
                   _ ->
                     [{:general, {:unknown_error, cause}}]
                 end
+
               argErrors ->
                 argErrors
             end
@@ -834,11 +897,12 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp check_io_arguments(types, args) do
-    case (check_io_arguments(types, args, 1)) do
+    case check_io_arguments(types, args, 1) do
       [] ->
         []
+
       checks ->
-        [[], :lists.join('\n', checks)]
+        [[], :lists.join(~c"\n", checks)]
     end
   end
 
@@ -847,32 +911,44 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp check_io_arguments([type | typeT], [arg | argT], no) do
-    case (type) do
+    case type do
       :float when is_float(arg) ->
         check_io_arguments(typeT, argT, no + 1)
+
       :int when is_integer(arg) ->
         check_io_arguments(typeT, argT, no + 1)
+
       :term ->
         check_io_arguments(typeT, argT, no + 1)
+
       :string when is_atom(arg) or is_binary(arg) ->
         check_io_arguments(typeT, argT, no + 1)
+
       :string when is_list(arg) ->
         try do
           :unicode.characters_to_binary(arg)
         catch
           _, _ ->
-            [:io_lib.format('element ~B must be of type ~p', [no, :string]) |
-                 check_io_arguments(typeT, argT, no + 1)]
+            [
+              :io_lib.format(~c"element ~B must be of type ~p", [no, :string])
+              | check_io_arguments(typeT, argT, no + 1)
+            ]
         else
           _ ->
             check_io_arguments(typeT, argT, no + 1)
         end
+
       :int ->
-        [:io_lib.format('element ~B must be of type ~p', [no, :integer]) |
-             check_io_arguments(typeT, argT, no + 1)]
+        [
+          :io_lib.format(~c"element ~B must be of type ~p", [no, :integer])
+          | check_io_arguments(typeT, argT, no + 1)
+        ]
+
       _ when type === :float or type === :string ->
-        [:io_lib.format('element ~B must be of type ~p', [no, type]) |
-             check_io_arguments(typeT, argT, no + 1)]
+        [
+          :io_lib.format(~c"element ~B must be of type ~p", [no, type])
+          | check_io_arguments(typeT, argT, no + 1)
+        ]
     end
   end
 
@@ -882,20 +958,28 @@ defmodule :m_erl_stdlib_errors do
 
   defp format_ets_error(:give_away, [_Tab, pid, _Gift] = args, cause) do
     tabCause = format_cause(args, cause)
-    case (cause) do
+
+    case cause do
       :owner ->
         [tabCause, :already_owner]
+
       :not_owner ->
         [tabCause, :not_owner]
+
       _ ->
-        [tabCause, case ({is_pid(pid), tabCause}) do
-                     {true, ''} ->
-                       :dead_process
-                     {false, _} ->
-                       :not_pid
-                     _ ->
-                       ''
-                   end]
+        [
+          tabCause,
+          case {is_pid(pid), tabCause} do
+            {true, ~c""} ->
+              :dead_process
+
+            {false, _} ->
+              :not_pid
+
+            _ ->
+              ~c""
+          end
+        ]
     end
   end
 
@@ -914,23 +998,24 @@ defmodule :m_erl_stdlib_errors do
   defp format_ets_error(:lookup_element, [_, _, pos] = args, cause) do
     tabCause = format_cause(args, cause)
     posCause = format_non_negative_integer(pos)
-    case (cause) do
+
+    case cause do
       :badkey ->
         [tabCause, :bad_key, posCause]
+
       _ ->
-        case ({tabCause, posCause}) do
-          {'', ''} ->
-            ['', '', "position is greater than the size of the object"]
+        case {tabCause, posCause} do
+          {~c"", ~c""} ->
+            [~c"", ~c"", "position is greater than the size of the object"]
+
           {_, _} ->
-            [tabCause, '', posCause]
+            [tabCause, ~c"", posCause]
         end
     end
   end
 
-  defp format_ets_error(:lookup_element, [tab, key, pos, _Default],
-            cause) do
-    format_ets_error(:lookup_element, [tab, key, pos],
-                       cause)
+  defp format_ets_error(:lookup_element, [tab, key, pos, _Default], cause) do
+    format_ets_error(:lookup_element, [tab, key, pos], cause)
   end
 
   defp format_ets_error(:match, [_], _Cause) do
@@ -958,18 +1043,24 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_ets_error(:new, [name, options], cause) do
-    nameError = (cond do
-                   is_atom(name) ->
-                     []
-                   true ->
-                     :not_atom
-                 end)
+    nameError =
+      cond do
+        is_atom(name) ->
+          []
+
+        true ->
+          :not_atom
+      end
+
     optsError = must_be_list(options)
-    case ({nameError, optsError, cause}) do
+
+    case {nameError, optsError, cause} do
       {[], [], :already_exists} ->
         [:name_already_exists, []]
+
       {[], [], _} ->
         [[], :bad_options]
+
       {_, _, _} ->
         [nameError, optsError]
     end
@@ -980,14 +1071,19 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_ets_error(:rename, [_, newName] = args, cause) do
-    case ([format_cause(args, cause), cond do
-                                        is_atom(newName) ->
-                                          ''
-                                        true ->
-                                          :bad_table_name
-                                      end]) do
-      ['', ''] ->
-        ['', :name_already_exists]
+    case [
+      format_cause(args, cause),
+      cond do
+        is_atom(newName) ->
+          ~c""
+
+        true ->
+          :bad_table_name
+      end
+    ] do
+      [~c"", ~c""] ->
+        [~c"", :name_already_exists]
+
       result ->
         result
     end
@@ -1045,72 +1141,89 @@ defmodule :m_erl_stdlib_errors do
     format_default(:range, args, cause)
   end
 
-  defp format_ets_error(:update_counter, [_, _, updateOp] = args,
-            cause) do
+  defp format_ets_error(:update_counter, [_, _, updateOp] = args, cause) do
     tabCause = format_cause(args, cause)
-    case (cause) do
+
+    case cause do
       :badkey ->
         [tabCause, :bad_key, format_update_op(updateOp)]
+
       :keypos ->
-        [tabCause, '', :same_as_keypos]
+        [tabCause, ~c"", :same_as_keypos]
+
       :position ->
-        [tabCause, '', :update_op_range]
+        [tabCause, ~c"", :update_op_range]
+
       :none ->
-        case (is_update_op_top(updateOp)) do
+        case is_update_op_top(updateOp) do
           false ->
-            [tabCause, '', :bad_update_op]
+            [tabCause, ~c"", :bad_update_op]
+
           true ->
-            [tabCause, '', :counter_not_integer]
+            [tabCause, ~c"", :counter_not_integer]
         end
+
       _ ->
-        [tabCause, '', format_update_op(updateOp)]
+        [tabCause, ~c"", format_update_op(updateOp)]
     end
   end
 
-  defp format_ets_error(:update_counter,
-            [_, _, updateOp, default] = args, cause) do
-    case (format_cause(args, cause)) do
+  defp format_ets_error(:update_counter, [_, _, updateOp, default] = args, cause) do
+    case format_cause(args, cause) do
       tabCause when tabCause !== [] ->
         [tabCause]
-      '' ->
+
+      ~c"" ->
         tupleCause = format_tuple(default)
-        case (cause) do
+
+        case cause do
           :badkey ->
-            ['', :bad_key, format_update_op(updateOp) | tupleCause]
+            [~c"", :bad_key, format_update_op(updateOp) | tupleCause]
+
           :keypos ->
-            ['', '', :same_as_keypos | tupleCause]
+            [~c"", ~c"", :same_as_keypos | tupleCause]
+
           :position ->
-            ['', '', :update_op_range]
+            [~c"", ~c"", :update_op_range]
+
           _ ->
-            case ({format_update_op(updateOp), tupleCause}) do
-              {'', ['']} ->
-                ['', '', :counter_not_integer]
+            case {format_update_op(updateOp), tupleCause} do
+              {~c"", [~c""]} ->
+                [~c"", ~c"", :counter_not_integer]
+
               {updateOpCause, _} ->
-                ['', '', updateOpCause | tupleCause]
+                [~c"", ~c"", updateOpCause | tupleCause]
             end
         end
     end
   end
 
-  defp format_ets_error(:update_element, [_, _, elementSpec] = args,
-            cause) do
+  defp format_ets_error(:update_element, [_, _, elementSpec] = args, cause) do
     tabCause = format_cause(args, cause)
-    [tabCause, '' | case (cause) do
-                     :keypos ->
-                       [:same_as_keypos]
-                     _ ->
-                       case (is_element_spec_top(elementSpec)) do
-                         true ->
-                           case (tabCause) do
-                             [] ->
-                               [:range]
-                             _ ->
-                               []
-                           end
-                         false ->
-                           ["is not a valid element specification"]
-                       end
-                   end]
+
+    [
+      tabCause,
+      ~c""
+      | case cause do
+          :keypos ->
+            [:same_as_keypos]
+
+          _ ->
+            case is_element_spec_top(elementSpec) do
+              true ->
+                case tabCause do
+                  [] ->
+                    [:range]
+
+                  _ ->
+                    []
+                end
+
+              false ->
+                ["is not a valid element specification"]
+            end
+        end
+    ]
   end
 
   defp format_ets_error(:whereis, _Args, _Cause) do
@@ -1122,9 +1235,10 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp format_default(default, args, cause) do
-    case (format_cause(args, cause)) do
-      '' ->
-        ['', default]
+    case format_cause(args, cause) do
+      ~c"" ->
+        [~c"", default]
+
       error ->
         [error]
     end
@@ -1138,8 +1252,9 @@ defmodule :m_erl_stdlib_errors do
     is_element_spec(other)
   end
 
-  defp is_element_spec({pos, _Value}) when (is_integer(pos) and
-                                 pos > 0) do
+  defp is_element_spec({pos, _Value})
+       when is_integer(pos) and
+              pos > 0 do
     true
   end
 
@@ -1149,27 +1264,30 @@ defmodule :m_erl_stdlib_errors do
 
   defp format_ms_limit([_, ms, _] = args, cause) do
     [tab, [], limit] = format_limit(args, cause)
-    case (is_match_spec(ms)) do
+
+    case is_match_spec(ms) do
       true ->
-        [tab, '', limit]
+        [tab, ~c"", limit]
+
       false ->
         [tab, :bad_matchspec, limit]
     end
   end
 
   defp format_limit([_, _, limit] = args, cause) do
-    [format_cause(args, cause), '',
-                                    format_non_negative_integer(limit)]
+    [format_cause(args, cause), ~c"", format_non_negative_integer(limit)]
   end
 
   defp format_non_negative_integer(n) do
     cond do
       not is_integer(n) ->
         :not_integer
+
       n < 1 ->
         :range
+
       true ->
-        ''
+        ~c""
     end
   end
 
@@ -1180,86 +1298,109 @@ defmodule :m_erl_stdlib_errors do
   defp format_tuple(term) do
     cond do
       tuple_size(term) > 0 ->
-        ['']
+        [~c""]
+
       is_tuple(term) ->
         [:empty_tuple]
+
       true ->
         [:not_tuple]
     end
   end
 
   defp format_objects([_, term | _] = args, cause) do
-    [format_cause(args, cause) | cond do
-                                   tuple_size(term) > 0 ->
-                                     []
-                                   is_tuple(term) ->
-                                     [:empty_tuple]
-                                   is_list(term) ->
-                                     try do
-                                       :lists.all(fn t ->
-                                                       tuple_size(t) > 0
-                                                  end,
-                                                    term)
-                                     catch
-                                       _, _ ->
-                                         [:not_tuple_or_list]
-                                     else
-                                       true ->
-                                         []
-                                       false ->
-                                         [:not_tuple_or_list]
-                                     end
-                                   true ->
-                                     [:not_tuple]
-                                 end]
+    [
+      format_cause(args, cause)
+      | cond do
+          tuple_size(term) > 0 ->
+            []
+
+          is_tuple(term) ->
+            [:empty_tuple]
+
+          is_list(term) ->
+            try do
+              :lists.all(
+                fn t ->
+                  tuple_size(t) > 0
+                end,
+                term
+              )
+            catch
+              _, _ ->
+                [:not_tuple_or_list]
+            else
+              true ->
+                []
+
+              false ->
+                [:not_tuple_or_list]
+            end
+
+          true ->
+            [:not_tuple]
+        end
+    ]
   end
 
   defp format_cause(args, cause) do
-    case (cause) do
+    case cause do
       :none ->
-        ''
+        ~c""
+
       :type ->
-        case (args) do
+        case args do
           [ref | _] when is_reference(ref) ->
             "not a valid table identifier"
+
           _ ->
             "not an atom or a table identifier"
         end
+
       :id ->
         "the table identifier does not refer to an existing ETS table"
+
       :access ->
         "the table identifier refers to an ETS table with insufficient access rights"
+
       :table_type ->
         "the table identifier refers to an ETS table of a type not supported by this operation"
+
       :badkey ->
-        ''
+        ~c""
+
       :keypos ->
-        ''
+        ~c""
+
       :position ->
-        ''
+        ~c""
+
       :owner ->
-        ''
+        ~c""
+
       :not_owner ->
-        ''
+        ~c""
     end
   end
 
   defp is_match_spec(term) do
-    :ets.is_compiled_ms(term) or (try do
-                                    :ets.match_spec_compile(term)
-                                  catch
-                                    :error, :badarg ->
-                                      false
-                                  else
-                                    _ ->
-                                      true
-                                  end)
+    :ets.is_compiled_ms(term) or
+      try do
+        :ets.match_spec_compile(term)
+      catch
+        :error, :badarg ->
+          false
+      else
+        _ ->
+          true
+      end
   end
 
   defp format_update_op(updateOp) do
-    case (is_update_op_top(updateOp)) do
+    case is_update_op_top(updateOp) do
       true ->
-        ''
+        ~c""
+
       false ->
         :bad_update_op
     end
@@ -1273,14 +1414,15 @@ defmodule :m_erl_stdlib_errors do
     is_update_op(op)
   end
 
-  defp is_update_op({pos, incr}) when (is_integer(pos) and
-                               is_integer(incr)) do
+  defp is_update_op({pos, incr})
+       when is_integer(pos) and
+              is_integer(incr) do
     true
   end
 
   defp is_update_op({pos, incr, threshold, setValue})
-      when (is_integer(pos) and is_integer(incr) and
-              is_integer(threshold) and is_integer(setValue)) do
+       when is_integer(pos) and is_integer(incr) and
+              is_integer(threshold) and is_integer(setValue) do
     true
   end
 
@@ -1288,7 +1430,7 @@ defmodule :m_erl_stdlib_errors do
     is_integer(incr)
   end
 
-  defp is_iodata(<<_ :: binary>>) do
+  defp is_iodata(<<_::binary>>) do
     true
   end
 
@@ -1308,18 +1450,16 @@ defmodule :m_erl_stdlib_errors do
     false
   end
 
-  defp format_error_map(['' | es], argNum, map) do
+  defp format_error_map([~c"" | es], argNum, map) do
     format_error_map(es, argNum + 1, map)
   end
 
   defp format_error_map([{:general, e} | es], argNum, map) do
-    format_error_map(es, argNum,
-                       Map.put(map, :general, expand_error(e)))
+    format_error_map(es, argNum, Map.put(map, :general, expand_error(e)))
   end
 
   defp format_error_map([e | es], argNum, map) do
-    format_error_map(es, argNum + 1,
-                       Map.put(map, argNum, expand_error(e)))
+    format_error_map(es, argNum + 1, Map.put(map, argNum, expand_error(e)))
   end
 
   defp format_error_map([], _, map) do
@@ -1384,8 +1524,9 @@ defmodule :m_erl_stdlib_errors do
 
   defp must_be_integer(n, min, max, default) when is_integer(n) do
     cond do
-      (min <= n and n <= max) ->
+      min <= n and n <= max ->
         default
+
       true ->
         :range
     end
@@ -1404,9 +1545,10 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp must_be_iodata(term) do
-    case (is_iodata(term)) do
+    case is_iodata(term) do
       true ->
         []
+
       false ->
         :not_iodata
     end
@@ -1457,9 +1599,10 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp must_be_map_or_iter(iter) do
-    case (:maps.is_iterator_valid(iter)) do
+    case :maps.is_iterator_valid(iter) do
       true ->
         []
+
       false ->
         :not_map_or_iterator
     end
@@ -1469,6 +1612,7 @@ defmodule :m_erl_stdlib_errors do
     cond do
       is_number(n) ->
         []
+
       true ->
         :not_number
     end
@@ -1486,7 +1630,7 @@ defmodule :m_erl_stdlib_errors do
     end
   end
 
-  defp must_be_position(pos) when (is_integer(pos) and pos >= 0) do
+  defp must_be_position(pos) when is_integer(pos) and pos >= 0 do
     []
   end
 
@@ -1504,7 +1648,7 @@ defmodule :m_erl_stdlib_errors do
     catch
       :error, _ ->
         try do
-          :re.run('', term)
+          :re.run(~c"", term)
         catch
           :error, _ ->
             :not_regexp
@@ -1515,6 +1659,7 @@ defmodule :m_erl_stdlib_errors do
     else
       {:ok, _} ->
         []
+
       {:error, reason} ->
         {:bad_regexp, reason}
     end
@@ -1525,9 +1670,10 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp must_be_re_replacement(r) do
-    case (is_iodata(r)) do
+    case is_iodata(r) do
       true ->
         []
+
       false ->
         :bad_replacement
     end
@@ -1650,8 +1796,12 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp expand_error({:no_translation, in__, out}) do
-    :unicode.characters_to_binary(:io_lib.format('device failed to transcode string from ~p to ~p',
-                                                   [in__, out]))
+    :unicode.characters_to_binary(
+      :io_lib.format(
+        ~c"device failed to transcode string from ~p to ~p",
+        [in__, out]
+      )
+    )
   end
 
   defp expand_error(:not_atom) do
@@ -1727,8 +1877,12 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp expand_error({:bad_regexp, {reason, column}}) do
-    :unicode.characters_to_binary(:io_lib.format('could not parse regular expression~n~ts on character ~p',
-                                                   [reason, column]))
+    :unicode.characters_to_binary(
+      :io_lib.format(
+        ~c"could not parse regular expression~n~ts on character ~p",
+        [reason, column]
+      )
+    )
   end
 
   defp expand_error(:not_tuple) do
@@ -1748,8 +1902,12 @@ defmodule :m_erl_stdlib_errors do
   end
 
   defp expand_error({:unknown_error, cause}) do
-    :unicode.characters_to_binary(:io_lib.format('unknown error: ~tp',
-                                                   [cause]))
+    :unicode.characters_to_binary(
+      :io_lib.format(
+        ~c"unknown error: ~tp",
+        [cause]
+      )
+    )
   end
 
   defp expand_error(:update_op_range) do
@@ -1759,5 +1917,4 @@ defmodule :m_erl_stdlib_errors do
   defp expand_error(other) do
     other
   end
-
 end

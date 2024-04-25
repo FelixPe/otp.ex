@@ -1,56 +1,97 @@
 defmodule :m_dialyzer_codeserver do
   use Bitwise
   require Record
-  Record.defrecord(:r_plt_info, :plt_info, files: :undefined,
-                                    mod_deps: :dict.new())
-  Record.defrecord(:r_iplt_info, :iplt_info, files: :undefined,
-                                     mod_deps: :dict.new(), warning_map: :none,
-                                     legal_warnings: :none)
-  Record.defrecord(:r_plt, :plt, info: :undefined,
-                               types: :undefined, contracts: :undefined,
-                               callbacks: :undefined,
-                               exported_types: :undefined)
-  Record.defrecord(:r_analysis, :analysis, analysis_pid: :undefined,
-                                    type: :succ_typings, defines: [],
-                                    doc_plt: :undefined, files: [],
-                                    include_dirs: [], start_from: :byte_code,
-                                    plt: :undefined, use_contracts: true,
-                                    behaviours_chk: false, timing: false,
-                                    timing_server: :none, callgraph_file: '',
-                                    mod_deps_file: '', solvers: :undefined)
-  Record.defrecord(:r_options, :options, files: [], files_rec: [],
-                                   warning_files: [], warning_files_rec: [],
-                                   analysis_type: :succ_typings, timing: false,
-                                   defines: [], from: :byte_code,
-                                   get_warnings: :maybe, init_plts: [],
-                                   include_dirs: [], output_plt: :none,
-                                   legal_warnings: :ordsets.new(),
-                                   report_mode: :normal, erlang_mode: false,
-                                   use_contracts: true, output_file: :none,
-                                   output_format: :formatted,
-                                   filename_opt: :basename, indent_opt: true,
-                                   callgraph_file: '', mod_deps_file: '',
-                                   check_plt: true, error_location: :column,
-                                   metrics_file: :none,
-                                   module_lookup_file: :none, solvers: [])
-  Record.defrecord(:r_contract, :contract, contracts: [], args: [],
-                                    forms: [])
-  Record.defrecord(:r_codeserver, :codeserver, next_core_label: 0,
-                                      code: :undefined,
-                                      exported_types: :undefined,
-                                      records: :undefined,
-                                      contracts: :undefined,
-                                      callbacks: :undefined,
-                                      fun_meta_info: :undefined,
-                                      exports: :undefined,
-                                      temp_exported_types: :undefined,
-                                      temp_records: :undefined,
-                                      temp_contracts: :undefined,
-                                      temp_callbacks: :undefined)
+
+  Record.defrecord(:r_plt_info, :plt_info,
+    files: :undefined,
+    mod_deps: :dict.new()
+  )
+
+  Record.defrecord(:r_iplt_info, :iplt_info,
+    files: :undefined,
+    mod_deps: :dict.new(),
+    warning_map: :none,
+    legal_warnings: :none
+  )
+
+  Record.defrecord(:r_plt, :plt,
+    info: :undefined,
+    types: :undefined,
+    contracts: :undefined,
+    callbacks: :undefined,
+    exported_types: :undefined
+  )
+
+  Record.defrecord(:r_analysis, :analysis,
+    analysis_pid: :undefined,
+    type: :succ_typings,
+    defines: [],
+    doc_plt: :undefined,
+    files: [],
+    include_dirs: [],
+    start_from: :byte_code,
+    plt: :undefined,
+    use_contracts: true,
+    behaviours_chk: false,
+    timing: false,
+    timing_server: :none,
+    callgraph_file: ~c"",
+    mod_deps_file: ~c"",
+    solvers: :undefined
+  )
+
+  Record.defrecord(:r_options, :options,
+    files: [],
+    files_rec: [],
+    warning_files: [],
+    warning_files_rec: [],
+    analysis_type: :succ_typings,
+    timing: false,
+    defines: [],
+    from: :byte_code,
+    get_warnings: :maybe,
+    init_plts: [],
+    include_dirs: [],
+    output_plt: :none,
+    legal_warnings: :ordsets.new(),
+    report_mode: :normal,
+    erlang_mode: false,
+    use_contracts: true,
+    output_file: :none,
+    output_format: :formatted,
+    filename_opt: :basename,
+    indent_opt: true,
+    callgraph_file: ~c"",
+    mod_deps_file: ~c"",
+    check_plt: true,
+    error_location: :column,
+    metrics_file: :none,
+    module_lookup_file: :none,
+    solvers: []
+  )
+
+  Record.defrecord(:r_contract, :contract, contracts: [], args: [], forms: [])
+
+  Record.defrecord(:r_codeserver, :codeserver,
+    next_core_label: 0,
+    code: :undefined,
+    exported_types: :undefined,
+    records: :undefined,
+    contracts: :undefined,
+    callbacks: :undefined,
+    fun_meta_info: :undefined,
+    exports: :undefined,
+    temp_exported_types: :undefined,
+    temp_records: :undefined,
+    temp_contracts: :undefined,
+    temp_callbacks: :undefined
+  )
+
   defp ets_dict_find(key, table) do
-    case (:ets.lookup_element(table, key, 2, :error)) do
+    case :ets.lookup_element(table, key, 2, :error) do
       :error ->
         :error
+
       val ->
         {:ok, val}
     end
@@ -63,8 +104,9 @@ defmodule :m_dialyzer_codeserver do
 
   defp ets_dict_to_dict(table) do
     fold = fn {key, value}, dict ->
-                :dict.store(key, value, dict)
-           end
+      :dict.store(key, value, dict)
+    end
+
     :ets.foldl(fold, :dict.new(), table)
   end
 
@@ -77,62 +119,79 @@ defmodule :m_dialyzer_codeserver do
   end
 
   defp ets_set_insert_list(list, table) do
-    true = :ets.insert(table,
-                         for e <- list do
-                           {e}
-                         end)
+    true =
+      :ets.insert(
+        table,
+        for e <- list do
+          {e}
+        end
+      )
   end
 
   defp ets_set_to_set(table) do
     fold = fn {e}, set ->
-                :sets.add_element(e, set)
-           end
+      :sets.add_element(e, set)
+    end
+
     :ets.foldl(fold, :sets.new([{:version, 2}]), table)
   end
 
   def new() do
-    codeOptions = [:compressed, :public, {:read_concurrency,
-                                            true}]
+    codeOptions = [:compressed, :public, {:read_concurrency, true}]
     code = :ets.new(:dialyzer_codeserver_code, codeOptions)
     readOptions = [:compressed, {:read_concurrency, true}]
-    [records,
-         exportedTypes] = (for name <- [:dialyzer_codeserver_records,
-                                            :dialyzer_codeserver_exported_types] do
-                             :ets.new(name, readOptions)
-                           end)
+
+    [records, exportedTypes] =
+      for name <- [:dialyzer_codeserver_records, :dialyzer_codeserver_exported_types] do
+        :ets.new(name, readOptions)
+      end
+
     readWriteOptions = [:public | readOptions]
-    [contracts,
-         callbacks] = (for name <- [:dialyzer_codeserver_contracts,
-                                        :dialyzer_codeserver_callbacks] do
-                         :ets.new(name, readWriteOptions)
-                       end)
+
+    [contracts, callbacks] =
+      for name <- [:dialyzer_codeserver_contracts, :dialyzer_codeserver_callbacks] do
+        :ets.new(name, readWriteOptions)
+      end
+
     tempOptions = [:public, {:write_concurrency, true}]
-    [exports, funMetaInfo, tempExportedTypes, tempRecords,
-                                                  tempContracts,
-                                                      tempCallbacks] = (for name <- [:dialyzer_codeserver_exports,
-                                                                                         :dialyzer_codeserver_fun_meta_info,
-                                                                                             :dialyzer_codeserver_temp_exported_types,
-                                                                                                 :dialyzer_codeserver_temp_records,
-                                                                                                     :dialyzer_codeserver_temp_contracts,
-                                                                                                         :dialyzer_codeserver_temp_callbacks] do
-                                                                          :ets.new(name,
-                                                                                     tempOptions)
-                                                                        end)
-    r_codeserver(code: code, exports: exports,
-        fun_meta_info: funMetaInfo,
-        exported_types: exportedTypes, records: records,
-        contracts: contracts, callbacks: callbacks,
-        temp_exported_types: tempExportedTypes,
-        temp_records: tempRecords,
-        temp_contracts: tempContracts,
-        temp_callbacks: tempCallbacks)
+
+    [exports, funMetaInfo, tempExportedTypes, tempRecords, tempContracts, tempCallbacks] =
+      for name <- [
+            :dialyzer_codeserver_exports,
+            :dialyzer_codeserver_fun_meta_info,
+            :dialyzer_codeserver_temp_exported_types,
+            :dialyzer_codeserver_temp_records,
+            :dialyzer_codeserver_temp_contracts,
+            :dialyzer_codeserver_temp_callbacks
+          ] do
+        :ets.new(
+          name,
+          tempOptions
+        )
+      end
+
+    r_codeserver(
+      code: code,
+      exports: exports,
+      fun_meta_info: funMetaInfo,
+      exported_types: exportedTypes,
+      records: records,
+      contracts: contracts,
+      callbacks: callbacks,
+      temp_exported_types: tempExportedTypes,
+      temp_records: tempRecords,
+      temp_contracts: tempContracts,
+      temp_callbacks: tempCallbacks
+    )
   end
 
   def delete(cServer) do
-    :lists.foreach(fn table ->
-                        true = :ets.delete(table)
-                   end,
-                     tables(cServer))
+    :lists.foreach(
+      fn table ->
+        true = :ets.delete(table)
+      end,
+      tables(cServer)
+    )
   end
 
   def insert(mod, modCode, cS) do
@@ -142,17 +201,27 @@ defmodule :m_dialyzer_codeserver do
     defs = :cerl.module_defs(modCode)
     {files, smallDefs} = compress_file_anno(defs)
     as = :cerl.get_ann(modCode)
-    funs = (for (val = {var, fun}) <- smallDefs do
-              {{mod, :cerl.fname_id(var), :cerl.fname_arity(var)},
-                 val, {var, :cerl_trees.get_label(fun)}}
-            end)
-    keys = (for {key, _Value, _Label} <- funs do
-              key
-            end)
+
+    funs =
+      for val = {var, fun} <- smallDefs do
+        {{mod, :cerl.fname_id(var), :cerl.fname_arity(var)}, val,
+         {var, :cerl_trees.get_label(fun)}}
+      end
+
+    keys =
+      for {key, _Value, _Label} <- funs do
+        key
+      end
+
     modEntry = {mod, {name, exports, attrs, keys, as}}
     modFileEntry = {{:mod, mod}, files}
-    true = :ets.insert(r_codeserver(cS, :code),
-                         [modEntry, modFileEntry | funs])
+
+    true =
+      :ets.insert(
+        r_codeserver(cS, :code),
+        [modEntry, modFileEntry | funs]
+      )
+
     cS
   end
 
@@ -192,9 +261,13 @@ defmodule :m_dialyzer_codeserver do
     ets_set_to_set(exports)
   end
 
-  def finalize_exported_types(set,
-           r_codeserver(exported_types: exportedTypes,
-               temp_exported_types: tempETypes) = cS) do
+  def finalize_exported_types(
+        set,
+        r_codeserver(
+          exported_types: exportedTypes,
+          temp_exported_types: tempETypes
+        ) = cS
+      ) do
     true = ets_set_insert_set(set, exportedTypes)
     true = :ets.delete(tempETypes)
     r_codeserver(cS, temp_exported_types: :clean)
@@ -234,12 +307,12 @@ defmodule :m_dialyzer_codeserver do
 
   def store_temp_records(mod, map, r_codeserver(temp_records: tempRecDict) = cS)
       when is_atom(mod) do
-    case (:maps.size(map) === 0) do
+    case :maps.size(map) === 0 do
       true ->
         cS
+
       false ->
-        r_codeserver(cS, temp_records: ets_map_store(mod, map,
-                                            tempRecDict))
+        r_codeserver(cS, temp_records: ets_map_store(mod, map, tempRecDict))
     end
   end
 
@@ -251,8 +324,12 @@ defmodule :m_dialyzer_codeserver do
     :ets.lookup_element(tempRecDict, mod, 2, %{})
   end
 
-  def finalize_records(r_codeserver(temp_records: tmpRecords,
-             records: records) = cS) do
+  def finalize_records(
+        r_codeserver(
+          temp_records: tmpRecords,
+          records: records
+        ) = cS
+      ) do
     list = :dialyzer_utils.ets_tab2list(tmpRecords)
     true = :ets.delete(tmpRecords)
     true = :ets.insert(records, list)
@@ -272,25 +349,31 @@ defmodule :m_dialyzer_codeserver do
   end
 
   def get_contracts(r_codeserver(contracts: contDict)) do
-    :dict.filter(fn {_M, _F, _A}, _ ->
-                      true
-                    _, _ ->
-                      false
-                 end,
-                   ets_dict_to_dict(contDict))
+    :dict.filter(
+      fn
+        {_M, _F, _A}, _ ->
+          true
+
+        _, _ ->
+          false
+      end,
+      ets_dict_to_dict(contDict)
+    )
   end
 
   def get_callbacks(r_codeserver(callbacks: callbDict)) do
     :ets.tab2list(callbDict)
   end
 
-  def store_temp_contracts(mod, specMap, callbackMap,
-           r_codeserver(temp_contracts: cn, temp_callbacks: cb) = cS)
+  def store_temp_contracts(
+        mod,
+        specMap,
+        callbackMap,
+        r_codeserver(temp_contracts: cn, temp_callbacks: cb) = cS
+      )
       when is_atom(mod) do
-    cS1 = r_codeserver(cS, temp_contracts: ets_map_store(mod, specMap,
-                                                cn))
-    r_codeserver(cS1, temp_callbacks: ets_map_store(mod, callbackMap,
-                                           cb))
+    cS1 = r_codeserver(cS, temp_contracts: ets_map_store(mod, specMap, cn))
+    r_codeserver(cS1, temp_callbacks: ets_map_store(mod, callbackMap, cb))
   end
 
   def all_temp_modules(r_codeserver(temp_contracts: tempContTable)) do
@@ -302,14 +385,23 @@ defmodule :m_dialyzer_codeserver do
     keys = :maps.keys(specMap)
     true = :ets.insert(specDict, :maps.to_list(specMap))
     true = :ets.insert(specDict, {mod, keys})
-    true = :ets.insert(callbackDict,
-                         :maps.to_list(callbackMap))
+
+    true =
+      :ets.insert(
+        callbackDict,
+        :maps.to_list(callbackMap)
+      )
+
     cS
   end
 
-  def get_temp_contracts(mod,
-           r_codeserver(temp_contracts: tempContDict,
-               temp_callbacks: tempCallDict)) do
+  def get_temp_contracts(
+        mod,
+        r_codeserver(
+          temp_contracts: tempContDict,
+          temp_callbacks: tempCallDict
+        )
+      ) do
     [{^mod, contracts}] = :ets.lookup(tempContDict, mod)
     true = :ets.delete(tempContDict, mod)
     [{^mod, callbacks}] = :ets.lookup(tempCallDict, mod)
@@ -318,36 +410,56 @@ defmodule :m_dialyzer_codeserver do
   end
 
   def give_away(cServer, pid) do
-    :lists.foreach(fn table ->
-                        true = :ets.give_away(table, pid, :any)
-                   end,
-                     tables(cServer))
+    :lists.foreach(
+      fn table ->
+        true = :ets.give_away(table, pid, :any)
+      end,
+      tables(cServer)
+    )
   end
 
-  defp tables(r_codeserver(code: code, fun_meta_info: funMetaInfo,
-              exports: exports, temp_exported_types: tempExpTypes,
-              temp_records: tempRecords,
-              temp_contracts: tempContracts,
-              temp_callbacks: tempCallbacks,
-              exported_types: exportedTypes, records: records,
-              contracts: contracts, callbacks: callbacks)) do
-    for table <- [code, funMetaInfo, exports, tempExpTypes,
-                                                  tempRecords, tempContracts,
-                                                                   tempCallbacks,
-                                                                       exportedTypes,
-                                                                           records,
-                                                                               contracts,
-                                                                                   callbacks],
-          table !== :clean do
+  defp tables(
+         r_codeserver(
+           code: code,
+           fun_meta_info: funMetaInfo,
+           exports: exports,
+           temp_exported_types: tempExpTypes,
+           temp_records: tempRecords,
+           temp_contracts: tempContracts,
+           temp_callbacks: tempCallbacks,
+           exported_types: exportedTypes,
+           records: records,
+           contracts: contracts,
+           callbacks: callbacks
+         )
+       ) do
+    for table <- [
+          code,
+          funMetaInfo,
+          exports,
+          tempExpTypes,
+          tempRecords,
+          tempContracts,
+          tempCallbacks,
+          exportedTypes,
+          records,
+          contracts,
+          callbacks
+        ],
+        table !== :clean do
       table
     end
   end
 
-  def finalize_contracts(r_codeserver(temp_contracts: tempContDict,
-             temp_callbacks: tempCallDict) = cS) do
+  def finalize_contracts(
+        r_codeserver(
+          temp_contracts: tempContDict,
+          temp_callbacks: tempCallDict
+        ) = cS
+      ) do
     true = :ets.delete(tempContDict)
     true = :ets.delete(tempCallDict)
-    r_codeserver(cS, temp_contracts: :clean,  temp_callbacks: :clean)
+    r_codeserver(cS, temp_contracts: :clean, temp_callbacks: :clean)
   end
 
   def translate_fake_file(r_codeserver(code: code), module, fakeFile) do
@@ -357,11 +469,13 @@ defmodule :m_dialyzer_codeserver do
   end
 
   defp table__lookup(tablePid, m) when is_atom(m) do
-    {name, exports, attrs, keys,
-       as} = :ets.lookup_element(tablePid, m, 2)
-    defs = (for key <- keys do
-              table__lookup(tablePid, key)
-            end)
+    {name, exports, attrs, keys, as} = :ets.lookup_element(tablePid, m, 2)
+
+    defs =
+      for key <- keys do
+        table__lookup(tablePid, key)
+      end
+
     :cerl.ann_c_module(as, name, exports, attrs, defs)
   end
 
@@ -371,27 +485,32 @@ defmodule :m_dialyzer_codeserver do
 
   defp compress_file_anno(term) do
     {files, smallTerm} = compress_file_anno(term, [])
+
     {for {file, {:file, fakeFile}} <- files do
        {fakeFile, file}
-     end,
-       smallTerm}
+     end, smallTerm}
   end
 
   defp compress_file_anno({:file, f}, fs) when is_list(f) do
-    case (:lists.keyfind(f, 1, fs)) do
+    case :lists.keyfind(f, 1, fs) do
       false ->
         i = :erlang.integer_to_list(length(fs))
         fileI = {:file, i}
         nFs = [{f, fileI} | fs]
         {nFs, fileI}
+
       {^f, fileI} ->
         {fs, fileI}
     end
   end
 
   defp compress_file_anno(t, fs) when is_tuple(t) do
-    {nFs, nL} = compress_file_anno(:erlang.tuple_to_list(t),
-                                     fs)
+    {nFs, nL} =
+      compress_file_anno(
+        :erlang.tuple_to_list(t),
+        fs
+      )
+
     {nFs, :erlang.list_to_tuple(nL)}
   end
 
@@ -404,5 +523,4 @@ defmodule :m_dialyzer_codeserver do
   defp compress_file_anno(t, fs) do
     {fs, t}
   end
-
 end

@@ -2,17 +2,28 @@ defmodule :m_raw_file_io_inflate do
   use Bitwise
   @behaviour :gen_statem
   require Record
-  Record.defrecord(:r_file_info, :file_info, size: :undefined,
-                                     type: :undefined, access: :undefined,
-                                     atime: :undefined, mtime: :undefined,
-                                     ctime: :undefined, mode: :undefined,
-                                     links: :undefined,
-                                     major_device: :undefined,
-                                     minor_device: :undefined,
-                                     inode: :undefined, uid: :undefined,
-                                     gid: :undefined)
-  Record.defrecord(:r_file_descriptor, :file_descriptor, module: :undefined,
-                                           data: :undefined)
+
+  Record.defrecord(:r_file_info, :file_info,
+    size: :undefined,
+    type: :undefined,
+    access: :undefined,
+    atime: :undefined,
+    mtime: :undefined,
+    ctime: :undefined,
+    mode: :undefined,
+    links: :undefined,
+    major_device: :undefined,
+    minor_device: :undefined,
+    inode: :undefined,
+    uid: :undefined,
+    gid: :undefined
+  )
+
+  Record.defrecord(:r_file_descriptor, :file_descriptor,
+    module: :undefined,
+    data: :undefined
+  )
+
   def callback_mode() do
     :state_functions
   end
@@ -29,31 +40,40 @@ defmodule :m_raw_file_io_inflate do
     monitor = :erlang.monitor(:process, owner)
     z = :zlib.open()
     :ok = :zlib.inflateInit(z, 16 + 15, mode)
-    data = %{owner: owner, monitor: monitor, secret: secret,
-               position: 0, buffer: :prim_buffer.new(), zlib: z}
+
+    data = %{
+      owner: owner,
+      monitor: monitor,
+      secret: secret,
+      position: 0,
+      buffer: :prim_buffer.new(),
+      zlib: z
+    }
+
     {:ok, :opening, data}
   end
 
   defp choose_decompression_state(privateFd) do
-    state = (case (apply(r_file_descriptor(privateFd, :module), :read,
-                           [privateFd, 2])) do
-               {:ok, <<31, 139>>} ->
-                 :opened_gzip
-               _Other ->
-                 :opened_passthrough
-             end)
-    {:ok, 0} = apply(r_file_descriptor(privateFd, :module), :position,
-                       [privateFd, 0])
+    state =
+      case apply(r_file_descriptor(privateFd, :module), :read, [privateFd, 2]) do
+        {:ok, <<31, 139>>} ->
+          :opened_gzip
+
+        _Other ->
+          :opened_passthrough
+      end
+
+    {:ok, 0} = apply(r_file_descriptor(privateFd, :module), :position, [privateFd, 0])
     state
   end
 
-  def opening({:call, from}, {:"$open", secret, filename, modes},
-           %{secret: secret} = data) do
-    case (:raw_file_io.open(filename, modes)) do
+  def opening({:call, from}, {:"$open", secret, filename, modes}, %{secret: secret} = data) do
+    case :raw_file_io.open(filename, modes) do
       {:ok, privateFd} ->
         nextState = choose_decompression_state(privateFd)
         newData = Map.put(data, :handle, privateFd)
         {:next_state, nextState, newData, [{:reply, from, :ok}]}
+
       other ->
         {:stop_and_reply, :normal, [{:reply, from, other}]}
     end
@@ -65,14 +85,15 @@ defmodule :m_raw_file_io_inflate do
 
   defp internal_close(from, data) do
     %{handle: privateFd} = data
-    response = apply(r_file_descriptor(privateFd, :module), :close,
-                       [privateFd])
+    response = apply(r_file_descriptor(privateFd, :module), :close, [privateFd])
     {:stop_and_reply, :normal, [{:reply, from, response}]}
   end
 
-  def opened_passthrough(:info,
-           {:DOWN, monitor, :process, _Owner, _Reason},
-           %{monitor: monitor}) do
+  def opened_passthrough(
+        :info,
+        {:DOWN, monitor, :process, _Owner, _Reason},
+        %{monitor: monitor}
+      ) do
     {:stop, :shutdown}
   end
 
@@ -80,16 +101,13 @@ defmodule :m_raw_file_io_inflate do
     :keep_state_and_data
   end
 
-  def opened_passthrough({:call, {owner, _Tag} = from}, [:close],
-           %{owner: owner} = data) do
+  def opened_passthrough({:call, {owner, _Tag} = from}, [:close], %{owner: owner} = data) do
     internal_close(from, data)
   end
 
-  def opened_passthrough({:call, {owner, _Tag} = from}, [method | args],
-           %{owner: owner} = data) do
+  def opened_passthrough({:call, {owner, _Tag} = from}, [method | args], %{owner: owner} = data) do
     %{handle: privateFd} = data
-    response = apply(r_file_descriptor(privateFd, :module), method,
-                       [privateFd | args])
+    response = apply(r_file_descriptor(privateFd, :module), method, [privateFd | args])
     {:keep_state_and_data, [{:reply, from, response}]}
   end
 
@@ -101,9 +119,11 @@ defmodule :m_raw_file_io_inflate do
     :keep_state_and_data
   end
 
-  def opened_gzip(:info,
-           {:DOWN, monitor, :process, _Owner, _Reason},
-           %{monitor: monitor}) do
+  def opened_gzip(
+        :info,
+        {:DOWN, monitor, :process, _Owner, _Reason},
+        %{monitor: monitor}
+      ) do
     {:stop, :shutdown}
   end
 
@@ -111,52 +131,49 @@ defmodule :m_raw_file_io_inflate do
     :keep_state_and_data
   end
 
-  def opened_gzip({:call, {owner, _Tag} = from}, [:close],
-           %{owner: owner} = data) do
+  def opened_gzip({:call, {owner, _Tag} = from}, [:close], %{owner: owner} = data) do
     internal_close(from, data)
   end
 
-  def opened_gzip({:call, {owner, _Tag} = from}, [:position, mark],
-           %{owner: owner} = data) do
-    case (position(data, mark)) do
+  def opened_gzip({:call, {owner, _Tag} = from}, [:position, mark], %{owner: owner} = data) do
+    case position(data, mark) do
       {:ok, newData, result} ->
         response = {:ok, result}
         {:keep_state, newData, [{:reply, from, response}]}
+
       other ->
         {:keep_state_and_data, [{:reply, from, other}]}
     end
   end
 
-  def opened_gzip({:call, {owner, _Tag} = from}, [:read, size],
-           %{owner: owner} = data) do
-    case (read(data, size)) do
+  def opened_gzip({:call, {owner, _Tag} = from}, [:read, size], %{owner: owner} = data) do
+    case read(data, size) do
       {:ok, newData, result} ->
         response = {:ok, result}
         {:keep_state, newData, [{:reply, from, response}]}
+
       other ->
         {:keep_state_and_data, [{:reply, from, other}]}
     end
   end
 
-  def opened_gzip({:call, {owner, _Tag} = from}, [:read_line],
-           %{owner: owner} = data) do
-    case (read_line(data)) do
+  def opened_gzip({:call, {owner, _Tag} = from}, [:read_line], %{owner: owner} = data) do
+    case read_line(data) do
       {:ok, newData, result} ->
         response = {:ok, result}
         {:keep_state, newData, [{:reply, from, response}]}
+
       other ->
         {:keep_state_and_data, [{:reply, from, other}]}
     end
   end
 
-  def opened_gzip({:call, {owner, _Tag} = from}, [:write, _IOData],
-           %{owner: owner}) do
+  def opened_gzip({:call, {owner, _Tag} = from}, [:write, _IOData], %{owner: owner}) do
     response = {:error, :ebadf}
     {:keep_state_and_data, [{:reply, from, response}]}
   end
 
-  def opened_gzip({:call, {owner, _Tag} = from}, _Request,
-           %{owner: owner}) do
+  def opened_gzip({:call, {owner, _Tag} = from}, _Request, %{owner: owner}) do
     response = {:error, :enotsup}
     {:keep_state_and_data, [{:reply, from, response}]}
   end
@@ -175,6 +192,7 @@ defmodule :m_raw_file_io_inflate do
     catch
       :error, :badarg ->
         {:error, :badarg}
+
       :error, _ ->
         {:error, :eio}
     else
@@ -184,27 +202,34 @@ defmodule :m_raw_file_io_inflate do
   end
 
   defp read_1(data, buffer, bufferSize, readSize)
-      when bufferSize >= readSize do
+       when bufferSize >= readSize do
     %{position: position} = data
     decompressed = :prim_buffer.read(buffer, readSize)
-    {:ok, Map.put(data, :position, position + readSize),
-       decompressed}
+    {:ok, Map.put(data, :position, position + readSize), decompressed}
   end
 
   defp read_1(data, buffer, bufferSize, readSize)
-      when bufferSize < readSize do
+       when bufferSize < readSize do
     %{handle: privateFd} = data
-    case (apply(r_file_descriptor(privateFd, :module), :read,
-                  [privateFd, 8 <<< 10])) do
+
+    case apply(r_file_descriptor(privateFd, :module), :read, [privateFd, 8 <<< 10]) do
       {:ok, compressed} ->
         %{zlib: z} = data
-        uncompressed = :erlang.iolist_to_iovec(:zlib.inflate(z,
-                                                               compressed))
+
+        uncompressed =
+          :erlang.iolist_to_iovec(
+            :zlib.inflate(
+              z,
+              compressed
+            )
+          )
+
         :prim_buffer.write(buffer, uncompressed)
-        read_1(data, buffer, :prim_buffer.size(buffer),
-                 readSize)
+        read_1(data, buffer, :prim_buffer.size(buffer), readSize)
+
       :eof when bufferSize > 0 ->
         read_1(data, buffer, bufferSize, bufferSize)
+
       other ->
         other
     end
@@ -212,16 +237,17 @@ defmodule :m_raw_file_io_inflate do
 
   defp read_line(%{buffer: buffer} = data) do
     try do
-      read_line_1(data, buffer,
-                    :prim_buffer.find_byte_index(buffer, ?\n))
+      read_line_1(data, buffer, :prim_buffer.find_byte_index(buffer, ?\n))
     catch
       :error, :badarg ->
         {:error, :badarg}
+
       :error, _ ->
         {:error, :eio}
     else
       {:ok, newData, decompressed} ->
         {:ok, newData, decompressed}
+
       other ->
         other
     end
@@ -229,21 +255,29 @@ defmodule :m_raw_file_io_inflate do
 
   defp read_line_1(data, buffer, :not_found) do
     %{handle: privateFd, zlib: z} = data
-    case (apply(r_file_descriptor(privateFd, :module), :read,
-                  [privateFd, 8 <<< 10])) do
+
+    case apply(r_file_descriptor(privateFd, :module), :read, [privateFd, 8 <<< 10]) do
       {:ok, compressed} ->
-        uncompressed = :erlang.iolist_to_iovec(:zlib.inflate(z,
-                                                               compressed))
+        uncompressed =
+          :erlang.iolist_to_iovec(
+            :zlib.inflate(
+              z,
+              compressed
+            )
+          )
+
         :prim_buffer.write(buffer, uncompressed)
-        read_line_1(data, buffer,
-                      :prim_buffer.find_byte_index(buffer, ?\n))
+        read_line_1(data, buffer, :prim_buffer.find_byte_index(buffer, ?\n))
+
       :eof ->
-        case (:prim_buffer.size(buffer)) do
+        case :prim_buffer.size(buffer) do
           size when size > 0 ->
             {:ok, :prim_buffer.read(buffer, size)}
+
           size when size === 0 ->
             :eof
         end
+
       error ->
         error
     end
@@ -251,16 +285,21 @@ defmodule :m_raw_file_io_inflate do
 
   defp read_line_1(data, buffer, {:ok, lFIndex}) do
     %{position: position} = data
-    newData = Map.put(data, :position,
-                              position + lFIndex + 1)
+    newData = Map.put(data, :position, position + lFIndex + 1)
     cRIndex = lFIndex - 1
-    translatedLine = (case (:prim_buffer.read(buffer,
-                                                lFIndex + 1)) do
-                        <<line :: size(cRIndex) - binary, "\r\n">> ->
-                          <<line :: binary, "\n">>
-                        line ->
-                          line
-                      end)
+
+    translatedLine =
+      case :prim_buffer.read(
+             buffer,
+             lFIndex + 1
+           ) do
+        <<line::size(cRIndex)-binary, "\r\n">> ->
+          <<line::binary, "\n">>
+
+        line ->
+          line
+      end
+
     {:ok, newData, translatedLine}
   end
 
@@ -282,7 +321,7 @@ defmodule :m_raw_file_io_inflate do
   end
 
   defp position(_Data, {:eof, offset})
-      when is_integer(offset) do
+       when is_integer(offset) do
     {:error, :einval}
   end
 
@@ -299,26 +338,29 @@ defmodule :m_raw_file_io_inflate do
   end
 
   defp position_1(%{position: current} = data, desired)
-      when current < desired do
-    case (read(data, min(desired - current, 8 <<< 10))) do
+       when current < desired do
+    case read(data, min(desired - current, 8 <<< 10)) do
       {:ok, newData, _Data} ->
         position_1(newData, desired)
+
       :eof ->
         {:ok, data, current}
+
       other ->
         other
     end
   end
 
   defp position_1(%{position: current} = data, desired)
-      when current > desired do
+       when current > desired do
     %{handle: privateFd, buffer: buffer, zlib: z} = data
-    case (apply(r_file_descriptor(privateFd, :module), :position,
-                  [privateFd, :bof])) do
+
+    case apply(r_file_descriptor(privateFd, :module), :position, [privateFd, :bof]) do
       {:ok, 0} ->
         :ok = :zlib.inflateReset(z)
         :prim_buffer.wipe(buffer)
         position_1(Map.put(data, :position, 0), desired)
+
       other ->
         other
     end
@@ -327,5 +369,4 @@ defmodule :m_raw_file_io_inflate do
   def terminate(_Reason, _State, _Data) do
     :ok
   end
-
 end

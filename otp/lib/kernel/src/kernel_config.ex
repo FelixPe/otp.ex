@@ -7,19 +7,24 @@ defmodule :m_kernel_config do
 
   def init([]) do
     :erlang.process_flag(:trap_exit, true)
-    case (sync_nodes()) do
+
+    case sync_nodes() do
       :ok ->
-        case (:erlang.whereis(:dist_ac)) do
+        case :erlang.whereis(:dist_ac) do
           dAC when is_pid(dAC) ->
             send(dAC, {:go, self()})
+
             receive do
               :dist_ac_took_control ->
                 :ok
             end
+
           _ ->
             :ok
         end
+
         {:ok, []}
+
       {:error, error} ->
         {:stop, error}
     end
@@ -46,54 +51,66 @@ defmodule :m_kernel_config do
   end
 
   defp sync_nodes() do
-    case ((try do
+    case (try do
             get_sync_data()
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       {:error, reason} = error ->
-        :error_logger.format('~tp', [reason])
+        :error_logger.format(~c"~tp", [reason])
         error
+
       {:infinity, mandatoryNodes, optionalNodes} ->
-        case (wait_nodes(mandatoryNodes, optionalNodes)) do
+        case wait_nodes(mandatoryNodes, optionalNodes) do
           :ok ->
             :ok
+
           error ->
             error
         end
+
       {timeout, mandatoryNodes, optionalNodes} ->
-        spawn_link(:kernel_config, :send_timeout,
-                     [timeout, self()])
-        case (wait_nodes(mandatoryNodes, optionalNodes)) do
+        spawn_link(:kernel_config, :send_timeout, [timeout, self()])
+
+        case wait_nodes(mandatoryNodes, optionalNodes) do
           :ok ->
             :ok
+
           error ->
             error
         end
+
       :undefined ->
         :ok
     end
   end
 
   def send_timeout(timeout, pid) do
-    receive do after timeout ->
-      send(pid, :timeout)
+    receive do
+    after
+      timeout ->
+        send(pid, :timeout)
     end
   end
 
   defp wait_nodes(mandatory, optional) do
     :ok = :net_kernel.monitor_nodes(true)
-    :lists.foreach(fn node ->
-                        case (:net_adm.ping(node)) do
-                          :pong ->
-                            send(self(), {:nodeup, node})
-                          _ ->
-                            :ok
-                        end
-                   end,
-                     mandatory ++ optional)
+
+    :lists.foreach(
+      fn node ->
+        case :net_adm.ping(node) do
+          :pong ->
+            send(self(), {:nodeup, node})
+
+          _ ->
+            :ok
+        end
+      end,
+      mandatory ++ optional
+    )
+
     r = rec_nodes(mandatory, optional)
     :ok = :net_kernel.monitor_nodes(false)
     r
@@ -107,21 +124,25 @@ defmodule :m_kernel_config do
     receive do
       {:nodeup, node} ->
         check_up(node, mandatory, optional)
+
       :timeout when mandatory === [] ->
         :ok
+
       :timeout ->
         {:error, {:mandatory_nodes_down, mandatory}}
     end
   end
 
   defp check_up(node, mandatory, optional) do
-    case (:lists.member(node, mandatory)) do
+    case :lists.member(node, mandatory) do
       true ->
         rec_nodes(:lists.delete(node, mandatory), optional)
+
       false ->
-        case (:lists.member(node, optional)) do
+        case :lists.member(node, optional) do
           true ->
             rec_nodes(mandatory, :lists.delete(node, optional))
+
           false ->
             rec_nodes(mandatory, optional)
         end
@@ -136,43 +157,46 @@ defmodule :m_kernel_config do
   end
 
   defp get_sync_timeout() do
-    case (:application.get_env(:sync_nodes_timeout)) do
-      {:ok, timeout} when (is_integer(timeout) and
-                             timeout > 0)
-                          ->
+    case :application.get_env(:sync_nodes_timeout) do
+      {:ok, timeout}
+      when is_integer(timeout) and
+             timeout > 0 ->
         timeout
+
       {:ok, :infinity} ->
         :infinity
+
       :undefined ->
         throw(:undefined)
+
       {:ok, else__} ->
-        throw({:error,
-                 {:badopt, {:sync_nodes_timeout, else__}}})
+        throw({:error, {:badopt, {:sync_nodes_timeout, else__}}})
     end
   end
 
   defp get_sync_mandatory_nodes() do
-    case (:application.get_env(:sync_nodes_mandatory)) do
+    case :application.get_env(:sync_nodes_mandatory) do
       {:ok, nodes} when is_list(nodes) ->
         nodes
+
       :undefined ->
         []
+
       {:ok, else__} ->
-        throw({:error,
-                 {:badopt, {:sync_nodes_mandatory, else__}}})
+        throw({:error, {:badopt, {:sync_nodes_mandatory, else__}}})
     end
   end
 
   defp get_sync_optional_nodes() do
-    case (:application.get_env(:sync_nodes_optional)) do
+    case :application.get_env(:sync_nodes_optional) do
       {:ok, nodes} when is_list(nodes) ->
         nodes
+
       :undefined ->
         []
+
       {:ok, else__} ->
-        throw({:error,
-                 {:badopt, {:sync_nodes_optional, else__}}})
+        throw({:error, {:badopt, {:sync_nodes_optional, else__}}})
     end
   end
-
 end

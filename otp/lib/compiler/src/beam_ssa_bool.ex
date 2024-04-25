@@ -1,38 +1,78 @@
 defmodule :m_beam_ssa_bool do
   use Bitwise
-  import :lists, only: [all: 2, any: 2, foldl: 3,
-                          keyfind: 3, last: 1, partition: 2, reverse: 1,
-                          reverse: 2, sort: 1]
+
+  import :lists,
+    only: [
+      all: 2,
+      any: 2,
+      foldl: 3,
+      keyfind: 3,
+      last: 1,
+      partition: 2,
+      reverse: 1,
+      reverse: 2,
+      sort: 1
+    ]
+
   require Record
-  Record.defrecord(:r_b_module, :b_module, anno: %{},
-                                    name: :undefined, exports: :undefined,
-                                    attributes: :undefined, body: :undefined)
-  Record.defrecord(:r_b_function, :b_function, anno: %{},
-                                      args: :undefined, bs: :undefined,
-                                      cnt: :undefined)
-  Record.defrecord(:r_b_blk, :b_blk, anno: %{}, is: :undefined,
-                                 last: :undefined)
-  Record.defrecord(:r_b_set, :b_set, anno: %{}, dst: :none,
-                                 op: :undefined, args: [])
+
+  Record.defrecord(:r_b_module, :b_module,
+    anno: %{},
+    name: :undefined,
+    exports: :undefined,
+    attributes: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_b_function, :b_function,
+    anno: %{},
+    args: :undefined,
+    bs: :undefined,
+    cnt: :undefined
+  )
+
+  Record.defrecord(:r_b_blk, :b_blk, anno: %{}, is: :undefined, last: :undefined)
+  Record.defrecord(:r_b_set, :b_set, anno: %{}, dst: :none, op: :undefined, args: [])
   Record.defrecord(:r_b_ret, :b_ret, anno: %{}, arg: :undefined)
-  Record.defrecord(:r_b_br, :b_br, anno: %{}, bool: :undefined,
-                                succ: :undefined, fail: :undefined)
-  Record.defrecord(:r_b_switch, :b_switch, anno: %{},
-                                    arg: :undefined, fail: :undefined,
-                                    list: :undefined)
+
+  Record.defrecord(:r_b_br, :b_br,
+    anno: %{},
+    bool: :undefined,
+    succ: :undefined,
+    fail: :undefined
+  )
+
+  Record.defrecord(:r_b_switch, :b_switch,
+    anno: %{},
+    arg: :undefined,
+    fail: :undefined,
+    list: :undefined
+  )
+
   Record.defrecord(:r_b_var, :b_var, name: :undefined)
   Record.defrecord(:r_b_literal, :b_literal, val: :undefined)
-  Record.defrecord(:r_b_remote, :b_remote, mod: :undefined,
-                                    name: :undefined, arity: :undefined)
-  Record.defrecord(:r_b_local, :b_local, name: :undefined,
-                                   arity: :undefined)
-  Record.defrecord(:r_st, :st, defs: %{}, ldefs: %{},
-                              count: :undefined, dom: :undefined,
-                              uses: :undefined, in_or: false)
+  Record.defrecord(:r_b_remote, :b_remote, mod: :undefined, name: :undefined, arity: :undefined)
+
+  Record.defrecord(:r_b_local, :b_local,
+    name: :undefined,
+    arity: :undefined
+  )
+
+  Record.defrecord(:r_st, :st,
+    defs: %{},
+    ldefs: %{},
+    count: :undefined,
+    dom: :undefined,
+    uses: :undefined,
+    in_or: false
+  )
+
   def module(r_b_module(body: fs0) = module, _Opts) do
-    fs = (for f <- fs0 do
-            function(f)
-          end)
+    fs =
+      for f <- fs0 do
+        function(f)
+      end
+
     {:ok, r_b_module(module, body: fs)}
   end
 
@@ -42,7 +82,7 @@ defmodule :m_beam_ssa_bool do
     catch
       class, error ->
         %{func_info: {_, name, arity}} = anno
-        :io.fwrite('Function: ~w/~w\n', [name, arity])
+        :io.fwrite(~c"Function: ~w/~w\n", [name, arity])
         :erlang.raise(class, error, __STACKTRACE__)
     end
   end
@@ -50,21 +90,27 @@ defmodule :m_beam_ssa_bool do
   defp opt_function(r_b_function(bs: blocks0, cnt: count0) = f) do
     {blocks1, count1} = pre_opt(blocks0, count0)
     defVars = interesting_defs(blocks1)
+
     cond do
       map_size(defVars) > 1 ->
         rPO = :beam_ssa.rpo(blocks1)
         dom = :beam_ssa.dominators(rPO, blocks1)
         uses = :beam_ssa.uses(rPO, blocks1)
-        st0 = r_st(defs: defVars, count: count1, dom: dom,
-                  uses: uses)
+        st0 = r_st(defs: defVars, count: count1, dom: dom, uses: uses)
         {blocks2, st} = bool_opt(rPO, blocks1, st0)
         count = r_st(st, :count)
         blocks3 = :beam_ssa.trim_unreachable(blocks2)
-        blocks = :beam_ssa.merge_blocks(:beam_ssa.rpo(blocks3),
-                                          blocks3)
-        r_b_function(f, bs: blocks,  cnt: count)
+
+        blocks =
+          :beam_ssa.merge_blocks(
+            :beam_ssa.rpo(blocks3),
+            blocks3
+          )
+
+        r_b_function(f, bs: blocks, cnt: count)
+
       true ->
-        r_b_function(f, bs: blocks1,  cnt: count1)
+        r_b_function(f, bs: blocks1, cnt: count1)
     end
   end
 
@@ -96,30 +142,44 @@ defmodule :m_beam_ssa_bool do
     sub
   end
 
-  defp get_phi_info_instr(r_b_set(op: {:bif, :"=:="},
-              args: [r_b_var() = bool, r_b_literal(val: true)]),
-            _From, sub) do
+  defp get_phi_info_instr(
+         r_b_set(
+           op: {:bif, :"=:="},
+           args: [r_b_var() = bool, r_b_literal(val: true)]
+         ),
+         _From,
+         sub
+       ) do
     Map.put(sub, bool, :"=:=")
   end
 
-  defp get_phi_info_instr(r_b_set(op: :phi, dst: dst, args: args), from,
-            sub0) do
-    {safe, sub} = (case (sub0) do
-                     %{^dst => :"=:="} ->
-                       get_phi_info_single_use(dst, sub0)
-                     %{^dst => {:true_or_any, _}} ->
-                       get_phi_info_single_use(dst, sub0)
-                     %{} ->
-                       {false, sub0}
-                   end)
-    case (safe) do
+  defp get_phi_info_instr(r_b_set(op: :phi, dst: dst, args: args), from, sub0) do
+    {safe, sub} =
+      case sub0 do
+        %{^dst => :"=:="} ->
+          get_phi_info_single_use(dst, sub0)
+
+        %{^dst => {:true_or_any, _}} ->
+          get_phi_info_single_use(dst, sub0)
+
+        %{} ->
+          {false, sub0}
+      end
+
+    case safe do
       true ->
-        foldl(fn {r_b_var() = v, _}, a ->
-                   Map.put(a, v, {:true_or_any, from})
-                 _, a ->
-                   a
-              end,
-                sub, args)
+        foldl(
+          fn
+            {r_b_var() = v, _}, a ->
+              Map.put(a, v, {:true_or_any, from})
+
+            _, a ->
+              a
+          end,
+          sub,
+          args
+        )
+
       false ->
         sub
     end
@@ -130,15 +190,16 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp get_phi_info_single_use(var, sub) do
-    case (:erlang.map_get(:uses, sub)) do
+    case :erlang.map_get(:uses, sub) do
       uses when is_map(uses) ->
-        {case (uses) do
+        {case uses do
            %{^var => [_]} ->
              true
+
            %{^var => [_ | _]} ->
              false
-         end,
-           sub}
+         end, sub}
+
       {:uses, top, blocks} ->
         uses = :beam_ssa.uses(top, blocks)
         get_phi_info_single_use(var, Map.put(sub, :uses, uses))
@@ -146,32 +207,53 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp pre_opt([l | ls], sub0, reached0, count0, blocks) do
-    case (:sets.is_element(l, reached0)) do
+    case :sets.is_element(l, reached0) do
       false ->
-        pre_opt(ls, sub0, reached0, count0,
-                  :maps.remove(l, blocks))
+        pre_opt(ls, sub0, reached0, count0, :maps.remove(l, blocks))
+
       true ->
-        r_b_blk(is: is0, last: last0) = (blk0 = :erlang.map_get(l,
-                                                            blocks))
+        r_b_blk(is: is0, last: last0) =
+          blk0 =
+          :erlang.map_get(
+            l,
+            blocks
+          )
+
         {is, sub} = pre_opt_is(is0, reached0, sub0, [])
-        case (pre_opt_terminator(last0, sub, blocks)) do
+
+        case pre_opt_terminator(last0, sub, blocks) do
           {r_b_set() = test0, r_b_br() = br0} ->
             bool = r_b_var(name: {:"@ssa_bool", count0})
             count = count0 + 1
             test = r_b_set(test0, dst: bool)
             br = :beam_ssa.normalize(r_b_br(br0, bool: bool))
-            blk = r_b_blk(blk0, is: is ++ [test],  last: br)
+            blk = r_b_blk(blk0, is: is ++ [test], last: br)
             successors = :beam_ssa.successors(blk)
-            reached = :sets.union(reached0,
-                                    :sets.from_list(successors,
-                                                      [{:version, 2}]))
+
+            reached =
+              :sets.union(
+                reached0,
+                :sets.from_list(
+                  successors,
+                  [{:version, 2}]
+                )
+              )
+
             pre_opt(ls, sub, reached, count, %{blocks | l => blk})
+
           last ->
-            blk = r_b_blk(blk0, is: is,  last: last)
+            blk = r_b_blk(blk0, is: is, last: last)
             successors = :beam_ssa.successors(blk)
-            reached = :sets.union(reached0,
-                                    :sets.from_list(successors,
-                                                      [{:version, 2}]))
+
+            reached =
+              :sets.union(
+                reached0,
+                :sets.from_list(
+                  successors,
+                  [{:version, 2}]
+                )
+              )
+
             pre_opt(ls, sub, reached, count0, %{blocks | l => blk})
         end
     end
@@ -181,26 +263,35 @@ defmodule :m_beam_ssa_bool do
     {blocks, count}
   end
 
-  defp pre_opt_is([r_b_set(op: :phi, dst: dst, args: args0) = i0 | is],
-            reached, sub0, acc) do
-    args1 = (for {val, from} <- args0,
-                   :sets.is_element(from, reached) do
-               {val, from}
-             end)
+  defp pre_opt_is([r_b_set(op: :phi, dst: dst, args: args0) = i0 | is], reached, sub0, acc) do
+    args1 =
+      for {val, from} <- args0,
+          :sets.is_element(from, reached) do
+        {val, from}
+      end
+
     args = sub_args(args1, sub0)
-    case (all_same(args)) do
+
+    case all_same(args) do
       true ->
         {arg, _} = hd(args)
         sub = Map.put(sub0, dst, arg)
         pre_opt_is(is, reached, sub, acc)
+
       false ->
-        case (pre_is_phi_bool(args, sub0)) do
+        case pre_is_phi_bool(args, sub0) do
           true ->
             anno = r_b_set(i0, :anno)
-            i = r_b_set(i0, args: args, 
-                        anno: Map.put(anno, :boolean_phi, true))
+
+            i =
+              r_b_set(i0,
+                args: args,
+                anno: Map.put(anno, :boolean_phi, true)
+              )
+
             sub = Map.put(sub0, dst, i)
             pre_opt_is(is, reached, sub, [i | acc])
+
           false ->
             i = r_b_set(i0, args: args)
             pre_opt_is(is, reached, sub0, [i | acc])
@@ -208,42 +299,50 @@ defmodule :m_beam_ssa_bool do
     end
   end
 
-  defp pre_opt_is([r_b_set(op: {:succeeded, _}, dst: dst,
-               args: args0) = i0 |
-               is],
-            reached, sub0, acc) do
-    [arg] = (args = sub_args(args0, sub0))
+  defp pre_opt_is(
+         [
+           r_b_set(op: {:succeeded, _}, dst: dst, args: args0) = i0
+           | is
+         ],
+         reached,
+         sub0,
+         acc
+       ) do
+    [arg] = args = sub_args(args0, sub0)
     i = r_b_set(i0, args: args)
-    case (pre_is_safe_bool(arg, sub0)) do
+
+    case pre_is_safe_bool(arg, sub0) do
       true ->
         sub = Map.put(sub0, dst, r_b_literal(val: true))
         pre_opt_is(is, reached, sub, acc)
+
       false ->
         sub = :maps.remove(arg, sub0)
         pre_opt_is(is, reached, sub, [i | acc])
     end
   end
 
-  defp pre_opt_is([r_b_set(dst: dst, args: args0) = i0 | is], reached,
-            sub0, acc) do
+  defp pre_opt_is([r_b_set(dst: dst, args: args0) = i0 | is], reached, sub0, acc) do
     args = sub_args(args0, sub0)
     i = r_b_set(i0, args: args)
-    case (is_bool_expr(i)) do
+
+    case is_bool_expr(i) do
       true ->
-        case (pre_eval_op(i, sub0)) do
+        case pre_eval_op(i, sub0) do
           :none ->
             sub = Map.put(sub0, dst, i)
             pre_opt_is(is, reached, sub, [i | acc])
+
           r_b_var() = var ->
-            [r_b_set(op: {:succeeded, _}, dst: succDst,
-                 args: [^dst])] = is
-            sub = Map.merge(sub0, %{dst => var,
-                                      succDst => r_b_literal(val: true)})
+            [r_b_set(op: {:succeeded, _}, dst: succDst, args: [^dst])] = is
+            sub = Map.merge(sub0, %{dst => var, succDst => r_b_literal(val: true)})
             pre_opt_is([], reached, sub, acc)
+
           r_b_literal() = lit ->
             sub = Map.put(sub0, dst, lit)
             pre_opt_is(is, reached, sub, acc)
         end
+
       false ->
         pre_opt_is(is, reached, sub0, [i | acc])
     end
@@ -258,15 +357,25 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp pre_opt_terminator(r_b_br(bool: bool) = br0, sub, blocks) do
-    case (:beam_ssa.normalize(r_b_br(br0, bool: sub_arg(bool,
-                                                     sub)))) do
+    case :beam_ssa.normalize(
+           r_b_br(br0,
+             bool:
+               sub_arg(
+                 bool,
+                 sub
+               )
+           )
+         ) do
       ^br0 ->
         br0
+
       r_b_br(bool: r_b_literal(val: true), succ: next) = br ->
         r_b_blk(is: is, last: last) = :erlang.map_get(next, blocks)
-        case ({is, last}) do
+
+        case {is, last} do
           {[], r_b_switch()} ->
             pre_opt_terminator(last, sub, blocks)
+
           {_, _} ->
             br
         end
@@ -278,93 +387,119 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp pre_opt_terminator(r_b_switch(arg: arg0) = sw0, sub, blocks) do
-    case (:beam_ssa.normalize(r_b_switch(sw0, arg: sub_arg(arg0,
-                                                    sub)))) do
+    case :beam_ssa.normalize(
+           r_b_switch(sw0,
+             arg:
+               sub_arg(
+                 arg0,
+                 sub
+               )
+           )
+         ) do
       r_b_switch(arg: arg, list: list) = sw ->
-        case (sort(list)) do
+        case sort(list) do
           [{r_b_literal(val: false), fail}, {r_b_literal(val: true), succ}] ->
-            case (pre_is_arg_bool(arg, sub)) do
+            case pre_is_arg_bool(arg, sub) do
               false ->
                 pre_opt_sw(sw, fail, succ, sub, blocks)
+
               true ->
-                :beam_ssa.normalize(r_b_br(bool: arg, succ: succ,
-                                        fail: fail))
+                :beam_ssa.normalize(r_b_br(bool: arg, succ: succ, fail: fail))
             end
+
           _ ->
             sw
         end
+
       other ->
         pre_opt_terminator(other, sub, blocks)
     end
   end
 
-  defp pre_opt_sw(r_b_switch(arg: arg, fail: fail) = sw, false__, true__,
-            sub, blocks) do
-    case (sub) do
+  defp pre_opt_sw(r_b_switch(arg: arg, fail: fail) = sw, false__, true__, sub, blocks) do
+    case sub do
       %{^arg => {:true_or_any, phiL}} ->
         %{^fail => failBlk, ^false__ => falseBlk} = blocks
-        phiBlk = (case (blocks) do
-                    %{^phiL => phiBlk0} ->
-                      phiBlk0
-                    %{} ->
-                      :none
-                  end)
-        case ({failBlk, falseBlk, phiBlk}) do
+
+        phiBlk =
+          case blocks do
+            %{^phiL => phiBlk0} ->
+              phiBlk0
+
+            %{} ->
+              :none
+          end
+
+        case {failBlk, falseBlk, phiBlk} do
           {r_b_blk(is: [], last: r_b_br(succ: ^phiL, fail: ^phiL)),
-             r_b_blk(is: [], last: r_b_br(succ: ^phiL, fail: ^phiL)),
-             r_b_blk(is: [r_b_set(op: :phi, args: phiArgs) | _])} ->
-            case (keyfind(false__, 2, phiArgs)) do
+           r_b_blk(is: [], last: r_b_br(succ: ^phiL, fail: ^phiL)),
+           r_b_blk(is: [r_b_set(op: :phi, args: phiArgs) | _])} ->
+            case keyfind(false__, 2, phiArgs) do
               {r_b_literal(val: bool), ^false__} when bool !== true ->
                 dummyDst = r_b_var(name: 0)
                 br0 = r_b_br(bool: dummyDst, succ: true__, fail: false__)
                 br = :beam_ssa.normalize(br0)
-                {r_b_set(op: {:bif, :"=:="}, dst: dummyDst,
-                     args: [arg, r_b_literal(val: true)]),
-                   br}
+
+                {r_b_set(op: {:bif, :"=:="}, dst: dummyDst, args: [arg, r_b_literal(val: true)]),
+                 br}
+
               {_, _} ->
                 sw
             end
+
           {_, _, _} ->
             sw
         end
+
       %{} ->
         sw
     end
   end
 
   defp pre_eval_op(r_b_set(op: {:bif, op}, args: args), sub) do
-    case (pre_are_args_bool(args, sub)) do
+    case pre_are_args_bool(args, sub) do
       true ->
-        case ({op, args}) do
+        case {op, args} do
           {:and, [r_b_literal(val: true), r_b_var() = res]} ->
             res
+
           {:and, [r_b_literal(val: false) = res, r_b_var()]} ->
             res
+
           {:and, [r_b_var() = res, r_b_literal(val: true)]} ->
             res
+
           {:and, [r_b_var(), r_b_literal(val: false) = res]} ->
             res
+
           {:or, [r_b_literal(val: true) = res, r_b_var()]} ->
             res
+
           {:or, [r_b_literal(val: false), r_b_var() = res]} ->
             res
+
           {:or, [r_b_var(), r_b_literal(val: true) = res]} ->
             res
+
           {:or, [r_b_var() = res, r_b_literal(val: false)]} ->
             res
+
           _ ->
             :none
         end
+
       false ->
         :none
     end
   end
 
   defp all_same([{h, _} | t]) do
-    all(fn {e, _} ->
-             e === h
-        end,
-          t)
+    all(
+      fn {e, _} ->
+        e === h
+      end,
+      t
+    )
   end
 
   defp pre_is_phi_bool([{r_b_literal(val: lit), _} | as], sub) do
@@ -372,9 +507,10 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp pre_is_phi_bool([{r_b_var() = a, _} | as], sub) do
-    case (sub) do
+    case sub do
       %{^a => r_b_set()} ->
         pre_is_phi_bool(as, sub)
+
       %{} ->
         false
     end
@@ -389,20 +525,24 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp pre_is_safe_bool(var, sub) do
-    case (sub) do
-      %{^var
-        =>
-        r_b_set(op: {:bif, :is_function}, args: [_, arity])} ->
-        case (arity) do
+    case sub do
+      %{^var => r_b_set(op: {:bif, :is_function}, args: [_, arity])} ->
+        case arity do
           r_b_literal(val: lit) ->
             is_integer(lit) and lit >= 0
+
           r_b_var() ->
             false
         end
+
       %{^var => r_b_set(op: {:bif, op}, args: args)} ->
         arity = length(args)
-        :erl_internal.bool_op(op,
-                                arity) and pre_are_args_bool(args, sub)
+
+        :erl_internal.bool_op(
+          op,
+          arity
+        ) and pre_are_args_bool(args, sub)
+
       %{} ->
         false
     end
@@ -421,9 +561,10 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp pre_is_arg_bool(r_b_var() = a, sub) do
-    case (sub) do
+    case sub do
       %{^a => r_b_set()} ->
         true
+
       %{} ->
         false
     end
@@ -442,9 +583,10 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp interesting_defs_is([r_b_set(op: {:bif, _}, dst: v) = i | is], l, acc) do
-    case (is_bool_expr(i)) do
+    case is_bool_expr(i) do
       true ->
         interesting_defs_is(is, l, [{v, {l, i}} | acc])
+
       false ->
         interesting_defs_is(is, l, acc)
     end
@@ -464,22 +606,22 @@ defmodule :m_beam_ssa_bool do
 
   defp bool_opt([l | ls], blocks0, st0) do
     {blocks, st1} = bool_opt(ls, blocks0, st0)
-    case (blocks) do
-      %{^l
-        =>
-        r_b_blk(is: [_ | _] = is, last: r_b_br(bool: r_b_var() = bool) = br)} ->
-        case (last(is)) do
-          r_b_set(op: {:bif, :"=:="}, dst: ^bool,
-              args: [r_b_var(), r_b_literal(val: true)]) ->
+
+    case blocks do
+      %{^l => r_b_blk(is: [_ | _] = is, last: r_b_br(bool: r_b_var() = bool) = br)} ->
+        case last(is) do
+          r_b_set(op: {:bif, :"=:="}, dst: ^bool, args: [r_b_var(), r_b_literal(val: true)]) ->
             try do
               bool_opt_rewrite(bool, l, br, blocks, st1)
             catch
               :not_possible ->
                 {blocks, st1}
             end
+
           r_b_set() ->
             {blocks, st1}
         end
+
       %{} ->
         {blocks, st1}
     end
@@ -491,12 +633,15 @@ defmodule :m_beam_ssa_bool do
 
   defp bool_opt_rewrite(bool, from, br, blocks0, st0) do
     treeVars = collect_bool_vars(bool, st0)
-    case (treeVars) do
+
+    case treeVars do
       [^bool] ->
         not_possible()
+
       [_ | _] ->
         :ok
     end
+
     dom = bool_opt_dom(treeVars, st0)
     {domPreIs, blocks1} = split_dom_block(dom, blocks0)
     bs = collect_digraph_blocks(dom, from, br, blocks1)
@@ -507,13 +652,23 @@ defmodule :m_beam_ssa_bool do
     g = shortcut_branches(root, g1, st)
     ensure_init(root, g, g0)
     domBlk0 = :erlang.map_get(dom, blocks1)
-    blocks2 = :maps.without(for {l, r_b_blk()} <- bs do
-                              l
-                            end,
-                              blocks1)
+
+    blocks2 =
+      :maps.without(
+        for {l, r_b_blk()} <- bs do
+          l
+        end,
+        blocks1
+      )
+
     blocks3 = digraph_to_ssa([root], g, blocks2)
-    domBlk = r_b_blk(domBlk0, is: domPreIs, 
-                          last: oneway_br(root))
+
+    domBlk =
+      r_b_blk(domBlk0,
+        is: domPreIs,
+        last: oneway_br(root)
+      )
+
     blocks = Map.put(blocks3, dom, domBlk)
     {blocks, r_st(st, ldefs: %{})}
   end
@@ -524,20 +679,25 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp collect_bool_vars([v | vs], st, acc) do
-    case (get_def(v, st)) do
+    case get_def(v, st) do
       r_b_set(op: :phi, anno: anno, args: args) ->
         {vars, ls} = collect_phi_args(args, anno)
         collect_bool_vars(vars ++ vs, st, ls ++ vars ++ acc)
+
       r_b_set(args: args) = i ->
-        vars = (for (r_b_var() = arg) <- args do
-                  arg
-                end)
-        case (is_rewritable_bool_op(i)) do
+        vars =
+          for r_b_var() = arg <- args do
+            arg
+          end
+
+        case is_rewritable_bool_op(i) do
           true ->
             collect_bool_vars(vars ++ vs, st, [v | acc])
+
           false ->
             collect_bool_vars(vs, st, [v | acc])
         end
+
       :none ->
         collect_bool_vars(vs, st, acc)
     end
@@ -548,54 +708,69 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp is_rewritable_bool_op(r_b_set(op: {:bif, bif})) do
-    case (bif) do
+    case bif do
       :and ->
         true
+
       :or ->
         true
+
       :not ->
         true
+
       _ ->
         false
     end
   end
 
   defp collect_phi_args(args, anno) do
-    case (:erlang.is_map_key(:boolean_phi, anno)) do
+    case :erlang.is_map_key(:boolean_phi, anno) do
       true ->
-        vars = (for {r_b_var() = v, _} <- args do
-                  v
-                end)
-        case (vars) do
+        vars =
+          for {r_b_var() = v, _} <- args do
+            v
+          end
+
+        case vars do
           [_ | _] ->
             {vars, []}
+
           [] ->
-            ls = (for {_, l} <- args do
-                    {:block, l}
-                  end)
+            ls =
+              for {_, l} <- args do
+                {:block, l}
+              end
+
             {[], ls}
         end
+
       false ->
         {[], []}
     end
   end
 
   defp bool_opt_dom(treeVars, r_st(defs: defs, dom: {domBy, num})) do
-    ls0 = foldl(fn {:block, l}, a ->
-                     [l | a]
-                   v, a ->
-                     {l, _} = :erlang.map_get(v, defs)
-                     [l | a]
-                end,
-                  [], treeVars)
+    ls0 =
+      foldl(
+        fn
+          {:block, l}, a ->
+            [l | a]
+
+          v, a ->
+            {l, _} = :erlang.map_get(v, defs)
+            [l | a]
+        end,
+        [],
+        treeVars
+      )
+
     ls = :ordsets.from_list(ls0)
-    [common | _] = :beam_ssa.common_dominators(ls, domBy,
-                                                 num)
+    [common | _] = :beam_ssa.common_dominators(ls, domBy, num)
     common
   end
 
   defp split_dom_block(l, blocks0) do
-    r_b_blk(is: is) = (blk0 = :erlang.map_get(l, blocks0))
+    r_b_blk(is: is) = blk0 = :erlang.map_get(l, blocks0)
     {preIs, tailIs} = split_dom_block_is(is, [])
     blk = r_b_blk(blk0, is: tailIs)
     blocks = %{blocks0 | l => blk}
@@ -607,9 +782,10 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp split_dom_block_is([r_b_set() = i | is] = is0, preAcc) do
-    case (is_bool_expr(i)) do
+    case is_bool_expr(i) do
       true ->
         {reverse(preAcc), is0}
+
       false ->
         split_dom_block_is(is, [i | preAcc])
     end
@@ -619,17 +795,17 @@ defmodule :m_beam_ssa_bool do
     {reverse(preAcc), []}
   end
 
-  defp collect_digraph_blocks(firstL, lastL, r_b_br(succ: succ, fail: fail),
-            blocks) do
+  defp collect_digraph_blocks(firstL, lastL, r_b_br(succ: succ, fail: fail), blocks) do
     ws = :gb_sets.singleton(firstL)
     seen = :sets.from_list([succ, fail], [{:version, 2}])
     collect_digraph_blocks(ws, lastL, blocks, seen, [])
   end
 
   defp collect_digraph_blocks(ws0, lastL, blocks, seen0, acc0) do
-    case (:gb_sets.is_empty(ws0)) do
+    case :gb_sets.is_empty(ws0) do
       true ->
         acc0
+
       false ->
         {l, ws1} = :gb_sets.take_smallest(ws0)
         seen = :sets.add_element(l, seen0)
@@ -650,12 +826,12 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp cdb_update_workset([l | ls], seen, ws) do
-    case (:sets.is_element(l, seen)) do
+    case :sets.is_element(l, seen) do
       true ->
         cdb_update_workset(ls, seen, ws)
+
       false ->
-        cdb_update_workset(ls, seen,
-                             :gb_sets.add_element(l, ws))
+        cdb_update_workset(ls, seen, :gb_sets.add_element(l, ws))
     end
   end
 
@@ -676,12 +852,16 @@ defmodule :m_beam_ssa_bool do
   defp build_mapping([{l, blk} | bs], map0, g0, st0) do
     {vtx, st} = new_label(st0)
     map = Map.put(map0, l, vtx)
-    label = (case (blk) do
-               r_b_blk(is: []) ->
-                 :br
-               r_b_blk() ->
-                 :initial
-             end)
+
+    label =
+      case blk do
+        r_b_blk(is: []) ->
+          :br
+
+        r_b_blk() ->
+          :initial
+      end
+
     g = :beam_digraph.add_vertex(g0, vtx, label)
     build_mapping(bs, map, g, st)
   end
@@ -711,55 +891,65 @@ defmodule :m_beam_ssa_bool do
     {g, st}
   end
 
-  defp build_digraph_is([r_b_set(op: :phi, args: args0) = i0 | is], last, vtx,
-            map, g, st) do
-    case (is) do
+  defp build_digraph_is([r_b_set(op: :phi, args: args0) = i0 | is], last, vtx, map, g, st) do
+    case is do
       [r_b_set(op: :phi) | _] ->
         not_possible()
+
       _ ->
         :ok
     end
-    args = (for {v, l} <- args0 do
-              {v,
-                 case (map) do
-                   %{^l => other} ->
-                     other
-                   %{} ->
-                     not_possible()
-                 end}
-            end)
+
+    args =
+      for {v, l} <- args0 do
+        {v,
+         case map do
+           %{^l => other} ->
+             other
+
+           %{} ->
+             not_possible()
+         end}
+      end
+
     i = r_b_set(i0, args: args)
     build_digraph_is_1(i, is, last, vtx, map, g, st)
   end
 
   defp build_digraph_is([r_b_set() = i | is], last, vtx, map, g, st) do
-    case (:beam_ssa.no_side_effect(i)) do
+    case :beam_ssa.no_side_effect(i) do
       true ->
         build_digraph_is_1(i, is, last, vtx, map, g, st)
+
       false ->
         not_possible()
     end
   end
 
   defp build_digraph_is([], last, from, map, g0, st) do
-    case (last) do
+    case last do
       r_b_br(bool: r_b_literal(val: true), succ: to0, fail: to0) ->
         to = :erlang.map_get(to0, map)
         g = :beam_digraph.add_edge(g0, from, to, :next)
         {g, st}
+
       r_b_br(bool: r_b_var() = bool, succ: succ0, fail: fail0) ->
         %{^succ0 => succ, ^fail0 => fail} = map
-        case (:beam_digraph.vertex(g0, from)) do
+
+        case :beam_digraph.vertex(g0, from) do
           r_b_set(dst: ^bool) ->
             g = add_succ_fail_edges(from, succ, fail, g0)
             {g, st}
+
           r_b_set() ->
             not_possible()
+
           :br ->
             g1 = add_succ_fail_edges(from, succ, fail, g0)
             g = :beam_digraph.add_vertex(g1, from, {:br, bool})
             {g, st}
         end
+
       _ ->
         not_possible()
     end
@@ -767,9 +957,11 @@ defmodule :m_beam_ssa_bool do
 
   defp build_digraph_is_1(i, is, last, vtx, map, g0, st0) do
     g1 = :beam_digraph.add_vertex(g0, vtx, i)
-    case (is) do
+
+    case is do
       [] ->
         build_digraph_is(is, last, vtx, map, g1, st0)
+
       [_ | _] ->
         {nextVtx, st} = new_label(st0)
         g2 = :beam_digraph.add_vertex(g1, nextVtx, :initial)
@@ -780,8 +972,7 @@ defmodule :m_beam_ssa_bool do
 
   defp opt_digraph_top(arg, g0, st) do
     i = get_def(arg, g0, st)
-    r_b_set(op: {:bif, :"=:="}, dst: dst,
-        args: [r_b_var() = bool, r_b_literal(val: true)]) = i
+    r_b_set(op: {:bif, :"=:="}, dst: dst, args: [r_b_var() = bool, r_b_literal(val: true)]) = i
     {:br, succ, fail} = get_targets(dst, g0, st)
     g1 = ensure_single_use(dst, g0, st)
     g = convert_to_br_node(i, succ, g1, st)
@@ -790,6 +981,7 @@ defmodule :m_beam_ssa_bool do
 
   defp do_opt_digraph([a | as], g0, st) do
     i = get_def(a, g0, st)
+
     try do
       opt_digraph_instr(i, g0, st)
     catch
@@ -808,43 +1000,52 @@ defmodule :m_beam_ssa_bool do
   defp opt_digraph_instr(r_b_set(dst: dst) = i, g0, st) do
     {:br, succ, fail} = get_targets(dst, g0, st)
     g1 = ensure_single_use(dst, g0, st)
-    case (i) do
+
+    case i do
       r_b_set(op: {:bif, :and}, args: args) ->
         g2 = convert_to_br_node(i, succ, g1, st)
         {first, second} = order_args(args, g2, st)
-        case (st) do
+
+        case st do
           r_st(in_or: true) ->
             ensure_no_failing_instructions(first, second, g1, st)
+
           r_st() ->
             :ok
         end
+
         g = redirect_test(first, {:fail, fail}, g2, st)
         redirect_test(second, {:fail, fail}, g, st)
+
       r_b_set(op: {:bif, :or}, args: args) ->
         {first, second} = order_args(args, g1, st)
         ensure_no_failing_instructions(first, second, g1, st)
         g2 = convert_to_br_node(i, succ, g1, st)
-        g = redirect_test(first, {:succ, succ}, g2,
-                            r_st(st, in_or: true))
+        g = redirect_test(first, {:succ, succ}, g2, r_st(st, in_or: true))
         redirect_test(second, {:fail, fail}, g, st)
+
       r_b_set(op: {:bif, :xor}) ->
         not_possible()
+
       r_b_set(op: {:bif, :not}) ->
         not_possible()
+
       r_b_set(op: :phi, dst: bool) ->
         vtx = get_vertex(bool, st)
         g2 = del_out_edges(vtx, g1)
         g = :beam_digraph.add_edge(g2, vtx, succ, :next)
         redirect_test(bool, {:fail, fail}, g, st)
+
       r_b_set() ->
         g1
     end
   end
 
   defp ensure_single_use(bool, g, r_st(uses: u) = st) do
-    case (:erlang.map_get(bool, u)) do
+    case :erlang.map_get(bool, u) do
       [_] ->
         g
+
       uses ->
         vtx = get_vertex(bool, st)
         ensure_single_use_1(bool, vtx, uses, g)
@@ -852,27 +1053,35 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp ensure_single_use_1(bool, vtx, uses, g) do
-    fail = (case (get_targets(vtx, g)) do
-              {:br, _, fail0} ->
-                fail0
-              _ ->
-                not_possible()
-            end)
-    case (partition(fn {l, r_b_set()} when l === fail ->
-                         true
-                       _ ->
-                         false
-                    end,
-                      uses)) do
+    fail =
+      case get_targets(vtx, g) do
+        {:br, _, fail0} ->
+          fail0
+
+        _ ->
+          not_possible()
+      end
+
+    case partition(
+           fn
+             {l, r_b_set()} when l === fail ->
+               true
+
+             _ ->
+               false
+           end,
+           uses
+         ) do
       {[_], [_]} ->
-        case ({:beam_digraph.vertex(g, fail),
-                 :beam_digraph.in_edges(g, fail)}) do
+        case {:beam_digraph.vertex(g, fail), :beam_digraph.in_edges(g, fail)} do
           {{:external, bs0}, [_]} ->
             bs = Map.put(bs0, bool, r_b_literal(val: false))
             :beam_digraph.add_vertex(g, fail, {:external, bs})
+
           _ ->
             not_possible()
         end
+
       {_, _} ->
         not_possible()
     end
@@ -886,19 +1095,23 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp ensure_no_failing_instructions(first, second, g, st) do
-    vs = covered(get_vertex(first, st),
-                   get_vertex(second, st), g)
-    case (any(fn v ->
-                   case (:beam_digraph.vertex(g, v)) do
-                     r_b_set(op: op) ->
-                       can_fail(op, v, g)
-                     _ ->
-                       false
-                   end
-              end,
-                vs)) do
+    vs = covered(get_vertex(first, st), get_vertex(second, st), g)
+
+    case any(
+           fn v ->
+             case :beam_digraph.vertex(g, v) do
+               r_b_set(op: op) ->
+                 can_fail(op, v, g)
+
+               _ ->
+                 false
+             end
+           end,
+           vs
+         ) do
       true ->
         not_possible()
+
       false ->
         :ok
     end
@@ -913,14 +1126,16 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp can_fail(_, v, g) do
-    case (get_targets(v, g)) do
+    case get_targets(v, g) do
       {:br, _Succ, fail} ->
-        case (follow_branch(g, fail)) do
+        case follow_branch(g, fail) do
           {:external, _} ->
             true
+
           _ ->
             false
         end
+
       _ ->
         false
     end
@@ -928,19 +1143,22 @@ defmodule :m_beam_ssa_bool do
 
   defp eaten_by_phi(v, g) do
     {:br, _, fail} = get_targets(v, g)
-    case (follow_branch(g, fail)) do
+
+    case follow_branch(g, fail) do
       r_b_set(op: :phi) ->
         true
+
       _ ->
         false
     end
   end
 
   defp follow_branch(g, br) do
-    case (:beam_digraph.vertex(g, br)) do
+    case :beam_digraph.vertex(g, br) do
       :br ->
         [to] = :beam_digraph.out_neighbours(g, br)
         :beam_digraph.vertex(g, to)
+
       _ ->
         :none
     end
@@ -948,9 +1166,11 @@ defmodule :m_beam_ssa_bool do
 
   defp order_args([r_b_var() = varA, r_b_var() = varB], g, st) do
     {vA, vB} = {get_vertex(varA, st), get_vertex(varB, st)}
-    case (:beam_digraph.is_path(g, vA, vB)) do
+
+    case :beam_digraph.is_path(g, vA, vB) do
       true ->
         {varA, varB}
+
       false ->
         true = :beam_digraph.is_path(g, vB, vA)
         {varB, varB}
@@ -964,10 +1184,12 @@ defmodule :m_beam_ssa_bool do
   defp redirect_test(bool, succFail, g0, st) do
     v = get_vertex(bool, st)
     i = get_def(bool, g0, st)
-    case (i) do
+
+    case i do
       r_b_set(op: :phi, args: args) ->
         g = ensure_single_use(bool, g0, st)
         redirect_phi(bool, args, succFail, g, st)
+
       r_b_set() ->
         g1 = redirect_test_1(v, succFail, g0)
         g = ensure_single_use(bool, g1, st)
@@ -976,20 +1198,24 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp redirect_test_1(v, succFail, g) do
-    case (get_targets(v, g)) do
+    case get_targets(v, g) do
       {:br, _Succ, fail} ->
-        case (succFail) do
+        case succFail do
           {:fail, ^fail} ->
             g
+
           {:fail, _} ->
             not_possible()
+
           {:succ, _} ->
             not_possible()
         end
+
       {:br, next} ->
-        case (succFail) do
+        case succFail do
           {:succ, succ} ->
             add_succ_fail_edges(v, succ, next, g)
+
           {:fail, fail} ->
             add_succ_fail_edges(v, next, fail, g)
         end
@@ -1002,30 +1228,38 @@ defmodule :m_beam_ssa_bool do
     redirect_phi_1(phiVtx, sort(args), succFail, g, st)
   end
 
-  defp redirect_phi_1(phiVtx,
-            [{r_b_literal(val: false), falseExit}, {r_b_var() = succBool,
-                                            _BoolExit}],
-            succFail, g0, st) do
+  defp redirect_phi_1(
+         phiVtx,
+         [{r_b_literal(val: false), falseExit}, {r_b_var() = succBool, _BoolExit}],
+         succFail,
+         g0,
+         st
+       ) do
     boolVtx = get_vertex(succBool, st)
     ensure_disjoint_paths(g0, boolVtx, falseExit)
     [falseOut] = :beam_digraph.out_edges(g0, falseExit)
     g1 = :beam_digraph.del_edge(g0, falseOut)
-    case (succFail) do
+
+    case succFail do
       {:fail, fail} ->
         g2 = :beam_digraph.add_edge(g1, falseExit, fail, :next)
         g = add_succ_fail_edges(boolVtx, phiVtx, falseExit, g2)
         do_opt_digraph([succBool], g, st)
+
       {:succ, succ} ->
-        g2 = :beam_digraph.add_edge(g1, falseExit, phiVtx,
-                                      :next)
+        g2 = :beam_digraph.add_edge(g1, falseExit, phiVtx, :next)
         g = add_succ_fail_edges(boolVtx, succ, phiVtx, g2)
         do_opt_digraph([succBool], g, st)
     end
   end
 
-  defp redirect_phi_1(phiVtx,
-            [{r_b_literal(val: true), trueExit}, {r_b_var() = succBool, _BoolExit}],
-            {:fail, fail}, g0, st) do
+  defp redirect_phi_1(
+         phiVtx,
+         [{r_b_literal(val: true), trueExit}, {r_b_var() = succBool, _BoolExit}],
+         {:fail, fail},
+         g0,
+         st
+       ) do
     boolVtx = get_vertex(succBool, st)
     ensure_disjoint_paths(g0, boolVtx, trueExit)
     [trueOut] = :beam_digraph.out_edges(g0, trueExit)
@@ -1035,14 +1269,19 @@ defmodule :m_beam_ssa_bool do
     do_opt_digraph([succBool], g, st)
   end
 
-  defp redirect_phi_1(_PhiVtx,
-            [{r_b_literal(val: false), falseExit}, {r_b_literal(val: true), trueExit}],
-            succFail, g0, _St) do
-    case (succFail) do
+  defp redirect_phi_1(
+         _PhiVtx,
+         [{r_b_literal(val: false), falseExit}, {r_b_literal(val: true), trueExit}],
+         succFail,
+         g0,
+         _St
+       ) do
+    case succFail do
       {:fail, fail} ->
         [falseOut] = :beam_digraph.out_edges(g0, falseExit)
         g = :beam_digraph.del_edge(g0, falseOut)
         :beam_digraph.add_edge(g, falseExit, fail, :next)
+
       {:succ, succ} ->
         [trueOut] = :beam_digraph.out_edges(g0, trueExit)
         g = :beam_digraph.del_edge(g0, trueOut)
@@ -1055,10 +1294,10 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp ensure_disjoint_paths(g, v1, v2) do
-    case (:beam_digraph.is_path(g, v1,
-                                  v2) or :beam_digraph.is_path(g, v2, v1)) do
+    case :beam_digraph.is_path(g, v1, v2) or :beam_digraph.is_path(g, v2, v1) do
       true ->
         not_possible()
+
       false ->
         :ok
     end
@@ -1070,7 +1309,7 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp do_shortcut_branches([v | vs], g0, st) do
-    case (get_targets(v, g0)) do
+    case get_targets(v, g0) do
       {:br, succ0, fail0} ->
         {succBs, failBs} = eval_bs(v, g0, st)
         succ = eval_instr(succ0, g0, succBs)
@@ -1078,10 +1317,12 @@ defmodule :m_beam_ssa_bool do
         fail = eval_instr(fail0, g1, failBs)
         g = redirect_edge(v, fail0, {:fail, fail}, g1)
         do_shortcut_branches(vs, g, st)
+
       {:br, next0} ->
         next = eval_instr(next0, g0, %{})
         g = redirect_edge(v, next0, {:next, next}, g0)
         do_shortcut_branches(vs, g, st)
+
       :none ->
         do_shortcut_branches(vs, g0, st)
     end
@@ -1101,98 +1342,119 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp eval_bs(vtx, g, st) do
-    case (:beam_digraph.vertex(g, vtx)) do
+    case :beam_digraph.vertex(g, vtx) do
       r_b_set(op: {:bif, :"=:="}, args: [r_b_var() = bool, r_b_literal(val: true)]) ->
-        case (get_def(bool, g, st)) do
+        case get_def(bool, g, st) do
           r_b_set(op: :phi) = phi ->
             phi_bs(phi)
+
           _ ->
             {%{}, %{}}
         end
+
       _ ->
         {%{}, %{}}
     end
   end
 
   defp phi_bs(r_b_set(op: :phi, dst: phiDst, args: phiArgs)) do
-    literals0 = (for {r_b_literal() = lit, _} <- phiArgs do
-                   lit
-                 end)
-    case (length(literals0) === length(phiArgs)) do
+    literals0 =
+      for {r_b_literal() = lit, _} <- phiArgs do
+        lit
+      end
+
+    case length(literals0) === length(phiArgs) do
       true ->
         literals = :ordsets.from_list(literals0)
-        case (partition(fn r_b_literal(val: val) ->
-                             val === true
-                        end,
-                          literals)) do
+
+        case partition(
+               fn r_b_literal(val: val) ->
+                 val === true
+               end,
+               literals
+             ) do
           {[true__], [failVal]} ->
             succBs = %{phiDst => true__}
             failBs = %{phiDst => failVal}
             {succBs, failBs}
+
           {_, _} ->
             {%{}, %{}}
         end
+
       false ->
         {%{}, %{}}
     end
   end
 
   defp eval_instr(vtx, g, bs) do
-    case (:beam_digraph.vertex(g, vtx)) do
+    case :beam_digraph.vertex(g, vtx) do
       r_b_set() when map_size(bs) === 0 ->
         vtx
+
       r_b_set() = i ->
-        case (is_safe_bool_expr(i)) do
+        case is_safe_bool_expr(i) do
           true ->
             eval_safe_bool_expr(i, vtx, g, bs)
+
           false ->
             vtx
         end
+
       :br ->
         [next] = :beam_digraph.out_neighbours(g, vtx)
-        case (:beam_digraph.vertex(g, next)) do
+
+        case :beam_digraph.vertex(g, next) do
           r_b_set(op: :phi) ->
             vtx
+
           _ ->
             eval_instr(next, g, bs)
         end
+
       {:br, r_b_var()} ->
         vtx
+
       {:external, _} ->
         vtx
     end
   end
 
-  defp eval_safe_bool_expr(r_b_set(op: {:bif, bif}, dst: dst, args: args0), vtx,
-            g, bs) do
-    case (get_targets(vtx, g)) do
+  defp eval_safe_bool_expr(r_b_set(op: {:bif, bif}, dst: dst, args: args0), vtx, g, bs) do
+    case get_targets(vtx, g) do
       {:br, succ, fail} ->
         true__ = r_b_literal(val: true)
         false__ = r_b_literal(val: false)
         args = sub_args(args0, bs)
-        case (eval_bif(bif, args)) do
+
+        case eval_bif(bif, args) do
           :none ->
-            case ({eval_instr(succ, g, Map.put(bs, dst, true__)),
-                     eval_instr(fail, g, Map.put(bs, dst, false__))}) do
+            case {eval_instr(succ, g, Map.put(bs, dst, true__)),
+                  eval_instr(fail, g, Map.put(bs, dst, false__))} do
               {same, same} ->
                 same
+
               {_, _} ->
                 vtx
             end
+
           true ->
             eval_instr(succ, g, Map.put(bs, dst, true__))
+
           false ->
             eval_instr(fail, g, Map.put(bs, dst, false__))
         end
+
       {:br, _} ->
         vtx
     end
   end
 
   defp eval_bif(bif, args0) do
-    case (eval_literal_args(args0, [])) do
+    case eval_literal_args(args0, []) do
       :none ->
         :none
+
       args ->
         apply(:erlang, bif, args)
     end
@@ -1226,10 +1488,12 @@ defmodule :m_beam_ssa_bool do
 
   defp ensure_init_used_1([{vtx, r_b_set(dst: dst) = i} | vs], g, acc0) do
     acc1 = [:beam_ssa.used(i) | acc0]
-    case (:beam_digraph.out_degree(g, vtx)) do
+
+    case :beam_digraph.out_degree(g, vtx) do
       2 ->
         acc = [[dst] | acc1]
         ensure_init_used_1(vs, g, acc)
+
       _ ->
         ensure_init_used_1(vs, g, acc1)
     end
@@ -1248,37 +1512,45 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp do_ensure_init_instr(r_b_set(op: :phi, args: args), _VarMap, initMaps) do
-    _ = (for {r_b_var() = var, from} <- args do
-           ensure_init_used(var, :maps.get(from, initMaps, %{}))
-         end)
+    _ =
+      for {r_b_var() = var, from} <- args do
+        ensure_init_used(var, :maps.get(from, initMaps, %{}))
+      end
+
     :ok
   end
 
   defp do_ensure_init_instr(r_b_set() = i, varMap, _InitMaps) do
     used = :beam_ssa.used(i)
-    _ = (for var <- used do
-           ensure_init_used(var, varMap)
-         end)
+
+    _ =
+      for var <- used do
+        ensure_init_used(var, varMap)
+      end
+
     :ok
   end
 
   defp ensure_init_used(var, varMap) do
-    case (varMap) do
+    case varMap do
       %{^var => :unset} ->
         not_possible()
+
       %{^var => :set} ->
         :ok
+
       %{} ->
         :ok
     end
   end
 
   defp ensure_init_successors([to | vs], g, vars0, initMaps0) do
-    case (initMaps0) do
+    case initMaps0 do
       %{^to => vars1} ->
         vars = join_inits(vars0, vars1)
         initMaps = %{initMaps0 | to => vars}
         ensure_init_successors(vs, g, vars0, initMaps)
+
       %{} ->
         initMaps = Map.put(initMaps0, to, vars0)
         ensure_init_successors(vs, g, vars0, initMaps)
@@ -1295,15 +1567,20 @@ defmodule :m_beam_ssa_bool do
 
   defp join_inits_1([{v, state0} | vs], varMap) do
     state1 = :erlang.map_get(v, varMap)
-    state = (case ({state0, state1}) do
-               {:set, :set} ->
-                 :set
-               {_, _} ->
-                 :unset
-             end)
-    case (state === state1) do
+
+    state =
+      case {state0, state1} do
+        {:set, :set} ->
+          :set
+
+        {_, _} ->
+          :unset
+      end
+
+    case state === state1 do
       true ->
         join_inits_1(vs, varMap)
+
       false ->
         join_inits_1(vs, %{varMap | v => state})
     end
@@ -1321,15 +1598,16 @@ defmodule :m_beam_ssa_bool do
 
   defp digraph_to_ssa([l | ls], g, blocks0, seen0) do
     seen1 = :sets.add_element(l, seen0)
-    {blk, successors0} = digraph_to_ssa_blk(l, g, blocks0,
-                                              [])
+    {blk, successors0} = digraph_to_ssa_blk(l, g, blocks0, [])
     blocks1 = Map.put(blocks0, l, blk)
-    successors = (for s <- successors0,
-                        not :sets.is_element(s, seen1) do
-                    s
-                  end)
-    {blocks, seen} = digraph_to_ssa(successors, g, blocks1,
-                                      seen1)
+
+    successors =
+      for s <- successors0,
+          not :sets.is_element(s, seen1) do
+        s
+      end
+
+    {blocks, seen} = digraph_to_ssa(successors, g, blocks1, seen1)
     digraph_to_ssa(ls, g, blocks, seen)
   end
 
@@ -1338,58 +1616,66 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp digraph_to_ssa_blk(from, g, blocks, acc0) do
-    case (:beam_digraph.vertex(g, from)) do
+    case :beam_digraph.vertex(g, from) do
       r_b_set(dst: dst) = i ->
-        case (get_targets(from, g)) do
+        case get_targets(from, g) do
           {:br, succ, fail} ->
-            br = :beam_ssa.normalize(r_b_br(bool: dst, succ: succ,
-                                         fail: fail))
+            br = :beam_ssa.normalize(r_b_br(bool: dst, succ: succ, fail: fail))
             is = reverse(acc0, [i])
             blk = r_b_blk(is: is, last: br)
             {blk, :beam_ssa.successors(blk)}
+
           {:br, next} ->
             br = oneway_br(next)
             is = reverse(acc0, [i])
             blk = r_b_blk(is: is, last: br)
             {blk, :beam_ssa.successors(blk)}
         end
+
       :br ->
         {:br, next} = get_targets(from, g)
         blk = r_b_blk(is: [], last: oneway_br(next))
         {blk, :beam_ssa.successors(blk)}
+
       {:br, bool} ->
         [] = acc0
         {:br, succ, fail} = get_targets(from, g)
-        br = :beam_ssa.normalize(r_b_br(bool: bool, succ: succ,
-                                     fail: fail))
+        br = :beam_ssa.normalize(r_b_br(bool: bool, succ: succ, fail: fail))
         blk = r_b_blk(is: [], last: br)
         {blk, :beam_ssa.successors(blk)}
+
       {:external, sub} ->
-        r_b_blk(is: is0) = (blk = :erlang.map_get(from, blocks))
-        is = (for (r_b_set(args: args0) = i) <- is0 do
-                r_b_set(i, args: sub_args(args0, sub))
-              end)
+        r_b_blk(is: is0) = blk = :erlang.map_get(from, blocks)
+
+        is =
+          for r_b_set(args: args0) = i <- is0 do
+            r_b_set(i, args: sub_args(args0, sub))
+          end
+
         {r_b_blk(blk, is: is), []}
     end
   end
 
   defp get_def(r_b_var() = bool, r_st(defs: defs)) do
-    case (defs) do
+    case defs do
       %{^bool => {_, def__}} ->
         def__
+
       %{} ->
         :none
     end
   end
 
   defp get_def(var, g, r_st(ldefs: lDefs, defs: defs)) do
-    case (lDefs) do
+    case lDefs do
       %{^var => vtx} ->
         :beam_digraph.vertex(g, vtx)
+
       %{} ->
-        case (defs) do
+        case defs do
           %{^var => {_, def__}} ->
             def__
+
           %{} ->
             :none
         end
@@ -1399,9 +1685,11 @@ defmodule :m_beam_ssa_bool do
   defp add_succ_fail_edges(from, succ, fail, g0) do
     g1 = :beam_digraph.add_edge(g0, from, succ, :succ)
     g = :beam_digraph.add_edge(g1, from, fail, :fail)
-    case (:beam_digraph.out_edges(g0, from)) do
+
+    case :beam_digraph.out_edges(g0, from) do
       [{^from, _, :next} = e] ->
         :beam_digraph.del_edge(g, e)
+
       [] ->
         g
     end
@@ -1416,13 +1704,16 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp get_targets(vtx, g) when is_integer(vtx) do
-    case (:beam_digraph.out_edges(g, vtx)) do
+    case :beam_digraph.out_edges(g, vtx) do
       [{_, to, :next}] ->
         {:br, to}
+
       [{_, succ, :succ}, {_, fail, :fail}] ->
         {:br, succ, fail}
+
       [{_, fail, :fail}, {_, succ, :succ}] ->
         {:br, succ, fail}
+
       [] ->
         :none
     end
@@ -1433,13 +1724,16 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp del_out_edges(v, g) do
-    :beam_digraph.del_edges(g,
-                              :beam_digraph.out_edges(g, v))
+    :beam_digraph.del_edges(
+      g,
+      :beam_digraph.out_edges(g, v)
+    )
   end
 
   defp covered(from, to, g) do
     seen0 = %{}
     {:yes, seen} = covered_1(from, to, g, seen0)
+
     for {v, :reached} <- :maps.to_list(seen) do
       v
     end
@@ -1455,16 +1749,19 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp covered_list([v | vs], to, g, seen0, anyFound) do
-    case (seen0) do
+    case seen0 do
       %{^v => :reached} ->
         covered_list(vs, to, g, seen0, :yes)
+
       %{^v => :not_reached} ->
         covered_list(vs, to, g, seen0, anyFound)
+
       %{} ->
-        case (covered_1(v, to, g, seen0)) do
+        case covered_1(v, to, g, seen0) do
           {:yes, seen1} ->
             seen = Map.put(seen1, v, :reached)
             covered_list(vs, to, g, seen, :yes)
+
           {:no, seen1} ->
             seen = Map.put(seen1, v, :not_reached)
             covered_list(vs, to, g, seen, anyFound)
@@ -1481,9 +1778,10 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp digraph_roots_1([{v, _} | vs], g) do
-    case (:beam_digraph.in_degree(g, v)) do
+    case :beam_digraph.in_degree(g, v) do
       0 ->
         [v | digraph_roots_1(vs, g)]
+
       _ ->
         digraph_roots_1(vs, g)
     end
@@ -1516,8 +1814,10 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp sub_arg(r_b_remote(mod: mod, name: name) = rem, sub) do
-    r_b_remote(rem, mod: do_sub_arg(mod, sub), 
-             name: do_sub_arg(name, sub))
+    r_b_remote(rem,
+      mod: do_sub_arg(mod, sub),
+      name: do_sub_arg(name, sub)
+    )
   end
 
   defp sub_arg(arg, _Sub) do
@@ -1525,11 +1825,13 @@ defmodule :m_beam_ssa_bool do
   end
 
   defp do_sub_arg(r_b_var() = old, sub) do
-    case (sub) do
+    case sub do
       %{^old => r_b_literal() = new} ->
         new
+
       %{^old => r_b_var() = new} ->
         new
+
       %{} ->
         old
     end
@@ -1541,10 +1843,19 @@ defmodule :m_beam_ssa_bool do
 
   defp is_bool_expr(r_b_set(op: {:bif, op}, args: args)) do
     arity = length(args)
-    :erl_internal.comp_op(op,
-                            arity) or :erl_internal.new_type_test(op,
-                                                                    arity) or :erl_internal.bool_op(op,
-                                                                                                      arity)
+
+    :erl_internal.comp_op(
+      op,
+      arity
+    ) or
+      :erl_internal.new_type_test(
+        op,
+        arity
+      ) or
+      :erl_internal.bool_op(
+        op,
+        arity
+      )
   end
 
   defp is_bool_expr(_) do
@@ -1553,8 +1864,11 @@ defmodule :m_beam_ssa_bool do
 
   defp is_safe_bool_expr(r_b_set(op: {:bif, op}, args: args)) do
     arity = length(args)
-    :erl_internal.comp_op(op,
-                            arity) or :erl_internal.new_type_test(op, arity)
+
+    :erl_internal.comp_op(
+      op,
+      arity
+    ) or :erl_internal.new_type_test(op, arity)
   end
 
   defp is_safe_bool_expr(r_b_set()) do
@@ -1564,5 +1878,4 @@ defmodule :m_beam_ssa_bool do
   defp oneway_br(to) do
     r_b_br(bool: r_b_literal(val: true), succ: to, fail: to)
   end
-
 end

@@ -2,7 +2,7 @@ defmodule :m_file_server do
   use Bitwise
   @behaviour :gen_server
   def format_error({_Line, :file_server, reason}) do
-    :io_lib.format('~w', [reason])
+    :io_lib.format(~c"~w", [reason])
   end
 
   def format_error({_Line, mod, reason}) do
@@ -30,11 +30,9 @@ defmodule :m_file_server do
     {:ok, :undefined}
   end
 
-  def handle_call({:open, name, modeList}, {pid, _Tag} = _From,
-           state)
+  def handle_call({:open, name, modeList}, {pid, _Tag} = _From, state)
       when is_list(modeList) do
-    {:reply,
-       :file_io_server.start_link(pid, name, modeList), state}
+    {:reply, :file_io_server.start_link(pid, name, modeList), state}
   end
 
   def handle_call({:open, _Name, _Mode}, _From, state) do
@@ -105,10 +103,8 @@ defmodule :m_file_server do
     {:reply, :prim_file.write_file_info(name, info), state}
   end
 
-  def handle_call({:write_file_info, name, info, opts}, _From,
-           state) do
-    {:reply, :prim_file.write_file_info(name, info, opts),
-       state}
+  def handle_call({:write_file_info, name, info, opts}, _From, state) do
+    {:reply, :prim_file.write_file_info(name, info, opts), state}
   end
 
   def handle_call({:read_link_info, name}, _From, state) do
@@ -135,28 +131,38 @@ defmodule :m_file_server do
     {:reply, :prim_file.make_symlink(old, new), state}
   end
 
-  def handle_call({:copy, sourceName, sourceOpts, destName,
-            destOpts, length},
-           _From, state) do
-    reply = (case (:prim_file.open(sourceName,
-                                     [:read, :binary | sourceOpts])) do
-               {:ok, source} ->
-                 sourceReply = (case (:prim_file.open(destName,
-                                                        [:write, :binary |
-                                                                     destOpts])) do
-                                  {:ok, dest} ->
-                                    destReply = :prim_file.copy(source, dest,
-                                                                  length)
-                                    :prim_file.close(dest)
-                                    destReply
-                                  {:error, _} = error ->
-                                    error
-                                end)
-                 :prim_file.close(source)
-                 sourceReply
-               {:error, _} = error ->
-                 error
-             end)
+  def handle_call({:copy, sourceName, sourceOpts, destName, destOpts, length}, _From, state) do
+    reply =
+      case :prim_file.open(
+             sourceName,
+             [:read, :binary | sourceOpts]
+           ) do
+        {:ok, source} ->
+          sourceReply =
+            case :prim_file.open(
+                   destName,
+                   [
+                     :write,
+                     :binary
+                     | destOpts
+                   ]
+                 ) do
+              {:ok, dest} ->
+                destReply = :prim_file.copy(source, dest, length)
+                :prim_file.close(dest)
+                destReply
+
+              {:error, _} = error ->
+                error
+            end
+
+          :prim_file.close(source)
+          sourceReply
+
+        {:error, _} = error ->
+          error
+      end
+
     {:reply, reply, state}
   end
 
@@ -165,12 +171,12 @@ defmodule :m_file_server do
   end
 
   def handle_call(request, from, state) do
-    :error_logger.error_msg('handle_call(~tp, ~tp, _)', [request, from])
+    :error_logger.error_msg(~c"handle_call(~tp, ~tp, _)", [request, from])
     {:noreply, state}
   end
 
   def handle_cast(msg, state) do
-    :error_logger.error_msg('handle_cast(~tp, _)', [msg])
+    :error_logger.error_msg(~c"handle_cast(~tp, _)", [msg])
     {:noreply, state}
   end
 
@@ -179,7 +185,7 @@ defmodule :m_file_server do
   end
 
   def handle_info(info, state) do
-    :error_logger.error_msg('handle_Info(~tp, _)', [info])
+    :error_logger.error_msg(~c"handle_Info(~tp, _)", [info])
     {:noreply, state}
   end
 
@@ -192,33 +198,35 @@ defmodule :m_file_server do
   end
 
   defp do_start(start) do
-    case (:init.get_argument(:master)) do
+    case :init.get_argument(:master) do
       :error ->
-        apply(:gen_server, start,
-                [{:local, :file_server_2}, :file_server, [], []])
+        apply(:gen_server, start, [{:local, :file_server_2}, :file_server, [], []])
+
       {:ok, [[node]]} ->
-        do_start(start, :erlang.list_to_atom(node),
-                   :file_server_2)
+        do_start(start, :erlang.list_to_atom(node), :file_server_2)
+
       x ->
         {:error, {:get_argument, :master, x}}
     end
   end
 
   defp do_start(start, node, name) do
-    case (:rpc.call(node, :erlang, :whereis, [name])) do
+    case :rpc.call(node, :erlang, :whereis, [name]) do
       filer when is_pid(filer) or filer === :undefined ->
-        case ((try do
+        case (try do
                 do_start_slave(start, filer, name)
               catch
                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
                 :exit, e -> {:EXIT, e}
                 e -> e
-              end)) do
+              end) do
           {:EXIT, reason} ->
             {:error, reason}
+
           result ->
             result
         end
+
       other ->
         {:error, {:no_master, other}}
     end
@@ -227,9 +235,12 @@ defmodule :m_file_server do
   defp do_start_slave(:start_link, filer, name) do
     self = self()
     token = make_ref()
-    slave = spawn_link(fn () ->
-                            relay_start(self, token, filer, name)
-                       end)
+
+    slave =
+      spawn_link(fn ->
+        relay_start(self, token, filer, name)
+      end)
+
     receive do
       {:started, ^token} ->
         {:ok, slave}
@@ -239,33 +250,40 @@ defmodule :m_file_server do
   defp do_start_slave(:start, filer, name) do
     self = self()
     token = make_ref()
-    slave = spawn(fn () ->
-                       relay_start(self, token, filer, name)
-                  end)
+
+    slave =
+      spawn(fn ->
+        relay_start(self, token, filer, name)
+      end)
+
     slaveMonitor = :erlang.monitor(:process, slave)
+
     receive do
       {:started, ^token} ->
         :erlang.demonitor(slaveMonitor, [:flush])
         {:ok, slave}
+
       {:DOWN, ^slaveMonitor, _, _, reason} ->
         exit(reason)
     end
   end
 
   defp relay_start(parent, token, filer, name)
-      when is_pid(filer) do
-    case ((try do
+       when is_pid(filer) do
+    case (try do
             :erlang.register(name, self())
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       true ->
         :ok
+
       _ ->
         exit({:already_started, :erlang.whereis(name)})
     end
+
     filerMonitor = :erlang.monitor(:process, filer)
     :erlang.process_flag(:trap_exit, true)
     send(parent, {:started, token})
@@ -275,6 +293,7 @@ defmodule :m_file_server do
   defp relay_start(parent, token, :undefined, _Name) do
     :erlang.process_flag(:trap_exit, true)
     send(parent, {:started, token})
+
     receive do
       {:EXIT, ^parent, reason} ->
         exit(reason)
@@ -285,12 +304,14 @@ defmodule :m_file_server do
     receive do
       {:DOWN, ^filerMonitor, _, _, reason} ->
         exit(reason)
+
       {:EXIT, ^parent, reason} ->
         exit(reason)
+
       msg ->
         send(filer, msg)
     end
+
     relay_loop(parent, filer, filerMonitor)
   end
-
 end

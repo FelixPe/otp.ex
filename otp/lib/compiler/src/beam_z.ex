@@ -1,16 +1,22 @@
 defmodule :m_beam_z do
   use Bitwise
   import :lists, only: [dropwhile: 2, sort: 1]
+
   def module({mod, exp, attr, fs0, lc}, opts) do
     noInitYregs = :proplists.get_bool(:no_init_yregs, opts)
-    fs = (for f <- fs0 do
-            function(f, noInitYregs)
-          end)
+
+    fs =
+      for f <- fs0 do
+        function(f, noInitYregs)
+      end
+
     {:ok, {mod, exp, attr, fs, lc}}
   end
 
-  defp function({:function, name, arity, cLabel, is0},
-            noInitYregs) do
+  defp function(
+         {:function, name, arity, cLabel, is0},
+         noInitYregs
+       ) do
     try do
       is1 = undo_renames(is0)
       is2 = maybe_eliminate_init_yregs(is1, noInitYregs)
@@ -18,7 +24,7 @@ defmodule :m_beam_z do
       {:function, name, arity, cLabel, is}
     catch
       class, error ->
-        :io.fwrite('Function: ~w/~w\n', [name, arity])
+        :io.fwrite(~c"Function: ~w/~w\n", [name, arity])
         :erlang.raise(class, error, __STACKTRACE__)
     end
   end
@@ -27,34 +33,47 @@ defmodule :m_beam_z do
     [:send | undo_renames(is)]
   end
 
-  defp undo_renames([{:apply, a}, {:deallocate, n}, :return |
-                                              is]) do
+  defp undo_renames([
+         {:apply, a},
+         {:deallocate, n},
+         :return
+         | is
+       ]) do
     [{:apply_last, a, n} | undo_renames(is)]
   end
 
-  defp undo_renames([{:call, a, f}, {:"%", {:var_info, {:x, 0}, _}},
-                              {:deallocate, n}, :return | is]) do
+  defp undo_renames([{:call, a, f}, {:%, {:var_info, {:x, 0}, _}}, {:deallocate, n}, :return | is]) do
     [{:call_last, a, f, n} | undo_renames(is)]
   end
 
-  defp undo_renames([{:call, a, f}, {:deallocate, n}, :return |
-                                                is]) do
+  defp undo_renames([
+         {:call, a, f},
+         {:deallocate, n},
+         :return
+         | is
+       ]) do
     [{:call_last, a, f, n} | undo_renames(is)]
   end
 
-  defp undo_renames([{:call_ext, a, f}, {:"%",
-                                 {:var_info, {:x, 0}, _}},
-                                  {:deallocate, n}, :return | is]) do
+  defp undo_renames([
+         {:call_ext, a, f},
+         {:%, {:var_info, {:x, 0}, _}},
+         {:deallocate, n},
+         :return | is
+       ]) do
     [{:call_ext_last, a, f, n} | undo_renames(is)]
   end
 
-  defp undo_renames([{:call_ext, a, f}, {:deallocate, n}, :return |
-                                                    is]) do
+  defp undo_renames([
+         {:call_ext, a, f},
+         {:deallocate, n},
+         :return
+         | is
+       ]) do
     [{:call_ext_last, a, f, n} | undo_renames(is)]
   end
 
-  defp undo_renames([{:call, a, f}, {:"%", {:var_info, {:x, 0}, _}},
-                              :return | is]) do
+  defp undo_renames([{:call, a, f}, {:%, {:var_info, {:x, 0}, _}}, :return | is]) do
     [{:call_only, a, f} | undo_renames(is)]
   end
 
@@ -62,9 +81,7 @@ defmodule :m_beam_z do
     [{:call_only, a, f} | undo_renames(is)]
   end
 
-  defp undo_renames([{:call_ext, a, f}, {:"%",
-                                 {:var_info, {:x, 0}, _}},
-                                  :return | is]) do
+  defp undo_renames([{:call_ext, a, f}, {:%, {:var_info, {:x, 0}, _}}, :return | is]) do
     [{:call_ext_only, a, f} | undo_renames(is)]
   end
 
@@ -73,22 +90,28 @@ defmodule :m_beam_z do
   end
 
   defp undo_renames([{:bif, :raise, _, _, _} = i | is0]) do
-    is = dropwhile(fn {:label, _} ->
-                        false
-                      _ ->
-                        true
-                   end,
-                     is0)
+    is =
+      dropwhile(
+        fn
+          {:label, _} ->
+            false
+
+          _ ->
+            true
+        end,
+        is0
+      )
+
     [i | undo_renames(is)]
   end
 
   defp undo_renames([{:get_hd, src, hd}, {:get_tl, src, tl} | is])
-      when src !== hd do
+       when src !== hd do
     get_list(src, hd, tl, is)
   end
 
   defp undo_renames([{:get_tl, src, tl}, {:get_hd, src, hd} | is])
-      when src !== tl do
+       when src !== tl do
     get_list(src, hd, tl, is)
   end
 
@@ -101,9 +124,10 @@ defmodule :m_beam_z do
   end
 
   defp get_list(src, hd, tl, [{:swap, r1, r2} | is] = is0) do
-    case (sort([hd, tl]) === sort([r1, r2])) do
+    case sort([hd, tl]) === sort([r1, r2]) do
       true ->
         [{:get_list, src, tl, hd} | undo_renames(is)]
+
       false ->
         [{:get_list, src, hd, tl} | undo_renames(is0)]
     end
@@ -121,8 +145,7 @@ defmodule :m_beam_z do
     {i, f, fl, src}
   end
 
-  defp undo_rename({:bif, :bs_add = i, f,
-             [src1, src2, {:integer, u}], dst}) do
+  defp undo_rename({:bif, :bs_add = i, f, [src1, src2, {:integer, u}], dst}) do
     {i, f, [src1, src2, u], dst}
   end
 
@@ -134,23 +157,19 @@ defmodule :m_beam_z do
     {i, f, src, dst}
   end
 
-  defp undo_rename({:bs_init, f, {i, u, flags}, :none, [sz, src],
-             dst}) do
+  defp undo_rename({:bs_init, f, {i, u, flags}, :none, [sz, src], dst}) do
     {i, f, sz, u, src, flags, dst}
   end
 
-  defp undo_rename({:bs_init, f, {i, extra, flags}, live, [sz],
-             dst}) do
+  defp undo_rename({:bs_init, f, {i, extra, flags}, live, [sz], dst}) do
     {i, f, sz, extra, live, flags, dst}
   end
 
-  defp undo_rename({:bs_init, f, {i, extra, u, flags}, live,
-             [sz, src], dst}) do
+  defp undo_rename({:bs_init, f, {i, extra, u, flags}, live, [sz, src], dst}) do
     {i, f, sz, extra, live, u, src, flags, dst}
   end
 
-  defp undo_rename({:bs_init, _, :bs_init_writable = i, _, _,
-             _}) do
+  defp undo_rename({:bs_init, _, :bs_init_writable = i, _, _, _}) do
     i
   end
 
@@ -166,8 +185,7 @@ defmodule :m_beam_z do
     {:test, :has_map_fields, fail, src, {:list, list}}
   end
 
-  defp undo_rename({:get_map_elements, fail, src,
-             {:list, list}}) do
+  defp undo_rename({:get_map_elements, fail, src, {:list, list}}) do
     {:get_map_elements, fail, src, {:list, list}}
   end
 
@@ -191,22 +209,31 @@ defmodule :m_beam_z do
     is
   end
 
-  defp eliminate_init_yregs([{:allocate, ns, live}, {:init_yregs, _} |
-                                      is]) do
+  defp eliminate_init_yregs([
+         {:allocate, ns, live},
+         {:init_yregs, _}
+         | is
+       ]) do
     [{:allocate_zero, ns, live} | eliminate_init_yregs(is)]
   end
 
-  defp eliminate_init_yregs([{:allocate_heap, ns, nh, live}, {:init_yregs,
-                                              _} |
-                                               is]) do
-    [{:allocate_heap_zero, ns, nh, live} |
-         eliminate_init_yregs(is)]
+  defp eliminate_init_yregs([
+         {:allocate_heap, ns, nh, live},
+         {:init_yregs, _}
+         | is
+       ]) do
+    [
+      {:allocate_heap_zero, ns, nh, live}
+      | eliminate_init_yregs(is)
+    ]
   end
 
   defp eliminate_init_yregs([{:init_yregs, {:list, yregs}} | is]) do
-    inits = (for y <- yregs do
-               {:init, y}
-             end)
+    inits =
+      for y <- yregs do
+        {:init, y}
+      end
+
     inits ++ eliminate_init_yregs(is)
   end
 
@@ -226,6 +253,7 @@ defmodule :m_beam_z do
     cond do
       loc === prevLoc ->
         remove_redundant_lines_1(is, loc)
+
       true ->
         [i | remove_redundant_lines_1(is, loc)]
     end
@@ -238,5 +266,4 @@ defmodule :m_beam_z do
   defp remove_redundant_lines_1([], _) do
     []
   end
-
 end

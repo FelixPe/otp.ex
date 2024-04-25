@@ -24,11 +24,11 @@ defmodule :m_erl_tidy do
   )
 
   defp dir__defaults() do
-    [{:follow_links, false}, :recursive, {:regexp, '.*\\.erl$'}, :verbose]
+    [{:follow_links, false}, :recursive, {:regexp, ~c".*\\.erl$"}, :verbose]
   end
 
   def dir() do
-    dir('')
+    dir(~c"")
   end
 
   def dir(dir) do
@@ -54,8 +54,8 @@ defmodule :m_erl_tidy do
     regexp = :proplists.get_value(:regexp, opts1)
 
     case filename(dir) do
-      '' ->
-        dir1 = '.'
+      ~c"" ->
+        dir1 = ~c"."
 
       dir1 ->
         :ok
@@ -75,7 +75,7 @@ defmodule :m_erl_tidy do
         )
 
       {:error, _} ->
-        report_error('error reading directory `~ts\'', [filename(dir)])
+        report_error(~c"error reading directory `~ts'", [filename(dir)])
         exit(:error)
     end
   end
@@ -83,7 +83,7 @@ defmodule :m_erl_tidy do
   defp dir_2(name, regexp, dir, env) do
     file =
       cond do
-        dir === '' ->
+        dir === ~c"" ->
           name
 
         true ->
@@ -113,14 +113,14 @@ defmodule :m_erl_tidy do
 
   defp dir_3(name, dir, regexp, env) do
     dir1 = :filename.join(dir, name)
-    verbose('tidying directory `~ts\'.', [dir1], r_dir(env, :options))
+    verbose(~c"tidying directory `~ts'.", [dir1], r_dir(env, :options))
     dir_1(dir1, regexp, env)
   end
 
   defp dir_4(file, regexp, env) do
     case :re.run(file, regexp, [:unicode]) do
       {:match, _} ->
-        opts = [{:outfile, file}, {:dir, ''} | r_dir(env, :options)]
+        opts = [{:outfile, file}, {:dir, ~c""} | r_dir(env, :options)]
 
         case (try do
                 file(file, opts)
@@ -130,7 +130,7 @@ defmodule :m_erl_tidy do
                 e -> e
               end) do
           {:EXIT, value} ->
-            warn('error tidying `~ts\'.~n~p', [file, value], opts)
+            warn(~c"error tidying `~ts'.~n~p", [file, value], opts)
 
           _ ->
             :ok
@@ -143,9 +143,9 @@ defmodule :m_erl_tidy do
 
   defp file__defaults() do
     [
-      {:backup_suffix, '.bak'},
+      {:backup_suffix, ~c".bak"},
       :backups,
-      {:dir, ''},
+      {:dir, ~c""},
       {:printer, default_printer()},
       {:quiet, false},
       {:verbose, false}
@@ -221,7 +221,7 @@ defmodule :m_erl_tidy do
   end
 
   defp read_module(name, opts) do
-    verbose('reading module `~ts\'.', [filename(name)], opts)
+    verbose(~c"reading module `~ts'.", [filename(name)], opts)
 
     case :epp_dodger.parse_file(name, [:no_fail]) do
       {:ok, forms} ->
@@ -236,7 +236,7 @@ defmodule :m_erl_tidy do
   defp empty_lines(name) do
     {:ok, data} = :file.read_file(name)
     list = :binary.split(data, ["\n"], [:global])
-    {:ok, nonEmptyLineRe} = :re.compile('\\S')
+    {:ok, nonEmptyLineRe} = :re.compile(~c"\\S")
 
     {res, _} =
       :lists.foldl(
@@ -258,11 +258,11 @@ defmodule :m_erl_tidy do
 
   defp write_module(tree, name, opts) do
     name1 = :proplists.get_value(:outfile, opts, filename(name))
-    dir = filename(:proplists.get_value(:dir, opts, ''))
+    dir = filename(:proplists.get_value(:dir, opts, ~c""))
 
     file =
       cond do
-        dir === '' ->
+        dir === ~c"" ->
           name1
 
         true ->
@@ -271,17 +271,17 @@ defmodule :m_erl_tidy do
               :ok
 
             {:value, _} ->
-              report_error('`~ts\' is not a directory.', [filename(dir)])
+              report_error(~c"`~ts' is not a directory.", [filename(dir)])
               exit(:error)
 
             :none ->
               case :file.make_dir(dir) do
                 :ok ->
-                  verbose('created directory `~ts\'.', [filename(dir)], opts)
+                  verbose(~c"created directory `~ts'.", [filename(dir)], opts)
                   :ok
 
                 e ->
-                  report_error('failed to create directory `~ts\'.', [filename(dir)])
+                  report_error(~c"failed to create directory `~ts'.", [filename(dir)])
                   exit({:make_dir, e})
               end
           end
@@ -305,7 +305,7 @@ defmodule :m_erl_tidy do
 
     printer = :proplists.get_value(:printer, opts)
     fD = open_output_file(file, encoding)
-    verbose('writing to file `~ts\'.', [file], opts)
+    verbose(~c"writing to file `~ts'.", [file], opts)
 
     v =
       try do
@@ -433,7 +433,7 @@ defmodule :m_erl_tidy do
   end
 
   defp backup_file_1(name, opts) do
-    suffix = :proplists.get_value(:backup_suffix, opts, '')
+    suffix = :proplists.get_value(:backup_suffix, opts, ~c"")
 
     dest =
       :filename.join(
@@ -449,7 +449,7 @@ defmodule :m_erl_tidy do
             e -> e
           end) do
       :ok ->
-        verbose('made backup of file `~ts\'.', [name], opts)
+        verbose(~c"made backup of file `~ts'.", [name], opts)
 
       {:error, r} ->
         error_backup_file(name)
@@ -480,7 +480,7 @@ defmodule :m_erl_tidy do
         opts
       ) ++ module__defaults()
 
-    file = :proplists.get_value(:file, opts1, '')
+    file = :proplists.get_value(:file, opts1, ~c"")
     forms1 = :erl_syntax.flatten_form_list(forms)
     module_1(forms1, file, opts1)
   end
@@ -547,7 +547,7 @@ defmodule :m_erl_tidy do
         l1
 
       :syntax_error ->
-        report_error({file, 0, 'syntax error.'})
+        report_error({file, 0, ~c"syntax error."})
         throw(:syntax_error)
 
       {:EXIT, r} ->
@@ -564,7 +564,7 @@ defmodule :m_erl_tidy do
         m
 
       _ ->
-        report_error({file, 0, 'cannot determine module name.'})
+        report_error({file, 0, ~c"cannot determine module name."})
         exit(:error)
     end
   end
@@ -628,7 +628,7 @@ defmodule :m_erl_tidy do
         case :proplists.get_bool(:no_imports, opts) do
           true ->
             warn(
-              {file, 0, 'conflicting import declarations - will not expand imports.'},
+              {file, 0, ~c"conflicting import declarations - will not expand imports."},
               [],
               opts
             )
@@ -692,10 +692,10 @@ defmodule :m_erl_tidy do
         case :sets.is_element(n, used) do
           false ->
             {f, a} = n
-            file = :proplists.get_value(:file, opts, '')
+            file = :proplists.get_value(:file, opts, ~c"")
 
             report(
-              {file, :erl_syntax.get_pos(form), 'removing unused function `~tw/~w\'.'},
+              {file, :erl_syntax.get_pos(form), ~c"removing unused function `~tw/~w'."},
               [f, a],
               opts
             )
@@ -781,13 +781,13 @@ defmodule :m_erl_tidy do
             :ok
 
           names ->
-            file = :proplists.get_value(:file, opts, '')
+            file = :proplists.get_value(:file, opts, ~c"")
 
             report(
-              {file, :erl_syntax.get_pos(f), 'removing unused imports:~ts'},
+              {file, :erl_syntax.get_pos(f), ~c"removing unused imports:~ts"},
               [
                 for {n, a} <- names do
-                  :io_lib.fwrite('\n\t`~w:~tw/~w\'', [m, n, a])
+                  :io_lib.fwrite(~c"\n\t`~w:~tw/~w'", [m, n, a])
                 end
               ],
               opts
@@ -942,7 +942,7 @@ defmodule :m_erl_tidy do
   )
 
   defp visit_used(names, defs, roots, imports, module, opts) do
-    file = :proplists.get_value(:file, opts, '')
+    file = :proplists.get_value(:file, opts, ~c"")
     noImports = :proplists.get_bool(:no_imports, opts)
     rename = :proplists.append_values(:rename, opts)
 
@@ -1115,7 +1115,7 @@ defmodule :m_erl_tidy do
   end
 
   defp visit_infix_expr(tree, r_env(context: :guard_test), st0) do
-    visit_other(tree, r_env(context: :guard_expr, file: ''), st0)
+    visit_other(tree, r_env(context: :guard_expr, file: ~c""), st0)
   end
 
   defp visit_infix_expr(tree, env, st0) do
@@ -1123,7 +1123,7 @@ defmodule :m_erl_tidy do
   end
 
   defp visit_prefix_expr(tree, r_env(context: :guard_test), st0) do
-    visit_other(tree, r_env(context: :guard_expr, file: ''), st0)
+    visit_other(tree, r_env(context: :guard_expr, file: ~c""), st0)
   end
 
   defp visit_prefix_expr(tree, env, st0) do
@@ -1188,7 +1188,7 @@ defmodule :m_erl_tidy do
     cond do
       n1 !== n ->
         report(
-          {r_env(env, :file), :erl_syntax.get_pos(f), 'changing guard test `~w\' to `~w\'.'},
+          {r_env(env, :file), :erl_syntax.get_pos(f), ~c"changing guard test `~w' to `~w'."},
           [n, n1],
           r_env(env, :verbosity)
         )
@@ -1240,7 +1240,7 @@ defmodule :m_erl_tidy do
       true ->
         report(
           {r_env(env, :file), :erl_syntax.get_pos(f),
-           'expanding call to imported function `~w:~tw/~w\'.'},
+           ~c"expanding call to imported function `~w:~tw/~w'."},
           [m, n, a],
           r_env(env, :verbosity)
         )
@@ -1264,7 +1264,7 @@ defmodule :m_erl_tidy do
       true ->
         report(
           {r_env(env, :file), :erl_syntax.get_pos(f),
-           'changing use of `apply/2\' to direct function call.'},
+           ~c"changing use of `apply/2' to direct function call."},
           [],
           r_env(env, :verbosity)
         )
@@ -1282,7 +1282,7 @@ defmodule :m_erl_tidy do
       true ->
         report(
           {r_env(env, :file), :erl_syntax.get_pos(f),
-           'changing use of `apply/3\' to direct remote call.'},
+           ~c"changing use of `apply/3' to direct remote call."},
           [],
           r_env(env, :verbosity)
         )
@@ -1329,7 +1329,7 @@ defmodule :m_erl_tidy do
       true ->
         report(
           {r_env(env, :file), :erl_syntax.get_pos(f),
-           'changing use of `~tw/~w\' to `~tw/~w\' with a fun.'},
+           ~c"changing use of `~tw/~w' to `~tw/~w' with a fun."},
           [n, a, n, 1 + length(ps)],
           r_env(env, :verbosity)
         )
@@ -1385,7 +1385,7 @@ defmodule :m_erl_tidy do
           false ->
             report(
               {r_env(env, :file), :erl_syntax.get_pos(f),
-               'changing application of implicit fun to direct local call.'},
+               ~c"changing application of implicit fun to direct local call."},
               [],
               r_env(env, :verbosity)
             )
@@ -1407,7 +1407,7 @@ defmodule :m_erl_tidy do
       true ->
         report(
           {r_env(env, :file), :erl_syntax.get_pos(f),
-           'changing application of fun-expression to local function call.'},
+           ~c"changing application of fun-expression to local function call."},
           [],
           r_env(env, :verbosity)
         )
@@ -1439,7 +1439,7 @@ defmodule :m_erl_tidy do
       false ->
         warn(
           {r_env(env, :file), :erl_syntax.get_pos(f),
-           'arity mismatch in fun-expression application.'},
+           ~c"arity mismatch in fun-expression application."},
           [],
           r_env(env, :verbosity)
         )
@@ -1464,7 +1464,7 @@ defmodule :m_erl_tidy do
           [x1, x2] ->
             report(
               {r_env(env, :file), :erl_syntax.get_pos(f),
-               'changing application of 2-tuple to direct remote call.'},
+               ~c"changing application of 2-tuple to direct remote call."},
               [],
               r_env(env, :verbosity)
             )
@@ -1499,7 +1499,7 @@ defmodule :m_erl_tidy do
   defp visit_remote_application({:lists, :append, 2}, f, [a1, a2], tree, env, st0) do
     report(
       {r_env(env, :file), :erl_syntax.get_pos(f),
-       'replacing call to `lists:append/2\' with the `++\' operator.'},
+       ~c"replacing call to `lists:append/2' with the `++' operator."},
       [],
       r_env(env, :verbosity)
     )
@@ -1511,7 +1511,7 @@ defmodule :m_erl_tidy do
   defp visit_remote_application({:lists, :subtract, 2}, f, [a1, a2], tree, env, st0) do
     report(
       {r_env(env, :file), :erl_syntax.get_pos(f),
-       'replacing call to `lists:subtract/2\' with the `--\' operator.'},
+       ~c"replacing call to `lists:subtract/2' with the `--' operator."},
       [],
       r_env(env, :verbosity)
     )
@@ -1534,7 +1534,7 @@ defmodule :m_erl_tidy do
       true ->
         report(
           {r_env(env, :file), :erl_syntax.get_pos(f),
-           'replacing call to `lists:filter/2\' with a list comprehension.'},
+           ~c"replacing call to `lists:filter/2' with a list comprehension."},
           [],
           r_env(env, :verbosity)
         )
@@ -1565,7 +1565,7 @@ defmodule :m_erl_tidy do
       true ->
         report(
           {r_env(env, :file), :erl_syntax.get_pos(f),
-           'replacing call to `lists:map/2\' with a list comprehension.'},
+           ~c"replacing call to `lists:map/2' with a list comprehension."},
           [],
           r_env(env, :verbosity)
         )
@@ -1592,7 +1592,7 @@ defmodule :m_erl_tidy do
           {m1, n1} ->
             report(
               {r_env(env, :file), :erl_syntax.get_pos(f),
-               'updating obsolete call to `~w:~tw/~w\' to use `~w:~tw/~w\' instead.'},
+               ~c"updating obsolete call to `~w:~tw/~w' to use `~w:~tw/~w' instead."},
               [m, n, a, m1, n1, a],
               r_env(env, :verbosity)
             )
@@ -1692,7 +1692,7 @@ defmodule :m_erl_tidy do
   defp visit_generator_1(g, env, st0) do
     recommend(
       {r_env(env, :file), :erl_syntax.get_pos(g),
-       'unfold that this nested list comprehension can be unfolded by hand to get better efficiency.'},
+       ~c"unfold that this nested list comprehension can be unfolded by hand to get better efficiency."},
       [],
       r_env(env, :verbosity)
     )
@@ -1760,7 +1760,7 @@ defmodule :m_erl_tidy do
             report_export_vars(
               r_env(env, :file),
               :erl_syntax.get_pos(b),
-              'case',
+              ~c"case",
               r_env(env, :verbosity)
             )
 
@@ -1780,7 +1780,7 @@ defmodule :m_erl_tidy do
             report_export_vars(
               r_env(env, :file),
               :erl_syntax.get_pos(b),
-              'if',
+              ~c"if",
               r_env(env, :verbosity)
             )
 
@@ -1801,7 +1801,7 @@ defmodule :m_erl_tidy do
             report_export_vars(
               r_env(env, :file),
               :erl_syntax.get_pos(b),
-              'receive',
+              ~c"receive",
               r_env(env, :verbosity)
             )
 
@@ -2203,7 +2203,7 @@ defmodule :m_erl_tidy do
 
   defp new_variable(st0) do
     fun = fn n ->
-      :erlang.list_to_atom('V' ++ :erlang.integer_to_list(n))
+      :erlang.list_to_atom(~c"V" ++ :erlang.integer_to_list(n))
     end
 
     vs = r_st(st0, :vars)
@@ -2222,7 +2222,7 @@ defmodule :m_erl_tidy do
     base = :erlang.atom_to_list(f)
 
     fun = fn n ->
-      {:erlang.list_to_atom(base ++ '_' ++ :erlang.integer_to_list(n)), a}
+      {:erlang.list_to_atom(base ++ ~c"_" ++ :erlang.integer_to_list(n)), a}
     end
 
     fs = r_st(st0, :functions)
@@ -2317,7 +2317,7 @@ defmodule :m_erl_tidy do
   end
 
   defp filename(n) do
-    report_error('bad filename: `~tP\'.', [n, 25])
+    report_error(~c"bad filename: `~tP'.", [n, 25])
     exit(:error)
   end
 
@@ -2340,23 +2340,23 @@ defmodule :m_erl_tidy do
   end
 
   defp report_export_vars(f, l, type, opts) do
-    report({f, l, 'rewrote ~s-expression to export variables.'}, [type], opts)
+    report({f, l, ~c"rewrote ~s-expression to export variables."}, [type], opts)
   end
 
   defp error_read_file(name) do
-    report_error('error reading file `~ts\'.', [filename(name)])
+    report_error(~c"error reading file `~ts'.", [filename(name)])
   end
 
   defp error_write_file(name) do
-    report_error('error writing to file `~ts\'.', [filename(name)])
+    report_error(~c"error writing to file `~ts'.", [filename(name)])
   end
 
   defp error_backup_file(name) do
-    report_error('could not create backup of file `~ts\'.', [filename(name)])
+    report_error(~c"could not create backup of file `~ts'.", [filename(name)])
   end
 
   defp error_open_output(name) do
-    report_error('cannot open file `~ts\' for output.', [filename(name)])
+    report_error(~c"cannot open file `~ts' for output.", [filename(name)])
   end
 
   defp verbosity(opts) do
@@ -2429,31 +2429,31 @@ defmodule :m_erl_tidy do
   end
 
   defp format({:error, d}, vs) do
-    ['error: ', format(d, vs)]
+    [~c"error: ", format(d, vs)]
   end
 
   defp format({:warning, d}, vs) do
-    ['warning: ', format(d, vs)]
+    [~c"warning: ", format(d, vs)]
   end
 
   defp format({:recommend, d}, vs) do
-    ['recommendation: ', format(d, vs)]
+    [~c"recommendation: ", format(d, vs)]
   end
 
-  defp format({'', l, d}, vs) when is_integer(l) and l > 0 do
-    [:io_lib.fwrite('~tw: ', [l]), format(d, vs)]
+  defp format({~c"", l, d}, vs) when is_integer(l) and l > 0 do
+    [:io_lib.fwrite(~c"~tw: ", [l]), format(d, vs)]
   end
 
-  defp format({'', _L, d}, vs) do
+  defp format({~c"", _L, d}, vs) do
     format(d, vs)
   end
 
   defp format({f, l, d}, vs) when is_integer(l) and l > 0 do
-    [:io_lib.fwrite('~ts:~tw: ', [filename(f), l]), format(d, vs)]
+    [:io_lib.fwrite(~c"~ts:~tw: ", [filename(f), l]), format(d, vs)]
   end
 
   defp format({f, _L, d}, vs) do
-    [:io_lib.fwrite('~ts: ', [filename(f)]), format(d, vs)]
+    [:io_lib.fwrite(~c"~ts: ", [filename(f)]), format(d, vs)]
   end
 
   defp format(s, vs) when is_list(s) do

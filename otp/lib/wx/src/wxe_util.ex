@@ -94,7 +94,7 @@ defmodule :m_wxe_util do
 
       {:_wxe_error_, old, error} ->
         [{_, {m, f, a}}] = :ets.lookup(:wx_debug_info, old)
-        msg = :io_lib.format('~p in ~w:~w/~w', [error, m, f, a])
+        msg = :io_lib.format(~c"~p in ~w:~w/~w", [error, m, f, a])
         send(:wxe_master, {:wxe_driver, :error, msg})
         rec(op)
     end
@@ -120,7 +120,7 @@ defmodule :m_wxe_util do
         :erlang.port_command(port, bin)
 
       true ->
-        :io.format('WX binary ~p(~p) ~n', [self(), port])
+        :io.format(~c"WX binary ~p(~p) ~n", [self(), port])
         :erlang.port_command(port, bin)
     end
   end
@@ -193,10 +193,10 @@ defmodule :m_wxe_util do
 
     case :ets.lookup(:wx_debug_info, op) do
       [{_, {m, f, _}}] ->
-        :io.format('WX ~p: ~s:~s(~p) -> ok~n', [self(), m, f, op])
+        :io.format(~c"WX ~p: ~s:~s(~p) -> ok~n", [self(), m, f, op])
 
       [] ->
-        :io.format('WX ~p: unknown(~p) -> ok~n', [self(), op])
+        :io.format(~c"WX ~p: unknown(~p) -> ok~n", [self(), op])
     end
   end
 
@@ -205,10 +205,10 @@ defmodule :m_wxe_util do
 
     case :ets.lookup(:wx_debug_info, op) do
       [{_, {m, f, _}}] ->
-        :io.format('WX ~p(~p): ~s:~s(~p) (~p) -> ok~n', [self(), port, m, f, op, args])
+        :io.format(~c"WX ~p(~p): ~s:~s(~p) (~p) -> ok~n", [self(), port, m, f, op, args])
 
       [] ->
-        :io.format('WX ~p(~p): unknown(~p) (~p) -> ok~n', [self(), port, op, args])
+        :io.format(~c"WX ~p(~p): unknown(~p) (~p) -> ok~n", [self(), port, op, args])
     end
   end
 
@@ -222,10 +222,10 @@ defmodule :m_wxe_util do
 
     case :ets.lookup(:wx_debug_info, op) do
       [{_, {m, f, _}}] ->
-        :io.format('WX ~p: ~s:~s(~p) -> ', [self(), m, f, op])
+        :io.format(~c"WX ~p: ~s:~s(~p) -> ", [self(), m, f, op])
 
       [] ->
-        :io.format('WX ~p: unknown(~p) -> ', [self(), op])
+        :io.format(~c"WX ~p: unknown(~p) -> ", [self(), op])
     end
 
     _ = :erlang.port_control(port, op, args)
@@ -237,10 +237,10 @@ defmodule :m_wxe_util do
 
     case :ets.lookup(:wx_debug_info, op) do
       [{_, {m, f, _}}] ->
-        :io.format('WX ~p(~p): ~s:~s(~p) (~p) -> ', [self(), port, m, f, op, args])
+        :io.format(~c"WX ~p(~p): ~s:~s(~p) (~p) -> ", [self(), port, m, f, op, args])
 
       [] ->
-        :io.format('WX ~p(~p): unknown(~p) (~p) -> ', [self(), port, op, args])
+        :io.format(~c"WX ~p(~p): unknown(~p) (~p) -> ", [self(), port, op, args])
     end
 
     _ = :erlang.port_control(port, op, args)
@@ -256,7 +256,7 @@ defmodule :m_wxe_util do
   defp debug_rec(1) do
     receive do
       {:_wxe_result_, res} ->
-        :io.format('complete ~n', [])
+        :io.format(~c"complete ~n", [])
         res
 
       {:_wxe_error_, op2, error} ->
@@ -268,11 +268,11 @@ defmodule :m_wxe_util do
   defp debug_rec(2) do
     receive do
       {:_wxe_result_, res} ->
-        :io.format('~p ~n', [res])
+        :io.format(~c"~p ~n", [res])
         res
 
       {:_wxe_error_, op, error} ->
-        :io.format('Error ~p ~n', [error])
+        :io.format(~c"Error ~p ~n", [error])
         [{_, mF}] = :ets.lookup(:wx_debug_info, op)
         :erlang.error({error, mF})
     end
@@ -282,7 +282,7 @@ defmodule :m_wxe_util do
     receive do
       {:_wxe_error_, op, error} ->
         [{_, mF = {m, f, _}}] = :ets.lookup(:wx_debug_info, op)
-        :io.format('WX ~p: ERROR in previous command ~s:~s~n', [self(), m, f])
+        :io.format(~c"WX ~p: ERROR in previous command ~s:~s~n", [self(), m, f])
         :erlang.error({error, mF})
     after
       0 ->
@@ -291,16 +291,16 @@ defmodule :m_wxe_util do
   end
 
   def wxgl_dl() do
-    dynLib0 = 'erl_gl'
+    dynLib0 = ~c"erl_gl"
     privDir = priv_dir(dynLib0, false)
 
     dynLib =
       case :os.type() do
         {:win32, _} ->
-          dynLib0 ++ '.dll'
+          dynLib0 ++ ~c".dll"
 
         _ ->
-          dynLib0 ++ '.so'
+          dynLib0 ++ ~c".so"
       end
 
     :filename.join(privDir, dynLib)
@@ -312,8 +312,8 @@ defmodule :m_wxe_util do
     priv =
       case :filelib.is_regular(path) do
         true ->
-          beam = :filename.join(['ebin/', :erlang.atom_to_list(:wxe_util) ++ '.beam'])
-          :filename.join(strip(path, beam), 'priv')
+          beam = :filename.join([~c"ebin/", :erlang.atom_to_list(:wxe_util) ++ ~c".beam"])
+          :filename.join(strip(path, beam), ~c"priv")
 
         false ->
           :code.priv_dir(:wx)
@@ -322,10 +322,10 @@ defmodule :m_wxe_util do
     driver =
       case :os.type() do
         {:win32, _} ->
-          driver0 ++ '.dll'
+          driver0 ++ ~c".dll"
 
         _ ->
-          driver0 ++ '.so'
+          driver0 ++ ~c".so"
       end
 
     case :file.read_file_info(
@@ -354,8 +354,8 @@ defmodule :m_wxe_util do
             srcPriv
 
           {:error, _} ->
-            opt_error_log(silent, 'ERROR: Could not find \'~s\' in: ~s~n', [driver, priv])
-            :erlang.error({:load_driver, 'No driver found'})
+            opt_error_log(silent, ~c"ERROR: Could not find '~s' in: ~s~n", [driver, priv])
+            :erlang.error({:load_driver, ~c"No driver found"})
         end
     end
   end

@@ -2,8 +2,7 @@ defmodule :m_mnesia_sup do
   use Bitwise
   @behaviour :supervisor
   def start_link(args) do
-    :supervisor.start_link({:local, :mnesia_sup},
-                             :mnesia_sup, [args])
+    :supervisor.start_link({:local, :mnesia_sup}, :mnesia_sup, [args])
   end
 
   def init([[]]) do
@@ -26,33 +25,32 @@ defmodule :m_mnesia_sup do
     killAfter = :timer.seconds(30)
     kA = :mnesia_kernel_sup.supervisor_timeout(killAfter)
     e = :mnesia_event
-    [{e, {:mnesia_sup, :start_event, []}, :permanent, kA,
-        :worker, [e, :gen_event]}]
+    [{e, {:mnesia_sup, :start_event, []}, :permanent, kA, :worker, [e, :gen_event]}]
   end
 
   defp kernel_procs() do
     k = :mnesia_kernel_sup
     kA = :infinity
-    [{k, {k, :start, []}, :permanent, kA, :supervisor,
-        [k, :supervisor]}]
+    [{k, {k, :start, []}, :permanent, kA, :supervisor, [k, :supervisor]}]
   end
 
   defp ext_procs() do
     k = :mnesia_ext_sup
     kA = :infinity
-    [{k, {k, :start, []}, :permanent, kA, :supervisor,
-        [k, :supervisor]}]
+    [{k, {k, :start, []}, :permanent, kA, :supervisor, [k, :supervisor]}]
   end
 
   def start_event() do
-    case (:gen_event.start_link({:local, :mnesia_event})) do
+    case :gen_event.start_link({:local, :mnesia_event}) do
       {:ok, pid} ->
-        case (add_event_handler()) do
+        case add_event_handler() do
           :ok ->
             {:ok, pid}
+
           error ->
             error
         end
+
       error ->
         error
     end
@@ -65,47 +63,52 @@ defmodule :m_mnesia_sup do
 
   def kill() do
     mnesia = [:mnesia_fallback | :mnesia.ms()]
-    kill = fn :mnesia_sup ->
-                try do
-                  sup = :erlang.whereis(:mnesia_sup)
-                  {_, dict} = :erlang.process_info(sup, :dictionary)
-                  [app] = :proplists.get_value(:"$ancestors", dict)
-                  :erlang.unlink(app)
-                  :erlang.exit(sup, :kill)
-                  send(app, {:EXIT, sup, :normal})
-                catch
-                  _, _ ->
-                    :ok
-                end
-              name ->
-                try do
-                  :erlang.exit(:erlang.whereis(name), :kill)
-                catch
-                  _, _ ->
-                    :ok
-                end
-           end
+
+    kill = fn
+      :mnesia_sup ->
+        try do
+          sup = :erlang.whereis(:mnesia_sup)
+          {_, dict} = :erlang.process_info(sup, :dictionary)
+          [app] = :proplists.get_value(:"$ancestors", dict)
+          :erlang.unlink(app)
+          :erlang.exit(sup, :kill)
+          send(app, {:EXIT, sup, :normal})
+        catch
+          _, _ ->
+            :ok
+        end
+
+      name ->
+        try do
+          :erlang.exit(:erlang.whereis(name), :kill)
+        catch
+          _, _ ->
+            :ok
+        end
+    end
+
     :lists.foreach(kill, mnesia)
     :lists.foreach(&ensure_dead/1, mnesia)
     :timer.sleep(10)
-    case (:lists.keymember(:mnesia, 1,
-                             :application.which_applications())) do
+
+    case :lists.keymember(:mnesia, 1, :application.which_applications()) do
       true ->
         kill()
+
       false ->
         :ok
     end
   end
 
   defp ensure_dead(name) do
-    case (:erlang.whereis(name)) do
+    case :erlang.whereis(name) do
       :undefined ->
         :ok
+
       pid when is_pid(pid) ->
         :erlang.exit(pid, :kill)
         :timer.sleep(10)
         ensure_dead(name)
     end
   end
-
 end

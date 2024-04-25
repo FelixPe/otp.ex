@@ -1,5 +1,6 @@
 defmodule :m_inet6_tls_dist do
   use Bitwise
+
   def childspecs() do
     :inet_tls_dist.childspecs()
   end
@@ -21,18 +22,14 @@ defmodule :m_inet6_tls_dist do
   end
 
   def accept_connection(acceptPid, socket, myNode, allowed, setupTime) do
-    :inet_tls_dist.fam_accept_connection(:inet6, acceptPid,
-                                           socket, myNode, allowed, setupTime)
+    :inet_tls_dist.fam_accept_connection(:inet6, acceptPid, socket, myNode, allowed, setupTime)
   end
 
-  def setup(node, type, myNode, longOrShortNames,
-           setupTime) do
-    :inet_tls_dist.fam_setup(:inet6, node, type, myNode,
-                               longOrShortNames, setupTime)
+  def setup(node, type, myNode, longOrShortNames, setupTime) do
+    :inet_tls_dist.fam_setup(:inet6, node, type, myNode, longOrShortNames, setupTime)
   end
 
   def close(socket) do
     :inet_tls_dist.close(socket)
   end
-
 end

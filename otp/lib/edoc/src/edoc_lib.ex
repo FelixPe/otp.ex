@@ -2,131 +2,252 @@ defmodule :m_edoc_lib do
   use Bitwise
   import :edoc_report, only: [report: 2, warning: 2]
   require Record
-  Record.defrecord(:r_doclet_context, :doclet_context, dir: '',
-                                          env: :undefined, opts: [])
-  Record.defrecord(:r_doclet_gen, :doclet_gen, sources: [],
-                                      app: :no_app, modules: [])
-  Record.defrecord(:r_doclet_toc, :doclet_toc, paths: :undefined,
-                                      indir: :undefined)
-  Record.defrecord(:r_module, :module, name: [],
-                                  parameters: :none, functions: [], exports: [],
-                                  attributes: [], records: [],
-                                  encoding: :latin1, file: :undefined)
-  Record.defrecord(:r_env, :env, module: [], root: '',
-                               file_suffix: :undefined, apps: :undefined,
-                               modules: :undefined, app_default: :undefined,
-                               macros: [], includes: [])
-  Record.defrecord(:r_comment, :comment, line: 0,
-                                   text: :undefined)
-  Record.defrecord(:r_entry, :entry, name: :undefined, args: [],
-                                 line: 0, export: :undefined, data: :undefined)
-  Record.defrecord(:r_tag, :tag, name: :undefined, line: 0,
-                               origin: :comment, data: :undefined,
-                               form: :undefined)
-  Record.defrecord(:r_xmlDecl, :xmlDecl, vsn: :undefined,
-                                   encoding: :undefined, standalone: :undefined,
-                                   attributes: :undefined)
-  Record.defrecord(:r_xmlAttribute, :xmlAttribute, name: :undefined,
-                                        expanded_name: [], nsinfo: [],
-                                        namespace: [], parents: [],
-                                        pos: :undefined, language: [],
-                                        value: :undefined,
-                                        normalized: :undefined)
-  Record.defrecord(:r_xmlNamespace, :xmlNamespace, default: [],
-                                        nodes: [])
-  Record.defrecord(:r_xmlNsNode, :xmlNsNode, parents: [],
-                                     pos: :undefined, prefix: :undefined,
-                                     uri: [])
-  Record.defrecord(:r_xmlElement, :xmlElement, name: :undefined,
-                                      expanded_name: [], nsinfo: [],
-                                      namespace: :EFE_TODO_NESTED_RECORD,
-                                      parents: [], pos: :undefined,
-                                      attributes: [], content: [], language: '',
-                                      xmlbase: '', elementdef: :undeclared)
-  Record.defrecord(:r_xmlText, :xmlText, parents: [],
-                                   pos: :undefined, language: [],
-                                   value: :undefined, type: :text)
-  Record.defrecord(:r_xmlComment, :xmlComment, parents: [],
-                                      pos: :undefined, language: [],
-                                      value: :undefined)
-  Record.defrecord(:r_xmlPI, :xmlPI, name: :undefined,
-                                 parents: [], pos: :undefined,
-                                 value: :undefined)
+  Record.defrecord(:r_doclet_context, :doclet_context, dir: ~c"", env: :undefined, opts: [])
+  Record.defrecord(:r_doclet_gen, :doclet_gen, sources: [], app: :no_app, modules: [])
+
+  Record.defrecord(:r_doclet_toc, :doclet_toc,
+    paths: :undefined,
+    indir: :undefined
+  )
+
+  Record.defrecord(:r_module, :module,
+    name: [],
+    parameters: :none,
+    functions: [],
+    exports: [],
+    attributes: [],
+    records: [],
+    encoding: :latin1,
+    file: :undefined
+  )
+
+  Record.defrecord(:r_env, :env,
+    module: [],
+    root: ~c"",
+    file_suffix: :undefined,
+    apps: :undefined,
+    modules: :undefined,
+    app_default: :undefined,
+    macros: [],
+    includes: []
+  )
+
+  Record.defrecord(:r_comment, :comment,
+    line: 0,
+    text: :undefined
+  )
+
+  Record.defrecord(:r_entry, :entry,
+    name: :undefined,
+    args: [],
+    line: 0,
+    export: :undefined,
+    data: :undefined
+  )
+
+  Record.defrecord(:r_tag, :tag,
+    name: :undefined,
+    line: 0,
+    origin: :comment,
+    data: :undefined,
+    form: :undefined
+  )
+
+  Record.defrecord(:r_xmlDecl, :xmlDecl,
+    vsn: :undefined,
+    encoding: :undefined,
+    standalone: :undefined,
+    attributes: :undefined
+  )
+
+  Record.defrecord(:r_xmlAttribute, :xmlAttribute,
+    name: :undefined,
+    expanded_name: [],
+    nsinfo: [],
+    namespace: [],
+    parents: [],
+    pos: :undefined,
+    language: [],
+    value: :undefined,
+    normalized: :undefined
+  )
+
+  Record.defrecord(:r_xmlNamespace, :xmlNamespace,
+    default: [],
+    nodes: []
+  )
+
+  Record.defrecord(:r_xmlNsNode, :xmlNsNode,
+    parents: [],
+    pos: :undefined,
+    prefix: :undefined,
+    uri: []
+  )
+
+  Record.defrecord(:r_xmlElement, :xmlElement,
+    name: :undefined,
+    expanded_name: [],
+    nsinfo: [],
+    namespace: :EFE_TODO_NESTED_RECORD,
+    parents: [],
+    pos: :undefined,
+    attributes: [],
+    content: [],
+    language: ~c"",
+    xmlbase: ~c"",
+    elementdef: :undeclared
+  )
+
+  Record.defrecord(:r_xmlText, :xmlText,
+    parents: [],
+    pos: :undefined,
+    language: [],
+    value: :undefined,
+    type: :text
+  )
+
+  Record.defrecord(:r_xmlComment, :xmlComment,
+    parents: [],
+    pos: :undefined,
+    language: [],
+    value: :undefined
+  )
+
+  Record.defrecord(:r_xmlPI, :xmlPI,
+    name: :undefined,
+    parents: [],
+    pos: :undefined,
+    value: :undefined
+  )
+
   Record.defrecord(:r_xmlDocument, :xmlDocument, content: :undefined)
-  Record.defrecord(:r_xmlContext, :xmlContext, axis_type: :forward,
-                                      context_node: :undefined,
-                                      context_position: 1, nodeset: [],
-                                      bindings: [], functions: [],
-                                      namespace: [], whole_document: :undefined)
-  Record.defrecord(:r_xmlNode, :xmlNode, type: :element,
-                                   node: :undefined, parents: [], pos: 1)
-  Record.defrecord(:r_xmlObj, :xmlObj, type: :undefined,
-                                  value: :undefined)
-  Record.defrecord(:r_xmerl_fun_states, :xmerl_fun_states, event: :undefined,
-                                            hook: :undefined, rules: :undefined,
-                                            fetch: :undefined, cont: :undefined)
-  Record.defrecord(:r_xmerl_scanner, :xmerl_scanner, encoding: :undefined,
-                                         standalone: :no, environment: :prolog,
-                                         declarations: [],
-                                         doctype_name: :undefined,
-                                         doctype_DTD: :internal, comments: true,
-                                         document: false, default_attrs: false,
-                                         rules: :undefined, keep_rules: false,
-                                         namespace_conformant: false,
-                                         xmlbase: :undefined,
-                                         xmlbase_cache: :undefined,
-                                         fetch_path: [],
-                                         filename: :file_name_unknown,
-                                         validation: :off, schemaLocation: [],
-                                         space: :preserve,
-                                         event_fun: :undefined,
-                                         hook_fun: :undefined,
-                                         acc_fun: :undefined,
-                                         fetch_fun: :undefined,
-                                         close_fun: :undefined,
-                                         continuation_fun: :undefined,
-                                         rules_read_fun: :undefined,
-                                         rules_write_fun: :undefined,
-                                         rules_delete_fun: :undefined,
-                                         user_state: :undefined,
-                                         fun_states: :EFE_TODO_NESTED_RECORD,
-                                         entity_references: [],
-                                         text_decl: false, quiet: false, col: 1,
-                                         line: 1, common_data: [])
-  Record.defrecord(:r_xmerl_event, :xmerl_event, event: :undefined,
-                                       line: :undefined, col: :undefined,
-                                       pos: :undefined, data: :undefined)
+
+  Record.defrecord(:r_xmlContext, :xmlContext,
+    axis_type: :forward,
+    context_node: :undefined,
+    context_position: 1,
+    nodeset: [],
+    bindings: [],
+    functions: [],
+    namespace: [],
+    whole_document: :undefined
+  )
+
+  Record.defrecord(:r_xmlNode, :xmlNode, type: :element, node: :undefined, parents: [], pos: 1)
+
+  Record.defrecord(:r_xmlObj, :xmlObj,
+    type: :undefined,
+    value: :undefined
+  )
+
+  Record.defrecord(:r_xmerl_fun_states, :xmerl_fun_states,
+    event: :undefined,
+    hook: :undefined,
+    rules: :undefined,
+    fetch: :undefined,
+    cont: :undefined
+  )
+
+  Record.defrecord(:r_xmerl_scanner, :xmerl_scanner,
+    encoding: :undefined,
+    standalone: :no,
+    environment: :prolog,
+    declarations: [],
+    doctype_name: :undefined,
+    doctype_DTD: :internal,
+    comments: true,
+    document: false,
+    default_attrs: false,
+    rules: :undefined,
+    keep_rules: false,
+    namespace_conformant: false,
+    xmlbase: :undefined,
+    xmlbase_cache: :undefined,
+    fetch_path: [],
+    filename: :file_name_unknown,
+    validation: :off,
+    schemaLocation: [],
+    space: :preserve,
+    event_fun: :undefined,
+    hook_fun: :undefined,
+    acc_fun: :undefined,
+    fetch_fun: :undefined,
+    close_fun: :undefined,
+    continuation_fun: :undefined,
+    rules_read_fun: :undefined,
+    rules_write_fun: :undefined,
+    rules_delete_fun: :undefined,
+    user_state: :undefined,
+    fun_states: :EFE_TODO_NESTED_RECORD,
+    entity_references: [],
+    text_decl: false,
+    quiet: false,
+    col: 1,
+    line: 1,
+    common_data: []
+  )
+
+  Record.defrecord(:r_xmerl_event, :xmerl_event,
+    event: :undefined,
+    line: :undefined,
+    col: :undefined,
+    pos: :undefined,
+    data: :undefined
+  )
+
   def timestr({h, m, sec}) do
-    :lists.flatten(:io_lib.fwrite('~2.2.0w:~2.2.0w:~2.2.0w', [h, m, sec]))
+    :lists.flatten(:io_lib.fwrite(~c"~2.2.0w:~2.2.0w:~2.2.0w", [h, m, sec]))
   end
 
   def datestr({y, m, d}) do
-    ms = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    :lists.flatten(:io_lib.fwrite('~s ~w ~w',
-                                    [:lists.nth(m, ms), d, y]))
+    ms = [
+      ~c"Jan",
+      ~c"Feb",
+      ~c"Mar",
+      ~c"Apr",
+      ~c"May",
+      ~c"Jun",
+      ~c"Jul",
+      ~c"Aug",
+      ~c"Sep",
+      ~c"Oct",
+      ~c"Nov",
+      ~c"Dec"
+    ]
+
+    :lists.flatten(
+      :io_lib.fwrite(
+        ~c"~s ~w ~w",
+        [:lists.nth(m, ms), d, y]
+      )
+    )
   end
 
   def read_encoding(file, options) do
-    case (:epp.read_encoding(file, options)) do
+    case :epp.read_encoding(file, options) do
       :none ->
         :epp.default_encoding()
+
       encoding ->
         encoding
     end
   end
 
   def infer_module_app(mod) do
-    case (:code.which(mod)) do
+    case :code.which(mod) do
       modPath when is_list(modPath) ->
-        case (:lists.reverse(:string.tokens(modPath, '/'))) do
-          [_BeamFile, 'ebin', appVer | _] ->
-            [app | _] = :string.tokens(appVer, '-')
+        case :lists.reverse(:string.tokens(modPath, ~c"/")) do
+          [_BeamFile, ~c"ebin", appVer | _] ->
+            [app | _] = :string.tokens(appVer, ~c"-")
             {:app, :erlang.list_to_atom(app)}
+
           _ ->
             :no_app
         end
+
       :preloaded ->
         {:app, :erts}
+
       _ ->
         :no_app
     end
@@ -297,12 +418,20 @@ defmodule :m_edoc_lib do
   end
 
   def transpose([[x | xs] | xss]) do
-    [[x | for [h | _T] <- xss do
+    [
+      [
+        x
+        | for [h | _T] <- xss do
             h
-          end] |
-         transpose([xs | for [_H | t] <- xss do
-                           t
-                         end])]
+          end
+      ]
+      | transpose([
+          xs
+          | for [_H | t] <- xss do
+              t
+            end
+        ])
+    ]
   end
 
   def get_first_sentence([r_xmlElement(name: :p, content: es) | _]) do
@@ -314,19 +443,25 @@ defmodule :m_edoc_lib do
   end
 
   defp get_first_sentence_1([e = r_xmlText(value: txt) | es]) do
-    last = (case (es) do
-              [r_xmlElement(name: :p) | _] ->
-                true
-              [r_xmlElement(name: :br) | _] ->
-                true
-              [] ->
-                true
-              _ ->
-                false
-            end)
-    case (end_of_sentence(txt, last)) do
+    last =
+      case es do
+        [r_xmlElement(name: :p) | _] ->
+          true
+
+        [r_xmlElement(name: :br) | _] ->
+          true
+
+        [] ->
+          true
+
+        _ ->
+          false
+      end
+
+    case end_of_sentence(txt, last) do
       {:value, txt1} ->
         [r_xmlText(e, value: txt1)]
+
       :none ->
         [e | get_first_sentence_1(es)]
     end
@@ -392,12 +527,13 @@ defmodule :m_edoc_lib do
     :none
   end
 
-  def is_name([c | cs]) when (c >= ?a and c <= ?z) do
+  def is_name([c | cs]) when c >= ?a and c <= ?z do
     is_name_1(cs)
   end
 
-  def is_name([c | cs]) when (c >= 223 and c <= 255 and
-                           c !== 247) do
+  def is_name([c | cs])
+      when c >= 223 and c <= 255 and
+             c !== 247 do
     is_name_1(cs)
   end
 
@@ -405,20 +541,21 @@ defmodule :m_edoc_lib do
     false
   end
 
-  defp is_name_1([c | cs]) when (c >= ?a and c <= ?z) do
+  defp is_name_1([c | cs]) when c >= ?a and c <= ?z do
     is_name_1(cs)
   end
 
-  defp is_name_1([c | cs]) when (c >= ?A and c <= ?Z) do
+  defp is_name_1([c | cs]) when c >= ?A and c <= ?Z do
     is_name_1(cs)
   end
 
-  defp is_name_1([c | cs]) when (c >= ?0 and c <= ?9) do
+  defp is_name_1([c | cs]) when c >= ?0 and c <= ?9 do
     is_name_1(cs)
   end
 
-  defp is_name_1([c | cs]) when (c >= 192 and c <= 255 and
-                            c !== 215 and c !== 247) do
+  defp is_name_1([c | cs])
+       when c >= 192 and c <= 255 and
+              c !== 215 and c !== 247 do
     is_name_1(cs)
   end
 
@@ -455,44 +592,50 @@ defmodule :m_edoc_lib do
   end
 
   def parse_expr(s, l) do
-    case (:erl_scan.string(s ++ '.', l)) do
+    case :erl_scan.string(s ++ ~c".", l) do
       {:ok, ts, _} ->
-        case (:erl_parse.parse_exprs(ts)) do
+        case :erl_parse.parse_exprs(ts) do
           {:ok, [expr]} ->
             expr
-          {:error, {999999, :erl_parse, _}} ->
+
+          {:error, {999_999, :erl_parse, _}} ->
             throw_error(:eof, l)
+
           {:error, e} ->
             throw_error(e, l)
         end
+
       {:error, e, _} ->
         throw_error(e, l)
     end
   end
 
-  Record.defrecord(:r_info, :info, name: '', email: '', uri: '')
+  Record.defrecord(:r_info, :info, name: ~c"", email: ~c"", uri: ~c"")
+
   def parse_contact(s, l) do
     i = scan_name(s, l, r_info(), [])
     {r_info(i, :name), r_info(i, :email), r_info(i, :uri)}
   end
 
   defp scan_name([?< | cs], l, i, as) do
-    case (r_info(i, :email)) do
-      '' ->
+    case r_info(i, :email) do
+      ~c"" ->
         {cs1, i1} = scan_email(cs, l, set_name(i, as), [])
         scan_name(cs1, l, i1, [])
+
       _ ->
-        throw_error('multiple \'<...>\' sections.', l)
+        throw_error(~c"multiple '<...>' sections.", l)
     end
   end
 
   defp scan_name([?[ | cs], l, i, as) do
-    case (r_info(i, :uri)) do
-      '' ->
+    case r_info(i, :uri) do
+      ~c"" ->
         {cs1, i1} = scan_uri(cs, l, set_name(i, as), [])
         scan_name(cs1, l, i1, [])
+
       _ ->
-        throw_error('multiple \'[...]\' sections.', l)
+        throw_error(~c"multiple '[...]' sections.", l)
     end
   end
 
@@ -541,9 +684,10 @@ defmodule :m_edoc_lib do
   end
 
   defp set_name(i, as) do
-    case (r_info(i, :name)) do
-      '' ->
+    case r_info(i, :name) do
+      ~c"" ->
         r_info(i, name: strip_and_reverse(as))
+
       _ ->
         i
     end
@@ -553,15 +697,15 @@ defmodule :m_edoc_lib do
     :edoc_lib.strip_space(:lists.reverse(:edoc_lib.strip_space(as)))
   end
 
-  def escape_uri([c | cs]) when (c >= ?a and c <= ?z) do
+  def escape_uri([c | cs]) when c >= ?a and c <= ?z do
     [c | escape_uri(cs)]
   end
 
-  def escape_uri([c | cs]) when (c >= ?A and c <= ?Z) do
+  def escape_uri([c | cs]) when c >= ?A and c <= ?Z do
     [c | escape_uri(cs)]
   end
 
-  def escape_uri([c | cs]) when (c >= ?0 and c <= ?9) do
+  def escape_uri([c | cs]) when c >= ?0 and c <= ?9 do
     [c | escape_uri(cs)]
   end
 
@@ -578,7 +722,7 @@ defmodule :m_edoc_lib do
   end
 
   def escape_uri([c | cs]) when c > 127 do
-    escape_byte(c &&& 192 >>> 6 + 192) ++ escape_byte(c &&& 63 + 128) ++ escape_uri(cs)
+    escape_byte(c &&& 192 >>> (6 + 192)) ++ escape_byte(c &&& 63 + 128) ++ escape_uri(cs)
   end
 
   def escape_uri([c | cs]) do
@@ -589,28 +733,28 @@ defmodule :m_edoc_lib do
     []
   end
 
-  defp escape_byte(c) when (c >= 0 and c <= 255) do
+  defp escape_byte(c) when c >= 0 and c <= 255 do
     [?%, hex_digit(c >>> 4), hex_digit(c &&& 15)]
   end
 
-  defp hex_digit(n) when (n >= 0 and n <= 9) do
+  defp hex_digit(n) when n >= 0 and n <= 9 do
     n + ?0
   end
 
-  defp hex_digit(n) when (n > 9 and n <= 15) do
+  defp hex_digit(n) when n > 9 and n <= 15 do
     n + ?a - 10
   end
 
-  def join_uri(base, '') do
+  def join_uri(base, ~c"") do
     base
   end
 
-  def join_uri('', path) do
+  def join_uri(~c"", path) do
     path
   end
 
   def join_uri(base, path) do
-    base ++ '/' ++ path
+    base ++ ~c"/" ++ path
   end
 
   def to_label([?\s | cs]) do
@@ -654,15 +798,16 @@ defmodule :m_edoc_lib do
   end
 
   defp to_label_2(cs) do
-    case (to_label(cs)) do
+    case to_label(cs) do
       [] ->
         []
+
       cs1 ->
         [?_ | cs1]
     end
   end
 
-  def filename([c | t]) when (is_integer(c) and c > 0) do
+  def filename([c | t]) when is_integer(c) and c > 0 do
     [c | filename(t)]
   end
 
@@ -679,44 +824,50 @@ defmodule :m_edoc_lib do
   end
 
   def filename(n) do
-    report('bad filename: `~tP\'.', [n, 25])
+    report(~c"bad filename: `~tP'.", [n, 25])
     exit(:error)
   end
 
   def copy_file(from, to) do
-    case (:file.copy(from, to)) do
+    case :file.copy(from, to) do
       {:ok, _} ->
         :ok
+
       {:error, r} ->
         r1 = :file.format_error(r)
-        report('error copying \'~ts\' to \'~ts\': ~ts.', [from, to, r1])
+        report(~c"error copying '~ts' to '~ts': ~ts.", [from, to, r1])
         exit(:error)
     end
   end
 
   defp list_dir(dir, error) do
-    case (:file.list_dir(dir)) do
+    case :file.list_dir(dir) do
       {:ok, fs} ->
         fs
+
       {:error, r} ->
-        f = (case (error) do
-               false ->
-                 fn s, as ->
-                      warning(s, as)
-                      []
-                 end
-             end)
+        f =
+          case error do
+            false ->
+              fn s, as ->
+                warning(s, as)
+                []
+              end
+          end
+
         r1 = :file.format_error(r)
-        f.('could not read directory \'~ts\': ~ts.', [filename(dir), r1])
+        f.(~c"could not read directory '~ts': ~ts.", [filename(dir), r1])
     end
   end
 
   def simplify_path(p) do
-    case (:filename.basename(p)) do
-      '.' ->
+    case :filename.basename(p) do
+      ~c"." ->
         simplify_path(:filename.dirname(p))
-      '..' ->
+
+      ~c".." ->
         simplify_path(:filename.dirname(:filename.dirname(p)))
+
       _ ->
         p
     end
@@ -724,9 +875,11 @@ defmodule :m_edoc_lib do
 
   def try_subdir(dir, subdir) do
     d = :filename.join(dir, subdir)
-    case (:filelib.is_dir(d)) do
+
+    case :filelib.is_dir(d) do
       true ->
         d
+
       false ->
         dir
     end
@@ -739,48 +892,59 @@ defmodule :m_edoc_lib do
   def write_file(text, dir, name, options) do
     file = :filename.join([dir, name])
     :ok = :filelib.ensure_dir(file)
-    case (:file.open(file, [:write] ++ options)) do
+
+    case :file.open(file, [:write] ++ options) do
       {:ok, fD} ->
         :io.put_chars(fD, text)
         :ok = :file.close(fD)
+
       {:error, r} ->
         r1 = :file.format_error(r)
-        report('could not write file \'~ts\': ~ts.', [file, r1])
+        report(~c"could not write file '~ts': ~ts.", [file, r1])
         exit(:error)
     end
   end
 
   def write_info_file(app, modules, dir) do
     ts = [{:modules, modules}]
-    ts1 = (cond do
-             app === :no_app ->
-               ts
-             true ->
-               [{:application, app} | ts]
-           end)
-    s0 = (for t <- ts1 do
-            :io_lib.fwrite('~p.\n', [t])
-          end)
-    s = ['%% encoding: UTF-8\n' | s0]
-    write_file(s, dir, 'edoc-info', [{:encoding, :unicode}])
+
+    ts1 =
+      cond do
+        app === :no_app ->
+          ts
+
+        true ->
+          [{:application, app} | ts]
+      end
+
+    s0 =
+      for t <- ts1 do
+        :io_lib.fwrite(~c"~p.\n", [t])
+      end
+
+    s = [~c"%% encoding: UTF-8\n" | s0]
+    write_file(s, dir, ~c"edoc-info", [{:encoding, :unicode}])
   end
 
   defp read_file(file) do
-    case (:file.read_file(file)) do
+    case :file.read_file(file) do
       {:ok, bin} ->
         enc = :edoc_lib.read_encoding(file, [])
-        case ((try do
+
+        case (try do
                 :unicode.characters_to_list(bin, enc)
               catch
                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
                 :exit, e -> {:EXIT, e}
                 e -> e
-              end)) do
+              end) do
           string when is_list(string) ->
             {:ok, string}
+
           _ ->
             {:error, :invalid_unicode}
         end
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -793,49 +957,60 @@ defmodule :m_edoc_lib do
   end
 
   def read_info_file(dir) do
-    file = :filename.join(dir, 'edoc-info')
-    case (:filelib.is_file(file)) do
+    file = :filename.join(dir, ~c"edoc-info")
+
+    case :filelib.is_file(file) do
       true ->
-        case (read_file(file)) do
+        case read_file(file) do
           {:ok, text} ->
             parse_info_file(text, file)
+
           {:error, r} ->
             r1 = :file.format_error(r)
-            warning('could not read \'~ts\': ~ts.', [file, r1])
+            warning(~c"could not read '~ts': ~ts.", [file, r1])
             {:no_app, []}
         end
+
       false ->
         {:no_app, []}
     end
   end
 
   defp parse_info_file(text, name) do
-    case (parse_terms(text)) do
+    case parse_terms(text) do
       {:ok, vs} ->
         info_file_data(vs)
+
       {:error, :eof} ->
-        warning('unexpected end of file in \'~ts\'.', [name])
+        warning(~c"unexpected end of file in '~ts'.", [name])
         {:no_app, []}
+
       {:error, {_Line, module, r}} ->
-        warning('~ts: ~ts.', [module.format_error(r), name])
+        warning(~c"~ts: ~ts.", [module.format_error(r), name])
         {:no_app, []}
     end
   end
 
   defp parse_terms(text) do
-    case (:erl_scan.string(text)) do
+    case :erl_scan.string(text) do
       {:ok, ts, _Line} ->
         parse_terms_1(ts, [], [])
+
       {:error, r, _Line} ->
         {:error, r}
     end
   end
 
   defp parse_terms_1([t = {:dot, _L} | ts], as, vs) do
-    case (:erl_parse.parse_term(:lists.reverse([t |
-                                                    as]))) do
+    case :erl_parse.parse_term(
+           :lists.reverse([
+             t
+             | as
+           ])
+         ) do
       {:ok, v} ->
         parse_terms_1(ts, [], [v | vs])
+
       {:error, r} ->
         {:error, r}
     end
@@ -855,7 +1030,7 @@ defmodule :m_edoc_lib do
 
   def find_sources(path, opts) do
     rec = :proplists.get_bool(:subpackages, opts)
-    ext = :proplists.get_value(:source_suffix, opts, '.erl')
+    ext = :proplists.get_value(:source_suffix, opts, ~c".erl")
     find_sources(path, rec, ext, opts)
   end
 
@@ -866,9 +1041,11 @@ defmodule :m_edoc_lib do
   defp find_sources_1([p | ps], rec, ext) do
     dir = p
     fs1 = find_sources_1(ps, rec, ext)
-    case (:filelib.is_dir(dir)) do
+
+    case :filelib.is_dir(dir) do
       true ->
         [find_sources_2(dir, rec, ext) | fs1]
+
       false ->
         fs1
     end
@@ -880,12 +1057,16 @@ defmodule :m_edoc_lib do
 
   defp find_sources_2(dir, rec, ext) do
     es = list_dir(dir, false)
-    es1 = (for e <- es, is_source_file(e, ext) do
-             {e, dir}
-           end)
-    case (rec) do
+
+    es1 =
+      for e <- es, is_source_file(e, ext) do
+        {e, dir}
+      end
+
+    case rec do
       true ->
         [find_sources_3(es, dir, rec, ext) | es1]
+
       false ->
         es1
     end
@@ -898,8 +1079,13 @@ defmodule :m_edoc_lib do
   end
 
   defp is_source_file(name, ext) do
-    :filename.extension(name) == ext and is_name(:filename.rootname(name,
-                                                                      ext))
+    :filename.extension(name) == ext and
+      is_name(
+        :filename.rootname(
+          name,
+          ext
+        )
+      )
   end
 
   defp is_source_dir(name, dir) do
@@ -908,16 +1094,18 @@ defmodule :m_edoc_lib do
 
   def find_file([p | ps], name) do
     file = :filename.join(p, name)
-    case (:filelib.is_file(file)) do
+
+    case :filelib.is_file(file) do
       true ->
         file
+
       false ->
         find_file(ps, name)
     end
   end
 
   def find_file([], _Name) do
-    ''
+    ~c""
   end
 
   def find_doc_dirs() do
@@ -926,17 +1114,23 @@ defmodule :m_edoc_lib do
 
   defp find_doc_dirs([p0 | ps]) do
     p = :filename.absname(p0)
-    p1 = (case (:filename.basename(p)) do
-            'ebin' ->
-              :filename.dirname(p)
-            _ ->
-              p
-          end)
-    dir = try_subdir(p1, 'doc')
-    file = :filename.join(dir, 'edoc-info')
-    case (:filelib.is_file(file)) do
+
+    p1 =
+      case :filename.basename(p) do
+        ~c"ebin" ->
+          :filename.dirname(p)
+
+        _ ->
+          p
+      end
+
+    dir = try_subdir(p1, ~c"doc")
+    file = :filename.join(dir, ~c"edoc-info")
+
+    case :filelib.is_file(file) do
       true ->
         [dir | find_doc_dirs(ps)]
+
       false ->
         find_doc_dirs(ps)
     end
@@ -947,48 +1141,61 @@ defmodule :m_edoc_lib do
   end
 
   defp get_doc_links(app, modules, opts) do
-    path = :proplists.append_values(:doc_path,
-                                      opts) ++ find_doc_dirs()
-    ds = (for p <- path do
-            {p, read_info_file(p)}
-          end)
-    ds1 = [{'', {app, modules}} | ds]
+    path =
+      :proplists.append_values(
+        :doc_path,
+        opts
+      ) ++ find_doc_dirs()
+
+    ds =
+      for p <- path do
+        {p, read_info_file(p)}
+      end
+
+    ds1 = [{~c"", {app, modules}} | ds]
     d = :dict.new()
     make_links(ds1, d, d)
   end
 
   defp make_links([{dir, {app, ms}} | ds], a, m) do
-    a1 = (cond do
-            app == :no_app ->
-              a
-            true ->
-              add_new(app, dir, a)
-          end)
+    a1 =
+      cond do
+        app == :no_app ->
+          a
+
+        true ->
+          add_new(app, dir, a)
+      end
+
     f = fn k, d ->
-             add_new(k, dir, d)
-        end
+      add_new(k, dir, d)
+    end
+
     m1 = :lists.foldl(f, m, ms)
     make_links(ds, a1, m1)
   end
 
   defp make_links([], a, m) do
     f = fn d ->
-             fn k ->
-                  case (:dict.find(k, d)) do
-                    {:ok, v} ->
-                      v
-                    :error ->
-                      ''
-                  end
-             end
+      fn k ->
+        case :dict.find(k, d) do
+          {:ok, v} ->
+            v
+
+          :error ->
+            ~c""
         end
+      end
+    end
+
     {f.(a), f.(m)}
   end
 
   defp add_new(k, v, d) do
-    case (:dict.is_key(k, d)) do
+    case :dict.is_key(k, d) do
       true ->
         d
+
       false ->
         :dict.store(k, v, d)
     end
@@ -999,12 +1206,11 @@ defmodule :m_edoc_lib do
   end
 
   def get_doc_env(app, modules, opts) do
-    suffix = :proplists.get_value(:file_suffix, opts, '.html')
-    appDefault = :proplists.get_value(:app_default, opts, 'http://www.erlang.org/edoc/doc')
+    suffix = :proplists.get_value(:file_suffix, opts, ~c".html")
+    appDefault = :proplists.get_value(:app_default, opts, ~c"http://www.erlang.org/edoc/doc")
     includes = :proplists.append_values(:includes, opts)
     {a, m} = get_doc_links(app, modules, opts)
-    r_env(file_suffix: suffix, apps: a, modules: m,
-        app_default: appDefault, includes: includes)
+    r_env(file_suffix: suffix, apps: a, modules: m, app_default: appDefault, includes: includes)
   end
 
   def run_doclet(fun, opts) do
@@ -1020,39 +1226,42 @@ defmodule :m_edoc_lib do
   end
 
   defp run_plugin(name, key, default, fun, opts)
-      when is_atom(name) do
+       when is_atom(name) do
     module = get_plugin(key, default, opts)
-    case ((try do
+
+    case (try do
             {:ok, fun.(module)}
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       {:ok, value} ->
         value
+
       r ->
-        report('error in ~ts \'~w\': ~tP.', [name, module, r, 20])
+        report(~c"error in ~ts '~w': ~tP.", [name, module, r, 20])
         exit(:error)
     end
   end
 
   defp get_plugin(key, default, opts) do
-    case (:proplists.get_value(key, opts, default)) do
+    case :proplists.get_value(key, opts, default) do
       m when is_atom(m) ->
         m
+
       other ->
-        report('bad value for option \'~w\': ~tP.', [key, other, 10])
+        report(~c"bad value for option '~w': ~tP.", [key, other, 10])
         exit(:error)
     end
   end
 
   defp throw_error({:missing, c}, l) do
-    throw_error({'missing \'~c\'.', [c]}, l)
+    throw_error({~c"missing '~c'.", [c]}, l)
   end
 
   defp throw_error(:eof, l) do
-    throw({:error, l, 'unexpected end of expression.'})
+    throw({:error, l, ~c"unexpected end of expression."})
   end
 
   defp throw_error({l, m, d}, _L) do
@@ -1062,5 +1271,4 @@ defmodule :m_edoc_lib do
   defp throw_error(d, l) do
     throw({:error, l, d})
   end
-
 end

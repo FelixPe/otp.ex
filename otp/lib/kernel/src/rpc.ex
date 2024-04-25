@@ -2,13 +2,13 @@ defmodule :m_rpc do
   use Bitwise
   @behaviour :gen_server
   def start() do
-    :gen_server.start({:local, :rex}, :rpc, [],
-                        [{:spawn_opt, [{:message_queue_data, :off_heap}]}])
+    :gen_server.start({:local, :rex}, :rpc, [], [{:spawn_opt, [{:message_queue_data, :off_heap}]}])
   end
 
   def start_link() do
-    :gen_server.start_link({:local, :rex}, :rpc, [],
-                             [{:spawn_opt, [{:message_queue_data, :off_heap}]}])
+    :gen_server.start_link({:local, :rex}, :rpc, [], [
+      {:spawn_opt, [{:message_queue_data, :off_heap}]}
+    ])
   end
 
   def stop() do
@@ -25,22 +25,26 @@ defmodule :m_rpc do
   end
 
   def handle_call({:call, mod, fun, args, gleader}, to, s) do
-    execCall = fn () ->
-                    set_group_leader(gleader)
-                    gleaderBeforeCall = :erlang.group_leader()
-                    reply = execute_call(mod, fun, args)
-                    case (gleader) do
-                      {:send_stdout_to_caller, _} ->
-                        ref = :erlang.make_ref()
-                        send(gleaderBeforeCall, {:stop, self(), ref, to, reply})
-                        receive do
-                          ^ref ->
-                            :ok
-                        end
-                      _ ->
-                        reply(to, reply)
-                    end
-               end
+    execCall = fn ->
+      set_group_leader(gleader)
+      gleaderBeforeCall = :erlang.group_leader()
+      reply = execute_call(mod, fun, args)
+
+      case gleader do
+        {:send_stdout_to_caller, _} ->
+          ref = :erlang.make_ref()
+          send(gleaderBeforeCall, {:stop, self(), ref, to, reply})
+
+          receive do
+            ^ref ->
+              :ok
+          end
+
+        _ ->
+          reply(to, reply)
+      end
+    end
+
     try do
       {_, mon} = spawn_monitor(execCall)
       {:noreply, :maps.put(mon, to, s)}
@@ -50,8 +54,7 @@ defmodule :m_rpc do
     end
   end
 
-  def handle_call({:block_call, mod, fun, args, gleader}, _To,
-           s) do
+  def handle_call({:block_call, mod, fun, args, gleader}, _To, s) do
     myGL = :erlang.group_leader()
     set_group_leader(gleader)
     reply = execute_call(mod, fun, args)
@@ -68,15 +71,17 @@ defmodule :m_rpc do
   end
 
   def handle_cast({:cast, mod, fun, args, gleader}, s) do
-    _ = (try do
-           spawn(fn () ->
-                      set_group_leader(gleader)
-                      :erpc.execute_cast(mod, fun, args)
-                 end)
-         catch
-           :error, :system_limit ->
-             :ok
-         end)
+    _ =
+      try do
+        spawn(fn ->
+          set_group_leader(gleader)
+          :erpc.execute_cast(mod, fun, args)
+        end)
+      catch
+        :error, :system_limit ->
+          :ok
+      end
+
     {:noreply, s}
   end
 
@@ -84,10 +89,11 @@ defmodule :m_rpc do
     {:noreply, s}
   end
 
-  def handle_info({:DOWN, m, :process, p, _},
-           %{nodes_observer: {p, m}} = s) do
-    {:noreply,
-       Map.put(s, :nodes_observer, start_nodes_observer())}
+  def handle_info(
+        {:DOWN, m, :process, p, _},
+        %{nodes_observer: {p, m}} = s
+      ) do
+    {:noreply, Map.put(s, :nodes_observer, start_nodes_observer())}
   end
 
   def handle_info({:DOWN, m, :process, _, :normal}, s) do
@@ -95,9 +101,10 @@ defmodule :m_rpc do
   end
 
   def handle_info({:DOWN, m, :process, _, reason}, s) do
-    case (:maps.get(m, s, :undefined)) do
+    case :maps.get(m, s, :undefined) do
       :undefined ->
         {:noreply, s}
+
       {_, _} = to ->
         reply(to, {:badrpc, {:EXIT, reason}})
         {:noreply, :maps.remove(m, s)}
@@ -105,49 +112,61 @@ defmodule :m_rpc do
   end
 
   def handle_info({from, {:sbcast, name, msg}}, s) do
-    _ = (case ((try do
-                 send(name, msg)
-               catch
-                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                 :exit, e -> {:EXIT, e}
-                 e -> e
-               end)) do
-           {:EXIT, _} ->
-             send(from, {:rex, node(), {:nonexisting_name, name}})
-           _ ->
-             send(from, {:rex, node(), node()})
-         end)
+    _ =
+      case (try do
+              send(name, msg)
+            catch
+              :error, e -> {:EXIT, {e, __STACKTRACE__}}
+              :exit, e -> {:EXIT, e}
+              e -> e
+            end) do
+        {:EXIT, _} ->
+          send(from, {:rex, node(), {:nonexisting_name, name}})
+
+        _ ->
+          send(from, {:rex, node(), node()})
+      end
+
     {:noreply, s}
   end
 
   def handle_info({from, {:send, name, msg}}, s) do
-    _ = (case ((try do
-                 send(name, {from, msg})
-               catch
-                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                 :exit, e -> {:EXIT, e}
-                 e -> e
-               end)) do
-           {:EXIT, _} ->
-             send(from, {:rex, node(), {:nonexisting_name, name}})
-           _ ->
-             :ok
-         end)
+    _ =
+      case (try do
+              send(name, {from, msg})
+            catch
+              :error, e -> {:EXIT, {e, __STACKTRACE__}}
+              :exit, e -> {:EXIT, e}
+              e -> e
+            end) do
+        {:EXIT, _} ->
+          send(from, {:rex, node(), {:nonexisting_name, name}})
+
+        _ ->
+          :ok
+      end
+
     {:noreply, s}
   end
 
   def handle_info({from, {:call, mod, fun, args, gleader}}, s) do
     to = {:rex, from}
-    newGleader = (case (gleader) do
-                    :send_stdout_to_caller ->
-                      {:send_stdout_to_caller, from}
-                    _ ->
-                      gleader
-                  end)
+
+    newGleader =
+      case gleader do
+        :send_stdout_to_caller ->
+          {:send_stdout_to_caller, from}
+
+        _ ->
+          gleader
+      end
+
     request = {:call, mod, fun, args, newGleader}
-    case (handle_call(request, to, s)) do
+
+    case handle_call(request, to, s) do
       {:noreply, _NewS} = return ->
         return
+
       {:reply, reply, newS} ->
         reply(to, reply)
         {:noreply, newS}
@@ -187,15 +206,17 @@ defmodule :m_rpc do
     catch
       result ->
         result
+
       :exit, reason ->
         {:badrpc, {:EXIT, reason}}
+
       :error, reason ->
-        case (:erpc.is_arg_error(reason, mod, fun, args)) do
+        case :erpc.is_arg_error(reason, mod, fun, args) do
           true ->
             {:badrpc, {:EXIT, reason}}
+
           false ->
-            rpcStack = :erpc.trim_stack(__STACKTRACE__, mod, fun,
-                                          args)
+            rpcStack = :erpc.trim_stack(__STACKTRACE__, mod, fun, args)
             {:badrpc, {:EXIT, {reason, rpcStack}}}
         end
     end
@@ -206,28 +227,36 @@ defmodule :m_rpc do
   end
 
   defp set_group_leader({:send_stdout_to_caller, callerPid}) do
-    :erlang.group_leader(cnode_call_group_leader_start(callerPid),
-                           self())
+    :erlang.group_leader(
+      cnode_call_group_leader_start(callerPid),
+      self()
+    )
   end
 
   defp set_group_leader(:user) do
-    gleader = (case (:erlang.whereis(:user)) do
-                 pid when is_pid(pid) ->
-                   pid
-                 :undefined ->
-                   proxy_user()
-               end)
+    gleader =
+      case :erlang.whereis(:user) do
+        pid when is_pid(pid) ->
+          pid
+
+        :undefined ->
+          proxy_user()
+      end
+
     :erlang.group_leader(gleader, self())
   end
 
   defp proxy_user() do
-    case (:erlang.whereis(:rex_proxy_user)) do
+    case :erlang.whereis(:rex_proxy_user) do
       pid when is_pid(pid) ->
         pid
+
       :undefined ->
-        pid = spawn(fn () ->
-                         proxy_user_loop()
-                    end)
+        pid =
+          spawn(fn ->
+            proxy_user_loop()
+          end)
+
         try do
           :erlang.register(:rex_proxy_user, pid)
         catch
@@ -243,9 +272,11 @@ defmodule :m_rpc do
 
   defp proxy_user_loop() do
     :timer.sleep(200)
-    case (:erlang.whereis(:user)) do
+
+    case :erlang.whereis(:user) do
       pid when is_pid(pid) ->
         proxy_user_flush()
+
       :undefined ->
         proxy_user_loop()
     end
@@ -255,26 +286,38 @@ defmodule :m_rpc do
     receive do
       msg ->
         send(:user, msg)
-    after 10 * 1000 ->
-      :erlang.hibernate(:rpc, :proxy_user_flush, [])
+    after
+      10 * 1000 ->
+        :erlang.hibernate(:rpc, :proxy_user_flush, [])
     end
+
     proxy_user_flush()
   end
 
   defp start_nodes_observer() do
-    init = fn () ->
-                :erlang.process_flag(:priority, :high)
-                :erlang.process_flag(:trap_exit, true)
-                tab = :ets.new(:rex_nodes_observer,
-                                 [{:read_concurrency, true}, :protected])
-                :persistent_term.put(:rex_nodes_observer, tab)
-                :ok = :net_kernel.monitor_nodes(true)
-                :lists.foreach(fn n ->
-                                    send(self(), {:nodeup, n})
-                               end,
-                                 [node() | :erlang.nodes()])
-                nodes_observer_loop(tab)
-           end
+    init = fn ->
+      :erlang.process_flag(:priority, :high)
+      :erlang.process_flag(:trap_exit, true)
+
+      tab =
+        :ets.new(
+          :rex_nodes_observer,
+          [{:read_concurrency, true}, :protected]
+        )
+
+      :persistent_term.put(:rex_nodes_observer, tab)
+      :ok = :net_kernel.monitor_nodes(true)
+
+      :lists.foreach(
+        fn n ->
+          send(self(), {:nodeup, n})
+        end,
+        [node() | :erlang.nodes()]
+      )
+
+      nodes_observer_loop(tab)
+    end
+
     spawn_monitor(init)
   end
 
@@ -282,10 +325,13 @@ defmodule :m_rpc do
     receive do
       {:nodeup, :nonode@nohost} ->
         :ok
+
       {:nodeup, n} ->
         send({:rex, n}, {self(), :features_request})
+
       {:nodedown, n} ->
         :ets.delete(tab, n)
+
       {:features_reply, n, featureList} ->
         try do
           spawnRpc = :lists.member(:erpc, featureList)
@@ -294,9 +340,11 @@ defmodule :m_rpc do
           _, _ ->
             :ets.insert(tab, {n, false})
         end
+
       _ ->
         :ignore
     end
+
     nodes_observer_loop(tab)
   end
 
@@ -313,6 +361,7 @@ defmodule :m_rpc do
     else
       {:EXIT, _} = badRpc_ ->
         {:badrpc, badRpc_}
+
       result_ ->
         result_
     end
@@ -322,11 +371,12 @@ defmodule :m_rpc do
     block_call(n, m, f, a, :infinity)
   end
 
-  def block_call(n, m, f, a, timeout) when (is_atom(n) and
-                                      is_atom(m) and is_list(a) and
-                                      timeout == :infinity or is_integer(timeout) and 0 <= timeout and timeout <= 4294967295) do
-    do_srv_call(n,
-                  {:block_call, m, f, a, :erlang.group_leader()}, timeout)
+  def block_call(n, m, f, a, timeout)
+      when (is_atom(n) and
+              is_atom(m) and is_list(a) and
+              timeout == :infinity) or
+             (is_integer(timeout) and 0 <= timeout and timeout <= 4_294_967_295) do
+    do_srv_call(n, {:block_call, m, f, a, :erlang.group_leader()}, timeout)
   end
 
   defp rpcify_exception(:throw, {:EXIT, _} = badRpc) do
@@ -378,29 +428,41 @@ defmodule :m_rpc do
   end
 
   defp do_srv_call(node, request, :infinity) do
-    rpc_check((try do
-                :gen_server.call({:rex, node}, request, :infinity)
-              catch
-                :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                :exit, e -> {:EXIT, e}
-                e -> e
-              end))
+    rpc_check(
+      try do
+        :gen_server.call({:rex, node}, request, :infinity)
+      catch
+        :error, e -> {:EXIT, {e, __STACKTRACE__}}
+        :exit, e -> {:EXIT, e}
+        e -> e
+      end
+    )
   end
 
   defp do_srv_call(node, request, timeout) do
     tag = make_ref()
-    {receiver, mref} = :erlang.spawn_monitor(fn () ->
-                                                  :erlang.process_flag(:trap_exit,
-                                                                         true)
-                                                  result = :gen_server.call({:rex,
-                                                                               node},
-                                                                              request,
-                                                                              timeout)
-                                                  exit({self(), tag, result})
-                                             end)
+
+    {receiver, mref} =
+      :erlang.spawn_monitor(fn ->
+        :erlang.process_flag(
+          :trap_exit,
+          true
+        )
+
+        result =
+          :gen_server.call(
+            {:rex, node},
+            request,
+            timeout
+          )
+
+        exit({self(), tag, result})
+      end)
+
     receive do
       {:DOWN, ^mref, _, _, {^receiver, ^tag, result}} ->
         rpc_check(result)
+
       {:DOWN, ^mref, _, _, reason} ->
         rpc_check_t({:EXIT, reason})
     end
@@ -431,17 +493,20 @@ defmodule :m_rpc do
   end
 
   def server_call(node, name, replyWrapper, msg)
-      when (is_atom(node) and is_atom(name)) do
+      when is_atom(node) and is_atom(name) do
     cond do
-      (node() === :nonode@nohost and
-         node !== :nonode@nohost) ->
+      node() === :nonode@nohost and
+          node !== :nonode@nohost ->
         {:error, :nodedown}
+
       true ->
         ref = :erlang.monitor(:process, {name, node})
         send({name, node}, {self(), msg})
+
         receive do
           {:DOWN, ^ref, _, _, _} ->
             {:error, :nodedown}
+
           {^replyWrapper, ^node, reply} ->
             :erlang.demonitor(ref, [:flush])
             reply
@@ -456,6 +521,7 @@ defmodule :m_rpc do
       :error, {:erpc, :badarg} ->
         :erlang.error(:badarg)
     end
+
     true
   end
 
@@ -465,12 +531,14 @@ defmodule :m_rpc do
 
   def abcast([node | tail], name, mess) do
     dest = {name, node}
+
     try do
       :erlang.send(dest, mess)
     catch
       :error, _ ->
         :ok
     end
+
     abcast(tail, name, mess)
   end
 
@@ -483,34 +551,37 @@ defmodule :m_rpc do
   end
 
   def sbcast(nodes, name, mess) do
-    monitors = send_nodes(nodes, :rex,
-                            {:sbcast, name, mess}, [])
+    monitors = send_nodes(nodes, :rex, {:sbcast, name, mess}, [])
     rec_nodes(:rex, monitors)
   end
 
   def eval_everywhere(mod, fun, args) do
-    eval_everywhere([node() | :erlang.nodes()], mod, fun,
-                      args)
+    eval_everywhere([node() | :erlang.nodes()], mod, fun, args)
   end
 
   def eval_everywhere(nodes, mod, fun, args) do
-    :lists.foreach(fn node ->
-                        cast(node, mod, fun, args)
-                   end,
-                     nodes)
+    :lists.foreach(
+      fn node ->
+        cast(node, mod, fun, args)
+      end,
+      nodes
+    )
+
     :abcast
   end
 
   defp send_nodes([node | tail], name, msg, monitors)
-      when is_atom(node) do
+       when is_atom(node) do
     monitor = start_monitor(node, name)
-    (try do
+
+    try do
       send({name, node}, {self(), msg})
     catch
       :error, e -> {:EXIT, {e, __STACKTRACE__}}
       :exit, e -> {:EXIT, e}
       e -> e
-    end)
+    end
+
     send_nodes(tail, name, msg, [monitor | monitors])
   end
 
@@ -524,12 +595,12 @@ defmodule :m_rpc do
 
   defp start_monitor(node, name) do
     cond do
-      (node() === :nonode@nohost and
-         node !== :nonode@nohost) ->
+      node() === :nonode@nohost and
+          node !== :nonode@nohost ->
         ref = make_ref()
-        send(self(), {:DOWN, ref, :process, {name, node},
-                        :noconnection})
+        send(self(), {:DOWN, ref, :process, {name, node}, :noconnection})
         {node, ref}
+
       true ->
         {node, :erlang.monitor(:process, {name, node})}
     end
@@ -548,12 +619,14 @@ defmodule :m_rpc do
   end
 
   def multicall(nodes, m, f, a, timeout) do
-    eRpcRes = (try do
-                 :erpc.multicall(nodes, m, f, a, timeout)
-               catch
-                 :error, {:erpc, :badarg} ->
-                   :erlang.error(:badarg)
-               end)
+    eRpcRes =
+      try do
+        :erpc.multicall(nodes, m, f, a, timeout)
+      catch
+        :error, {:erpc, :badarg} ->
+          :erlang.error(:badarg)
+      end
+
     rpcmulticallify(nodes, eRpcRes, [], [])
   end
 
@@ -561,8 +634,7 @@ defmodule :m_rpc do
     {:lists.reverse(ok), :lists.reverse(err)}
   end
 
-  defp rpcmulticallify([_N | ns], [{:ok, {:EXIT, _} = exit} | rlts],
-            ok, err) do
+  defp rpcmulticallify([_N | ns], [{:ok, {:EXIT, _} = exit} | rlts], ok, err) do
     rpcmulticallify(ns, rlts, [{:badrpc, exit} | ok], err)
   end
 
@@ -570,23 +642,22 @@ defmodule :m_rpc do
     rpcmulticallify(ns, rlts, [return | ok], err)
   end
 
-  defp rpcmulticallify([n | ns], [{:error, {:erpc, reason}} | rlts],
-            ok, err)
-      when reason == :timeout or reason == :noconnection do
+  defp rpcmulticallify([n | ns], [{:error, {:erpc, reason}} | rlts], ok, err)
+       when reason == :timeout or reason == :noconnection do
     rpcmulticallify(ns, rlts, ok, [n | err])
   end
 
   defp rpcmulticallify([_N | ns], [{class, reason} | rlts], ok, err) do
-    rpcmulticallify(ns, rlts,
-                      [rpcify_exception(class, reason) | ok], err)
+    rpcmulticallify(ns, rlts, [rpcify_exception(class, reason) | ok], err)
   end
 
   def multi_server_call(name, msg) do
     multi_server_call([node() | :erlang.nodes()], name, msg)
   end
 
-  def multi_server_call(nodes, name, msg) when (is_list(nodes) and
-                                   is_atom(name)) do
+  def multi_server_call(nodes, name, msg)
+      when is_list(nodes) and
+             is_atom(name) do
     monitors = send_nodes(nodes, name, msg, [])
     rec_nodes(name, monitors)
   end
@@ -603,9 +674,11 @@ defmodule :m_rpc do
     receive do
       {:DOWN, ^r, _, _, _} ->
         rec_nodes(name, tail, [n | badnodes], replies)
+
       {:rex, ^n, {:nonexisting_name, _}} ->
         :erlang.demonitor(r, [:flush])
         rec_nodes(name, tail, [n | badnodes], replies)
+
       {^name, ^n, reply} ->
         :erlang.demonitor(r, [:flush])
         rec_nodes(name, tail, badnodes, [reply | replies])
@@ -630,6 +703,7 @@ defmodule :m_rpc do
     else
       {:EXIT, _} = badRpc_ ->
         {:badrpc, badRpc_}
+
       result_ ->
         result_
     end
@@ -644,8 +718,10 @@ defmodule :m_rpc do
     else
       :no_response ->
         :timeout
+
       {:response, {:EXIT, _} = badRpc} ->
         {:value, {:badrpc, badRpc}}
+
       {:response, r} ->
         {:value, r}
     end
@@ -658,6 +734,7 @@ defmodule :m_rpc do
   def parallel_eval(argL) do
     nodes = [node() | :erlang.nodes()]
     keys = map_nodes(argL, nodes, nodes)
+
     for k <- keys do
       yield(k)
     end
@@ -671,10 +748,8 @@ defmodule :m_rpc do
     map_nodes(argL, original, original)
   end
 
-  defp map_nodes([{m, f, a} | tail], [node | moreNodes],
-            original) do
-    [:rpc.async_call(node, m, f, a) | map_nodes(tail,
-                                                  moreNodes, original)]
+  defp map_nodes([{m, f, a} | tail], [node | moreNodes], original) do
+    [:rpc.async_call(node, m, f, a) | map_nodes(tail, moreNodes, original)]
   end
 
   def pmap({m, f}, as, list) do
@@ -685,8 +760,9 @@ defmodule :m_rpc do
     build_args(m, f, as, tail, [{m, f, [arg | as]} | acc])
   end
 
-  defp build_args(m, f, _, [], acc) when (is_atom(m) and
-                                    is_atom(f)) do
+  defp build_args(m, f, _, [], acc)
+       when is_atom(m) and
+              is_atom(f) do
     acc
   end
 
@@ -715,40 +791,50 @@ defmodule :m_rpc do
   end
 
   def pinfo(pid, item) do
-    block_call(node(pid), :erlang, :process_info,
-                 [pid, item])
+    block_call(node(pid), :erlang, :process_info, [pid, item])
   end
 
   require Record
-  Record.defrecord(:r_cnode_call_group_leader_state, :cnode_call_group_leader_state, caller_pid: :undefined)
+
+  Record.defrecord(:r_cnode_call_group_leader_state, :cnode_call_group_leader_state,
+    caller_pid: :undefined
+  )
+
   defp cnode_call_group_leader_loop(state) do
     receive do
       {:io_request, from, replyAs, request} ->
-        {_, reply,
-           newState} = cnode_call_group_leader_request(request,
-                                                         state)
+        {_, reply, newState} =
+          cnode_call_group_leader_request(
+            request,
+            state
+          )
+
         send(from, {:io_reply, replyAs, reply})
         cnode_call_group_leader_loop(newState)
+
       {:stop, stopRequesterPid, ref, to, reply} ->
         reply(to, reply)
         send(stopRequesterPid, ref)
         :ok
+
       _Unknown ->
         cnode_call_group_leader_loop(state)
     end
   end
 
   defp cnode_call_group_leader_request({:put_chars, encoding, chars}, state) do
-    cnode_call_group_leader_put_chars(chars, encoding,
-                                        state)
+    cnode_call_group_leader_put_chars(chars, encoding, state)
   end
 
-  defp cnode_call_group_leader_request({:put_chars, encoding, module, function, args},
-            state) do
+  defp cnode_call_group_leader_request(
+         {:put_chars, encoding, module, function, args},
+         state
+       ) do
     try do
-      cnode_call_group_leader_request({:put_chars, encoding,
-                                         apply(module, function, args)},
-                                        state)
+      cnode_call_group_leader_request(
+        {:put_chars, encoding, apply(module, function, args)},
+        state
+      )
     catch
       _, _ ->
         {:error, {:error, function}, state}
@@ -756,8 +842,10 @@ defmodule :m_rpc do
   end
 
   defp cnode_call_group_leader_request({:requests, reqs}, state) do
-    cnode_call_group_leader_multi_request(reqs,
-                                            {:ok, :ok, state})
+    cnode_call_group_leader_multi_request(
+      reqs,
+      {:ok, :ok, state}
+    )
   end
 
   defp cnode_call_group_leader_request({:get_until, _, _, _, _, _}, state) do
@@ -789,9 +877,13 @@ defmodule :m_rpc do
   end
 
   defp cnode_call_group_leader_multi_request([r | rs], {:ok, _Res, state}) do
-    cnode_call_group_leader_multi_request(rs,
-                                            cnode_call_group_leader_request(r,
-                                                                              state))
+    cnode_call_group_leader_multi_request(
+      rs,
+      cnode_call_group_leader_request(
+        r,
+        state
+      )
+    )
   end
 
   defp cnode_call_group_leader_multi_request([_ | _], error) do
@@ -804,11 +896,12 @@ defmodule :m_rpc do
 
   defp cnode_call_group_leader_put_chars(chars, encoding, state) do
     cNodePid = r_cnode_call_group_leader_state(state, :caller_pid)
-    case (:unicode.characters_to_binary(chars, encoding,
-                                          :utf8)) do
+
+    case :unicode.characters_to_binary(chars, encoding, :utf8) do
       data when is_binary(data) ->
         send(cNodePid, {:rex_stdout, data})
         {:ok, :ok, state}
+
       error ->
         {:error, {:error, error}, :state}
     end
@@ -820,9 +913,8 @@ defmodule :m_rpc do
   end
 
   defp cnode_call_group_leader_start(callerPid) do
-    spawn_link(fn () ->
-                    cnode_call_group_leader_init(callerPid)
-               end)
+    spawn_link(fn ->
+      cnode_call_group_leader_init(callerPid)
+    end)
   end
-
 end

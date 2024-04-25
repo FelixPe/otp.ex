@@ -1,9 +1,11 @@
 defmodule :m_gen do
   use Bitwise
+
   def start(genMod, linkP, name, mod, args, options) do
-    case (where(name)) do
+    case where(name) do
       :undefined ->
         do_spawn(genMod, linkP, name, mod, args, options)
+
       pid ->
         {:error, {:already_started, pid}}
     end
@@ -15,52 +17,85 @@ defmodule :m_gen do
 
   defp do_spawn(genMod, :link, mod, args, options) do
     time = timeout(options)
-    :proc_lib.start_link(:gen, :init_it,
-                           [genMod, self(), self(), mod, args, options], time,
-                           spawn_opts(options))
+
+    :proc_lib.start_link(
+      :gen,
+      :init_it,
+      [genMod, self(), self(), mod, args, options],
+      time,
+      spawn_opts(options)
+    )
   end
 
   defp do_spawn(genMod, :monitor, mod, args, options) do
     time = timeout(options)
-    ret = :proc_lib.start_monitor(:gen, :init_it,
-                                    [genMod, self(), self(), mod, args,
-                                                                      options],
-                                    time, spawn_opts(options))
+
+    ret =
+      :proc_lib.start_monitor(
+        :gen,
+        :init_it,
+        [genMod, self(), self(), mod, args, options],
+        time,
+        spawn_opts(options)
+      )
+
     monitor_return(ret)
   end
 
   defp do_spawn(genMod, _, mod, args, options) do
     time = timeout(options)
-    :proc_lib.start(:gen, :init_it,
-                      [genMod, self(), :self, mod, args, options], time,
-                      spawn_opts(options))
+
+    :proc_lib.start(
+      :gen,
+      :init_it,
+      [genMod, self(), :self, mod, args, options],
+      time,
+      spawn_opts(options)
+    )
   end
 
   defp do_spawn(genMod, :link, name, mod, args, options) do
     time = timeout(options)
-    :proc_lib.start_link(:gen, :init_it,
-                           [genMod, self(), self(), name, mod, args, options],
-                           time, spawn_opts(options))
+
+    :proc_lib.start_link(
+      :gen,
+      :init_it,
+      [genMod, self(), self(), name, mod, args, options],
+      time,
+      spawn_opts(options)
+    )
   end
 
   defp do_spawn(genMod, :monitor, name, mod, args, options) do
     time = timeout(options)
-    ret = :proc_lib.start_monitor(:gen, :init_it,
-                                    [genMod, self(), self(), name, mod, args,
-                                                                            options],
-                                    time, spawn_opts(options))
+
+    ret =
+      :proc_lib.start_monitor(
+        :gen,
+        :init_it,
+        [genMod, self(), self(), name, mod, args, options],
+        time,
+        spawn_opts(options)
+      )
+
     monitor_return(ret)
   end
 
   defp do_spawn(genMod, _, name, mod, args, options) do
     time = timeout(options)
-    :proc_lib.start(:gen, :init_it,
-                      [genMod, self(), :self, name, mod, args, options], time,
-                      spawn_opts(options))
+
+    :proc_lib.start(
+      :gen,
+      :init_it,
+      [genMod, self(), :self, name, mod, args, options],
+      time,
+      spawn_opts(options)
+    )
   end
 
-  defp monitor_return({{:ok, pid}, mon}) when (is_pid(pid) and
-                                     is_reference(mon)) do
+  defp monitor_return({{:ok, pid}, mon})
+       when is_pid(pid) and
+              is_reference(mon) do
     {:ok, {pid, mon}}
   end
 
@@ -69,31 +104,30 @@ defmodule :m_gen do
       {:DOWN, ^mon, :process, _Pid, _Reason} ->
         :ok
     end
+
     error
   end
 
   def init_it(genMod, starter, parent, mod, args, options) do
-    init_it2(genMod, starter, parent, self(), mod, args,
-               options)
+    init_it2(genMod, starter, parent, self(), mod, args, options)
   end
 
-  def init_it(genMod, starter, parent, name, mod, args,
-           options) do
-    case (register_name(name)) do
+  def init_it(genMod, starter, parent, name, mod, args, options) do
+    case register_name(name) do
       true ->
-        init_it2(genMod, starter, parent, name, mod, args,
-                   options)
+        init_it2(genMod, starter, parent, name, mod, args, options)
+
       {false, pid} ->
-        :proc_lib.init_fail(starter,
-                              {:error, {:already_started, pid}},
-                              {:exit, :normal})
+        :proc_lib.init_fail(
+          starter,
+          {:error, {:already_started, pid}},
+          {:exit, :normal}
+        )
     end
   end
 
-  defp init_it2(genMod, starter, parent, name, mod, args,
-            options) do
-    genMod.init_it(starter, parent, name, mod, args,
-                     options)
+  defp init_it2(genMod, starter, parent, name, mod, args, options) do
+    genMod.init_it(starter, parent, name, mod, args, options)
   end
 
   def call(process, label, request) do
@@ -102,7 +136,7 @@ defmodule :m_gen do
 
   def call(process, label, request, timeout)
       when (is_pid(process) and
-              timeout === :infinity or is_integer(timeout) and timeout >= 0) do
+              timeout === :infinity) or (is_integer(timeout) and timeout >= 0) do
     do_call(process, label, request, timeout)
   end
 
@@ -110,62 +144,78 @@ defmodule :m_gen do
       when timeout === :infinity or
              (is_integer(timeout) and timeout >= 0) do
     fun = fn pid ->
-               do_call(pid, label, request, timeout)
-          end
+      do_call(pid, label, request, timeout)
+    end
+
     do_for_proc(process, fun)
   end
 
   defp do_call(process, _Label, _Request, _Timeout)
-      when process === self() do
+       when process === self() do
     exit(:calling_self)
   end
 
   defp do_call(process, label, request, :infinity)
-      when is_pid(process) and node(process) == node() or :erlang.element(2,
-                                                                            process) == node() and is_atom(:erlang.element(1,
-                                                                                                                             process)) and tuple_size(process) === 2 do
+       when (is_pid(process) and node(process) == node()) or
+              (:erlang.element(
+                 2,
+                 process
+               ) == node() and
+                 is_atom(
+                   :erlang.element(
+                     1,
+                     process
+                   )
+                 ) and tuple_size(process) === 2) do
     mref = :erlang.monitor(:process, process)
     send(process, {label, {self(), mref}, request})
+
     receive do
       {^mref, reply} ->
         :erlang.demonitor(mref, [:flush])
         {:ok, reply}
+
       {:DOWN, ^mref, _, _, reason} ->
         exit(reason)
     end
   end
 
   defp do_call(process, label, request, timeout)
-      when is_atom(process) === false do
-    mref = :erlang.monitor(:process, process,
-                             [{:alias, :demonitor}])
+       when is_atom(process) === false do
+    mref = :erlang.monitor(:process, process, [{:alias, :demonitor}])
     tag = [:alias | mref]
-    :erlang.send(process, {label, {self(), tag}, request},
-                   [:noconnect])
+    :erlang.send(process, {label, {self(), tag}, request}, [:noconnect])
+
     receive do
       {[:alias | ^mref], reply} ->
         :erlang.demonitor(mref, [:flush])
         {:ok, reply}
+
       {:DOWN, ^mref, _, _, :noconnection} ->
         node = get_node(process)
         exit({:nodedown, node})
+
       {:DOWN, ^mref, _, _, reason} ->
         exit(reason)
-    after timeout ->
-      :erlang.demonitor(mref, [:flush])
-      receive do
-        {[:alias | ^mref], reply} ->
-          {:ok, reply}
-      after 0 ->
-        exit(:timeout)
-      end
+    after
+      timeout ->
+        :erlang.demonitor(mref, [:flush])
+
+        receive do
+          {[:alias | ^mref], reply} ->
+            {:ok, reply}
+        after
+          0 ->
+            exit(:timeout)
+        end
     end
   end
 
   defp get_node(process) do
-    case (process) do
+    case process do
       {_S, n} when is_atom(n) ->
         n
+
       _ when is_pid(process) ->
         node(process)
     end
@@ -177,8 +227,9 @@ defmodule :m_gen do
 
   def send_request(process, tag, request) do
     fun = fn pid ->
-               do_send_request(pid, tag, request)
-          end
+      do_send_request(pid, tag, request)
+    end
+
     try do
       do_for_proc(process, fun)
     catch
@@ -191,117 +242,147 @@ defmodule :m_gen do
 
   def send_request(process, tag, request, label, reqIdCol)
       when is_map(reqIdCol) do
-    :maps.put(send_request(process, tag, request), label,
-                reqIdCol)
+    :maps.put(send_request(process, tag, request), label, reqIdCol)
   end
 
   defp do_send_request(process, tag, request) do
-    reqId = :erlang.monitor(:process, process,
-                              [{:alias, :demonitor}])
-    _ = :erlang.send(process,
-                       {tag, {self(), [:alias | reqId]}, request},
-                       [:noconnect])
+    reqId = :erlang.monitor(:process, process, [{:alias, :demonitor}])
+
+    _ =
+      :erlang.send(
+        process,
+        {tag, {self(), [:alias | reqId]}, request},
+        [:noconnect]
+      )
+
     reqId
   end
 
   def unquote(:"@wait_response_recv_opt")(process, tag, request) do
-    _ = wait_response(send_request(process, tag, request),
-                        :infinity)
-    _ = receive_response(send_request(process, tag,
-                                        request),
-                           :infinity)
+    _ =
+      wait_response(
+        send_request(process, tag, request),
+        :infinity
+      )
+
+    _ =
+      receive_response(
+        send_request(process, tag, request),
+        :infinity
+      )
+
     :ok
   end
 
   def wait_response(reqId, timeout) do
     tMO = timeout_value(timeout)
+
     receive do
       {[:alias | ^reqId], reply} ->
         :erlang.demonitor(reqId, [:flush])
         {:reply, reply}
+
       {:DOWN, ^reqId, _, object, reason} ->
         {:error, {reason, object}}
-    after tMO ->
-      :timeout
+    after
+      tMO ->
+        :timeout
     end
   end
 
   def wait_response(reqIdCol, timeout, delete)
-      when (map_size(reqIdCol) == 0 and is_boolean(delete)) do
+      when map_size(reqIdCol) == 0 and is_boolean(delete) do
     _ = timeout_value(timeout)
     :no_request
   end
 
   def wait_response(reqIdCol, timeout, delete)
-      when (is_map(reqIdCol) and is_boolean(delete)) do
+      when is_map(reqIdCol) and is_boolean(delete) do
     tMO = timeout_value(timeout)
+
     receive do
       {[:alias | reqId], _} = msg
-          when :erlang.is_map_key(reqId, reqIdCol) ->
+      when :erlang.is_map_key(reqId, reqIdCol) ->
         collection_result(msg, reqIdCol, delete)
+
       {:DOWN, reqId, _, _, _} = msg
-          when :erlang.is_map_key(reqId, reqIdCol) ->
+      when :erlang.is_map_key(reqId, reqIdCol) ->
         collection_result(msg, reqIdCol, delete)
-    after tMO ->
-      :timeout
+    after
+      tMO ->
+        :timeout
     end
   end
 
   def receive_response(reqId, timeout) do
     tMO = timeout_value(timeout)
+
     receive do
       {[:alias | ^reqId], reply} ->
         :erlang.demonitor(reqId, [:flush])
         {:reply, reply}
+
       {:DOWN, ^reqId, _, object, reason} ->
         {:error, {reason, object}}
-    after tMO ->
-      :erlang.demonitor(reqId, [:flush])
-      receive do
-        {[:alias | ^reqId], reply} ->
-          {:reply, reply}
-      after 0 ->
-        :timeout
-      end
+    after
+      tMO ->
+        :erlang.demonitor(reqId, [:flush])
+
+        receive do
+          {[:alias | ^reqId], reply} ->
+            {:reply, reply}
+        after
+          0 ->
+            :timeout
+        end
     end
   end
 
   def receive_response(reqIdCol, timeout, delete)
-      when (map_size(reqIdCol) == 0 and is_boolean(delete)) do
+      when map_size(reqIdCol) == 0 and is_boolean(delete) do
     _ = timeout_value(timeout)
     :no_request
   end
 
   def receive_response(reqIdCol, timeout, delete)
-      when (is_map(reqIdCol) and is_boolean(delete)) do
+      when is_map(reqIdCol) and is_boolean(delete) do
     tMO = timeout_value(timeout)
+
     receive do
       {[:alias | reqId], _} = msg
-          when :erlang.is_map_key(reqId, reqIdCol) ->
+      when :erlang.is_map_key(reqId, reqIdCol) ->
         collection_result(msg, reqIdCol, delete)
+
       {:DOWN, mref, _, _, _} = msg
-          when :erlang.is_map_key(mref, reqIdCol) ->
+      when :erlang.is_map_key(mref, reqIdCol) ->
         collection_result(msg, reqIdCol, delete)
-    after tMO ->
-      :maps.foreach(fn reqId, _Label when is_reference(reqId)
-                                          ->
-                         :erlang.demonitor(reqId, [:flush])
-                       _, _ ->
-                         :erlang.error(:badarg)
-                    end,
-                      reqIdCol)
-      flush_responses(reqIdCol)
-      :timeout
+    after
+      tMO ->
+        :maps.foreach(
+          fn
+            reqId, _Label when is_reference(reqId) ->
+              :erlang.demonitor(reqId, [:flush])
+
+            _, _ ->
+              :erlang.error(:badarg)
+          end,
+          reqIdCol
+        )
+
+        flush_responses(reqIdCol)
+        :timeout
     end
   end
 
   def check_response(msg, reqId) when is_reference(reqId) do
-    case (msg) do
+    case msg do
       {[:alias | ^reqId], reply} ->
         :erlang.demonitor(reqId, [:flush])
         {:reply, reply}
+
       {:DOWN, ^reqId, _, object, reason} ->
         {:error, {reason, object}}
+
       _ ->
         :no_reply
     end
@@ -312,19 +393,22 @@ defmodule :m_gen do
   end
 
   def check_response(_Msg, reqIdCol, delete)
-      when (map_size(reqIdCol) == 0 and is_boolean(delete)) do
+      when map_size(reqIdCol) == 0 and is_boolean(delete) do
     :no_request
   end
 
-  def check_response(msg, reqIdCol, delete) when (is_map(reqIdCol) and
-                                        is_boolean(delete)) do
-    case (msg) do
+  def check_response(msg, reqIdCol, delete)
+      when is_map(reqIdCol) and
+             is_boolean(delete) do
+    case msg do
       {[:alias | reqId], _} = ^msg
-          when :erlang.is_map_key(reqId, reqIdCol) ->
+      when :erlang.is_map_key(reqId, reqIdCol) ->
         collection_result(msg, reqIdCol, delete)
+
       {:DOWN, mref, _, _, _} = ^msg
-          when :erlang.is_map_key(mref, reqIdCol) ->
+      when :erlang.is_map_key(mref, reqIdCol) ->
         collection_result(msg, reqIdCol, delete)
+
       _ ->
         :no_reply
     end
@@ -332,14 +416,11 @@ defmodule :m_gen do
 
   defp collection_result({[:alias | reqId], reply}, reqIdCol, delete) do
     _ = :erlang.demonitor(reqId, [:flush])
-    collection_result({:reply, reply}, reqId, reqIdCol,
-                        delete)
+    collection_result({:reply, reply}, reqId, reqIdCol, delete)
   end
 
-  defp collection_result({:DOWN, reqId, _, object, reason}, reqIdCol,
-            delete) do
-    collection_result({:error, {reason, object}}, reqId,
-                        reqIdCol, delete)
+  defp collection_result({:DOWN, reqId, _, object, reason}, reqIdCol, delete) do
+    collection_result({:error, {reason, object}}, reqId, reqIdCol, delete)
   end
 
   defp collection_result(resp, reqId, reqIdCol, false) do
@@ -353,12 +434,15 @@ defmodule :m_gen do
 
   defp flush_responses(reqIdCol) do
     receive do
-      {[:alias | mref], _Reply} when :erlang.is_map_key(mref,
-                                                          reqIdCol)
-                                     ->
+      {[:alias | mref], _Reply}
+      when :erlang.is_map_key(
+             mref,
+             reqIdCol
+           ) ->
         flush_responses(reqIdCol)
-    after 0 ->
-      :ok
+    after
+      0 ->
+        :ok
     end
   end
 
@@ -366,17 +450,20 @@ defmodule :m_gen do
     :infinity
   end
 
-  defp timeout_value(timeout) when (0 <= timeout and
-                           timeout <= 4294967295) do
+  defp timeout_value(timeout)
+       when 0 <= timeout and
+              timeout <= 4_294_967_295 do
     timeout
   end
 
   defp timeout_value({:abs, timeout}) when is_integer(timeout) do
-    case (timeout - :erlang.monotonic_time(:millisecond)) do
+    case timeout - :erlang.monotonic_time(:millisecond) do
       tMO when tMO < 0 ->
         0
-      tMO when tMO > 4294967295 ->
+
+      tMO when tMO > 4_294_967_295 ->
         :erlang.error(:badarg)
+
       tMO ->
         tMO
     end
@@ -398,13 +485,14 @@ defmodule :m_gen do
     :erlang.error(:badarg)
   end
 
-  def reqids_add(reqId, _, reqIdCol) when (is_reference(reqId) and
-                                     :erlang.is_map_key(reqId, reqIdCol)) do
+  def reqids_add(reqId, _, reqIdCol)
+      when is_reference(reqId) and
+             :erlang.is_map_key(reqId, reqIdCol) do
     :erlang.error(:badarg)
   end
 
   def reqids_add(reqId, label, reqIdCol)
-      when (is_reference(reqId) and is_map(reqIdCol)) do
+      when is_reference(reqId) and is_map(reqIdCol) do
     :maps.put(reqId, label, reqIdCol)
   end
 
@@ -450,8 +538,9 @@ defmodule :m_gen do
       when timeout === :infinity or
              (is_integer(timeout) and timeout >= 0) do
     fun = fn pid ->
-               :proc_lib.stop(pid, reason, timeout)
-          end
+      :proc_lib.stop(pid, reason, timeout)
+    end
+
     do_for_proc(process, fun)
   end
 
@@ -460,27 +549,37 @@ defmodule :m_gen do
   end
 
   defp do_for_proc(name, fun) when is_atom(name) do
-    case (:erlang.whereis(name)) do
+    case :erlang.whereis(name) do
       pid when is_pid(pid) ->
         fun.(pid)
+
       :undefined ->
         exit(:noproc)
     end
   end
 
   defp do_for_proc(process, fun)
-      when tuple_size(process) == 2 and :erlang.element(1,
-                                                          process) == :global or tuple_size(process) == 3 and :erlang.element(1,
-                                                                                                                                process) == :via do
-    case (where(process)) do
+       when (tuple_size(process) == 2 and
+               :erlang.element(
+                 1,
+                 process
+               ) == :global) or
+              (tuple_size(process) == 3 and
+                 :erlang.element(
+                   1,
+                   process
+                 ) == :via) do
+    case where(process) do
       pid when is_pid(pid) ->
         node = node(pid)
+
         try do
           fun.(pid)
         catch
           :exit, {:nodedown, ^node} ->
             exit(:noproc)
         end
+
       :undefined ->
         exit(:noproc)
     end
@@ -491,10 +590,11 @@ defmodule :m_gen do
   end
 
   defp do_for_proc({_Name, node} = process, fun)
-      when is_atom(node) do
+       when is_atom(node) do
     cond do
       node() === :nonode@nohost ->
         exit({:nodedown, node})
+
       true ->
         fun.(process)
     end
@@ -529,18 +629,20 @@ defmodule :m_gen do
   end
 
   defp register_name({:global, name} = gN) do
-    case (:global.register_name(name, self())) do
+    case :global.register_name(name, self()) do
       :yes ->
         true
+
       :no ->
         {false, where(gN)}
     end
   end
 
   defp register_name({:via, module, name} = gN) do
-    case (module.register_name(name, self())) do
+    case module.register_name(name, self()) do
       :yes ->
         true
+
       :no ->
         {false, where(gN)}
     end
@@ -593,111 +695,129 @@ defmodule :m_gen do
   end
 
   def get_proc_name({:local, name}) do
-    case (:erlang.process_info(self(), :registered_name)) do
+    case :erlang.process_info(self(), :registered_name) do
       {:registered_name, ^name} ->
         name
+
       {:registered_name, _Name} ->
         exit(:process_not_registered)
+
       [] ->
         exit(:process_not_registered)
     end
   end
 
   def get_proc_name({:global, name}) do
-    case (:global.whereis_name(name)) do
+    case :global.whereis_name(name) do
       :undefined ->
         exit(:process_not_registered_globally)
+
       pid when pid === self() ->
         name
+
       _Pid ->
         exit(:process_not_registered_globally)
     end
   end
 
   def get_proc_name({:via, mod, name}) do
-    case (mod.whereis_name(name)) do
+    case mod.whereis_name(name) do
       :undefined ->
         exit({:process_not_registered_via, mod})
+
       pid when pid === self() ->
         name
+
       _Pid ->
         exit({:process_not_registered_via, mod})
     end
   end
 
   def get_parent() do
-    case (:erlang.get(:"$ancestors")) do
+    case :erlang.get(:"$ancestors") do
       [parent | _] when is_pid(parent) ->
         parent
+
       [parent | _] when is_atom(parent) ->
         name_to_pid(parent)
+
       _ ->
         exit(:process_was_not_started_by_proc_lib)
     end
   end
 
   defp name_to_pid(name) do
-    case (:erlang.whereis(name)) do
+    case :erlang.whereis(name) do
       :undefined ->
-        case (:global.whereis_name(name)) do
+        case :global.whereis_name(name) do
           :undefined ->
             exit(:could_not_find_registered_name)
+
           pid ->
             pid
         end
+
       pid ->
         pid
     end
   end
 
   defp timeout(options) do
-    case (:lists.keyfind(:timeout, 1, options)) do
+    case :lists.keyfind(:timeout, 1, options) do
       {_, time} ->
         time
+
       false ->
         :infinity
     end
   end
 
   defp spawn_opts(options) do
-    case (:lists.keyfind(:spawn_opt, 1, options)) do
+    case :lists.keyfind(:spawn_opt, 1, options) do
       {_, opts} ->
         opts
+
       false ->
         []
     end
   end
 
   def hibernate_after(options) do
-    case (:lists.keyfind(:hibernate_after, 1, options)) do
+    case :lists.keyfind(:hibernate_after, 1, options) do
       {_, hibernateAfterTimeout} ->
         hibernateAfterTimeout
+
       false ->
         :infinity
     end
   end
 
   def debug_options(name, opts) do
-    case (:lists.keyfind(:debug, 1, opts)) do
+    case :lists.keyfind(:debug, 1, opts) do
       {_, options} ->
         try do
           :sys.debug_options(options)
         catch
           _, _ ->
-            :error_logger.format('~tp: ignoring erroneous debug options - ~tp~n', [name, options])
+            :error_logger.format(~c"~tp: ignoring erroneous debug options - ~tp~n", [
+              name,
+              options
+            ])
+
             []
         end
+
       false ->
         []
     end
   end
 
   def format_status_header(tagLine, pid) when is_pid(pid) do
-    :lists.concat([tagLine, ' ', :erlang.pid_to_list(pid)])
+    :lists.concat([tagLine, ~c" ", :erlang.pid_to_list(pid)])
   end
 
   def format_status_header(tagLine, regName) when is_atom(regName) do
-    :lists.concat([tagLine, ' ', regName])
+    :lists.concat([tagLine, ~c" ", regName])
   end
 
   def format_status_header(tagLine, name) do
@@ -705,42 +825,55 @@ defmodule :m_gen do
   end
 
   def format_status(mod, opt, status, args) do
-    case ({:erlang.function_exported(mod, :format_status,
-                                       1),
-             :erlang.function_exported(mod, :format_status, 2)}) do
+    case {:erlang.function_exported(mod, :format_status, 1),
+          :erlang.function_exported(mod, :format_status, 2)} do
       {true, _} ->
         try do
           mod.format_status(status)
         catch
           _, _ ->
-            Map.put(status, :EXIT, :erlang.atom_to_list(mod) ++ ':format_status/1 crashed')
+            Map.put(status, :EXIT, :erlang.atom_to_list(mod) ++ ~c":format_status/1 crashed")
         else
           newStatus when is_map(newStatus) ->
             mergedStatus = :maps.merge(status, newStatus)
-            case (:maps.size(mergedStatus) === :maps.size(newStatus)) do
+
+            case :maps.size(mergedStatus) === :maps.size(newStatus) do
               true ->
                 mergedStatus
+
               false ->
-                Map.put(status, :EXIT, :erlang.atom_to_list(mod) ++ ':format_status/1 returned a map with unknown keys')
+                Map.put(
+                  status,
+                  :EXIT,
+                  :erlang.atom_to_list(mod) ++
+                    ~c":format_status/1 returned a map with unknown keys"
+                )
             end
+
           _ ->
-            Map.put(status, :EXIT, :erlang.atom_to_list(mod) ++ ':format_status/1 did not return a map')
+            Map.put(
+              status,
+              :EXIT,
+              :erlang.atom_to_list(mod) ++ ~c":format_status/1 did not return a map"
+            )
         end
+
       {false, true} when is_list(args) ->
         try do
           mod.format_status(opt, args)
         catch
           result ->
             Map.put(status, :"$status", result)
+
           _, _ ->
-            Map.put(status, :EXIT, :erlang.atom_to_list(mod) ++ ':format_status/2 crashed')
+            Map.put(status, :EXIT, :erlang.atom_to_list(mod) ++ ~c":format_status/2 crashed")
         else
           result ->
             Map.put(status, :"$status", result)
         end
+
       {false, _} ->
         status
     end
   end
-
 end

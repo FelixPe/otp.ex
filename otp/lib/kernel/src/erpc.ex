@@ -1,5 +1,6 @@
 defmodule :m_erpc do
   use Bitwise
+
   def call(n, fun) do
     call(n, fun, :infinity)
   end
@@ -16,19 +17,22 @@ defmodule :m_erpc do
     call(n, m, f, a, :infinity)
   end
 
-  def call(n, m, f, a, :infinity) when (node() === n and
-                                        is_atom(m) and is_atom(f) and
-                                        is_list(a)) do
+  def call(n, m, f, a, :infinity)
+      when node() === n and
+             is_atom(m) and is_atom(f) and
+             is_list(a) do
     try do
       {:return, return} = execute_call(m, f, a)
       return
     catch
       :exit, reason ->
         exit({:exception, reason})
+
       :error, reason ->
-        case (is_arg_error(reason, m, f, a)) do
+        case is_arg_error(reason, m, f, a) do
           true ->
             :erlang.error({:erpc, reason})
+
           false ->
             erpcStack = trim_stack(__STACKTRACE__, m, f, a)
             :erlang.error({:exception, reason, erpcStack})
@@ -36,20 +40,27 @@ defmodule :m_erpc do
     end
   end
 
-  def call(n, m, f, a, t) when (is_atom(n) and
-                                is_atom(m) and is_atom(f) and is_list(a)) do
+  def call(n, m, f, a, t)
+      when is_atom(n) and
+             is_atom(m) and is_atom(f) and is_list(a) do
     timeout = timeout_value(t)
     res = make_ref()
-    reqId = :erlang.spawn_request(n, :erpc, :execute_call,
-                                    [res, m, f, a],
-                                    [{:reply, :error_only}, :monitor])
+
+    reqId =
+      :erlang.spawn_request(n, :erpc, :execute_call, [res, m, f, a], [
+        {:reply, :error_only},
+        :monitor
+      ])
+
     receive do
       {:spawn_reply, ^reqId, :error, reason} ->
         result(:spawn_reply, reqId, res, reason)
+
       {:DOWN, ^reqId, :process, _Pid, reason} ->
         result(:down, reqId, res, reason)
-    after timeout ->
-      result(:timeout, reqId, res, :undefined)
+    after
+      timeout ->
+        result(:timeout, reqId, res, :undefined)
     end
   end
 
@@ -57,7 +68,7 @@ defmodule :m_erpc do
     :erlang.error({:erpc, :badarg})
   end
 
-  def send_request(n, f) when (is_atom(n) and is_function(f, 0)) do
+  def send_request(n, f) when is_atom(n) and is_function(f, 0) do
     send_request(n, :erlang, :apply, [f, []])
   end
 
@@ -65,17 +76,23 @@ defmodule :m_erpc do
     :erlang.error({:erpc, :badarg})
   end
 
-  def send_request(n, m, f, a) when (is_atom(n) and is_atom(m) and
-                             is_atom(f) and is_list(a)) do
+  def send_request(n, m, f, a)
+      when is_atom(n) and is_atom(m) and
+             is_atom(f) and is_list(a) do
     res = make_ref()
-    reqId = :erlang.spawn_request(n, :erpc, :execute_call,
-                                    [res, m, f, a],
-                                    [{:reply, :error_only}, :monitor])
+
+    reqId =
+      :erlang.spawn_request(n, :erpc, :execute_call, [res, m, f, a], [
+        {:reply, :error_only},
+        :monitor
+      ])
+
     [res | reqId]
   end
 
-  def send_request(n, f, l, c) when (is_atom(n) and
-                             is_function(f, 0) and is_map(c)) do
+  def send_request(n, f, l, c)
+      when is_atom(n) and
+             is_function(f, 0) and is_map(c) do
     send_request(n, :erlang, :apply, [f, []], l, c)
   end
 
@@ -83,13 +100,18 @@ defmodule :m_erpc do
     :erlang.error({:erpc, :badarg})
   end
 
-  def send_request(n, m, f, a, l, c) when (is_atom(n) and
-                                   is_atom(m) and is_atom(f) and is_list(a) and
-                                   is_map(c)) do
+  def send_request(n, m, f, a, l, c)
+      when is_atom(n) and
+             is_atom(m) and is_atom(f) and is_list(a) and
+             is_map(c) do
     res = make_ref()
-    reqId = :erlang.spawn_request(n, :erpc, :execute_call,
-                                    [res, m, f, a],
-                                    [{:reply, :error_only}, :monitor])
+
+    reqId =
+      :erlang.spawn_request(n, :erpc, :execute_call, [res, m, f, a], [
+        {:reply, :error_only},
+        :monitor
+      ])
+
     :maps.put(reqId, [res | l], c)
   end
 
@@ -97,8 +119,9 @@ defmodule :m_erpc do
     :erlang.error({:erpc, :badarg})
   end
 
-  def receive_response([res | reqId] = rId) when (is_reference(res) and
-                                      is_reference(reqId)) do
+  def receive_response([res | reqId] = rId)
+      when is_reference(res) and
+             is_reference(reqId) do
     receive_response(rId, :infinity)
   end
 
@@ -106,16 +129,20 @@ defmodule :m_erpc do
     :erlang.error({:erpc, :badarg})
   end
 
-  def receive_response([res | reqId], tmo) when (is_reference(res) and
-                                     is_reference(reqId)) do
+  def receive_response([res | reqId], tmo)
+      when is_reference(res) and
+             is_reference(reqId) do
     timeout = timeout_value(tmo)
+
     receive do
       {:spawn_reply, ^reqId, :error, reason} ->
         result(:spawn_reply, reqId, res, reason)
+
       {:DOWN, ^reqId, :process, _Pid, reason} ->
         result(:down, reqId, res, reason)
-    after timeout ->
-      result(:timeout, reqId, res, :undefined)
+    after
+      timeout ->
+        result(:timeout, reqId, res, :undefined)
     end
   end
 
@@ -124,30 +151,29 @@ defmodule :m_erpc do
   end
 
   def receive_response(reqIdCol, wT, del)
-      when (map_size(reqIdCol) == 0 and is_boolean(del)) do
+      when map_size(reqIdCol) == 0 and is_boolean(del) do
     _ = timeout_value(wT)
     :no_request
   end
 
-  def receive_response(reqIdCol, tmo, del) when (is_map(reqIdCol) and
-                                     is_boolean(del)) do
+  def receive_response(reqIdCol, tmo, del)
+      when is_map(reqIdCol) and
+             is_boolean(del) do
     timeout = timeout_value(tmo)
+
     receive do
       {:spawn_reply, reqId, :error, reason}
-          when (:erlang.is_map_key(reqId, reqIdCol) and
-                  is_reference(reqId))
-               ->
-        collection_result(:spawn_reply, reqId, reason, reqIdCol,
-                            false, del)
+      when :erlang.is_map_key(reqId, reqIdCol) and
+             is_reference(reqId) ->
+        collection_result(:spawn_reply, reqId, reason, reqIdCol, false, del)
+
       {:DOWN, reqId, :process, _Pid, reason}
-          when (:erlang.is_map_key(reqId, reqIdCol) and
-                  is_reference(reqId))
-               ->
-        collection_result(:down, reqId, reason, reqIdCol, false,
-                            del)
-    after timeout ->
-      collection_result(:timeout, :ok, :ok, reqIdCol, false,
-                          del)
+      when :erlang.is_map_key(reqId, reqIdCol) and
+             is_reference(reqId) ->
+        collection_result(:down, reqId, reason, reqIdCol, false, del)
+    after
+      timeout ->
+        collection_result(:timeout, :ok, :ok, reqIdCol, false, del)
     end
   end
 
@@ -155,8 +181,9 @@ defmodule :m_erpc do
     :erlang.error({:erpc, :badarg})
   end
 
-  def wait_response([res | reqId] = rId) when (is_reference(res) and
-                                      is_reference(reqId)) do
+  def wait_response([res | reqId] = rId)
+      when is_reference(res) and
+             is_reference(reqId) do
     wait_response(rId, 0)
   end
 
@@ -164,16 +191,20 @@ defmodule :m_erpc do
     :erlang.error({:erpc, :badarg})
   end
 
-  def wait_response([res | reqId], wT) when (is_reference(res) and
-                                    is_reference(reqId)) do
+  def wait_response([res | reqId], wT)
+      when is_reference(res) and
+             is_reference(reqId) do
     timeout = timeout_value(wT)
+
     receive do
       {:spawn_reply, ^reqId, :error, reason} ->
         result(:spawn_reply, reqId, res, reason)
+
       {:DOWN, ^reqId, :process, _Pid, reason} ->
         {:response, result(:down, reqId, res, reason)}
-    after timeout ->
-      :no_response
+    after
+      timeout ->
+        :no_response
     end
   end
 
@@ -182,29 +213,29 @@ defmodule :m_erpc do
   end
 
   def wait_response(reqIdCol, wT, del)
-      when (map_size(reqIdCol) == 0 and is_boolean(del)) do
+      when map_size(reqIdCol) == 0 and is_boolean(del) do
     _ = timeout_value(wT)
     :no_request
   end
 
-  def wait_response(reqIdCol, wT, del) when (is_map(reqIdCol) and
-                                    is_boolean(del)) do
+  def wait_response(reqIdCol, wT, del)
+      when is_map(reqIdCol) and
+             is_boolean(del) do
     timeout = timeout_value(wT)
+
     receive do
       {:spawn_reply, reqId, :error, reason}
-          when (:erlang.is_map_key(reqId, reqIdCol) and
-                  is_reference(reqId))
-               ->
-        collection_result(:spawn_reply, reqId, reason, reqIdCol,
-                            true, del)
+      when :erlang.is_map_key(reqId, reqIdCol) and
+             is_reference(reqId) ->
+        collection_result(:spawn_reply, reqId, reason, reqIdCol, true, del)
+
       {:DOWN, reqId, :process, _Pid, reason}
-          when (:erlang.is_map_key(reqId, reqIdCol) and
-                  is_reference(reqId))
-               ->
-        collection_result(:down, reqId, reason, reqIdCol, true,
-                            del)
-    after timeout ->
-      :no_response
+      when :erlang.is_map_key(reqId, reqIdCol) and
+             is_reference(reqId) ->
+        collection_result(:down, reqId, reason, reqIdCol, true, del)
+    after
+      timeout ->
+        :no_response
     end
   end
 
@@ -212,20 +243,25 @@ defmodule :m_erpc do
     :erlang.error({:erpc, :badarg})
   end
 
-  def check_response({:spawn_reply, reqId, :error, reason},
-           [res | reqId])
-      when (is_reference(res) and is_reference(reqId)) do
+  def check_response(
+        {:spawn_reply, reqId, :error, reason},
+        [res | reqId]
+      )
+      when is_reference(res) and is_reference(reqId) do
     result(:spawn_reply, reqId, res, reason)
   end
 
-  def check_response({:DOWN, reqId, :process, _Pid, reason},
-           [res | reqId])
-      when (is_reference(res) and is_reference(reqId)) do
+  def check_response(
+        {:DOWN, reqId, :process, _Pid, reason},
+        [res | reqId]
+      )
+      when is_reference(res) and is_reference(reqId) do
     {:response, result(:down, reqId, res, reason)}
   end
 
-  def check_response(_Msg, [res | reqId]) when (is_reference(res) and
-                                      is_reference(reqId)) do
+  def check_response(_Msg, [res | reqId])
+      when is_reference(res) and
+             is_reference(reqId) do
     :no_response
   end
 
@@ -234,30 +270,27 @@ defmodule :m_erpc do
   end
 
   def check_response(_Msg, reqIdCol, del)
-      when (map_size(reqIdCol) == 0 and is_boolean(del)) do
+      when map_size(reqIdCol) == 0 and is_boolean(del) do
     :no_request
   end
 
-  def check_response({:spawn_reply, reqId, :error, reason}, reqIdCol,
-           del)
-      when (is_reference(reqId) and
-              :erlang.is_map_key(reqId, reqIdCol) and
-              is_boolean(del)) do
-    collection_result(:spawn_reply, reqId, reason, reqIdCol,
-                        true, del)
+  def check_response({:spawn_reply, reqId, :error, reason}, reqIdCol, del)
+      when is_reference(reqId) and
+             :erlang.is_map_key(reqId, reqIdCol) and
+             is_boolean(del) do
+    collection_result(:spawn_reply, reqId, reason, reqIdCol, true, del)
   end
 
-  def check_response({:DOWN, reqId, :process, _Pid, reason}, reqIdCol,
-           del)
-      when (is_reference(reqId) and
-              :erlang.is_map_key(reqId, reqIdCol) and
-              is_boolean(del)) do
-    collection_result(:down, reqId, reason, reqIdCol, true,
-                        del)
+  def check_response({:DOWN, reqId, :process, _Pid, reason}, reqIdCol, del)
+      when is_reference(reqId) and
+             :erlang.is_map_key(reqId, reqIdCol) and
+             is_boolean(del) do
+    collection_result(:down, reqId, reason, reqIdCol, true, del)
   end
 
-  def check_response(_Msg, reqIdCol, del) when (is_map(reqIdCol) and
-                                      is_boolean(del)) do
+  def check_response(_Msg, reqIdCol, del)
+      when is_map(reqIdCol) and
+             is_boolean(del) do
     :no_response
   end
 
@@ -279,14 +312,14 @@ defmodule :m_erpc do
   end
 
   def reqids_add([_ | reqId], _, reqIdCollection)
-      when (is_reference(reqId) and
-              :erlang.is_map_key(reqId, reqIdCollection)) do
+      when is_reference(reqId) and
+             :erlang.is_map_key(reqId, reqIdCollection) do
     :erlang.error({:erpc, :badarg})
   end
 
   def reqids_add([res | reqId], label, reqIdCollection)
-      when (is_reference(res) and is_reference(reqId) and
-              is_map(reqIdCollection)) do
+      when is_reference(res) and is_reference(reqId) and
+             is_map(reqIdCollection) do
     :maps.put(reqId, [res | label], reqIdCollection)
   end
 
@@ -296,13 +329,18 @@ defmodule :m_erpc do
 
   def reqids_to_list(reqIdCollection) when is_map(reqIdCollection) do
     try do
-      :maps.fold(fn reqId, [res | label], acc
-                        when (is_reference(reqId) and is_reference(res)) ->
-                      [{[res | reqId], label} | acc]
-                    _, _, _ ->
-                      throw(:badarg)
-                 end,
-                   [], reqIdCollection)
+      :maps.fold(
+        fn
+          reqId, [res | label], acc
+          when is_reference(reqId) and is_reference(res) ->
+            [{[res | reqId], label} | acc]
+
+          _, _, _ ->
+            throw(:badarg)
+        end,
+        [],
+        reqIdCollection
+      )
     catch
       :badarg ->
         :erlang.error({:erpc, :badarg})
@@ -336,8 +374,7 @@ defmodule :m_erpc do
       true = is_list(a)
       tag = make_ref()
       timeout = timeout_value(t)
-      sendState = mcall_send_requests(tag, ns, m, f, a,
-                                        timeout)
+      sendState = mcall_send_requests(tag, ns, m, f, a, timeout)
       mcall_receive_replies(tag, sendState)
     catch
       :error, notIErr when notIErr != :internal_error ->
@@ -366,8 +403,7 @@ defmodule :m_erpc do
   end
 
   defp multicast_send_requests([node | nodes], mod, fun, args) do
-    _ = :erlang.spawn_request(node, :erpc, :execute_cast,
-                                [mod, fun, args], [{:reply, :no}])
+    _ = :erlang.spawn_request(node, :erpc, :execute_cast, [mod, fun, args], [{:reply, :no}])
     multicast_send_requests(nodes, mod, fun, args)
   end
 
@@ -375,11 +411,11 @@ defmodule :m_erpc do
     cast(n, :erlang, :apply, [fun, []])
   end
 
-  def cast(node, mod, fun, args) when (is_atom(node) and
-                                       is_atom(mod) and is_atom(fun) and
-                                       is_list(args)) do
-    _ = :erlang.spawn_request(node, :erpc, :execute_cast,
-                                [mod, fun, args], [{:reply, :no}])
+  def cast(node, mod, fun, args)
+      when is_atom(node) and
+             is_atom(mod) and is_atom(fun) and
+             is_list(args) do
+    _ = :erlang.spawn_request(node, :erpc, :execute_cast, [mod, fun, args], [{:reply, :no}])
     :ok
   end
 
@@ -388,22 +424,27 @@ defmodule :m_erpc do
   end
 
   def execute_call(ref, m, f, a) do
-    reply = (try do
-               {ref, :return, apply(m, f, a)}
-             catch
-               reason ->
-                 {ref, :throw, reason}
-               :exit, reason ->
-                 {ref, :exit, reason}
-               :error, reason ->
-                 case (is_arg_error(reason, m, f, a)) do
-                   true ->
-                     {ref, :error, {:erpc, reason}}
-                   false ->
-                     erpcStack = trim_stack(__STACKTRACE__, m, f, a)
-                     {ref, :error, reason, erpcStack}
-                 end
-             end)
+    reply =
+      try do
+        {ref, :return, apply(m, f, a)}
+      catch
+        reason ->
+          {ref, :throw, reason}
+
+        :exit, reason ->
+          {ref, :exit, reason}
+
+        :error, reason ->
+          case is_arg_error(reason, m, f, a) do
+            true ->
+              {ref, :error, {:erpc, reason}}
+
+            false ->
+              erpcStack = trim_stack(__STACKTRACE__, m, f, a)
+              {ref, :error, reason, erpcStack}
+          end
+      end
+
     exit(reply)
   end
 
@@ -416,9 +457,10 @@ defmodule :m_erpc do
       apply(m, f, a)
     catch
       :error, reason ->
-        case (is_arg_error(reason, m, f, a)) do
+        case is_arg_error(reason, m, f, a) do
           true ->
             :erlang.error({:erpc, reason})
+
           false ->
             erpcStack = trim_stack(__STACKTRACE__, m, f, a)
             :erlang.error({:exception, {reason, erpcStack}})
@@ -437,6 +479,7 @@ defmodule :m_erpc do
     catch
       :error, :system_limit ->
         true
+
       _, _ ->
         false
     end
@@ -446,18 +489,35 @@ defmodule :m_erpc do
     false
   end
 
-  def trim_stack([cF | _], m, f, a) when :erlang.element(1,
-                                                   cF) == :erpc and (:erlang.element(2,
-                                                                                       cF) == :execute_call or :erlang.element(2,
-                                                                                                                                 cF) == :execute_cast) do
+  def trim_stack([cF | _], m, f, a)
+      when :erlang.element(
+             1,
+             cF
+           ) == :erpc and
+             (:erlang.element(
+                2,
+                cF
+              ) == :execute_call or
+                :erlang.element(
+                  2,
+                  cF
+                ) == :execute_cast) do
     [{m, f, a, []}]
   end
 
   def trim_stack([{m, f, a, _} = sF, cF | _], m, f, a)
-      when :erlang.element(1,
-                             cF) == :erpc and (:erlang.element(2,
-                                                                 cF) == :execute_call or :erlang.element(2,
-                                                                                                           cF) == :execute_cast) do
+      when :erlang.element(
+             1,
+             cF
+           ) == :erpc and
+             (:erlang.element(
+                2,
+                cF
+              ) == :execute_call or
+                :erlang.element(
+                  2,
+                  cF
+                ) == :execute_cast) do
     [sF]
   end
 
@@ -475,18 +535,35 @@ defmodule :m_erpc do
   end
 
   defp trim_stack_aux([{m, f, aL, _} = sF, cF | _], m, f, a)
-      when (:erlang.element(1,
-                              cF) == :erpc and (:erlang.element(2,
-                                                                  cF) == :execute_call or :erlang.element(2,
-                                                                                                            cF) == :execute_cast) and
-              aL == length(a)) do
+       when :erlang.element(
+              1,
+              cF
+            ) == :erpc and
+              (:erlang.element(
+                 2,
+                 cF
+               ) == :execute_call or
+                 :erlang.element(
+                   2,
+                   cF
+                 ) == :execute_cast) and
+              aL == length(a) do
     [sF]
   end
 
-  defp trim_stack_aux([cF | _], m, f, a) when :erlang.element(1,
-                                                    cF) == :erpc and (:erlang.element(2,
-                                                                                        cF) == :execute_call or :erlang.element(2,
-                                                                                                                                  cF) == :execute_cast) do
+  defp trim_stack_aux([cF | _], m, f, a)
+       when :erlang.element(
+              1,
+              cF
+            ) == :erpc and
+              (:erlang.element(
+                 2,
+                 cF
+               ) == :execute_call or
+                 :erlang.element(
+                   2,
+                   cF
+                 ) == :execute_cast) do
     try do
       [{m, f, length(a), []}]
     catch
@@ -500,9 +577,10 @@ defmodule :m_erpc do
   end
 
   defp call_abandon(reqId) do
-    case (:erlang.spawn_request_abandon(reqId)) do
+    case :erlang.spawn_request_abandon(reqId) do
       true ->
         true
+
       false ->
         :erlang.demonitor(reqId, [:info])
     end
@@ -520,13 +598,11 @@ defmodule :m_erpc do
     exit({:exception, exit})
   end
 
-  defp result(:down, _ReqId, res,
-            {res, :error, error, stack}) do
+  defp result(:down, _ReqId, res, {res, :error, error, stack}) do
     :erlang.error({:exception, error, stack})
   end
 
-  defp result(:down, _ReqId, res,
-            {res, :error, {:erpc, _} = erpcErr}) do
+  defp result(:down, _ReqId, res, {res, :error, {:erpc, _} = erpcErr}) do
     :erlang.error(erpcErr)
   end
 
@@ -543,72 +619,89 @@ defmodule :m_erpc do
   end
 
   defp result(:timeout, reqId, res, _Reason) do
-    case (call_abandon(reqId)) do
+    case call_abandon(reqId) do
       true ->
         :erlang.error({:erpc, :timeout})
+
       false ->
         receive do
           {:spawn_reply, ^reqId, :error, reason} ->
             result(:spawn_reply, reqId, res, reason)
+
           {:DOWN, ^reqId, :process, _Pid, reason} ->
             result(:down, reqId, res, reason)
-        after 0 ->
-          :erlang.error({:erpc, :badarg})
+        after
+          0 ->
+            :erlang.error({:erpc, :badarg})
         end
     end
   end
 
   defp collection_result(:timeout, _, _, reqIdCollection, _, _) do
-    abandon = fn reqId, [res | _Label]
-                     when (is_reference(reqId) and is_reference(res)) ->
-                   case (call_abandon(reqId)) do
-                     true ->
-                       :ok
-                     false ->
-                       receive do
-                         {:spawn_reply, ^reqId, :error, _} ->
-                           :ok
-                         {:DOWN, ^reqId, :process, _, _} ->
-                           :ok
-                       after 0 ->
-                         :ok
-                       end
-                   end
-                 _, _ ->
-                   throw(:badarg)
-              end
+    abandon = fn
+      reqId, [res | _Label]
+      when is_reference(reqId) and is_reference(res) ->
+        case call_abandon(reqId) do
+          true ->
+            :ok
+
+          false ->
+            receive do
+              {:spawn_reply, ^reqId, :error, _} ->
+                :ok
+
+              {:DOWN, ^reqId, :process, _, _} ->
+                :ok
+            after
+              0 ->
+                :ok
+            end
+        end
+
+      _, _ ->
+        throw(:badarg)
+    end
+
     try do
       :maps.foreach(abandon, reqIdCollection)
     catch
       :badarg ->
         :erlang.error({:erpc, :badarg})
     end
+
     :erlang.error({:erpc, :timeout})
   end
 
-  defp collection_result(type, reqId, resultReason, reqIdCol,
-            wrapResponse, delete) do
-    reqIdInfo = (case (delete) do
-                   true ->
-                     :maps.take(reqId, reqIdCol)
-                   false ->
-                     {:maps.get(reqId, reqIdCol), reqIdCol}
-                 end)
-    case (reqIdInfo) do
+  defp collection_result(type, reqId, resultReason, reqIdCol, wrapResponse, delete) do
+    reqIdInfo =
+      case delete do
+        true ->
+          :maps.take(reqId, reqIdCol)
+
+        false ->
+          {:maps.get(reqId, reqIdCol), reqIdCol}
+      end
+
+    case reqIdInfo do
       {[res | label], newReqIdCol} when is_reference(res) ->
         try do
           result = result(type, reqId, res, resultReason)
-          response = (cond do
-                        wrapResponse ->
-                          {:response, result}
-                        true ->
-                          result
-                      end)
+
+          response =
+            cond do
+              wrapResponse ->
+                {:response, result}
+
+              true ->
+                result
+            end
+
           {response, label, newReqIdCol}
         catch
           class, reason ->
             apply(:erlang, class, [{reason, label, newReqIdCol}])
         end
+
       _ ->
         :erlang.error({:erpc, :badarg})
     end
@@ -619,16 +712,18 @@ defmodule :m_erpc do
   end
 
   defp timeout_value(timeout)
-      when is_integer(timeout) and 0 <= timeout and timeout <= 4294967295 do
+       when is_integer(timeout) and 0 <= timeout and timeout <= 4_294_967_295 do
     timeout
   end
 
   defp timeout_value({:abs, timeout}) when is_integer(timeout) do
-    case (timeout - :erlang.monotonic_time(:millisecond)) do
+    case timeout - :erlang.monotonic_time(:millisecond) do
       tMO when tMO < 0 ->
         0
-      tMO when tMO > 4294967295 ->
+
+      tMO when tMO > 4_294_967_295 ->
         :erlang.error({:erpc, :badarg})
+
       tMO ->
         tMO
     end
@@ -642,16 +737,18 @@ defmodule :m_erpc do
     :infinity
   end
 
-  defp deadline(4294967295) do
-    :erlang.convert_time_unit(:erlang.monotonic_time(:millisecond) + 4294967295,
-                                :millisecond, :native)
+  defp deadline(4_294_967_295) do
+    :erlang.convert_time_unit(
+      :erlang.monotonic_time(:millisecond) + 4_294_967_295,
+      :millisecond,
+      :native
+    )
   end
 
   defp deadline(t)
-      when is_integer(t) and 0 <= t and t <= 4294967295 do
+       when is_integer(t) and 0 <= t and t <= 4_294_967_295 do
     now = :erlang.monotonic_time()
-    nativeTmo = :erlang.convert_time_unit(t, :millisecond,
-                                            :native)
+    nativeTmo = :erlang.convert_time_unit(t, :millisecond, :native)
     now + nativeTmo
   end
 
@@ -664,12 +761,12 @@ defmodule :m_erpc do
   end
 
   defp time_left(deadline) do
-    case (deadline - :erlang.monotonic_time()) do
+    case deadline - :erlang.monotonic_time() do
       timeLeft when timeLeft <= 0 ->
         0
+
       timeLeft ->
-        :erlang.convert_time_unit(timeLeft - 1, :native,
-                                    :millisecond) + 1
+        :erlang.convert_time_unit(timeLeft - 1, :native, :millisecond) + 1
     end
   end
 
@@ -680,12 +777,15 @@ defmodule :m_erpc do
     catch
       thrown ->
         {:throw, thrown}
+
       :exit, reason ->
         {:exit, {:exception, reason}}
+
       :error, reason ->
-        case (is_arg_error(reason, m, f, a)) do
+        case is_arg_error(reason, m, f, a) do
           true ->
             {:error, {:erpc, reason}}
+
           false ->
             erpcStack = trim_stack(__STACKTRACE__, m, f, a)
             {:error, {:exception, reason, erpcStack}}
@@ -693,24 +793,23 @@ defmodule :m_erpc do
     end
   end
 
-  defp mcall_send_request(t, n, m, f, a) when (is_reference(t) and
-                                 is_atom(n) and is_atom(m) and is_atom(f) and
-                                 is_list(a)) do
-    :erlang.spawn_request(n, :erpc, :execute_call,
-                            [t, m, f, a],
-                            [{:reply, :error_only}, {:reply_tag, t}, {:monitor,
-                                                                        [{:tag,
-                                                                            t}]}])
+  defp mcall_send_request(t, n, m, f, a)
+       when is_reference(t) and
+              is_atom(n) and is_atom(m) and is_atom(f) and
+              is_list(a) do
+    :erlang.spawn_request(n, :erpc, :execute_call, [t, m, f, a], [
+      {:reply, :error_only},
+      {:reply_tag, t},
+      {:monitor, [{:tag, t}]}
+    ])
   end
 
   defp mcall_send_requests(tag, ns, m, f, a, tmo) do
     dL = deadline(tmo)
-    mcall_send_requests(tag, ns, m, f, a, [], dL,
-                          :undefined, 0)
+    mcall_send_requests(tag, ns, m, f, a, [], dL, :undefined, 0)
   end
 
-  defp mcall_send_requests(_Tag, [], m, f, a, rIDs, dL, :local_call,
-            nRs) do
+  defp mcall_send_requests(_Tag, [], m, f, a, rIDs, dL, :local_call, nRs) do
     lRes = mcall_local_call(m, f, a)
     {:ok, rIDs, %{local_call: lRes}, nRs, dL}
   end
@@ -719,11 +818,9 @@ defmodule :m_erpc do
     {:ok, rIDs, %{}, nRs, dL}
   end
 
-  defp mcall_send_requests(tag, [n | ns], m, f, a, rIDs, :infinity,
-            :undefined, nRs)
-      when n == node() do
-    mcall_send_requests(tag, ns, m, f, a,
-                          [:local_call | rIDs], :infinity, :local_call, nRs)
+  defp mcall_send_requests(tag, [n | ns], m, f, a, rIDs, :infinity, :undefined, nRs)
+       when n == node() do
+    mcall_send_requests(tag, ns, m, f, a, [:local_call | rIDs], :infinity, :local_call, nRs)
   end
 
   defp mcall_send_requests(tag, [n | ns], m, f, a, rIDs, dL, lC, nRs) do
@@ -734,8 +831,7 @@ defmodule :m_erpc do
         {:badarg, rIDs, %{}, nRs, :expired}
     else
       rID ->
-        mcall_send_requests(tag, ns, m, f, a, [rID | rIDs], dL,
-                              lC, nRs + 1)
+        mcall_send_requests(tag, ns, m, f, a, [rID | rIDs], dL, lC, nRs + 1)
     end
   end
 
@@ -744,11 +840,12 @@ defmodule :m_erpc do
   end
 
   defp mcall_receive_replies(tag, {sendRes, rIDs, rpls, nRs, dL}) do
-    resRpls = mcall_receive_replies(tag, rIDs, rpls, nRs,
-                                      dL)
+    resRpls = mcall_receive_replies(tag, rIDs, rpls, nRs, dL)
+
     cond do
       sendRes != :ok ->
         :erlang.error(sendRes)
+
       true ->
         mcall_map_replies(rIDs, resRpls, [])
     end
@@ -760,23 +857,25 @@ defmodule :m_erpc do
 
   defp mcall_receive_replies(tag, reqIDs, rpls, nRs, dL) do
     tmo = time_left(dL)
+
     receive do
       {^tag, reqId, :error, reason} ->
         res = mcall_result(:spawn_reply, reqId, tag, reason)
-        mcall_receive_replies(tag, reqIDs,
-                                Map.put(rpls, reqId, res), nRs - 1, dL)
+        mcall_receive_replies(tag, reqIDs, Map.put(rpls, reqId, res), nRs - 1, dL)
+
       {^tag, reqId, :process, _Pid, reason} ->
         res = mcall_result(:down, reqId, tag, reason)
-        mcall_receive_replies(tag, reqIDs,
-                                Map.put(rpls, reqId, res), nRs - 1, dL)
-    after tmo ->
-      cond do
-        reqIDs == [] ->
-          rpls
-        true ->
-          newNRs = mcall_abandon(tag, reqIDs, rpls, nRs)
-          mcall_receive_replies(tag, [], rpls, newNRs, :expired)
-      end
+        mcall_receive_replies(tag, reqIDs, Map.put(rpls, reqId, res), nRs - 1, dL)
+    after
+      tmo ->
+        cond do
+          reqIDs == [] ->
+            rpls
+
+          true ->
+            newNRs = mcall_abandon(tag, reqIDs, rpls, nRs)
+            mcall_receive_replies(tag, [], rpls, newNRs, :expired)
+        end
     end
   end
 
@@ -798,17 +897,21 @@ defmodule :m_erpc do
   end
 
   defp mcall_abandon(tag, [rID | rIDs], rpls, nRs) do
-    newNRs = (case (:maps.is_key(rID, rpls)) do
-                true ->
-                  nRs
-                false ->
-                  case (call_abandon(rID)) do
-                    true ->
-                      nRs - 1
-                    false ->
-                      nRs
-                  end
-              end)
+    newNRs =
+      case :maps.is_key(rID, rpls) do
+        true ->
+          nRs
+
+        false ->
+          case call_abandon(rID) do
+            true ->
+              nRs - 1
+
+            false ->
+              nRs
+          end
+      end
+
     mcall_abandon(tag, rIDs, rpls, newNRs)
   end
 
@@ -818,8 +921,6 @@ defmodule :m_erpc do
 
   defp mcall_map_replies([rID | rIDs], rpls, res) do
     timeout = {:error, {:erpc, :timeout}}
-    mcall_map_replies(rIDs, rpls,
-                        [:maps.get(rID, rpls, timeout) | res])
+    mcall_map_replies(rIDs, rpls, [:maps.get(rID, rpls, timeout) | res])
   end
-
 end

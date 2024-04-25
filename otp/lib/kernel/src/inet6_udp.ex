@@ -2,21 +2,37 @@ defmodule :m_inet6_udp do
   use Bitwise
   import Kernel, except: [send: 2]
   require Record
-  Record.defrecord(:r_connect_opts, :connect_opts, ifaddr: :undefined,
-                                        port: 0, fd: - 1, opts: [])
-  Record.defrecord(:r_listen_opts, :listen_opts, ifaddr: :undefined,
-                                       port: 0, backlog: 5, fd: - 1, opts: [])
-  Record.defrecord(:r_udp_opts, :udp_opts, ifaddr: :undefined,
-                                    port: 0, fd: - 1, opts: [{:active, true}])
-  Record.defrecord(:r_sctp_opts, :sctp_opts, ifaddr: :undefined,
-                                     port: 0, fd: - 1, type: :seqpacket,
-                                     opts: [{:mode, :binary}, {:buffer, 65536},
-                                                                  {:sndbuf,
-                                                                     65536},
-                                                                      {:recbuf,
-                                                                         1024},
-                                                                          {:sctp_events,
-                                                                             :undefined}])
+  Record.defrecord(:r_connect_opts, :connect_opts, ifaddr: :undefined, port: 0, fd: -1, opts: [])
+
+  Record.defrecord(:r_listen_opts, :listen_opts,
+    ifaddr: :undefined,
+    port: 0,
+    backlog: 5,
+    fd: -1,
+    opts: []
+  )
+
+  Record.defrecord(:r_udp_opts, :udp_opts,
+    ifaddr: :undefined,
+    port: 0,
+    fd: -1,
+    opts: [{:active, true}]
+  )
+
+  Record.defrecord(:r_sctp_opts, :sctp_opts,
+    ifaddr: :undefined,
+    port: 0,
+    fd: -1,
+    type: :seqpacket,
+    opts: [
+      {:mode, :binary},
+      {:buffer, 65536},
+      {:sndbuf, 65536},
+      {:recbuf, 1024},
+      {:sctp_events, :undefined}
+    ]
+  )
+
   def getserv(port) when is_integer(port) do
     {:ok, port}
   end
@@ -42,70 +58,83 @@ defmodule :m_inet6_udp do
   end
 
   def open(port, opts) do
-    case (:inet.udp_options([{:port, port} | opts],
-                              :inet6_udp)) do
+    case :inet.udp_options(
+           [{:port, port} | opts],
+           :inet6_udp
+         ) do
       {:error, reason} ->
         exit(reason)
-      {:ok,
-         r_udp_opts(fd: fd, ifaddr: bAddr, port: bPort, opts: sockOpts)}
-          when is_map(bAddr) or
-                 (bPort &&& ~~~ 65535 === 0 and
-                    tuple_size(bAddr) === 8 and (:erlang.element(1,
-                                                                   bAddr) ||| :erlang.element(2,
-                                                                                                bAddr) ||| :erlang.element(3,
-                                                                                                                             bAddr) ||| :erlang.element(4,
-                                                                                                                                                          bAddr) ||| :erlang.element(5,
-                                                                                                                                                                                       bAddr) ||| :erlang.element(6,
-                                                                                                                                                                                                                    bAddr) ||| :erlang.element(7,
-                                                                                                                                                                                                                                                 bAddr) ||| :erlang.element(8,
-                                                                                                                                                                                                                                                                              bAddr)) &&& ~~~
-                                                                                                                                                                                                                                                                                          65535 === 0) or
-                 (bPort &&& ~~~ 65535 === 0 and bAddr === :undefined)
-               ->
-        :inet.open_bind(fd, bAddr, bPort, sockOpts, :udp,
-                          :inet6, :dgram, :inet6_udp)
+
+      {:ok, r_udp_opts(fd: fd, ifaddr: bAddr, port: bPort, opts: sockOpts)}
+      when is_map(bAddr) or
+             (bPort &&& ~~~65535 === 0 and
+                tuple_size(bAddr) === 8 and
+                (:erlang.element(
+                   1,
+                   bAddr
+                 ) |||
+                   :erlang.element(
+                     2,
+                     bAddr
+                   ) |||
+                   :erlang.element(
+                     3,
+                     bAddr
+                   ) |||
+                   :erlang.element(
+                     4,
+                     bAddr
+                   ) |||
+                   :erlang.element(
+                     5,
+                     bAddr
+                   ) |||
+                   :erlang.element(
+                     6,
+                     bAddr
+                   ) |||
+                   :erlang.element(
+                     7,
+                     bAddr
+                   ) |||
+                   :erlang.element(
+                     8,
+                     bAddr
+                   )) &&& ~~~65535 === 0) or
+             (bPort &&& ~~~65535 === 0 and bAddr === :undefined) ->
+        :inet.open_bind(fd, bAddr, bPort, sockOpts, :udp, :inet6, :dgram, :inet6_udp)
+
       {:ok, _} ->
         exit(:badarg)
     end
   end
 
   def send(s, {a, b, c, d, e, f, g, h} = iP, port, data)
-      when ((a ||| b ||| c ||| d ||| e ||| f ||| g ||| h) &&& ~~~
-                                                              65535 === 0 and
-              port &&& ~~~ 65535 === 0) do
+      when (a ||| b ||| c ||| d ||| e ||| f ||| g ||| h) &&& ~~~65535 === 0 and
+             port &&& ~~~65535 === 0 do
     :prim_inet.sendto(s, {iP, port}, [], data)
   end
 
-  def send(s,
-           %{addr: {a, b, c, d, e, f, g, h},
-               port: port} = sockAddr,
-           ancData, data)
-      when ((a ||| b ||| c ||| d ||| e ||| f ||| g ||| h) &&& ~~~
-                                                              65535 === 0 and
-              port &&& ~~~ 65535 === 0 and is_list(ancData)) do
+  def send(s, %{addr: {a, b, c, d, e, f, g, h}, port: port} = sockAddr, ancData, data)
+      when (a ||| b ||| c ||| d ||| e ||| f ||| g ||| h) &&& ~~~65535 === 0 and
+             port &&& ~~~65535 === 0 and is_list(ancData) do
     :prim_inet.sendto(s, sockAddr, ancData, data)
   end
 
-  def send(s, {{a, b, c, d, e, f, g, h}, port} = addr,
-           ancData, data)
-      when ((a ||| b ||| c ||| d ||| e ||| f ||| g ||| h) &&& ~~~
-                                                              65535 === 0 and
-              port &&& ~~~ 65535 === 0 and is_list(ancData)) do
+  def send(s, {{a, b, c, d, e, f, g, h}, port} = addr, ancData, data)
+      when (a ||| b ||| c ||| d ||| e ||| f ||| g ||| h) &&& ~~~65535 === 0 and
+             port &&& ~~~65535 === 0 and is_list(ancData) do
     :prim_inet.sendto(s, addr, ancData, data)
   end
 
-  def send(s,
-           {:inet6, {{a, b, c, d, e, f, g, h}, port}} = address,
-           ancData, data)
-      when ((a ||| b ||| c ||| d ||| e ||| f ||| g ||| h) &&& ~~~
-                                                              65535 === 0 and
-              port &&& ~~~ 65535 === 0 and is_list(ancData)) do
+  def send(s, {:inet6, {{a, b, c, d, e, f, g, h}, port}} = address, ancData, data)
+      when (a ||| b ||| c ||| d ||| e ||| f ||| g ||| h) &&& ~~~65535 === 0 and
+             port &&& ~~~65535 === 0 and is_list(ancData) do
     :prim_inet.sendto(s, address, ancData, data)
   end
 
-  def send(s, {:inet6, {:loopback, port}} = address,
-           ancData, data)
-      when (port &&& ~~~ 65535 === 0 and is_list(ancData)) do
+  def send(s, {:inet6, {:loopback, port}} = address, ancData, data)
+      when port &&& ~~~65535 === 0 and is_list(ancData) do
     :prim_inet.sendto(s, address, ancData, data)
   end
 
@@ -118,9 +147,8 @@ defmodule :m_inet6_udp do
   end
 
   def connect(s, addr = {a, b, c, d, e, f, g, h}, port)
-      when ((a ||| b ||| c ||| d ||| e ||| f ||| g ||| h) &&& ~~~
-                                                              65535 === 0 and
-              port &&& ~~~ 65535 === 0) do
+      when (a ||| b ||| c ||| d ||| e ||| f ||| g ||| h) &&& ~~~65535 === 0 and
+             port &&& ~~~65535 === 0 do
     :prim_inet.connect(s, addr, port)
   end
 
@@ -143,5 +171,4 @@ defmodule :m_inet6_udp do
   def fdopen(fd, opts) do
     :inet.fdopen(fd, opts, :udp, :inet6, :dgram, :inet6_udp)
   end
-
 end

@@ -11,18 +11,18 @@ defmodule :m_tftp_app do
   end
 
   defp get_configuration() do
-    case ((try do
+    case (try do
             :application.get_env(:tftp, :services)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       {:ok, services} ->
         services
+
       _ ->
         []
     end
   end
-
 end

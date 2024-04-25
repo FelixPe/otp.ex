@@ -1,61 +1,117 @@
 defmodule :m_cerl do
   use Bitwise
   require Record
-  Record.defrecord(:r_c_alias, :c_alias, anno: [],
-                                   var: :undefined, pat: :undefined)
-  Record.defrecord(:r_c_apply, :c_apply, anno: [], op: :undefined,
-                                   args: :undefined)
-  Record.defrecord(:r_c_binary, :c_binary, anno: [],
-                                    segments: :undefined)
-  Record.defrecord(:r_c_bitstr, :c_bitstr, anno: [],
-                                    val: :undefined, size: :undefined,
-                                    unit: :undefined, type: :undefined,
-                                    flags: :undefined)
-  Record.defrecord(:r_c_call, :c_call, anno: [],
-                                  module: :undefined, name: :undefined,
-                                  args: :undefined)
-  Record.defrecord(:r_c_case, :c_case, anno: [], arg: :undefined,
-                                  clauses: :undefined)
-  Record.defrecord(:r_c_catch, :c_catch, anno: [],
-                                   body: :undefined)
-  Record.defrecord(:r_c_clause, :c_clause, anno: [],
-                                    pats: :undefined, guard: :undefined,
-                                    body: :undefined)
-  Record.defrecord(:r_c_cons, :c_cons, anno: [], hd: :undefined,
-                                  tl: :undefined)
-  Record.defrecord(:r_c_fun, :c_fun, anno: [], vars: :undefined,
-                                 body: :undefined)
-  Record.defrecord(:r_c_let, :c_let, anno: [], vars: :undefined,
-                                 arg: :undefined, body: :undefined)
-  Record.defrecord(:r_c_letrec, :c_letrec, anno: [],
-                                    defs: :undefined, body: :undefined)
-  Record.defrecord(:r_c_literal, :c_literal, anno: [],
-                                     val: :undefined)
-  Record.defrecord(:r_c_map, :c_map, anno: [],
-                                 arg: :EFE_TODO_NESTED_RECORD, es: :undefined,
-                                 is_pat: false)
-  Record.defrecord(:r_c_map_pair, :c_map_pair, anno: [],
-                                      op: :undefined, key: :undefined,
-                                      val: :undefined)
-  Record.defrecord(:r_c_module, :c_module, anno: [],
-                                    name: :undefined, exports: :undefined,
-                                    attrs: :undefined, defs: :undefined)
-  Record.defrecord(:r_c_opaque, :c_opaque, anno: [],
-                                    val: :undefined)
-  Record.defrecord(:r_c_primop, :c_primop, anno: [],
-                                    name: :undefined, args: :undefined)
-  Record.defrecord(:r_c_receive, :c_receive, anno: [],
-                                     clauses: :undefined, timeout: :undefined,
-                                     action: :undefined)
-  Record.defrecord(:r_c_seq, :c_seq, anno: [], arg: :undefined,
-                                 body: :undefined)
-  Record.defrecord(:r_c_try, :c_try, anno: [], arg: :undefined,
-                                 vars: :undefined, body: :undefined,
-                                 evars: :undefined, handler: :undefined)
+  Record.defrecord(:r_c_alias, :c_alias, anno: [], var: :undefined, pat: :undefined)
+  Record.defrecord(:r_c_apply, :c_apply, anno: [], op: :undefined, args: :undefined)
+
+  Record.defrecord(:r_c_binary, :c_binary,
+    anno: [],
+    segments: :undefined
+  )
+
+  Record.defrecord(:r_c_bitstr, :c_bitstr,
+    anno: [],
+    val: :undefined,
+    size: :undefined,
+    unit: :undefined,
+    type: :undefined,
+    flags: :undefined
+  )
+
+  Record.defrecord(:r_c_call, :c_call,
+    anno: [],
+    module: :undefined,
+    name: :undefined,
+    args: :undefined
+  )
+
+  Record.defrecord(:r_c_case, :c_case, anno: [], arg: :undefined, clauses: :undefined)
+
+  Record.defrecord(:r_c_catch, :c_catch,
+    anno: [],
+    body: :undefined
+  )
+
+  Record.defrecord(:r_c_clause, :c_clause,
+    anno: [],
+    pats: :undefined,
+    guard: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_c_cons, :c_cons, anno: [], hd: :undefined, tl: :undefined)
+  Record.defrecord(:r_c_fun, :c_fun, anno: [], vars: :undefined, body: :undefined)
+
+  Record.defrecord(:r_c_let, :c_let,
+    anno: [],
+    vars: :undefined,
+    arg: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_c_letrec, :c_letrec, anno: [], defs: :undefined, body: :undefined)
+
+  Record.defrecord(:r_c_literal, :c_literal,
+    anno: [],
+    val: :undefined
+  )
+
+  Record.defrecord(:r_c_map, :c_map,
+    anno: [],
+    arg: :EFE_TODO_NESTED_RECORD,
+    es: :undefined,
+    is_pat: false
+  )
+
+  Record.defrecord(:r_c_map_pair, :c_map_pair,
+    anno: [],
+    op: :undefined,
+    key: :undefined,
+    val: :undefined
+  )
+
+  Record.defrecord(:r_c_module, :c_module,
+    anno: [],
+    name: :undefined,
+    exports: :undefined,
+    attrs: :undefined,
+    defs: :undefined
+  )
+
+  Record.defrecord(:r_c_opaque, :c_opaque,
+    anno: [],
+    val: :undefined
+  )
+
+  Record.defrecord(:r_c_primop, :c_primop, anno: [], name: :undefined, args: :undefined)
+
+  Record.defrecord(:r_c_receive, :c_receive,
+    anno: [],
+    clauses: :undefined,
+    timeout: :undefined,
+    action: :undefined
+  )
+
+  Record.defrecord(:r_c_seq, :c_seq, anno: [], arg: :undefined, body: :undefined)
+
+  Record.defrecord(:r_c_try, :c_try,
+    anno: [],
+    arg: :undefined,
+    vars: :undefined,
+    body: :undefined,
+    evars: :undefined,
+    handler: :undefined
+  )
+
   Record.defrecord(:r_c_tuple, :c_tuple, anno: [], es: :undefined)
-  Record.defrecord(:r_c_values, :c_values, anno: [],
-                                    es: :undefined)
+
+  Record.defrecord(:r_c_values, :c_values,
+    anno: [],
+    es: :undefined
+  )
+
   Record.defrecord(:r_c_var, :c_var, anno: [], name: :undefined)
+
   def type(r_c_alias()) do
     :alias
   end
@@ -153,11 +209,13 @@ defmodule :m_cerl do
   end
 
   def is_leaf(node) do
-    case (type(node)) do
+    case type(node) do
       :literal ->
         true
+
       :var ->
         true
+
       _ ->
         false
     end
@@ -228,9 +286,10 @@ defmodule :m_cerl do
   end
 
   defp is_literal_term_list([t | ts]) do
-    case (is_literal_term(t)) do
+    case is_literal_term(t) do
       true ->
         is_literal_term_list(ts)
+
       false ->
         false
     end
@@ -253,12 +312,13 @@ defmodule :m_cerl do
   end
 
   def fold_literal(node) do
-    case (type(node)) do
+    case type(node) do
       :tuple ->
         update_c_tuple(node, fold_literal_list(tuple_es(node)))
+
       :cons ->
-        update_c_cons(node, fold_literal(cons_hd(node)),
-                        fold_literal(cons_tl(node)))
+        update_c_cons(node, fold_literal(cons_hd(node)), fold_literal(cons_tl(node)))
+
       _ ->
         node
     end
@@ -273,20 +333,23 @@ defmodule :m_cerl do
   end
 
   def unfold_literal(node) do
-    case (type(node)) do
+    case type(node) do
       :literal ->
         copy_ann(node, unfold_concrete(concrete(node)))
+
       _ ->
         node
     end
   end
 
   defp unfold_concrete(val) do
-    case (val) do
+    case val do
       _ when is_tuple(val) ->
         c_tuple_skel(unfold_concrete_list(:erlang.tuple_to_list(val)))
+
       [h | t] ->
         c_cons_skel(unfold_concrete(h), unfold_concrete(t))
+
       _ ->
         abstract(val)
     end
@@ -309,18 +372,15 @@ defmodule :m_cerl do
   end
 
   def ann_c_module(as, name, exports, es) do
-    r_c_module(name: name, exports: exports, attrs: [], defs: es,
-        anno: as)
+    r_c_module(name: name, exports: exports, attrs: [], defs: es, anno: as)
   end
 
   def ann_c_module(as, name, exports, attrs, es) do
-    r_c_module(name: name, exports: exports, attrs: attrs, defs: es,
-        anno: as)
+    r_c_module(name: name, exports: exports, attrs: attrs, defs: es, anno: as)
   end
 
   def update_c_module(node, name, exports, attrs, es) do
-    r_c_module(name: name, exports: exports, attrs: attrs, defs: es,
-        anno: get_ann(node))
+    r_c_module(name: name, exports: exports, attrs: attrs, defs: es, anno: get_ann(node))
   end
 
   def is_c_module(r_c_module()) do
@@ -437,7 +497,7 @@ defmodule :m_cerl do
     :io_lib.write_string(atom_name(node), ?')
   end
 
-  def c_char(value) when (is_integer(value) and value >= 0) do
+  def c_char(value) when is_integer(value) and value >= 0 do
     r_c_literal(val: value)
   end
 
@@ -445,7 +505,7 @@ defmodule :m_cerl do
     r_c_literal(val: value, anno: as)
   end
 
-  def is_c_char(r_c_literal(val: v)) when (is_integer(v) and v >= 0) do
+  def is_c_char(r_c_literal(val: v)) when is_integer(v) and v >= 0 do
     is_char_value(v)
   end
 
@@ -453,7 +513,7 @@ defmodule :m_cerl do
     false
   end
 
-  def is_print_char(r_c_literal(val: v)) when (is_integer(v) and v >= 0) do
+  def is_print_char(r_c_literal(val: v)) when is_integer(v) and v >= 0 do
     is_print_char_value(v)
   end
 
@@ -701,8 +761,9 @@ defmodule :m_cerl do
     true
   end
 
-  def is_c_map_empty(r_c_literal(val: m)) when (is_map(m) and
-                            map_size(m) === 0) do
+  def is_c_map_empty(r_c_literal(val: m))
+      when is_map(m) and
+             map_size(m) === 0 do
     true
   end
 
@@ -719,9 +780,10 @@ defmodule :m_cerl do
   end
 
   def ann_c_map(as, r_c_literal(val: m0) = lit, es) when is_map(m0) do
-    case (update_map_literal(es, m0)) do
+    case update_map_literal(es, m0) do
       :none ->
         r_c_map(arg: lit, es: es, anno: as)
+
       m1 ->
         r_c_literal(anno: as, val: m1)
     end
@@ -731,28 +793,36 @@ defmodule :m_cerl do
     r_c_map(arg: m, es: es, anno: as)
   end
 
-  defp update_map_literal([r_c_map_pair(op: r_c_literal(val: :assoc), key: ck, val: cv) | es],
-            m) do
-    case (is_lit_list([ck, cv])) do
+  defp update_map_literal(
+         [r_c_map_pair(op: r_c_literal(val: :assoc), key: ck, val: cv) | es],
+         m
+       ) do
+    case is_lit_list([ck, cv]) do
       true ->
         [k, v] = lit_list_vals([ck, cv])
         update_map_literal(es, Map.put(m, k, v))
+
       false ->
         :none
     end
   end
 
-  defp update_map_literal([r_c_map_pair(op: r_c_literal(val: :exact), key: ck, val: cv) | es],
-            m) do
-    case (is_lit_list([ck, cv])) do
+  defp update_map_literal(
+         [r_c_map_pair(op: r_c_literal(val: :exact), key: ck, val: cv) | es],
+         m
+       ) do
+    case is_lit_list([ck, cv]) do
       true ->
         [k, v] = lit_list_vals([ck, cv])
-        case (:erlang.is_map_key(k, m)) do
+
+        case :erlang.is_map_key(k, m) do
           true ->
             update_map_literal(es, Map.put(m, k, v))
+
           false ->
             :none
         end
+
       false ->
         :none
     end
@@ -763,7 +833,7 @@ defmodule :m_cerl do
   end
 
   def update_c_map(r_c_map(is_pat: true) = old, m, es) do
-    r_c_map(old, arg: m,  es: es)
+    r_c_map(old, arg: m, es: es)
   end
 
   def update_c_map(r_c_map(is_pat: false) = old, m, es) do
@@ -799,31 +869,38 @@ defmodule :m_cerl do
   end
 
   def c_tuple(es) do
-    case (is_lit_list(es)) do
+    case is_lit_list(es) do
       false ->
         r_c_tuple(es: es)
+
       true ->
         r_c_literal(val: :erlang.list_to_tuple(lit_list_vals(es)))
     end
   end
 
   def ann_c_tuple(as, es) do
-    case (is_lit_list(es)) do
+    case is_lit_list(es) do
       false ->
         r_c_tuple(es: es, anno: as)
+
       true ->
-        r_c_literal(val: :erlang.list_to_tuple(lit_list_vals(es)),
-            anno: as)
+        r_c_literal(
+          val: :erlang.list_to_tuple(lit_list_vals(es)),
+          anno: as
+        )
     end
   end
 
   def update_c_tuple(node, es) do
-    case (is_lit_list(es)) do
+    case is_lit_list(es) do
       false ->
         r_c_tuple(es: es, anno: get_ann(node))
+
       true ->
-        r_c_literal(val: :erlang.list_to_tuple(lit_list_vals(es)),
-            anno: get_ann(node))
+        r_c_literal(
+          val: :erlang.list_to_tuple(lit_list_vals(es)),
+          anno: get_ann(node)
+        )
     end
   end
 
@@ -903,8 +980,9 @@ defmodule :m_cerl do
     update_c_var(node, {atom, arity})
   end
 
-  def is_c_fname(r_c_var(name: {a, n})) when (is_atom(a) and
-                                  is_integer(n) and n >= 0) do
+  def is_c_fname(r_c_var(name: {a, n}))
+      when is_atom(a) and
+             is_integer(n) and n >= 0 do
     true
   end
 
@@ -977,8 +1055,7 @@ defmodule :m_cerl do
   end
 
   def c_bitstr(val, size, unit, type, flags) do
-    r_c_bitstr(val: val, size: size, unit: unit, type: type,
-        flags: flags)
+    r_c_bitstr(val: val, size: size, unit: unit, type: type, flags: flags)
   end
 
   def c_bitstr(val, size, type, flags) do
@@ -990,8 +1067,7 @@ defmodule :m_cerl do
   end
 
   def ann_c_bitstr(as, val, size, unit, type, flags) do
-    r_c_bitstr(val: val, size: size, unit: unit, type: type,
-        flags: flags, anno: as)
+    r_c_bitstr(val: val, size: size, unit: unit, type: type, flags: flags, anno: as)
   end
 
   def ann_c_bitstr(as, value, size, type, flags) do
@@ -999,13 +1075,11 @@ defmodule :m_cerl do
   end
 
   def update_c_bitstr(node, val, size, unit, type, flags) do
-    r_c_bitstr(val: val, size: size, unit: unit, type: type,
-        flags: flags, anno: get_ann(node))
+    r_c_bitstr(val: val, size: size, unit: unit, type: type, flags: flags, anno: get_ann(node))
   end
 
   def update_c_bitstr(node, value, size, type, flags) do
-    update_c_bitstr(node, value, size, abstract(1), type,
-                      flags)
+    update_c_bitstr(node, value, size, abstract(1), type, flags)
   end
 
   def is_c_bitstr(r_c_bitstr()) do
@@ -1026,20 +1100,25 @@ defmodule :m_cerl do
 
   def bitstr_bitsize(node) do
     r_c_bitstr(size: size, type: type, unit: unit) = node
-    case (is_literal(size)) do
+
+    case is_literal(size) do
       true ->
-        case ({concrete(size), concrete(type)}) do
+        case {concrete(size), concrete(type)} do
           {:all, :binary} ->
             :all
-          {:undefined, t} when t === :utf8 or t === :utf16 or
-                                 t === :utf32
-                               ->
+
+          {:undefined, t}
+          when t === :utf8 or t === :utf16 or
+                 t === :utf32 ->
             :utf
-          {s, _} when (is_integer(s) and s >= 0) ->
+
+          {s, _} when is_integer(s) and s >= 0 ->
             s * concrete(unit)
+
           {_, _} ->
             :any
         end
+
       false ->
         :any
     end
@@ -1126,8 +1205,7 @@ defmodule :m_cerl do
   end
 
   def update_c_let(node, variables, argument, body) do
-    r_c_let(vars: variables, arg: argument, body: body,
-        anno: get_ann(node))
+    r_c_let(vars: variables, arg: argument, body: body, anno: get_ann(node))
   end
 
   def is_c_let(r_c_let()) do
@@ -1237,8 +1315,7 @@ defmodule :m_cerl do
   end
 
   def update_c_clause(node, patterns, guard, body) do
-    r_c_clause(pats: patterns, guard: guard, body: body,
-        anno: get_ann(node))
+    r_c_clause(pats: patterns, guard: guard, body: body, anno: get_ann(node))
   end
 
   def is_c_clause(r_c_clause()) do
@@ -1274,24 +1351,34 @@ defmodule :m_cerl do
   end
 
   defp pat_vars(node, vs) do
-    case (type(node)) do
+    case type(node) do
       :var ->
         [node | vs]
+
       :literal ->
         vs
+
       :cons ->
         pat_vars(cons_hd(node), pat_vars(cons_tl(node), vs))
+
       :tuple ->
         pat_list_vars(tuple_es(node), vs)
+
       :map ->
         pat_list_vars(map_es(node), vs)
+
       :map_pair ->
-        pat_list_vars([map_pair_op(node), map_pair_val(node)],
-                        vs)
+        pat_list_vars(
+          [map_pair_op(node), map_pair_val(node)],
+          vs
+        )
+
       :binary ->
         pat_list_vars(binary_segments(node), vs)
+
       :bitstr ->
         pat_vars(bitstr_val(node), vs)
+
       :alias ->
         pat_vars(alias_pat(node), [alias_var(node) | vs])
     end
@@ -1346,18 +1433,15 @@ defmodule :m_cerl do
   end
 
   def ann_c_receive(as, clauses) do
-    ann_c_receive(as, clauses, c_atom(:infinity),
-                    c_atom(true))
+    ann_c_receive(as, clauses, c_atom(:infinity), c_atom(true))
   end
 
   def ann_c_receive(as, clauses, timeout, action) do
-    r_c_receive(clauses: clauses, timeout: timeout, action: action,
-        anno: as)
+    r_c_receive(clauses: clauses, timeout: timeout, action: action, anno: as)
   end
 
   def update_c_receive(node, clauses, timeout, action) do
-    r_c_receive(clauses: clauses, timeout: timeout, action: action,
-        anno: get_ann(node))
+    r_c_receive(clauses: clauses, timeout: timeout, action: action, anno: get_ann(node))
   end
 
   def is_c_receive(r_c_receive()) do
@@ -1421,8 +1505,7 @@ defmodule :m_cerl do
   end
 
   def update_c_call(node, module, name, arguments) do
-    r_c_call(module: module, name: name, args: arguments,
-        anno: get_ann(node))
+    r_c_call(module: module, name: name, args: arguments, anno: get_ann(node))
   end
 
   def is_c_call(r_c_call()) do
@@ -1482,18 +1565,15 @@ defmodule :m_cerl do
   end
 
   def c_try(expr, vs, body, evs, handler) do
-    r_c_try(arg: expr, vars: vs, body: body, evars: evs,
-        handler: handler)
+    r_c_try(arg: expr, vars: vs, body: body, evars: evs, handler: handler)
   end
 
   def ann_c_try(as, expr, vs, body, evs, handler) do
-    r_c_try(arg: expr, vars: vs, body: body, evars: evs,
-        handler: handler, anno: as)
+    r_c_try(arg: expr, vars: vs, body: body, evars: evs, handler: handler, anno: as)
   end
 
   def update_c_try(node, expr, vs, body, evs, handler) do
-    r_c_try(arg: expr, vars: vs, body: body, evars: evs,
-        handler: handler, anno: get_ann(node))
+    r_c_try(arg: expr, vars: vs, body: body, evars: evs, handler: handler, anno: get_ann(node))
   end
 
   def is_c_try(r_c_try()) do
@@ -1573,11 +1653,13 @@ defmodule :m_cerl do
   end
 
   def data_type(r_c_literal(val: v)) do
-    case (v) do
+    case v do
       [_ | _] ->
         :cons
+
       _ when is_tuple(v) ->
         :tuple
+
       _ ->
         {:atomic, v}
     end
@@ -1592,11 +1674,13 @@ defmodule :m_cerl do
   end
 
   def data_es(r_c_literal(val: v)) do
-    case (v) do
+    case v do
       [head | tail] ->
         [r_c_literal(val: head), r_c_literal(val: tail)]
+
       _ when is_tuple(v) ->
         make_lit_list(:erlang.tuple_to_list(v))
+
       _ ->
         []
     end
@@ -1611,11 +1695,13 @@ defmodule :m_cerl do
   end
 
   def data_arity(r_c_literal(val: v)) do
-    case (v) do
+    case v do
       [_ | _] ->
         2
+
       _ when is_tuple(v) ->
         tuple_size(v)
+
       _ ->
         0
     end
@@ -1670,56 +1756,79 @@ defmodule :m_cerl do
   end
 
   def subtrees(t) do
-    case (is_leaf(t)) do
+    case is_leaf(t) do
       true ->
         []
+
       false ->
-        case (type(t)) do
+        case type(t) do
           :values ->
             [values_es(t)]
+
           :binary ->
             [binary_segments(t)]
+
           :bitstr ->
-            [[bitstr_val(t)], [bitstr_size(t)], [bitstr_unit(t)],
-                                                    [bitstr_type(t)],
-                                                        [bitstr_flags(t)]]
+            [
+              [bitstr_val(t)],
+              [bitstr_size(t)],
+              [bitstr_unit(t)],
+              [bitstr_type(t)],
+              [bitstr_flags(t)]
+            ]
+
           :cons ->
             [[cons_hd(t)], [cons_tl(t)]]
+
           :tuple ->
             [tuple_es(t)]
+
           :map ->
             [map_es(t)]
+
           :map_pair ->
             [[map_pair_op(t)], [map_pair_key(t)], [map_pair_val(t)]]
+
           :let ->
             [let_vars(t), [let_arg(t)], [let_body(t)]]
+
           :seq ->
             [[seq_arg(t)], [seq_body(t)]]
+
           :apply ->
             [[apply_op(t)], apply_args(t)]
+
           :call ->
             [[call_module(t)], [call_name(t)], call_args(t)]
+
           :primop ->
             [[primop_name(t)], primop_args(t)]
+
           :case ->
             [[case_arg(t)], case_clauses(t)]
+
           :clause ->
             [clause_pats(t), [clause_guard(t)], [clause_body(t)]]
+
           :alias ->
             [[alias_var(t)], [alias_pat(t)]]
+
           :fun ->
             [fun_vars(t), [fun_body(t)]]
+
           :receive ->
-            [receive_clauses(t), [receive_timeout(t)],
-                                     [receive_action(t)]]
+            [receive_clauses(t), [receive_timeout(t)], [receive_action(t)]]
+
           :try ->
-            [[try_arg(t)], try_vars(t), [try_body(t)], try_evars(t),
-                                                           [try_handler(t)]]
+            [[try_arg(t)], try_vars(t), [try_body(t)], try_evars(t), [try_handler(t)]]
+
           :catch ->
             [[catch_body(t)]]
+
           :letrec ->
             es = unfold_tuples(letrec_defs(t))
             [es, [letrec_body(t)]]
+
           :module ->
             as = unfold_tuples(module_attrs(t))
             es = unfold_tuples(module_defs(t))
@@ -1825,43 +1934,49 @@ defmodule :m_cerl do
   end
 
   def ann_make_tree(as, :module, [[n], xs, es, ds]) do
-    ann_c_module(as, n, xs, fold_tuples(es),
-                   fold_tuples(ds))
+    ann_c_module(as, n, xs, fold_tuples(es), fold_tuples(ds))
   end
 
   def meta(node) do
-    case (type(node)) do
+    case type(node) do
       :var ->
-        case (:lists.member(:meta_var, get_ann(node))) do
+        case :lists.member(:meta_var, get_ann(node)) do
           false ->
             meta_0(:var, node)
+
           true ->
             set_ann(node, :lists.delete(:meta_var, get_ann(node)))
         end
+
       type ->
         meta_0(type, node)
     end
   end
 
   defp meta_0(type, node) do
-    case (get_ann(node)) do
+    case get_ann(node) do
       [] ->
         meta_1(type, node)
+
       as ->
         meta_call(:set_ann, [meta_1(type, node), abstract(as)])
     end
   end
 
   defp meta_1(:literal, node) do
-    case (concrete(node)) do
+    case concrete(node) do
       v when is_atom(v) ->
         meta_call(:c_atom, [node])
+
       v when is_integer(v) ->
         meta_call(:c_int, [node])
+
       v when is_float(v) ->
         meta_call(:c_float, [node])
+
       [] ->
         meta_call(:c_nil, [])
+
       _ ->
         meta_call(:abstract, [node])
     end
@@ -1872,104 +1987,137 @@ defmodule :m_cerl do
   end
 
   defp meta_1(:values, node) do
-    meta_call(:c_values,
-                [make_list(meta_list(values_es(node)))])
+    meta_call(
+      :c_values,
+      [make_list(meta_list(values_es(node)))]
+    )
   end
 
   defp meta_1(:binary, node) do
-    meta_call(:c_binary,
-                [make_list(meta_list(binary_segments(node)))])
+    meta_call(
+      :c_binary,
+      [make_list(meta_list(binary_segments(node)))]
+    )
   end
 
   defp meta_1(:bitstr, node) do
-    meta_call(:c_bitstr,
-                [meta(bitstr_val(node)), meta(bitstr_size(node)),
-                                             meta(bitstr_unit(node)),
-                                                 meta(bitstr_type(node)),
-                                                     meta(bitstr_flags(node))])
+    meta_call(
+      :c_bitstr,
+      [
+        meta(bitstr_val(node)),
+        meta(bitstr_size(node)),
+        meta(bitstr_unit(node)),
+        meta(bitstr_type(node)),
+        meta(bitstr_flags(node))
+      ]
+    )
   end
 
   defp meta_1(:cons, node) do
-    case (split_list(node)) do
+    case split_list(node) do
       {[h], node1} ->
         meta_call(:c_cons, [meta(h), meta(node1)])
+
       {l, node1} ->
-        meta_call(:make_list,
-                    [make_list(meta_list(l)), meta(node1)])
+        meta_call(
+          :make_list,
+          [make_list(meta_list(l)), meta(node1)]
+        )
     end
   end
 
   defp meta_1(:tuple, node) do
-    meta_call(:c_tuple,
-                [make_list(meta_list(tuple_es(node)))])
+    meta_call(
+      :c_tuple,
+      [make_list(meta_list(tuple_es(node)))]
+    )
   end
 
   defp meta_1(:let, node) do
-    meta_call(:c_let,
-                [make_list(meta_list(let_vars(node))),
-                     meta(let_arg(node)), meta(let_body(node))])
+    meta_call(
+      :c_let,
+      [make_list(meta_list(let_vars(node))), meta(let_arg(node)), meta(let_body(node))]
+    )
   end
 
   defp meta_1(:seq, node) do
-    meta_call(:c_seq,
-                [meta(seq_arg(node)), meta(seq_body(node))])
+    meta_call(
+      :c_seq,
+      [meta(seq_arg(node)), meta(seq_body(node))]
+    )
   end
 
   defp meta_1(:apply, node) do
-    meta_call(:c_apply,
-                [meta(apply_op(node)),
-                     make_list(meta_list(apply_args(node)))])
+    meta_call(
+      :c_apply,
+      [meta(apply_op(node)), make_list(meta_list(apply_args(node)))]
+    )
   end
 
   defp meta_1(:call, node) do
-    meta_call(:c_call,
-                [meta(call_module(node)), meta(call_name(node)),
-                                              make_list(meta_list(call_args(node)))])
+    meta_call(
+      :c_call,
+      [meta(call_module(node)), meta(call_name(node)), make_list(meta_list(call_args(node)))]
+    )
   end
 
   defp meta_1(:primop, node) do
-    meta_call(:c_primop,
-                [meta(primop_name(node)),
-                     make_list(meta_list(primop_args(node)))])
+    meta_call(
+      :c_primop,
+      [meta(primop_name(node)), make_list(meta_list(primop_args(node)))]
+    )
   end
 
   defp meta_1(:case, node) do
-    meta_call(:c_case,
-                [meta(case_arg(node)),
-                     make_list(meta_list(case_clauses(node)))])
+    meta_call(
+      :c_case,
+      [meta(case_arg(node)), make_list(meta_list(case_clauses(node)))]
+    )
   end
 
   defp meta_1(:clause, node) do
-    meta_call(:c_clause,
-                [make_list(meta_list(clause_pats(node))),
-                     meta(clause_guard(node)), meta(clause_body(node))])
+    meta_call(
+      :c_clause,
+      [make_list(meta_list(clause_pats(node))), meta(clause_guard(node)), meta(clause_body(node))]
+    )
   end
 
   defp meta_1(:alias, node) do
-    meta_call(:c_alias,
-                [meta(alias_var(node)), meta(alias_pat(node))])
+    meta_call(
+      :c_alias,
+      [meta(alias_var(node)), meta(alias_pat(node))]
+    )
   end
 
   defp meta_1(:fun, node) do
-    meta_call(:c_fun,
-                [make_list(meta_list(fun_vars(node))),
-                     meta(fun_body(node))])
+    meta_call(
+      :c_fun,
+      [make_list(meta_list(fun_vars(node))), meta(fun_body(node))]
+    )
   end
 
   defp meta_1(:receive, node) do
-    meta_call(:c_receive,
-                [make_list(meta_list(receive_clauses(node))),
-                     meta(receive_timeout(node)),
-                         meta(receive_action(node))])
+    meta_call(
+      :c_receive,
+      [
+        make_list(meta_list(receive_clauses(node))),
+        meta(receive_timeout(node)),
+        meta(receive_action(node))
+      ]
+    )
   end
 
   defp meta_1(:try, node) do
-    meta_call(:c_try,
-                [meta(try_arg(node)),
-                     make_list(meta_list(try_vars(node))),
-                         meta(try_body(node)),
-                             make_list(meta_list(try_evars(node))),
-                                 meta(try_handler(node))])
+    meta_call(
+      :c_try,
+      [
+        meta(try_arg(node)),
+        make_list(meta_list(try_vars(node))),
+        meta(try_body(node)),
+        make_list(meta_list(try_evars(node))),
+        meta(try_handler(node))
+      ]
+    )
   end
 
   defp meta_1(:catch, node) do
@@ -1977,23 +2125,37 @@ defmodule :m_cerl do
   end
 
   defp meta_1(:letrec, node) do
-    meta_call(:c_letrec,
-                [make_list(for {n, f} <- letrec_defs(node) do
-                             c_tuple([meta(n), meta(f)])
-                           end),
-                     meta(letrec_body(node))])
+    meta_call(
+      :c_letrec,
+      [
+        make_list(
+          for {n, f} <- letrec_defs(node) do
+            c_tuple([meta(n), meta(f)])
+          end
+        ),
+        meta(letrec_body(node))
+      ]
+    )
   end
 
   defp meta_1(:module, node) do
-    meta_call(:c_module,
-                [meta(module_name(node)),
-                     make_list(meta_list(module_exports(node))),
-                         make_list(for {a, v} <- module_attrs(node) do
-                                     c_tuple([meta(a), meta(v)])
-                                   end),
-                             make_list(for {n, f} <- module_defs(node) do
-                                         c_tuple([meta(n), meta(f)])
-                                       end)])
+    meta_call(
+      :c_module,
+      [
+        meta(module_name(node)),
+        make_list(meta_list(module_exports(node))),
+        make_list(
+          for {a, v} <- module_attrs(node) do
+            c_tuple([meta(a), meta(v)])
+          end
+        ),
+        make_list(
+          for {n, f} <- module_defs(node) do
+            c_tuple([meta(n), meta(f)])
+          end
+        )
+      ]
+    )
   end
 
   defp meta_call(f, as) do
@@ -2014,9 +2176,11 @@ defmodule :m_cerl do
 
   defp split_list(node, l) do
     a = get_ann(node)
-    case (type(node)) do
+
+    case type(node) do
       :cons when a === [] ->
         split_list(cons_tl(node), [cons_hd(node) | l])
+
       _ ->
         {:lists.reverse(l), node}
     end
@@ -2050,7 +2214,7 @@ defmodule :m_cerl do
     []
   end
 
-  defp is_char_value(v) when (v >= ?\0 and v <= 255) do
+  defp is_char_value(v) when v >= ?\0 and v <= 255 do
     true
   end
 
@@ -2058,11 +2222,11 @@ defmodule :m_cerl do
     false
   end
 
-  defp is_print_char_value(v) when (v >= ?\s and v <= ?~) do
+  defp is_print_char_value(v) when v >= ?\s and v <= ?~ do
     true
   end
 
-  defp is_print_char_value(v) when (v >= 160 and v <= 255) do
+  defp is_print_char_value(v) when v >= 160 and v <= 255 do
     true
   end
 
@@ -2157,5 +2321,4 @@ defmodule :m_cerl do
   defp fold_tuples([]) do
     []
   end
-
 end

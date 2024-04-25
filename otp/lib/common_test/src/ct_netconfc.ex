@@ -2,134 +2,264 @@ defmodule :m_ct_netconfc do
   use Bitwise
   import Kernel, except: [send: 2]
   require Record
-  Record.defrecord(:r_conn, :conn, handle: :undefined,
-                                targetref: :undefined, address: :undefined,
-                                callback: :undefined)
-  Record.defrecord(:r_testspec, :testspec, spec_dir: :undefined,
-                                    nodes: [], init: [], label: [], profile: [],
-                                    logdir: ['.'], logopts: [], basic_html: [],
-                                    esc_chars: [], verbosity: [],
-                                    silent_connections: [], cover: [],
-                                    cover_stop: [], config: [], userconfig: [],
-                                    event_handler: [], ct_hooks: [],
-                                    enable_builtin_hooks: true,
-                                    release_shell: false, include: [],
-                                    auto_compile: [],
-                                    abort_if_missing_suites: [], stylesheet: [],
-                                    multiply_timetraps: [], scale_timetraps: [],
-                                    create_priv_dir: [], alias: [], tests: [],
-                                    unknown: [], merge_tests: true)
-  Record.defrecord(:r_cover, :cover, app: :none,
-                                 local_only: false, level: :details,
-                                 excl_mods: [], incl_mods: [], cross: [],
-                                 src: [])
-  Record.defrecord(:r_conn_log, :conn_log, header: true,
-                                    client: :undefined, name: :undefined,
-                                    address: :undefined, conn_pid: :undefined,
-                                    action: :undefined, module: :undefined)
-  Record.defrecord(:r_xmlDecl, :xmlDecl, vsn: :undefined,
-                                   encoding: :undefined, standalone: :undefined,
-                                   attributes: :undefined)
-  Record.defrecord(:r_xmlAttribute, :xmlAttribute, name: :undefined,
-                                        expanded_name: [], nsinfo: [],
-                                        namespace: [], parents: [],
-                                        pos: :undefined, language: [],
-                                        value: :undefined,
-                                        normalized: :undefined)
-  Record.defrecord(:r_xmlNamespace, :xmlNamespace, default: [],
-                                        nodes: [])
-  Record.defrecord(:r_xmlNsNode, :xmlNsNode, parents: [],
-                                     pos: :undefined, prefix: :undefined,
-                                     uri: [])
-  Record.defrecord(:r_xmlElement, :xmlElement, name: :undefined,
-                                      expanded_name: [], nsinfo: [],
-                                      namespace: :EFE_TODO_NESTED_RECORD,
-                                      parents: [], pos: :undefined,
-                                      attributes: [], content: [], language: '',
-                                      xmlbase: '', elementdef: :undeclared)
-  Record.defrecord(:r_xmlText, :xmlText, parents: [],
-                                   pos: :undefined, language: [],
-                                   value: :undefined, type: :text)
-  Record.defrecord(:r_xmlComment, :xmlComment, parents: [],
-                                      pos: :undefined, language: [],
-                                      value: :undefined)
-  Record.defrecord(:r_xmlPI, :xmlPI, name: :undefined,
-                                 parents: [], pos: :undefined,
-                                 value: :undefined)
+
+  Record.defrecord(:r_conn, :conn,
+    handle: :undefined,
+    targetref: :undefined,
+    address: :undefined,
+    callback: :undefined
+  )
+
+  Record.defrecord(:r_testspec, :testspec,
+    spec_dir: :undefined,
+    nodes: [],
+    init: [],
+    label: [],
+    profile: [],
+    logdir: [~c"."],
+    logopts: [],
+    basic_html: [],
+    esc_chars: [],
+    verbosity: [],
+    silent_connections: [],
+    cover: [],
+    cover_stop: [],
+    config: [],
+    userconfig: [],
+    event_handler: [],
+    ct_hooks: [],
+    enable_builtin_hooks: true,
+    release_shell: false,
+    include: [],
+    auto_compile: [],
+    abort_if_missing_suites: [],
+    stylesheet: [],
+    multiply_timetraps: [],
+    scale_timetraps: [],
+    create_priv_dir: [],
+    alias: [],
+    tests: [],
+    unknown: [],
+    merge_tests: true
+  )
+
+  Record.defrecord(:r_cover, :cover,
+    app: :none,
+    local_only: false,
+    level: :details,
+    excl_mods: [],
+    incl_mods: [],
+    cross: [],
+    src: []
+  )
+
+  Record.defrecord(:r_conn_log, :conn_log,
+    header: true,
+    client: :undefined,
+    name: :undefined,
+    address: :undefined,
+    conn_pid: :undefined,
+    action: :undefined,
+    module: :undefined
+  )
+
+  Record.defrecord(:r_xmlDecl, :xmlDecl,
+    vsn: :undefined,
+    encoding: :undefined,
+    standalone: :undefined,
+    attributes: :undefined
+  )
+
+  Record.defrecord(:r_xmlAttribute, :xmlAttribute,
+    name: :undefined,
+    expanded_name: [],
+    nsinfo: [],
+    namespace: [],
+    parents: [],
+    pos: :undefined,
+    language: [],
+    value: :undefined,
+    normalized: :undefined
+  )
+
+  Record.defrecord(:r_xmlNamespace, :xmlNamespace,
+    default: [],
+    nodes: []
+  )
+
+  Record.defrecord(:r_xmlNsNode, :xmlNsNode,
+    parents: [],
+    pos: :undefined,
+    prefix: :undefined,
+    uri: []
+  )
+
+  Record.defrecord(:r_xmlElement, :xmlElement,
+    name: :undefined,
+    expanded_name: [],
+    nsinfo: [],
+    namespace: :EFE_TODO_NESTED_RECORD,
+    parents: [],
+    pos: :undefined,
+    attributes: [],
+    content: [],
+    language: ~c"",
+    xmlbase: ~c"",
+    elementdef: :undeclared
+  )
+
+  Record.defrecord(:r_xmlText, :xmlText,
+    parents: [],
+    pos: :undefined,
+    language: [],
+    value: :undefined,
+    type: :text
+  )
+
+  Record.defrecord(:r_xmlComment, :xmlComment,
+    parents: [],
+    pos: :undefined,
+    language: [],
+    value: :undefined
+  )
+
+  Record.defrecord(:r_xmlPI, :xmlPI,
+    name: :undefined,
+    parents: [],
+    pos: :undefined,
+    value: :undefined
+  )
+
   Record.defrecord(:r_xmlDocument, :xmlDocument, content: :undefined)
-  Record.defrecord(:r_xmlContext, :xmlContext, axis_type: :forward,
-                                      context_node: :undefined,
-                                      context_position: 1, nodeset: [],
-                                      bindings: [], functions: [],
-                                      namespace: [], whole_document: :undefined)
-  Record.defrecord(:r_xmlNode, :xmlNode, type: :element,
-                                   node: :undefined, parents: [], pos: 1)
-  Record.defrecord(:r_xmlObj, :xmlObj, type: :undefined,
-                                  value: :undefined)
-  Record.defrecord(:r_xmerl_fun_states, :xmerl_fun_states, event: :undefined,
-                                            hook: :undefined, rules: :undefined,
-                                            fetch: :undefined, cont: :undefined)
-  Record.defrecord(:r_xmerl_scanner, :xmerl_scanner, encoding: :undefined,
-                                         standalone: :no, environment: :prolog,
-                                         declarations: [],
-                                         doctype_name: :undefined,
-                                         doctype_DTD: :internal, comments: true,
-                                         document: false, default_attrs: false,
-                                         rules: :undefined, keep_rules: false,
-                                         namespace_conformant: false,
-                                         xmlbase: :undefined,
-                                         xmlbase_cache: :undefined,
-                                         fetch_path: [],
-                                         filename: :file_name_unknown,
-                                         validation: :off, schemaLocation: [],
-                                         space: :preserve,
-                                         event_fun: :undefined,
-                                         hook_fun: :undefined,
-                                         acc_fun: :undefined,
-                                         fetch_fun: :undefined,
-                                         close_fun: :undefined,
-                                         continuation_fun: :undefined,
-                                         rules_read_fun: :undefined,
-                                         rules_write_fun: :undefined,
-                                         rules_delete_fun: :undefined,
-                                         user_state: :undefined,
-                                         fun_states: :EFE_TODO_NESTED_RECORD,
-                                         entity_references: [],
-                                         text_decl: false, quiet: false, col: 1,
-                                         line: 1, common_data: [])
-  Record.defrecord(:r_xmerl_event, :xmerl_event, event: :undefined,
-                                       line: :undefined, col: :undefined,
-                                       pos: :undefined, data: :undefined)
-  Record.defrecord(:r_state, :state, host: :undefined,
-                                 port: :undefined, connection: :undefined,
-                                 capabilities: :undefined,
-                                 session_id: :undefined, msg_id: 1,
-                                 hello_status: :undefined, buf: false,
-                                 pending: [], receivers: [])
-  Record.defrecord(:r_options, :options, ssh: [],
-                                   host: :undefined, port: 830,
-                                   timeout: :infinity, receivers: [],
-                                   name: :undefined, type: :undefined)
-  Record.defrecord(:r_connection, :connection, reference: :undefined,
-                                      host: :undefined, port: :undefined,
-                                      name: :undefined, type: :undefined)
-  Record.defrecord(:r_pending, :pending, tref: :undefined,
-                                   msg_id: :undefined, op: :undefined,
-                                   caller: :undefined)
+
+  Record.defrecord(:r_xmlContext, :xmlContext,
+    axis_type: :forward,
+    context_node: :undefined,
+    context_position: 1,
+    nodeset: [],
+    bindings: [],
+    functions: [],
+    namespace: [],
+    whole_document: :undefined
+  )
+
+  Record.defrecord(:r_xmlNode, :xmlNode, type: :element, node: :undefined, parents: [], pos: 1)
+
+  Record.defrecord(:r_xmlObj, :xmlObj,
+    type: :undefined,
+    value: :undefined
+  )
+
+  Record.defrecord(:r_xmerl_fun_states, :xmerl_fun_states,
+    event: :undefined,
+    hook: :undefined,
+    rules: :undefined,
+    fetch: :undefined,
+    cont: :undefined
+  )
+
+  Record.defrecord(:r_xmerl_scanner, :xmerl_scanner,
+    encoding: :undefined,
+    standalone: :no,
+    environment: :prolog,
+    declarations: [],
+    doctype_name: :undefined,
+    doctype_DTD: :internal,
+    comments: true,
+    document: false,
+    default_attrs: false,
+    rules: :undefined,
+    keep_rules: false,
+    namespace_conformant: false,
+    xmlbase: :undefined,
+    xmlbase_cache: :undefined,
+    fetch_path: [],
+    filename: :file_name_unknown,
+    validation: :off,
+    schemaLocation: [],
+    space: :preserve,
+    event_fun: :undefined,
+    hook_fun: :undefined,
+    acc_fun: :undefined,
+    fetch_fun: :undefined,
+    close_fun: :undefined,
+    continuation_fun: :undefined,
+    rules_read_fun: :undefined,
+    rules_write_fun: :undefined,
+    rules_delete_fun: :undefined,
+    user_state: :undefined,
+    fun_states: :EFE_TODO_NESTED_RECORD,
+    entity_references: [],
+    text_decl: false,
+    quiet: false,
+    col: 1,
+    line: 1,
+    common_data: []
+  )
+
+  Record.defrecord(:r_xmerl_event, :xmerl_event,
+    event: :undefined,
+    line: :undefined,
+    col: :undefined,
+    pos: :undefined,
+    data: :undefined
+  )
+
+  Record.defrecord(:r_state, :state,
+    host: :undefined,
+    port: :undefined,
+    connection: :undefined,
+    capabilities: :undefined,
+    session_id: :undefined,
+    msg_id: 1,
+    hello_status: :undefined,
+    buf: false,
+    pending: [],
+    receivers: []
+  )
+
+  Record.defrecord(:r_options, :options,
+    ssh: [],
+    host: :undefined,
+    port: 830,
+    timeout: :infinity,
+    receivers: [],
+    name: :undefined,
+    type: :undefined
+  )
+
+  Record.defrecord(:r_connection, :connection,
+    reference: :undefined,
+    host: :undefined,
+    port: :undefined,
+    name: :undefined,
+    type: :undefined
+  )
+
+  Record.defrecord(:r_pending, :pending,
+    tref: :undefined,
+    msg_id: :undefined,
+    op: :undefined,
+    caller: :undefined
+  )
+
   def connect(options) do
     connect(options, r_options(type: :connection), [])
   end
 
   def connect(keyOrName, extraOptions) do
-    connect(make_opts(keyOrName, extraOptions),
-              r_options(name: keyOrName, type: :connection),
-              [{:name, keyOrName}])
+    connect(
+      make_opts(keyOrName, extraOptions),
+      r_options(name: keyOrName, type: :connection),
+      [{:name, keyOrName}]
+    )
   end
 
   defp connect(opts, initRec, nameOpt) do
-    case (make_options(opts, initRec)) do
+    case make_options(opts, initRec) do
       r_options() = rec ->
         start(rec, nameOpt, false)
+
       {:error, _} = no ->
         no
     end
@@ -137,15 +267,21 @@ defmodule :m_ct_netconfc do
 
   defp make_opts(keyOrName, extraOptions) do
     sortedExtra = :lists.keysort(1, extraOptions)
-    sortedConfig = :lists.keysort(1,
-                                    :ct.get_config(keyOrName, []))
+
+    sortedConfig =
+      :lists.keysort(
+        1,
+        :ct.get_config(keyOrName, [])
+      )
+
     :lists.ukeymerge(1, sortedConfig, sortedExtra)
   end
 
   def disconnect(conn) do
-    case (call(conn, :get_ssh_connection)) do
+    case call(conn, :get_ssh_connection) do
       {:ok, _} ->
         :ct_gen_conn.stop(conn)
+
       error ->
         error
     end
@@ -160,27 +296,40 @@ defmodule :m_ct_netconfc do
   end
 
   def session(keyOrName, conn) do
-    session(conn, [], r_options(name: keyOrName, type: :channel),
-              [{:name, keyOrName}])
+    session(conn, [], r_options(name: keyOrName, type: :channel), [{:name, keyOrName}])
   end
 
   def session(keyOrName, conn, extraOptions) do
-    session(conn, make_opts(keyOrName, extraOptions),
-              r_options(name: keyOrName, type: :channel),
-              [{:name, keyOrName}])
+    session(
+      conn,
+      make_opts(keyOrName, extraOptions),
+      r_options(name: keyOrName, type: :channel),
+      [{:name, keyOrName}]
+    )
   end
 
   defp session(conn, opts, initRec, nameOpt) do
     t = make_ref()
+
     try do
-      [_ | {:ok, sshConn}] = [t | call(conn,
-                                         :get_ssh_connection)]
-      [_ | r_options() = rec] = [t | make_session_options(opts,
-                                                    initRec)]
-      [_ | {:ok, client} = ok] = [t | start(sshConn, rec,
-                                              nameOpt, true)]
-      [_ | :ok] = [t | hello(client, caps(opts),
-                               r_options(rec, :timeout))]
+      [_ | {:ok, sshConn}] = [
+        t
+        | call(
+            conn,
+            :get_ssh_connection
+          )
+      ]
+
+      [_ | r_options() = rec] = [
+        t
+        | make_session_options(
+            opts,
+            initRec
+          )
+      ]
+
+      [_ | {:ok, client} = ok] = [t | start(sshConn, rec, nameOpt, true)]
+      [_ | :ok] = [t | hello(client, caps(opts), r_options(rec, :timeout))]
       ok
     catch
       :error, {:badmatch, [^t | error]} ->
@@ -189,14 +338,13 @@ defmodule :m_ct_netconfc do
   end
 
   defp caps(opts) do
-    for ({:capability, _} = t) <- opts do
+    for {:capability, _} = t <- opts do
       t
     end
   end
 
   def open(options) do
-    open(options, r_options(type: :connection_and_channel), [],
-           true)
+    open(options, r_options(type: :connection_and_channel), [], true)
   end
 
   def open(keyOrName, extraOpts) do
@@ -204,20 +352,27 @@ defmodule :m_ct_netconfc do
   end
 
   defp open(keyOrName, extraOptions, hello) do
-    open(make_opts(keyOrName, extraOptions),
-           r_options(name: keyOrName, type: :connection_and_channel),
-           [{:name, keyOrName}], hello)
+    open(
+      make_opts(keyOrName, extraOptions),
+      r_options(name: keyOrName, type: :connection_and_channel),
+      [{:name, keyOrName}],
+      hello
+    )
   end
 
   defp open(opts, initRec, nameOpt, hello) do
     t = make_ref()
+
     try do
       [_, r_options() = rec] = [t, make_options(opts, initRec)]
-      [_, {:ok, client} = ok | true] = [t, start(rec, nameOpt,
-                                                   true) |
-                                               hello]
-      [_, :ok] = [t, hello(client, caps(opts),
-                             r_options(rec, :timeout))]
+
+      [_, {:ok, client} = ok | true] = [
+        t,
+        start(rec, nameOpt, true)
+        | hello
+      ]
+
+      [_, :ok] = [t, hello(client, caps(opts), r_options(rec, :timeout))]
       ok
     catch
       :error, {:badmatch, [^t, res | _]} ->
@@ -233,22 +388,21 @@ defmodule :m_ct_netconfc do
     {:error, :no_port}
   end
 
-  defp start(r_options(host: host, port: port) = opts, nameOpt,
-            fwd) do
+  defp start(r_options(host: host, port: port) = opts, nameOpt, fwd) do
     start({host, port}, opts, nameOpt, fwd)
   end
 
   defp start(ep, opts, nameOpt, fwd) do
-    :ct_gen_conn.start(ep, opts, :ct_netconfc,
-                         [{:reconnect, false}, {:use_existing_connection,
-                                                  false},
-                                                   {:forward_messages, fwd} |
-                                                       nameOpt])
+    :ct_gen_conn.start(ep, opts, :ct_netconfc, [
+      {:reconnect, false},
+      {:use_existing_connection, false},
+      {:forward_messages, fwd}
+      | nameOpt
+    ])
   end
 
   def only_open(options) do
-    open(options, r_options(type: :connection_and_channel), [],
-           false)
+    open(options, r_options(type: :connection_and_channel), [], false)
   end
 
   def only_open(keyOrName, extraOpts) do
@@ -328,8 +482,10 @@ defmodule :m_ct_netconfc do
   end
 
   def get_config(client, source, filter, timeout) do
-    call(client,
-           {:send_rpc_op, :get_config, [source, filter], timeout})
+    call(
+      client,
+      {:send_rpc_op, :get_config, [source, filter], timeout}
+    )
   end
 
   def edit_config(client, target, config) do
@@ -343,20 +499,19 @@ defmodule :m_ct_netconfc do
 
   def edit_config(client, target, config, optParams)
       when is_list(optParams) do
-    edit_config(client, target, config, optParams,
-                  :infinity)
+    edit_config(client, target, config, optParams, :infinity)
   end
 
   def edit_config(client, target, config, optParams, timeout)
       when not is_list(config) do
-    edit_config(client, target, [config], optParams,
-                  timeout)
+    edit_config(client, target, [config], optParams, timeout)
   end
 
   def edit_config(client, target, config, optParams, timeout) do
-    call(client,
-           {:send_rpc_op, :edit_config,
-              [target, config, optParams], timeout})
+    call(
+      client,
+      {:send_rpc_op, :edit_config, [target, config, optParams], timeout}
+    )
   end
 
   def delete_config(client, target) do
@@ -365,8 +520,10 @@ defmodule :m_ct_netconfc do
 
   def delete_config(client, target, timeout)
       when target == :startup or target == :candidate do
-    call(client,
-           {:send_rpc_op, :delete_config, [target], timeout})
+    call(
+      client,
+      {:send_rpc_op, :delete_config, [target], timeout}
+    )
   end
 
   def copy_config(client, source, target) do
@@ -374,8 +531,10 @@ defmodule :m_ct_netconfc do
   end
 
   def copy_config(client, target, source, timeout) do
-    call(client,
-           {:send_rpc_op, :copy_config, [target, source], timeout})
+    call(
+      client,
+      {:send_rpc_op, :copy_config, [target, source], timeout}
+    )
   end
 
   def action(client, action) do
@@ -401,52 +560,103 @@ defmodule :m_ct_netconfc do
   end
 
   def create_subscription(client, filter)
-      when (is_atom(filter) or is_tuple(filter) and is_atom(:erlang.element(1,
-                                                                              filter))) or filter == [] or is_list(filter) and (is_atom(hd(filter)) or is_tuple(hd(filter)) and is_atom(:erlang.element(1,
-                                                                                                                                                                                                          hd(filter)))) do
+      when is_atom(filter) or
+             (is_tuple(filter) and
+                is_atom(
+                  :erlang.element(
+                    1,
+                    filter
+                  )
+                )) or filter == [] or
+             (is_list(filter) and
+                (is_atom(hd(filter)) or
+                   (is_tuple(hd(filter)) and
+                      is_atom(
+                        :erlang.element(
+                          1,
+                          hd(filter)
+                        )
+                      )))) do
     create_subscription(client, %{filter: filter})
   end
 
   def create_subscription(client, %{} = values, timeout) do
-    keys = [{:stream, 'NETCONF'}, {:filter, :undefined}, {:start,
-                                                    :undefined},
-                                                     {:stop, :undefined}]
-    call(client,
-           {:send_rpc_op, {:create_subscription, self()},
-              for {k, d} <- keys do
-                :maps.get(k, values, d)
-              end,
-              timeout})
+    keys = [
+      {:stream, ~c"NETCONF"},
+      {:filter, :undefined},
+      {:start, :undefined},
+      {:stop, :undefined}
+    ]
+
+    call(
+      client,
+      {:send_rpc_op, {:create_subscription, self()},
+       for {k, d} <- keys do
+         :maps.get(k, values, d)
+       end, timeout}
+    )
   end
 
   def create_subscription(client, stream, timeout)
       when (is_list(stream) and is_integer(hd(stream)) and
-              is_integer(timeout) or timeout == :infinity) do
+              is_integer(timeout)) or timeout == :infinity do
     create_subscription(client, %{stream: stream}, timeout)
   end
 
   def create_subscription(client, startTime, stopTime)
-      when (is_list(startTime) and is_integer(hd(startTime)) and
-              is_list(stopTime) and is_integer(hd(stopTime))) do
-    create_subscription(client,
-                          %{start: startTime, stop: stopTime})
+      when is_list(startTime) and is_integer(hd(startTime)) and
+             is_list(stopTime) and is_integer(hd(stopTime)) do
+    create_subscription(
+      client,
+      %{start: startTime, stop: stopTime}
+    )
   end
 
   def create_subscription(client, filter, timeout)
-      when ((is_atom(filter) or is_tuple(filter) and is_atom(:erlang.element(1,
-                                                                               filter))) or filter == [] or is_list(filter) and (is_atom(hd(filter)) or is_tuple(hd(filter)) and is_atom(:erlang.element(1,
-                                                                                                                                                                                                           hd(filter)))) and
-              is_integer(timeout) or timeout == :infinity) do
+      when is_atom(filter) or
+             (is_tuple(filter) and
+                is_atom(
+                  :erlang.element(
+                    1,
+                    filter
+                  )
+                )) or filter == [] or
+             (is_list(filter) and
+                (is_atom(hd(filter)) or
+                   (is_tuple(hd(filter)) and
+                      is_atom(
+                        :erlang.element(
+                          1,
+                          hd(filter)
+                        )
+                      ))) and
+                is_integer(timeout)) or timeout == :infinity do
     create_subscription(client, %{filter: filter}, timeout)
   end
 
   def create_subscription(client, stream, filter)
       when (is_list(stream) and is_integer(hd(stream)) and
-              (is_atom(filter) or is_tuple(filter) and is_atom(:erlang.element(1,
-                                                                                 filter))) or filter == [] or is_list(filter) and (is_atom(hd(filter)) or is_tuple(hd(filter)) and is_atom(:erlang.element(1,
-                                                                                                                                                                                                             hd(filter))))) do
-    create_subscription(client,
-                          %{stream: stream, filter: filter})
+              (is_atom(filter) or
+                 (is_tuple(filter) and
+                    is_atom(
+                      :erlang.element(
+                        1,
+                        filter
+                      )
+                    )))) or filter == [] or
+             (is_list(filter) and
+                (is_atom(hd(filter)) or
+                   (is_tuple(hd(filter)) and
+                      is_atom(
+                        :erlang.element(
+                          1,
+                          hd(filter)
+                        )
+                      )))) do
+    create_subscription(
+      client,
+      %{stream: stream, filter: filter}
+    )
   end
 
   def create_subscription(client) do
@@ -456,35 +666,67 @@ defmodule :m_ct_netconfc do
   def create_subscription(client, startTime, stopTime, timeout)
       when (is_list(startTime) and is_integer(hd(startTime)) and
               is_list(stopTime) and is_integer(hd(stopTime)) and
-              is_integer(timeout) or timeout == :infinity) do
+              is_integer(timeout)) or timeout == :infinity do
     values = %{start: startTime, stop: stopTime}
     create_subscription(client, values, timeout)
   end
 
   def create_subscription(client, stream, startTime, stopTime)
-      when (is_list(stream) and is_integer(hd(stream)) and
-              is_list(startTime) and is_integer(hd(startTime)) and
-              is_list(stopTime) and is_integer(hd(stopTime))) do
-    create_subscription(client,
-                          %{stream: stream, start: startTime, stop: stopTime})
+      when is_list(stream) and is_integer(hd(stream)) and
+             is_list(startTime) and is_integer(hd(startTime)) and
+             is_list(stopTime) and is_integer(hd(stopTime)) do
+    create_subscription(
+      client,
+      %{stream: stream, start: startTime, stop: stopTime}
+    )
   end
 
   def create_subscription(client, filter, startTime, stopTime)
-      when ((is_atom(filter) or is_tuple(filter) and is_atom(:erlang.element(1,
-                                                                               filter))) or filter == [] or is_list(filter) and (is_atom(hd(filter)) or is_tuple(hd(filter)) and is_atom(:erlang.element(1,
-                                                                                                                                                                                                           hd(filter)))) and
-              is_list(startTime) and is_integer(hd(startTime)) and
-              is_list(stopTime) and is_integer(hd(stopTime))) do
-    create_subscription(client,
-                          %{filter: filter, start: startTime, stop: stopTime})
+      when is_atom(filter) or
+             (is_tuple(filter) and
+                is_atom(
+                  :erlang.element(
+                    1,
+                    filter
+                  )
+                )) or filter == [] or
+             (is_list(filter) and
+                (is_atom(hd(filter)) or
+                   (is_tuple(hd(filter)) and
+                      is_atom(
+                        :erlang.element(
+                          1,
+                          hd(filter)
+                        )
+                      ))) and
+                is_list(startTime) and is_integer(hd(startTime)) and
+                is_list(stopTime) and is_integer(hd(stopTime))) do
+    create_subscription(
+      client,
+      %{filter: filter, start: startTime, stop: stopTime}
+    )
   end
 
   def create_subscription(client, stream, filter, timeout)
       when (is_list(stream) and is_integer(hd(stream)) and
-              (is_atom(filter) or is_tuple(filter) and is_atom(:erlang.element(1,
-                                                                                 filter))) or filter == [] or is_list(filter) and (is_atom(hd(filter)) or is_tuple(hd(filter)) and is_atom(:erlang.element(1,
-                                                                                                                                                                                                             hd(filter)))) and
-              is_integer(timeout) or timeout == :infinity) do
+              (is_atom(filter) or
+                 (is_tuple(filter) and
+                    is_atom(
+                      :erlang.element(
+                        1,
+                        filter
+                      )
+                    )))) or filter == [] or
+             (is_list(filter) and
+                (is_atom(hd(filter)) or
+                   (is_tuple(hd(filter)) and
+                      is_atom(
+                        :erlang.element(
+                          1,
+                          hd(filter)
+                        )
+                      ))) and
+                is_integer(timeout)) or timeout == :infinity do
     values = %{stream: stream, filter: filter}
     create_subscription(client, values, timeout)
   end
@@ -493,28 +735,40 @@ defmodule :m_ct_netconfc do
       when (is_list(stream) and is_integer(hd(stream)) and
               is_list(startTime) and is_integer(hd(startTime)) and
               is_list(stopTime) and is_integer(hd(stopTime)) and
-              is_integer(timeout) or timeout == :infinity) do
-    values = %{stream: stream, start: startTime,
-                 stop: stopTime}
+              is_integer(timeout)) or timeout == :infinity do
+    values = %{stream: stream, start: startTime, stop: stopTime}
     create_subscription(client, values, timeout)
   end
 
   def create_subscription(client, stream, filter, startTime, stopTime)
       when (is_list(stream) and is_integer(hd(stream)) and
-              (is_atom(filter) or is_tuple(filter) and is_atom(:erlang.element(1,
-                                                                                 filter))) or filter == [] or is_list(filter) and (is_atom(hd(filter)) or is_tuple(hd(filter)) and is_atom(:erlang.element(1,
-                                                                                                                                                                                                             hd(filter)))) and
-              is_list(startTime) and is_integer(hd(startTime)) and
-              is_list(stopTime) and is_integer(hd(stopTime))) do
-    create_subscription(client,
-                          %{stream: stream, filter: filter, start: startTime,
-                              stop: stopTime})
+              (is_atom(filter) or
+                 (is_tuple(filter) and
+                    is_atom(
+                      :erlang.element(
+                        1,
+                        filter
+                      )
+                    )))) or filter == [] or
+             (is_list(filter) and
+                (is_atom(hd(filter)) or
+                   (is_tuple(hd(filter)) and
+                      is_atom(
+                        :erlang.element(
+                          1,
+                          hd(filter)
+                        )
+                      ))) and
+                is_list(startTime) and is_integer(hd(startTime)) and
+                is_list(stopTime) and is_integer(hd(stopTime))) do
+    create_subscription(
+      client,
+      %{stream: stream, filter: filter, start: startTime, stop: stopTime}
+    )
   end
 
-  def create_subscription(client, stream, filter, startTime, stopTime,
-           timeout) do
-    values = %{stream: stream, filter: filter,
-                 start: startTime, stop: stopTime}
+  def create_subscription(client, stream, filter, startTime, stopTime, timeout) do
+    values = %{stream: stream, filter: filter, start: startTime, stop: stopTime}
     create_subscription(client, values, timeout)
   end
 
@@ -522,8 +776,9 @@ defmodule :m_ct_netconfc do
     get_event_streams(client, [], :infinity)
   end
 
-  def get_event_streams(client, timeout) when is_integer(timeout) or
-                                 timeout == :infinity do
+  def get_event_streams(client, timeout)
+      when is_integer(timeout) or
+             timeout == :infinity do
     get_event_streams(client, [], timeout)
   end
 
@@ -540,8 +795,7 @@ defmodule :m_ct_netconfc do
   end
 
   def close_session(client, timeout) do
-    call(client,
-           {:send_rpc_op, :close_session, [], timeout}, true)
+    call(client, {:send_rpc_op, :close_session, [], timeout}, true)
   end
 
   def kill_session(client, sessionId) do
@@ -549,18 +803,24 @@ defmodule :m_ct_netconfc do
   end
 
   def kill_session(client, sessionId, timeout) do
-    call(client,
-           {:send_rpc_op, :kill_session, [sessionId], timeout})
+    call(
+      client,
+      {:send_rpc_op, :kill_session, [sessionId], timeout}
+    )
   end
 
   def init(_KeyOrName, {cM, {host, port}}, options) do
-    case (ssh_channel(r_connection(reference: cM, host: host,
-                          port: port),
-                        options)) do
+    case ssh_channel(
+           r_connection(reference: cM, host: host, port: port),
+           options
+         ) do
       {:ok, connection} ->
         {:ok, cM,
-           r_state(connection: connection,
-               receivers: r_options(options, :receivers))}
+         r_state(
+           connection: connection,
+           receivers: r_options(options, :receivers)
+         )}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -568,22 +828,27 @@ defmodule :m_ct_netconfc do
 
   def init(_KeyOrName, {_Host, _Port}, options)
       when r_options(options, :type) == :connection do
-    case (ssh_connect(options)) do
+    case ssh_connect(options) do
       {:ok, connection} ->
         connPid = r_connection(connection, :reference)
         {:ok, connPid, r_state(connection: connection)}
+
       error ->
         error
     end
   end
 
   def init(_KeyOrName, {_Host, _Port}, options) do
-    case (ssh_open(options)) do
+    case ssh_open(options) do
       {:ok, connection} ->
         {connPid, _} = r_connection(connection, :reference)
+
         {:ok, connPid,
-           r_state(connection: connection,
-               receivers: r_options(options, :receivers))}
+         r_state(
+           connection: connection,
+           receivers: r_options(options, :receivers)
+         )}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -594,30 +859,37 @@ defmodule :m_ct_netconfc do
     :ok
   end
 
-  def handle_msg({:hello, options, timeout}, from,
-           r_state(connection: connection,
-               hello_status: helloStatus) = state) do
-    case (do_send(connection, client_hello(options))) do
+  def handle_msg(
+        {:hello, options, timeout},
+        from,
+        r_state(
+          connection: connection,
+          hello_status: helloStatus
+        ) = state
+      ) do
+    case do_send(connection, client_hello(options)) do
       :ok when helloStatus == :undefined ->
         tRef = set_request_timer(timeout, :hello)
-        {:noreply,
-           r_state(state, hello_status: r_pending(tref: tRef, caller: from))}
+        {:noreply, r_state(state, hello_status: r_pending(tref: tRef, caller: from))}
+
       :ok ->
         handle_capx(state)
+
       error ->
         {:stop, error, state}
     end
   end
 
-  def handle_msg(:get_ssh_connection, _From,
-           r_state(connection: connection) = state) do
-    reply = (case (r_connection(connection, :reference)) do
-               {_, _} ->
-                 {:error, :not_an_ssh_connection}
-               cM ->
-                 {:ok,
-                    {cM, {r_connection(connection, :host), r_connection(connection, :port)}}}
-             end)
+  def handle_msg(:get_ssh_connection, _From, r_state(connection: connection) = state) do
+    reply =
+      case r_connection(connection, :reference) do
+        {_, _} ->
+          {:error, :not_an_ssh_connection}
+
+        cM ->
+          {:ok, {cM, {r_connection(connection, :host), r_connection(connection, :port)}}}
+      end
+
     {:reply, reply, state}
   end
 
@@ -625,24 +897,31 @@ defmodule :m_ct_netconfc do
     {:reply, {:error, :waiting_for_hello}, state}
   end
 
-  def handle_msg(:get_capabilities, _From,
-           r_state(capabilities: caps) = state) do
+  def handle_msg(:get_capabilities, _From, r_state(capabilities: caps) = state) do
     {:reply, caps, state}
   end
 
-  def handle_msg(:get_session_id, _From,
-           r_state(session_id: id) = state) do
+  def handle_msg(:get_session_id, _From, r_state(session_id: id) = state) do
     {:reply, id, state}
   end
 
-  def handle_msg({:send, timeout, simpleXml}, from,
-           r_state(connection: connection, pending: pending) = state) do
-    case (do_send(connection, simpleXml)) do
+  def handle_msg(
+        {:send, timeout, simpleXml},
+        from,
+        r_state(connection: connection, pending: pending) = state
+      ) do
+    case do_send(connection, simpleXml) do
       :ok ->
         tRef = set_request_timer(timeout, :send)
+
         {:noreply,
-           r_state(state, pending: [r_pending(tref: tRef, caller: from) |
-                                  pending])}
+         r_state(state,
+           pending: [
+             r_pending(tref: tRef, caller: from)
+             | pending
+           ]
+         )}
+
       error ->
         {:reply, error, state}
     end
@@ -652,19 +931,21 @@ defmodule :m_ct_netconfc do
     do_send_rpc(:undefined, simpleXml, timeout, from, state)
   end
 
-  def handle_msg({:send_rpc_op, op, data, timeout}, from,
-           state) do
+  def handle_msg({:send_rpc_op, op, data, timeout}, from, state) do
     simpleXml = encode_rpc_operation(op, data)
     do_send_rpc(op, simpleXml, timeout, from, state)
   end
 
-  def handle_msg({:get_event_streams = op, streams, timeout},
-           from, state) do
-    filter = {:netconf, [{:xmlns, 'urn:ietf:params:xml:ns:netmod:notification'}],
-                [{:streams,
-                    for name <- streams do
-                      {:stream, [{:name, [name]}]}
-                    end}]}
+  def handle_msg({:get_event_streams = op, streams, timeout}, from, state) do
+    filter =
+      {:netconf, [{:xmlns, ~c"urn:ietf:params:xml:ns:netmod:notification"}],
+       [
+         {:streams,
+          for name <- streams do
+            {:stream, [{:name, [name]}]}
+          end}
+       ]}
+
     simpleXml = encode_rpc_operation(:get, [filter])
     do_send_rpc(op, simpleXml, timeout, from, state)
   end
@@ -680,40 +961,54 @@ defmodule :m_ct_netconfc do
     {:stop, state}
   end
 
-  def handle_msg({:timeout, tRef, :hello},
-           r_state(hello_status: r_pending(tref: tRef, caller: from)) = state) do
-    :ct_gen_conn.return(from,
-                          {:error, {:hello_session_failed, :timeout}})
+  def handle_msg(
+        {:timeout, tRef, :hello},
+        r_state(hello_status: r_pending(tref: tRef, caller: from)) = state
+      ) do
+    :ct_gen_conn.return(
+      from,
+      {:error, {:hello_session_failed, :timeout}}
+    )
+
     {:stop, r_state(state, hello_status: {:error, :timeout})}
   end
 
-  def handle_msg({:timeout, tRef, op},
-           r_state(pending: pending) = state) do
-    case (:lists.keytake(tRef, r_pending(:tref), pending)) do
+  def handle_msg(
+        {:timeout, tRef, op},
+        r_state(pending: pending) = state
+      ) do
+    case :lists.keytake(tRef, r_pending(:tref), pending) do
       {:value, r_pending(caller: from), rest} ->
         :ct_gen_conn.return(from, {:error, :timeout})
+
         {cond do
            op == :close_session ->
              :stop
+
            true ->
              :noreply
          end,
-           r_state(state, pending: rest, 
-                      buf: is_binary(r_state(state, :buf)))}
+         r_state(state,
+           pending: rest,
+           buf: is_binary(r_state(state, :buf))
+         )}
+
       false ->
         {:noreply, state}
     end
   end
 
   def close(client) do
-    case (get_handle(client)) do
+    case get_handle(client) do
       {:ok, pid} ->
-        case (:ct_gen_conn.stop(pid)) do
+        case :ct_gen_conn.stop(pid) do
           {:error, {:process_down, ^pid, :noproc}} ->
             {:error, :already_closed}
+
           result ->
             result
         end
+
       error ->
         error
     end
@@ -724,43 +1019,51 @@ defmodule :m_ct_netconfc do
   end
 
   defp call(client, msg, timeout)
-      when is_integer(timeout) or timeout == :infinity do
+       when is_integer(timeout) or timeout == :infinity do
     call(client, msg, timeout, false)
   end
 
   defp call(client, msg, waitStop)
-      when is_boolean(waitStop) do
+       when is_boolean(waitStop) do
     call(client, msg, :infinity, waitStop)
   end
 
   defp call(client, msg, timeout, waitStop) do
-    case (get_handle(client)) do
+    case get_handle(client) do
       {:ok, pid} ->
-        case (:ct_gen_conn.call(pid, msg, timeout)) do
+        case :ct_gen_conn.call(pid, msg, timeout) do
           {:error, {:process_down, ^pid, :noproc}} ->
             {:error, :no_such_client}
-          {:error, {:process_down, ^pid, :normal}} when waitStop
-                                                        ->
+
+          {:error, {:process_down, ^pid, :normal}} when waitStop ->
             :ok
+
           {:error, {:process_down, ^pid, :normal}} ->
             {:error, :closed}
+
           {:error, {:process_down, ^pid, reason}} ->
             {:error, {:closed, reason}}
+
           other when waitStop ->
             mRef = :erlang.monitor(:process, pid)
+
             receive do
               {:DOWN, ^mRef, :process, ^pid, normal}
-                  when normal == :normal or normal == :noproc ->
+              when normal == :normal or normal == :noproc ->
                 other
+
               {:DOWN, ^mRef, :process, ^pid, reason} ->
                 {:error, {{:closed, reason}, other}}
-            after timeout ->
-              :erlang.demonitor(mRef, [:flush])
-              {:error, {:timeout, other}}
+            after
+              timeout ->
+                :erlang.demonitor(mRef, [:flush])
+                {:error, {:timeout, other}}
             end
+
           other ->
             other
         end
+
       error ->
         error
     end
@@ -771,11 +1074,13 @@ defmodule :m_ct_netconfc do
   end
 
   defp get_handle(client) do
-    case (:ct_util.get_connection(client, :ct_netconfc)) do
+    case :ct_util.get_connection(client, :ct_netconfc) do
       {:ok, {pid, _}} ->
         {:ok, pid}
+
       {:error, :no_registered_connection} ->
         {:error, {:no_connection_found, client}}
+
       error ->
         error
     end
@@ -793,8 +1098,9 @@ defmodule :m_ct_netconfc do
     r_options(rec, port: port)
   end
 
-  defp opt({:timeout, tmo}, rec) when is_integer(tmo) or
-                                       tmo == :infinity do
+  defp opt({:timeout, tmo}, rec)
+       when is_integer(tmo) or
+              tmo == :infinity do
     r_options(rec, timeout: tmo)
   end
 
@@ -826,8 +1132,9 @@ defmodule :m_ct_netconfc do
     rec
   end
 
-  defp session_opt({:timeout, tmo}, rec) when is_integer(tmo) or
-                                       tmo == :infinity do
+  defp session_opt({:timeout, tmo}, rec)
+       when is_integer(tmo) or
+              tmo == :infinity do
     r_options(rec, timeout: tmo)
   end
 
@@ -861,24 +1168,29 @@ defmodule :m_ct_netconfc do
   end
 
   defp client_hello(opts) when is_list(opts) do
-    userCaps = (for {:capability = t, cs} <- opts do
-                  {t, cap(:lists.flatten(cs))}
-                end)
+    userCaps =
+      for {:capability = t, cs} <- opts do
+        {t, cap(:lists.flatten(cs))}
+      end
+
     vsns = versions(userCaps)
     :erlang.put({:ct_netconfc, :protocol_vsn}, vsns)
-    {:hello, [{:xmlns, 'urn:ietf:params:xml:ns:netconf:base:1.0'}],
-       [{:capabilities,
-           (for _ <- [:EFE_DUMMY_GEN], [] == vsns do
-              {:capability, ['urn:ietf:params:netconf:base:', '1.0']}
-            end) ++ userCaps}]}
+
+    {:hello, [{:xmlns, ~c"urn:ietf:params:xml:ns:netconf:base:1.0"}],
+     [
+       {:capabilities,
+        for _ <- [:EFE_DUMMY_GEN], [] == vsns do
+          {:capability, [~c"urn:ietf:params:netconf:base:", ~c"1.0"]}
+        end ++ userCaps}
+     ]}
   end
 
-  defp cap(':base:' ++ _ = str) do
-    ['urn:ietf:params:netconf', str]
+  defp cap(~c":base:" ++ _ = str) do
+    [~c"urn:ietf:params:netconf", str]
   end
 
   defp cap([?: | _] = str) do
-    ['urn:ietf:params:netconf:capability', str]
+    [~c"urn:ietf:params:netconf:capability", str]
   end
 
   defp cap(str) do
@@ -886,33 +1198,46 @@ defmodule :m_ct_netconfc do
   end
 
   defp versions(opts) do
-    for {:capability, l} <- opts, s <- l,
-          'urn:ietf:params:netconf:base:' ++ x <- [:lists.flatten(s)],
-          v <- [:lists.takewhile(fn c ->
-                                      c != ??
-                                 end,
-                                   x)] do
+    for {:capability, l} <- opts,
+        s <- l,
+        ~c"urn:ietf:params:netconf:base:" ++ x <- [:lists.flatten(s)],
+        v <- [
+          :lists.takewhile(
+            fn c ->
+              c != ??
+            end,
+            x
+          )
+        ] do
       v
     end
   end
 
-  defp handle_capx(r_state(hello_status: :received,
-              capabilities: caps) = s) do
-    remote = (for 'urn:ietf:params:netconf:base:' ++ x <- caps,
-                    [v | _] <- [:string.lexemes(x, '? \t\r\n')] do
-                v
-              end)
+  defp handle_capx(
+         r_state(
+           hello_status: :received,
+           capabilities: caps
+         ) = s
+       ) do
+    remote =
+      for ~c"urn:ietf:params:netconf:base:" ++ x <- caps,
+          [v | _] <- [:string.lexemes(x, ~c"? \t\r\n")] do
+        v
+      end
+
     local = :erlang.erase({:ct_netconfc, :protocol_vsn})
-    case (protocol_vsn(local, remote)) do
+
+    case protocol_vsn(local, remote) do
       false when remote == [] ->
         reason = {:incorrect_hello, :no_base_capability_found}
         {:stop, {:error, reason}, s}
+
       false ->
-        reason = {:incompatible_base_capability_vsn,
-                    :lists.min(remote)}
+        reason = {:incompatible_base_capability_vsn, :lists.min(remote)}
         {:stop, {:error, reason}, s}
+
       vsn ->
-        :erlang.put({:ct_netconfc, :chunk}, vsn != '1.0')
+        :erlang.put({:ct_netconfc, :chunk}, vsn != ~c"1.0")
         {:reply, :ok, rebuf(vsn, r_state(s, hello_status: vsn))}
     end
   end
@@ -921,7 +1246,7 @@ defmodule :m_ct_netconfc do
     {:stop, no, s}
   end
 
-  defp rebuf('1.0', s) do
+  defp rebuf(~c"1.0", s) do
     s
   end
 
@@ -930,18 +1255,22 @@ defmodule :m_ct_netconfc do
   end
 
   defp protocol_vsn([], vsns) do
-    protocol_vsn(['1.0'], vsns)
+    protocol_vsn([~c"1.0"], vsns)
   end
 
   defp protocol_vsn(local, remote) do
-    :lists.max([false | for v <- remote,
-                              :lists.member(v, local) do
-                          v
-                        end])
+    :lists.max([
+      false
+      | for v <- remote,
+            :lists.member(v, local) do
+          v
+        end
+    ])
   end
 
-  defp encode_rpc_operation(lock, [target]) when lock == :lock or
-                                 lock == :unlock do
+  defp encode_rpc_operation(lock, [target])
+       when lock == :lock or
+              lock == :unlock do
     {lock, [{:target, [target]}]}
   end
 
@@ -954,9 +1283,7 @@ defmodule :m_ct_netconfc do
   end
 
   defp encode_rpc_operation(:edit_config, [target, config, optParams]) do
-    {:"edit-config",
-       [{:target, [target]}] ++ optParams ++ [{:config,
-                                                 config}]}
+    {:"edit-config", [{:target, [target]}] ++ optParams ++ [{:config, config}]}
   end
 
   defp encode_rpc_operation(:delete_config, [target]) do
@@ -968,7 +1295,7 @@ defmodule :m_ct_netconfc do
   end
 
   defp encode_rpc_operation(:action, [action]) do
-    {:action, [{:xmlns, 'urn:com:ericsson:ecim:1.0'}], [{:data, [action]}]}
+    {:action, [{:xmlns, ~c"urn:com:ericsson:ecim:1.0"}], [{:data, [action]}]}
   end
 
   defp encode_rpc_operation(:kill_session, [sessionId]) do
@@ -979,13 +1306,21 @@ defmodule :m_ct_netconfc do
     :"close-session"
   end
 
-  defp encode_rpc_operation({:create_subscription, _},
-            [stream, filter, startTime, stopTime]) do
-    {:"create-subscription", [{:xmlns, 'urn:ietf:params:xml:ns:netconf:notification:1.0'}],
-       [{:stream,
-           [stream]}] ++ filter(filter) ++ maybe_element(:startTime,
-                                                           startTime) ++ maybe_element(:stopTime,
-                                                                                         stopTime)}
+  defp encode_rpc_operation(
+         {:create_subscription, _},
+         [stream, filter, startTime, stopTime]
+       ) do
+    {:"create-subscription", [{:xmlns, ~c"urn:ietf:params:xml:ns:netconf:notification:1.0"}],
+     [{:stream, [stream]}] ++
+       filter(filter) ++
+       maybe_element(
+         :startTime,
+         startTime
+       ) ++
+       maybe_element(
+         :stopTime,
+         stopTime
+       )}
   end
 
   defp filter(:undefined) do
@@ -993,12 +1328,12 @@ defmodule :m_ct_netconfc do
   end
 
   defp filter({:xpath, filter})
-      when is_list(filter) and is_integer(hd(filter)) do
-    [{:filter, [{:type, 'xpath'}, {:select, filter}], []}]
+       when is_list(filter) and is_integer(hd(filter)) do
+    [{:filter, [{:type, ~c"xpath"}, {:select, filter}], []}]
   end
 
   defp filter(filter) when is_list(filter) do
-    [{:filter, [{:type, 'subtree'}], filter}]
+    [{:filter, [{:type, ~c"subtree"}], filter}]
   end
 
   defp filter(filter) do
@@ -1013,18 +1348,25 @@ defmodule :m_ct_netconfc do
     [{tag, [value]}]
   end
 
-  defp do_send_rpc(op, simpleXml, timeout, caller,
-            r_state(connection: connection, msg_id: msgId,
-                pending: pending) = state) do
-    msg = {:rpc, [{:"message-id", msgId}, {:xmlns, 'urn:ietf:params:xml:ns:netconf:base:1.0'}], [simpleXml]}
+  defp do_send_rpc(
+         op,
+         simpleXml,
+         timeout,
+         caller,
+         r_state(connection: connection, msg_id: msgId, pending: pending) = state
+       ) do
+    msg =
+      {:rpc, [{:"message-id", msgId}, {:xmlns, ~c"urn:ietf:params:xml:ns:netconf:base:1.0"}],
+       [simpleXml]}
+
     next = msgId + 1
-    case (do_send(connection, msg)) do
+
+    case do_send(connection, msg) do
       :ok ->
         tRef = set_request_timer(timeout, op)
-        rec = r_pending(tref: tRef, msg_id: msgId, op: op,
-                  caller: caller)
-        {:noreply,
-           r_state(state, msg_id: next,  pending: [rec | pending])}
+        rec = r_pending(tref: tRef, msg_id: msgId, op: op, caller: caller)
+        {:noreply, r_state(state, msg_id: next, pending: [rec | pending])}
+
       error ->
         {:reply, error, r_state(state, msg_id: next)}
     end
@@ -1035,16 +1377,19 @@ defmodule :m_ct_netconfc do
   end
 
   defp to_xml(simple) do
-    prolog = '<?xml version="1.0" encoding="UTF-8"?>'
-    chars = :xmerl.export_simple([simple], :xmerl_xml,
-                                   [r_xmlAttribute(name: :prolog, value: prolog)])
+    prolog = ~c"<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+
+    chars =
+      :xmerl.export_simple([simple], :xmerl_xml, [r_xmlAttribute(name: :prolog, value: prolog)])
+
     :unicode.characters_to_binary(chars)
   end
 
   defp frame(bin) do
-    case (:erlang.get({:ct_netconfc, :chunk})) do
+    case :erlang.get({:ct_netconfc, :chunk}) do
       true ->
-        [chunk(bin) | '\n##\n']
+        [chunk(bin) | ~c"\n##\n"]
+
       _ ->
         [bin | "]]>]]>"]
     end
@@ -1056,28 +1401,30 @@ defmodule :m_ct_netconfc do
 
   defp chunk(bin) when is_binary(bin) do
     sz = min(:rand.uniform(1024), byte_size(bin))
-    <<b :: size(sz) - binary, rest :: binary>> = bin
-    ['\n#', :erlang.integer_to_list(sz), ?\n, b | chunk(rest)]
+    <<b::size(sz)-binary, rest::binary>> = bin
+    [~c"\n#", :erlang.integer_to_list(sz), ?\n, b | chunk(rest)]
   end
 
   defp handle_data(bin, r_state(buf: head) = s) do
-    case (recv(bin, head)) do
+    case recv(bin, head) do
       {:error, reason} ->
         conn = r_state(s, :connection)
-        :error_logger.error_report([{:ct_connection,
-                                       r_connection(conn, :name)},
-                                        {:client, self()}, {:module,
-                                                              :ct_netconfc},
-                                                               {:line, 1410},
-                                                                   {:receive_error,
-                                                                      reason},
-                                                                       {:buffer,
-                                                                          head},
-                                                                           {:bytes,
-                                                                              bin}])
+
+        :error_logger.error_report([
+          {:ct_connection, r_connection(conn, :name)},
+          {:client, self()},
+          {:module, :ct_netconfc},
+          {:line, 1410},
+          {:receive_error, reason},
+          {:buffer, head},
+          {:bytes, bin}
+        ])
+
         {:stop, s}
+
       {bytes, rest} ->
         handle_more(rest, handle_xml(bytes, s))
+
       buf ->
         {:noreply, r_state(s, buf: buf)}
     end
@@ -1088,37 +1435,43 @@ defmodule :m_ct_netconfc do
   end
 
   defp handle_more(bin, {:noreply, state}) do
-    handle_data(bin,
-                  r_state(state, buf: true == :erlang.get({:ct_netconfc,
-                                                       :chunk})))
+    handle_data(
+      bin,
+      r_state(state, buf: true == :erlang.get({:ct_netconfc, :chunk}))
+    )
   end
 
   defp handle_xml(bytes, state) do
-    case (parse(bytes)) do
+    case parse(bytes) do
       {:ok, simple, _Rest} ->
         decode(simple, state)
+
       {:fatal_error, _Loc, reason, _EndTags, _EventState} ->
         conn = r_state(state, :connection)
-        :error_logger.error_report([{:ct_connection,
-                                       r_connection(conn, :name)},
-                                        {:client, self()}, {:module,
-                                                              :ct_netconfc},
-                                                               {:line, 1436},
-                                                                   {:parse_error,
-                                                                      reason},
-                                                                       {:message,
-                                                                          bytes}])
+
+        :error_logger.error_report([
+          {:ct_connection, r_connection(conn, :name)},
+          {:client, self()},
+          {:module, :ct_netconfc},
+          {:line, 1436},
+          {:parse_error, reason},
+          {:message, bytes}
+        ])
+
         {:noreply, handle_error(reason, state)}
     end
   end
 
   defp parse(bytes) do
-    :xmerl_sax_parser.stream(<<>>,
-                               [{:event_fun, &sax_event/3}, {:event_state, []},
-                                                                {:continuation_fun,
-                                                                   &cont/1},
-                                                                    {:continuation_state,
-                                                                       bytes}])
+    :xmerl_sax_parser.stream(
+      <<>>,
+      [
+        {:event_fun, &sax_event/3},
+        {:event_state, []},
+        {:continuation_fun, &cont/1},
+        {:continuation_state, bytes}
+      ]
+    )
   end
 
   defp cont([] = no) do
@@ -1138,11 +1491,19 @@ defmodule :m_ct_netconfc do
   end
 
   defp handle_error(reason, r_state(pending: pending) = state) do
-    rec = (r_pending(tref: tRef,
-               caller: caller) = :lists.last(pending))
+    rec =
+      r_pending(
+        tref: tRef,
+        caller: caller
+      ) = :lists.last(pending)
+
     cancel_request_timer(tRef)
-    :ct_gen_conn.return(caller,
-                          {:error, {:failed_to_parse_received_data, reason}})
+
+    :ct_gen_conn.return(
+      caller,
+      {:error, {:failed_to_parse_received_data, reason}}
+    )
+
     r_state(state, pending: :lists.delete(rec, pending))
   end
 
@@ -1160,19 +1521,24 @@ defmodule :m_ct_netconfc do
     [{tag, nsAttrs ++ parse_attrs(attrs), []} | newAcc]
   end
 
-  defp sax_event({:endElement, _Uri, _Name, _QN},
-            [{name, attrs, cont}, {parent, pA, pC} | acc]) do
-    [{parent, pA,
-        [{name, attrs, :lists.reverse(cont)} | pC]} |
-         acc]
+  defp sax_event(
+         {:endElement, _Uri, _Name, _QN},
+         [{name, attrs, cont}, {parent, pA, pC} | acc]
+       ) do
+    [
+      {parent, pA, [{name, attrs, :lists.reverse(cont)} | pC]}
+      | acc
+    ]
   end
 
   defp sax_event(:endDocument, [{tag, attrs, cont}]) do
     {tag, attrs, :lists.reverse(cont)}
   end
 
-  defp sax_event({:characters, string},
-            [{name, attrs, cont} | acc]) do
+  defp sax_event(
+         {:characters, string},
+         [{name, attrs, cont} | acc]
+       ) do
     [{name, attrs, [string | cont]} | acc]
   end
 
@@ -1181,8 +1547,10 @@ defmodule :m_ct_netconfc do
   end
 
   defp split_attrs_and_elements([{:xmlns, {prefix, uri}} | rest], attrs) do
-    split_attrs_and_elements(rest,
-                               [{xmlnstag(prefix), uri} | attrs])
+    split_attrs_and_elements(
+      rest,
+      [{xmlnstag(prefix), uri} | attrs]
+    )
   end
 
   defp split_attrs_and_elements(elements, attrs) do
@@ -1194,7 +1562,7 @@ defmodule :m_ct_netconfc do
   end
 
   defp xmlnstag(prefix) do
-    :erlang.list_to_atom('xmlns:' ++ prefix)
+    :erlang.list_to_atom(~c"xmlns:" ++ prefix)
   end
 
   defp qn_to_tag({[], name}) do
@@ -1202,17 +1570,21 @@ defmodule :m_ct_netconfc do
   end
 
   defp qn_to_tag({prefix, name}) do
-    :erlang.list_to_atom(prefix ++ ':' ++ name)
+    :erlang.list_to_atom(prefix ++ ~c":" ++ name)
   end
 
   defp parse_attrs([{_Uri, [], name, value} | attrs]) do
-    [{:erlang.list_to_atom(name), value} |
-         parse_attrs(attrs)]
+    [
+      {:erlang.list_to_atom(name), value}
+      | parse_attrs(attrs)
+    ]
   end
 
   defp parse_attrs([{_Uri, prefix, name, value} | attrs]) do
-    [{:erlang.list_to_atom(prefix ++ ':' ++ name), value} |
-         parse_attrs(attrs)]
+    [
+      {:erlang.list_to_atom(prefix ++ ~c":" ++ name), value}
+      | parse_attrs(attrs)
+    ]
   end
 
   defp parse_attrs([]) do
@@ -1220,9 +1592,10 @@ defmodule :m_ct_netconfc do
   end
 
   defp decode({tag, _, _} = e, r_state() = state) do
-    case (decode(get_local_name_atom(tag), e, state)) do
+    case decode(get_local_name_atom(tag), e, state) do
       r_state() = s ->
         {:noreply, s}
+
       {:stop, r_state()} = t ->
         t
     end
@@ -1232,26 +1605,32 @@ defmodule :m_ct_netconfc do
     decode_rpc_reply(get_msg_id(attrs), e, state)
   end
 
-  defp decode(:hello, e,
-            r_state(hello_status: :undefined) = state) do
-    case (decode_hello(e)) do
+  defp decode(:hello, e, r_state(hello_status: :undefined) = state) do
+    case decode_hello(e) do
       {:ok, sessionId, capabilities} ->
-        r_state(state, session_id: sessionId, 
-                   capabilities: capabilities,  hello_status: :received)
+        r_state(state, session_id: sessionId, capabilities: capabilities, hello_status: :received)
+
       {:error, _Reason} = no ->
         r_state(state, hello_status: no)
     end
   end
 
-  defp decode(:hello, e,
-            r_state(hello_status: r_pending(tref: tRef, caller: from)) = state) do
+  defp decode(:hello, e, r_state(hello_status: r_pending(tref: tRef, caller: from)) = state) do
     cancel_request_timer(tRef)
-    case (decode_hello(e)) do
+
+    case decode_hello(e) do
       {:ok, sessionId, capabilities} ->
-        reply(from,
-                handle_capx(r_state(state, session_id: sessionId, 
-                                       capabilities: capabilities, 
-                                       hello_status: :received)))
+        reply(
+          from,
+          handle_capx(
+            r_state(state,
+              session_id: sessionId,
+              capabilities: capabilities,
+              hello_status: :received
+            )
+          )
+        )
+
       {:error, _Reason} = no ->
         :ct_gen_conn.return(from, no)
         {:stop, r_state(state, hello_status: no)}
@@ -1260,13 +1639,16 @@ defmodule :m_ct_netconfc do
 
   defp decode(:hello, e, r_state(hello_status: other) = state) do
     connName = r_connection(r_state(state, :connection), :name)
-    :error_logger.error_report([{:ct_connection, connName},
-                                    {:client, self()}, {:module, :ct_netconfc},
-                                                           {:line, 1570},
-                                                               {:got_unexpected_hello,
-                                                                  e},
-                                                                   {:hello_status,
-                                                                      other}])
+
+    :error_logger.error_report([
+      {:ct_connection, connName},
+      {:client, self()},
+      {:module, :ct_netconfc},
+      {:line, 1570},
+      {:got_unexpected_hello, e},
+      {:hello_status, other}
+    ])
+
     state
   end
 
@@ -1281,86 +1663,100 @@ defmodule :m_ct_netconfc do
 
   defp notify(r_state(receivers: []) = state, e) do
     name = r_connection(r_state(state, :connection), :name)
-    :error_logger.error_report([{:ct_connection, name},
-                                    {:client, self()}, {:module, :ct_netconfc},
-                                                           {:line, 1585},
-                                                               {:got_unexpected_notification,
-                                                                  e}])
+
+    :error_logger.error_report([
+      {:ct_connection, name},
+      {:client, self()},
+      {:module, :ct_netconfc},
+      {:line, 1585},
+      {:got_unexpected_notification, e}
+    ])
   end
 
   defp notify(r_state(receivers: t), e) do
-    :lists.foreach(fn d ->
-                        send(d, e)
-                   end,
-                     cond do
-                       is_pid(t) ->
-                         [t]
-                       true ->
-                         t
-                     end)
+    :lists.foreach(
+      fn d ->
+        send(d, e)
+      end,
+      cond do
+        is_pid(t) ->
+          [t]
+
+        true ->
+          t
+      end
+    )
   end
 
   defp reply(from, {t, res, state}) do
     :ct_gen_conn.return(from, res)
-    case (t) do
+
+    case t do
       :reply ->
         state
+
       :stop ->
         {t, state}
     end
   end
 
   defp get_msg_id(attrs) do
-    case (find(:"message-id", attrs)) do
+    case find(:"message-id", attrs) do
       {_, str} ->
         :erlang.list_to_integer(str)
+
       false ->
         :undefined
     end
   end
 
-  defp decode_rpc_reply(:undefined, e,
-            r_state(pending: [r_pending(msg_id: msgId)]) = state)
-      when msgId != :undefined do
+  defp decode_rpc_reply(:undefined, e, r_state(pending: [r_pending(msg_id: msgId)]) = state)
+       when msgId != :undefined do
     connName = r_connection(r_state(state, :connection), :name)
-    :error_logger.error_report([{:ct_connection, connName},
-                                    {:client, self()}, {:module, :ct_netconfc},
-                                                           {:line, 1621},
-                                                               {:warning,
-                                                                  :rpc_reply_missing_msg_id},
-                                                                   {:assuming,
-                                                                      msgId}])
+
+    :error_logger.error_report([
+      {:ct_connection, connName},
+      {:client, self()},
+      {:module, :ct_netconfc},
+      {:line, 1621},
+      {:warning, :rpc_reply_missing_msg_id},
+      {:assuming, msgId}
+    ])
+
     decode_rpc_reply(msgId, e, state)
   end
 
   defp decode_rpc_reply(:undefined, _, state) do
     connName = r_connection(r_state(state, :connection), :name)
-    :error_logger.error_report([{:ct_connection, connName},
-                                    {:client, self()}, {:module, :ct_netconfc},
-                                                           {:line, 1627},
-                                                               {:error,
-                                                                  :rpc_reply_missing_msg_id}])
+
+    :error_logger.error_report([
+      {:ct_connection, connName},
+      {:client, self()},
+      {:module, :ct_netconfc},
+      {:line, 1627},
+      {:error, :rpc_reply_missing_msg_id}
+    ])
+
     state
   end
 
-  defp decode_rpc_reply(msgId, {_, attrs, content0} = e,
-            r_state(pending: pending) = state) do
-    case (:lists.keytake(msgId, r_pending(:msg_id), pending)) do
+  defp decode_rpc_reply(msgId, {_, attrs, content0} = e, r_state(pending: pending) = state) do
+    case :lists.keytake(msgId, r_pending(:msg_id), pending) do
       {:value, rec, rest} ->
         r_pending(tref: tRef, op: op, caller: from) = rec
         cancel_request_timer(tRef)
         content = forward_xmlns_attr(attrs, content0)
-        {reply, t} = do_decode_rpc_reply(op, content,
-                                           r_state(state, pending: rest))
+        {reply, t} = do_decode_rpc_reply(op, content, r_state(state, pending: rest))
         :ct_gen_conn.return(from, reply)
         t
+
       false ->
         decode_send({:got_unexpected_msg_id, msgId}, e, state)
     end
   end
 
   defp decode_send(errorT, elem, r_state(pending: pending) = state) do
-    case (for (r_pending(msg_id: :undefined) = p) <- pending do
+    case (for r_pending(msg_id: :undefined) = p <- pending do
             p
           end) do
       [rec] ->
@@ -1368,46 +1764,52 @@ defmodule :m_ct_netconfc do
         cancel_request_timer(tRef)
         :ct_gen_conn.return(from, elem)
         r_state(state, pending: :lists.delete(rec, pending))
+
       _ ->
         conn = r_state(state, :connection)
-        :error_logger.error_report([{:ct_connection,
-                                       r_connection(conn, :name)},
-                                        {:client, self()}, {:module,
-                                                              :ct_netconfc},
-                                                               {:line, 1666},
-                                                                   errorT,
-                                                                       {:expecting,
-                                                                          pending}])
+
+        :error_logger.error_report([
+          {:ct_connection, r_connection(conn, :name)},
+          {:client, self()},
+          {:module, :ct_netconfc},
+          {:line, 1666},
+          errorT,
+          {:expecting, pending}
+        ])
+
         state
     end
   end
 
-  defp do_decode_rpc_reply(op, result, state) when op == :lock or
-                                    op == :unlock or op == :edit_config or
-                                    op == :delete_config or
-                                    op == :copy_config or op == :kill_session do
+  defp do_decode_rpc_reply(op, result, state)
+       when op == :lock or
+              op == :unlock or op == :edit_config or
+              op == :delete_config or
+              op == :copy_config or op == :kill_session do
     {decode_ok(result), state}
   end
 
-  defp do_decode_rpc_reply(op, result, state) when op == :get or
-                                    op == :get_config or op == :action do
+  defp do_decode_rpc_reply(op, result, state)
+       when op == :get or
+              op == :get_config or op == :action do
     {decode_data(result), state}
   end
 
   defp do_decode_rpc_reply(:close_session, result, state) do
-    case (decode_ok(result)) do
+    case decode_ok(result) do
       :ok ->
         {:ok, {:stop, state}}
+
       other ->
         {other, state}
     end
   end
 
-  defp do_decode_rpc_reply({:create_subscription, pid}, result,
-            r_state(receivers: t) = state) do
-    case (decode_ok(result)) do
+  defp do_decode_rpc_reply({:create_subscription, pid}, result, r_state(receivers: t) = state) do
+    case decode_ok(result) do
       :ok when t == [] or is_pid(t) ->
         {:ok, r_state(state, receivers: pid)}
+
       other ->
         {other, state}
     end
@@ -1422,14 +1824,15 @@ defmodule :m_ct_netconfc do
   end
 
   defp decode_ok([{tag, attrs, content}]) do
-    case (get_local_name_atom(tag)) do
+    case get_local_name_atom(tag) do
       :ok ->
         :ok
+
       :"rpc-error" ->
         {:error, forward_xmlns_attr(attrs, content)}
+
       _Other ->
-        {:error,
-           {:unexpected_rpc_reply, [{tag, attrs, content}]}}
+        {:error, {:unexpected_rpc_reply, [{tag, attrs, content}]}}
     end
   end
 
@@ -1438,18 +1841,22 @@ defmodule :m_ct_netconfc do
   end
 
   defp decode_data([{tag, attrs, content}]) do
-    case (get_local_name_atom(tag)) do
+    case get_local_name_atom(tag) do
       :ok ->
         :ok
+
       :data ->
         {:ok,
-           forward_xmlns_attr(remove_xmlnsattr_for_tag(tag, attrs),
-                                content)}
+         forward_xmlns_attr(
+           remove_xmlnsattr_for_tag(tag, attrs),
+           content
+         )}
+
       :"rpc-error" ->
         {:error, forward_xmlns_attr(attrs, content)}
+
       _Other ->
-        {:error,
-           {:unexpected_rpc_reply, [{tag, attrs, content}]}}
+        {:error, {:unexpected_rpc_reply, [{tag, attrs, content}]}}
     end
   end
 
@@ -1458,9 +1865,10 @@ defmodule :m_ct_netconfc do
   end
 
   defp get_qualified_name(tag) do
-    case (:string.lexemes(:erlang.atom_to_list(tag), ':')) do
+    case :string.lexemes(:erlang.atom_to_list(tag), ~c":") do
       [tagStr] ->
         {[], tagStr}
+
       [prefixStr, tagStr] ->
         {prefixStr, tagStr}
     end
@@ -1478,45 +1886,64 @@ defmodule :m_ct_netconfc do
 
   defp forward_xmlns_attr(parentAttrs, children) do
     namespace = :lists.filter(&is_xmlns/1, parentAttrs)
+
     for {t, a, c} <- children,
-          f <- [fn {k, _} ->
-                     not :lists.keymember(k, 1, a)
-                end],
-          ns <- [:lists.filter(f, namespace)] do
+        f <- [
+          fn {k, _} ->
+            not :lists.keymember(k, 1, a)
+          end
+        ],
+        ns <- [:lists.filter(f, namespace)] do
       {t, ns ++ a, c}
     end
   end
 
   defp is_xmlns({key, _}) do
-    key == :xmlns or :lists.prefix('xmlns:',
-                                     :erlang.atom_to_list(key))
+    key == :xmlns or
+      :lists.prefix(
+        ~c"xmlns:",
+        :erlang.atom_to_list(key)
+      )
   end
 
   defp decode_hello({:hello, _Attrs, hello}) do
     u = make_ref()
+
     try do
-      [{:"session-id", _, [sessionId]}, _ | _] = [find(:"session-id", hello),
-                                           :no_session_id_found | u]
-      [{:ok, id}, _ | _] = [(try do
-                              {:ok, :erlang.list_to_integer(sessionId)}
-                            catch
-                              :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                              :exit, e -> {:EXIT, e}
-                              e -> e
-                            end),
-                                :invalid_session_id | u]
+      [{:"session-id", _, [sessionId]}, _ | _] = [
+        find(:"session-id", hello),
+        :no_session_id_found | u
+      ]
+
+      [{:ok, id}, _ | _] = [
+        try do
+          {:ok, :erlang.list_to_integer(sessionId)}
+        catch
+          :error, e -> {:EXIT, {e, __STACKTRACE__}}
+          :exit, e -> {:EXIT, e}
+          e -> e
+        end,
+        :invalid_session_id | u
+      ]
+
       [true, _ | _] = [0 < id, :invalid_session_id | u]
-      [{:capabilities, _, capabilities}, _ |
-                                             _] = [find(:capabilities, hello),
-                                                       :capabilities_not_found |
-                                                           u]
-      [{:ok, caps}, _ | _] = [decode_caps(capabilities, [],
-                                            false),
-                                  false | u]
+
+      [
+        {:capabilities, _, capabilities},
+        _
+        | _
+      ] = [
+        find(:capabilities, hello),
+        :capabilities_not_found
+        | u
+      ]
+
+      [{:ok, caps}, _ | _] = [decode_caps(capabilities, [], false), false | u]
       {:ok, id, caps}
     catch
       :error, {:badmatch, [error, false | ^u]} ->
         error
+
       :error, {:badmatch, [_, reason | ^u]} ->
         {:error, {:incorrect_hello, reason}}
     end
@@ -1526,8 +1953,11 @@ defmodule :m_ct_netconfc do
     :lists.keyfind(key, 1, list)
   end
 
-  defp decode_caps([{:capability, [], ['urn:ietf:params:netconf:base:' ++ _ = cap]} | caps], acc,
-            _) do
+  defp decode_caps(
+         [{:capability, [], [~c"urn:ietf:params:netconf:base:" ++ _ = cap]} | caps],
+         acc,
+         _
+       ) do
     decode_caps(caps, [cap | acc], true)
   end
 
@@ -1561,11 +1991,14 @@ defmodule :m_ct_netconfc do
 
   defp decode_streams([{:stream, _, stream} | streams]) do
     {:name, _, [name]} = find(:name, stream)
-    [{name,
-        for {tag, _, [value]} <- stream, tag != :name do
-          {tag, value}
-        end} |
-         decode_streams(streams)]
+
+    [
+      {name,
+       for {tag, _, [value]} <- stream, tag != :name do
+         {tag, value}
+       end}
+      | decode_streams(streams)
+    ]
   end
 
   defp decode_streams([]) do
@@ -1576,19 +2009,26 @@ defmodule :m_ct_netconfc do
     log(connection, action, <<>>)
   end
 
-  defp log(r_connection(reference: ref, host: host, port: port,
-              name: name),
-            action, data) do
-    address = (case (ref) do
-                 {_, ch} ->
-                   {host, port, ch}
-                 _ ->
-                   {host, port}
-               end)
-    :error_logger.info_report(r_conn_log(client: self(),
-                                  address: address, name: name, action: action,
-                                  module: :ct_netconfc),
-                                data)
+  defp log(r_connection(reference: ref, host: host, port: port, name: name), action, data) do
+    address =
+      case ref do
+        {_, ch} ->
+          {host, port, ch}
+
+        _ ->
+          {host, port}
+      end
+
+    :error_logger.info_report(
+      r_conn_log(
+        client: self(),
+        address: address,
+        name: name,
+        action: action,
+        module: :ct_netconfc
+      ),
+      data
+    )
   end
 
   def format_data(how, data) do
@@ -1596,7 +2036,7 @@ defmodule :m_ct_netconfc do
   end
 
   defp do_format_data(:raw, data) do
-    :io_lib.format('~n~ts~n', [hide_password(data)])
+    :io_lib.format(~c"~n~ts~n", [hide_password(data)])
   end
 
   defp do_format_data(:pretty, data) do
@@ -1612,12 +2052,15 @@ defmodule :m_ct_netconfc do
   end
 
   defp maybe_io_lib_format(string) do
-    :io_lib.format('~n~ts~n', [string])
+    :io_lib.format(~c"~n~ts~n", [string])
   end
 
   defp hide_password(bin) do
-    :re.replace(bin, "(<password[^>]*>)[^<]*(</password>)", "\\1*****\\2",
-                  [:global, {:return, :binary}, :unicode])
+    :re.replace(bin, "(<password[^>]*>)[^<]*(</password>)", "\\1*****\\2", [
+      :global,
+      {:return, :binary},
+      :unicode
+    ])
   end
 
   defp html_format(bin) do
@@ -1626,43 +2069,50 @@ defmodule :m_ct_netconfc do
 
   defp indent(bin) do
     string = normalize(hide_password(bin))
-    indentedString = (case (:erlang.erase(:part_of_line)) do
-                        :undefined ->
-                          indent1(string, [])
-                        part ->
-                          indent1(:lists.reverse(part) ++ string,
-                                    :erlang.erase(:indent))
-                      end)
+
+    indentedString =
+      case :erlang.erase(:part_of_line) do
+        :undefined ->
+          indent1(string, [])
+
+        part ->
+          indent1(
+            :lists.reverse(part) ++ string,
+            :erlang.erase(:indent)
+          )
+      end
+
     :unicode.characters_to_binary(indentedString)
   end
 
   defp normalize(bin) do
-    :re.replace(bin, ">[ \r\n\t]+<", "><",
-                  [:global, {:return, :list}, :unicode])
+    :re.replace(bin, ">[ \r\n\t]+<", "><", [:global, {:return, :list}, :unicode])
   end
 
-  defp indent1('<?' ++ rest1, indent1) do
-    {line, rest2, indent2} = indent_line(rest1, indent1,
-                                           [??, ?<])
+  defp indent1(~c"<?" ++ rest1, indent1) do
+    {line, rest2, indent2} = indent_line(rest1, indent1, [??, ?<])
     line ++ indent1(rest2, indent2)
   end
 
-  defp indent1('</' ++ rest1, indent1) do
-    case (indent_line1(rest1, indent1, [?/, ?<])) do
+  defp indent1(~c"</" ++ rest1, indent1) do
+    case indent_line1(rest1, indent1, [?/, ?<]) do
       {[], [], _} ->
         []
+
       {line, rest2, indent2} ->
-        '\n' ++ line ++ indent1(rest2, indent2)
+        ~c"\n" ++ line ++ indent1(rest2, indent2)
     end
   end
 
-  defp indent1('<' ++ rest1, indent1) do
+  defp indent1(~c"<" ++ rest1, indent1) do
     :erlang.put(:tag, get_tag(rest1))
-    case (indent_line(rest1, indent1, [?<])) do
+
+    case indent_line(rest1, indent1, [?<]) do
       {[], [], _} ->
         []
+
       {line, rest2, indent2} ->
-        '\n' ++ line ++ indent1(rest2, indent2)
+        ~c"\n" ++ line ++ indent1(rest2, indent2)
     end
   end
 
@@ -1674,36 +2124,35 @@ defmodule :m_ct_netconfc do
     []
   end
 
-  defp indent_line('?>' ++ rest, indent, line) do
-    {:lists.reverse(line) ++ '?>', rest, indent}
+  defp indent_line(~c"?>" ++ rest, indent, line) do
+    {:lists.reverse(line) ++ ~c"?>", rest, indent}
   end
 
-  defp indent_line('/></' ++ rest, indent, line) do
-    {indent ++ :lists.reverse(line) ++ '/>', '</' ++ rest,
-       indent -- '  '}
+  defp indent_line(~c"/></" ++ rest, indent, line) do
+    {indent ++ :lists.reverse(line) ++ ~c"/>", ~c"</" ++ rest, indent -- ~c"  "}
   end
 
-  defp indent_line('/>' ++ rest, indent, line) do
-    {indent ++ :lists.reverse(line) ++ '/>', rest, indent}
+  defp indent_line(~c"/>" ++ rest, indent, line) do
+    {indent ++ :lists.reverse(line) ++ ~c"/>", rest, indent}
   end
 
-  defp indent_line('></' ++ rest, indent, line) do
+  defp indent_line(~c"></" ++ rest, indent, line) do
     lastTag = :erlang.erase(:tag)
-    case (get_tag(rest)) do
+
+    case get_tag(rest) do
       ^lastTag ->
         indent_line1(rest, indent, [?/, ?<, ?> | line])
+
       _ ->
-        {indent ++ :lists.reverse(line) ++ '>', '</' ++ rest,
-           indent -- '  '}
+        {indent ++ :lists.reverse(line) ++ ~c">", ~c"</" ++ rest, indent -- ~c"  "}
     end
   end
 
-  defp indent_line('><' ++ rest, indent, line) do
-    {indent ++ :lists.reverse(line) ++ '>', '<' ++ rest,
-       '  ' ++ indent}
+  defp indent_line(~c"><" ++ rest, indent, line) do
+    {indent ++ :lists.reverse(line) ++ ~c">", ~c"<" ++ rest, ~c"  " ++ indent}
   end
 
-  defp indent_line('</' ++ rest, indent, line) do
+  defp indent_line(~c"</" ++ rest, indent, line) do
     indent_line1(rest, indent, [?/, ?< | line])
   end
 
@@ -1717,13 +2166,12 @@ defmodule :m_ct_netconfc do
     {[], [], indent}
   end
 
-  defp indent_line1('></' ++ rest, indent, line) do
-    {indent ++ :lists.reverse(line) ++ '>', '</' ++ rest,
-       indent -- '  '}
+  defp indent_line1(~c"></" ++ rest, indent, line) do
+    {indent ++ :lists.reverse(line) ++ ~c">", ~c"</" ++ rest, indent -- ~c"  "}
   end
 
-  defp indent_line1('>' ++ rest, indent, line) do
-    {indent ++ :lists.reverse(line) ++ '>', rest, indent}
+  defp indent_line1(~c">" ++ rest, indent, line) do
+    {indent ++ :lists.reverse(line) ++ ~c">", rest, indent}
   end
 
   defp indent_line1([h | t], indent, line) do
@@ -1736,11 +2184,11 @@ defmodule :m_ct_netconfc do
     {[], [], indent}
   end
 
-  defp get_tag('/>' ++ _) do
+  defp get_tag(~c"/>" ++ _) do
     []
   end
 
-  defp get_tag('>' ++ _) do
+  defp get_tag(~c">" ++ _) do
     []
   end
 
@@ -1752,81 +2200,101 @@ defmodule :m_ct_netconfc do
     []
   end
 
-  defp ssh_connect(r_options(host: host, timeout: timeout, port: port,
-              ssh: sshOpts, name: name, type: type)) do
-    case (:ssh.connect(host, port,
-                         [{:user_interaction, false}, {:silently_accept_hosts,
-                                                         true} |
-                                                          sshOpts],
-                         timeout)) do
+  defp ssh_connect(
+         r_options(host: host, timeout: timeout, port: port, ssh: sshOpts, name: name, type: type)
+       ) do
+    case :ssh.connect(
+           host,
+           port,
+           [
+             {:user_interaction, false},
+             {:silently_accept_hosts, true}
+             | sshOpts
+           ],
+           timeout
+         ) do
       {:ok, cM} ->
-        connection = r_connection(reference: cM, host: host, port: port,
-                         name: name, type: type)
+        connection = r_connection(reference: cM, host: host, port: port, name: name, type: type)
         log(connection, :connect)
         {:ok, connection}
+
       {:error, reason} ->
         {:error, {:ssh, :could_not_connect_to_server, reason}}
     end
   end
 
-  defp ssh_channel(r_connection(reference: cM) = connection0,
-            r_options(timeout: timeout, name: name, type: type)) do
-    case (:ssh_connection.session_channel(cM, timeout)) do
+  defp ssh_channel(
+         r_connection(reference: cM) = connection0,
+         r_options(timeout: timeout, name: name, type: type)
+       ) do
+    case :ssh_connection.session_channel(cM, timeout) do
       {:ok, ch} ->
-        case (:ssh_connection.subsystem(cM, ch, 'netconf', timeout)) do
+        case :ssh_connection.subsystem(cM, ch, ~c"netconf", timeout) do
           :success ->
-            connection = r_connection(connection0, reference: {cM, ch}, 
-                                          name: name,  type: type)
+            connection = r_connection(connection0, reference: {cM, ch}, name: name, type: type)
             log(connection, :open)
             {:ok, connection}
+
           :failure ->
             :ssh_connection.close(cM, ch)
             {:error, {:ssh, :could_not_execute_netconf_subsystem}}
+
           {:error, :timeout} ->
             :ssh_connection.close(cM, ch)
-            {:error,
-               {:ssh, :could_not_execute_netconf_subsystem, :timeout}}
+            {:error, {:ssh, :could_not_execute_netconf_subsystem, :timeout}}
         end
+
       {:error, reason} ->
         {:error, {:ssh, :could_not_open_channel, reason}}
     end
   end
 
   defp ssh_open(options) do
-    case (ssh_connect(options)) do
+    case ssh_connect(options) do
       {:ok, connection} ->
-        case (ssh_channel(connection, options)) do
+        case ssh_channel(connection, options) do
           {:ok, _} = ok ->
             ok
+
           error ->
             ssh_close(connection)
             error
         end
+
       error ->
         error
     end
   end
 
   defp ssh_send(r_connection(reference: {cM, ch}) = connection, data) do
-    case (:ssh_connection.send(cM, ch, data)) do
+    case :ssh_connection.send(cM, ch, data) do
       :ok ->
         log(connection, :send, data)
         :ok
+
       {:error, reason} ->
         {:error, {:ssh, :failed_to_send_data, reason}}
     end
   end
 
-  defp ssh_close(connection = r_connection(reference: {cM, ch},
-                           type: type)) do
+  defp ssh_close(
+         connection =
+           r_connection(
+             reference: {cM, ch},
+             type: type
+           )
+       ) do
     _ = :ssh_connection.close(cM, ch)
     log(connection, :close)
-    case (type) do
+
+    case type do
       :connection_and_channel ->
         ssh_close(r_connection(connection, reference: cM))
+
       _ ->
         :ok
     end
+
     :ok
   end
 
@@ -1845,23 +2313,25 @@ defmodule :m_ct_netconfc do
   end
 
   defp recv(bin, [head, len | chunks]) do
-    chunk(<<head :: binary, bin :: binary>>, chunks, len)
+    chunk(<<head::binary, bin::binary>>, chunks, len)
   end
 
   defp recv(bin, head) when is_binary(head) do
-    frame(<<head :: binary, bin :: binary>>,
-            max(0, byte_size(head) - 5))
+    frame(
+      <<head::binary, bin::binary>>,
+      max(0, byte_size(head) - 5)
+    )
   end
 
   defp frame(bin, start) when is_binary(bin) do
     sz = byte_size(bin)
     scope = {start, sz - start}
-    case (:binary.match(bin, pattern(),
-                          [{:scope, scope}])) do
+
+    case :binary.match(bin, pattern(), [{:scope, scope}]) do
       {len, 6} ->
-        <<msg :: size(len) - binary, _ :: size(6) - binary,
-            rest :: binary>> = bin
+        <<msg::size(len)-binary, _::size(6)-binary, rest::binary>> = bin
         {trim(msg), rest}
+
       :nomatch ->
         bin
     end
@@ -1869,18 +2339,21 @@ defmodule :m_ct_netconfc do
 
   defp pattern() do
     key = {:ct_netconfc, :pattern}
-    case (:erlang.get(key)) do
+
+    case :erlang.get(key) do
       :undefined ->
         cP = :binary.compile_pattern("]]>]]>")
         :erlang.put(key, cP)
         cP
+
       cP ->
         cP
     end
   end
 
-  defp trim(<<c, bin :: binary>>) when c == ?\n or
-                                       c == ?\r or c == ?\t or c == ?\s do
+  defp trim(<<c, bin::binary>>)
+       when c == ?\n or
+              c == ?\r or c == ?\t or c == ?\s do
     trim(bin)
   end
 
@@ -1889,9 +2362,10 @@ defmodule :m_ct_netconfc do
   end
 
   defp chunk(bin, [sz | chunks] = l, 0) do
-    case (bin) do
-      <<chunk :: size(sz) - binary, rest :: binary>> ->
+    case bin do
+      <<chunk::size(sz)-binary, rest::binary>> ->
         chunk(rest, acc(chunk, chunks), 3)
+
       _ ->
         [bin, 0 | l]
     end
@@ -1901,101 +2375,84 @@ defmodule :m_ct_netconfc do
     [bin, 3 = len | chunks]
   end
 
-  defp chunk(<<"\n##\n", rest :: binary>>, chunks, _) do
-    case (chunks) do
+  defp chunk(<<"\n##\n", rest::binary>>, chunks, _) do
+    case chunks do
       [] ->
-        {:error, 'end-of-chunks unexpected'}
+        {:error, ~c"end-of-chunks unexpected"}
+
       bins ->
         {:lists.reverse(bins), rest}
     end
   end
 
-  defp chunk(<<"\n#", head :: size(1) - binary, ?\n,
-              rest :: binary>>,
-            chunks, _) do
+  defp chunk(<<"\n#", head::size(1)-binary, ?\n, rest::binary>>, chunks, _) do
     acc(head, rest, chunks)
   end
 
-  defp chunk(<<"\n#", head :: size(2) - binary, ?\n,
-              rest :: binary>>,
-            chunks, _) do
+  defp chunk(<<"\n#", head::size(2)-binary, ?\n, rest::binary>>, chunks, _) do
     acc(head, rest, chunks)
   end
 
-  defp chunk(<<"\n#", head :: size(3) - binary, ?\n,
-              rest :: binary>>,
-            chunks, _) do
+  defp chunk(<<"\n#", head::size(3)-binary, ?\n, rest::binary>>, chunks, _) do
     acc(head, rest, chunks)
   end
 
-  defp chunk(<<"\n#", head :: size(4) - binary, ?\n,
-              rest :: binary>>,
-            chunks, _) do
+  defp chunk(<<"\n#", head::size(4)-binary, ?\n, rest::binary>>, chunks, _) do
     acc(head, rest, chunks)
   end
 
-  defp chunk(<<"\n#", head :: size(5) - binary, ?\n,
-              rest :: binary>>,
-            chunks, _) do
+  defp chunk(<<"\n#", head::size(5)-binary, ?\n, rest::binary>>, chunks, _) do
     acc(head, rest, chunks)
   end
 
-  defp chunk(<<"\n#", head :: size(6) - binary, ?\n,
-              rest :: binary>>,
-            chunks, _) do
+  defp chunk(<<"\n#", head::size(6)-binary, ?\n, rest::binary>>, chunks, _) do
     acc(head, rest, chunks)
   end
 
-  defp chunk(<<"\n#", head :: size(7) - binary, ?\n,
-              rest :: binary>>,
-            chunks, _) do
+  defp chunk(<<"\n#", head::size(7)-binary, ?\n, rest::binary>>, chunks, _) do
     acc(head, rest, chunks)
   end
 
-  defp chunk(<<"\n#", head :: size(8) - binary, ?\n,
-              rest :: binary>>,
-            chunks, _) do
+  defp chunk(<<"\n#", head::size(8)-binary, ?\n, rest::binary>>, chunks, _) do
     acc(head, rest, chunks)
   end
 
-  defp chunk(<<"\n#", head :: size(9) - binary, ?\n,
-              rest :: binary>>,
-            chunks, _) do
+  defp chunk(<<"\n#", head::size(9)-binary, ?\n, rest::binary>>, chunks, _) do
     acc(head, rest, chunks)
   end
 
-  defp chunk(<<"\n#", head :: size(10) - binary, ?\n,
-              rest :: binary>>,
-            chunks, _) do
+  defp chunk(<<"\n#", head::size(10)-binary, ?\n, rest::binary>>, chunks, _) do
     acc(head, rest, chunks)
   end
 
-  defp chunk(<<"\n#", bin :: size(11) - binary, _ :: binary>>, _,
-            _) do
-    {:error, {'chunk-size too long', bin}}
+  defp chunk(<<"\n#", bin::size(11)-binary, _::binary>>, _, _) do
+    {:error, {~c"chunk-size too long", bin}}
   end
 
-  defp chunk(<<"\n#", _ :: binary>> = bin, chunks, _) do
+  defp chunk(<<"\n#", _::binary>> = bin, chunks, _) do
     [bin, byte_size(bin) | chunks]
   end
 
   defp chunk(bin, chunks, 3 = len) do
-    case (drop(bin)) do
+    case drop(bin) do
       <<>> ->
         [bin, len | chunks]
-      <<"\n#", _ :: binary>> = b ->
+
+      <<"\n#", _::binary>> = b ->
         chunk(b, chunks, len)
+
       _ ->
-        {:error, {'not a chunk', bin}}
+        {:error, {~c"not a chunk", bin}}
     end
   end
 
-  defp drop(<<"\n#", _ :: binary>> = bin) do
+  defp drop(<<"\n#", _::binary>> = bin) do
     bin
   end
 
-  defp drop(<<c, bin :: binary>>) when c == ?\n or
-                                       c == ?\r or c == ?\t or c == ?\s do
+  defp drop(<<c, bin::binary>>)
+       when c == ?\n or
+              c == ?\r or c == ?\t or c == ?\s do
     drop(bin)
   end
 
@@ -2014,27 +2471,28 @@ defmodule :m_ct_netconfc do
   end
 
   defp acc(head, rest, chunks) do
-    case (chunk_size(head)) do
+    case chunk_size(head) do
       {:error, _Reason} = no ->
         no
+
       sz ->
         chunk(rest, [sz | chunks], 0)
     end
   end
 
-  defp chunk_size(<<c, _ :: binary>> = bin) do
+  defp chunk_size(<<c, _::binary>> = bin) do
     try do
       true = ?0 < c
       :erlang.binary_to_integer(bin)
     catch
       :error, _ ->
-        {:error, {'chunk-size invalid', bin}}
+        {:error, {~c"chunk-size invalid", bin}}
     else
       sz when 0 < sz >>> 32 ->
-        {:error, {'chunk-size too large', sz}}
+        {:error, {~c"chunk-size too large", sz}}
+
       sz ->
         sz
     end
   end
-
 end

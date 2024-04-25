@@ -1,36 +1,46 @@
 defmodule :m_logger_config do
   use Bitwise
+
   def new(name) do
-    _ = :ets.new(name,
-                   [:set, :protected, :named_table, {:read_concurrency,
-                                                       true},
-                                                        {:write_concurrency,
-                                                           true}])
+    _ =
+      :ets.new(
+        name,
+        [:set, :protected, :named_table, {:read_concurrency, true}, {:write_concurrency, true}]
+      )
+
     :ets.whereis(name)
   end
 
   def delete(tid, what) do
-    :persistent_term.put({:logger_config, table_key(what)},
-                           :undefined)
+    :persistent_term.put(
+      {:logger_config, table_key(what)},
+      :undefined
+    )
+
     :ets.delete(tid, table_key(what))
   end
 
   def allow(level, module) do
-    modLevel = (case (:persistent_term.get({:logger_config,
-                                              module},
-                                             :undefined)) do
-                  :undefined ->
-                    intLevel = get_primary_level()
-                    :persistent_term.put({:logger_config, module}, intLevel)
-                    intLevel
-                  intLevel ->
-                    cond do
-                      intLevel <= 10 ->
-                        intLevel
-                      true ->
-                        intLevel - 16
-                    end
-                end)
+    modLevel =
+      case :persistent_term.get(
+             {:logger_config, module},
+             :undefined
+           ) do
+        :undefined ->
+          intLevel = get_primary_level()
+          :persistent_term.put({:logger_config, module}, intLevel)
+          intLevel
+
+        intLevel ->
+          cond do
+            intLevel <= 10 ->
+              intLevel
+
+            true ->
+              intLevel - 16
+          end
+      end
+
     less_or_equal_level(level, modLevel)
   end
 
@@ -80,9 +90,10 @@ defmodule :m_logger_config do
   end
 
   def get(tid, what) do
-    case (:ets.lookup(tid, table_key(what))) do
+    case :ets.lookup(tid, table_key(what)) do
       [{_, config}] ->
         {:ok, config}
+
       [] ->
         {:error, {:not_found, what}}
     end
@@ -90,14 +101,19 @@ defmodule :m_logger_config do
 
   def get(tid, what, level) do
     tableKey = table_key(what)
-    case (:persistent_term.get({:logger_config, tableKey},
-                                 :undefined)) do
+
+    case :persistent_term.get(
+           {:logger_config, tableKey},
+           :undefined
+         ) do
       :undefined ->
         {:error, {:not_found, what}}
+
       confLevel ->
-        case (less_or_equal_level(level, confLevel)) do
+        case less_or_equal_level(level, confLevel) do
           true ->
             get(tid, what)
+
           false ->
             :error
         end
@@ -110,9 +126,13 @@ defmodule :m_logger_config do
 
   def create(tid, what, config) do
     levelInt = level_to_int(:maps.get(:level, config))
-    :ok = :persistent_term.put({:logger_config,
-                                  table_key(what)},
-                                 levelInt)
+
+    :ok =
+      :persistent_term.put(
+        {:logger_config, table_key(what)},
+        levelInt
+      )
+
     :ets.insert(tid, {table_key(what), config})
   end
 
@@ -123,68 +143,89 @@ defmodule :m_logger_config do
 
   def set(tid, what, config) do
     levelInt = level_to_int(:maps.get(:level, config))
-    :ok = :persistent_term.put({:logger_config,
-                                  table_key(what)},
-                                 levelInt)
-    case (what) do
+
+    :ok =
+      :persistent_term.put(
+        {:logger_config, table_key(what)},
+        levelInt
+      )
+
+    case what do
       :primary ->
-        for {{:logger_config, module} = key,
-               level} <- :persistent_term.get(),
-              is_atom(module) and module !== :"$primary_config$", level <= 10 do
+        for {{:logger_config, module} = key, level} <- :persistent_term.get(),
+            is_atom(module) and module !== :"$primary_config$",
+            level <= 10 do
           :persistent_term.put(key, levelInt)
         end
+
         :ok
+
       _ ->
         :ok
     end
+
     :ets.insert(tid, {table_key(what), config})
     :ok
   end
 
   def set_module_level(modules, level) do
     levelInt = level_to_int(level)
+
     for module <- modules do
-      :persistent_term.put({:logger_config, module},
-                             levelInt + 16)
+      :persistent_term.put(
+        {:logger_config, module},
+        levelInt + 16
+      )
     end
+
     :ok
   end
 
   def unset_module_level(:all) do
     primaryLevel = get_primary_level()
-    for {{:logger_config, module} = key,
-           _} <- :persistent_term.get(),
-          is_atom(module) and module !== :"$primary_config$" do
+
+    for {{:logger_config, module} = key, _} <- :persistent_term.get(),
+        is_atom(module) and module !== :"$primary_config$" do
       :persistent_term.put(key, primaryLevel)
     end
+
     :ok
   end
 
   def unset_module_level(modules) do
     primaryLevel = get_primary_level()
+
     for module <- modules do
-      :persistent_term.put({:logger_config, module},
-                             primaryLevel)
+      :persistent_term.put(
+        {:logger_config, module},
+        primaryLevel
+      )
     end
+
     :ok
   end
 
   def get_module_level() do
-    :lists.sort(for {{:logger_config, module},
-                       level} <- :persistent_term.get(),
-                      is_atom(module) and module !== :"$primary_config$", not (level <= 10) do
-                  {module,
-                     int_to_level(cond do
-                                    level <= 10 ->
-                                      level
-                                    true ->
-                                      level - 16
-                                  end)}
-                end)
+    :lists.sort(
+      for {{:logger_config, module}, level} <- :persistent_term.get(),
+          is_atom(module) and module !== :"$primary_config$",
+          not (level <= 10) do
+        {module,
+         int_to_level(
+           cond do
+             level <= 10 ->
+               level
+
+             true ->
+               level - 16
+           end
+         )}
+      end
+    )
   end
 
   def level_to_int(:none) do
-    - 1
+    -1
   end
 
   def level_to_int(:emergency) do
@@ -274,5 +315,4 @@ defmodule :m_logger_config do
   defp table_key(handlerId) do
     {:"$handler_config$", handlerId}
   end
-
 end

@@ -1,12 +1,13 @@
 defmodule :m_slave do
   use Bitwise
   import :error_logger, only: [error_msg: 2]
+
   def pseudo([master | serverList]) do
     pseudo(master, serverList)
   end
 
   def pseudo(_) do
-    error_msg('No master node given to slave:pseudo/1~n', [])
+    error_msg(~c"No master node given to slave:pseudo/1~n", [])
   end
 
   def pseudo(_, []) do
@@ -28,12 +29,12 @@ defmodule :m_slave do
   end
 
   def relay({:badrpc, reason}) do
-    error_msg(' ** exiting relay server ~w :~tw  **~n', [self(), reason])
+    error_msg(~c" ** exiting relay server ~w :~tw  **~n", [self(), reason])
     exit(reason)
   end
 
   def relay(:undefined) do
-    error_msg(' ** exiting relay server ~w  **~n', [self()])
+    error_msg(~c" ** exiting relay server ~w  **~n", [self()])
     exit(:undefined)
   end
 
@@ -46,6 +47,7 @@ defmodule :m_slave do
       x ->
         send(pid, x)
     end
+
     relay1(pid)
   end
 
@@ -83,19 +85,24 @@ defmodule :m_slave do
   end
 
   def start(host0, name, args, linkTo, prog) do
-    host = (case (:net_kernel.longnames()) do
-              true ->
-                dns(host0)
-              false ->
-                strip_host_name(to_list(host0))
-              :ignored ->
-                exit(:not_alive)
-            end)
-    node = :erlang.list_to_atom(:lists.concat([name, '@',
-                                                         host]))
-    case (:net_adm.ping(node)) do
+    host =
+      case :net_kernel.longnames() do
+        true ->
+          dns(host0)
+
+        false ->
+          strip_host_name(to_list(host0))
+
+        :ignored ->
+          exit(:not_alive)
+      end
+
+    node = :erlang.list_to_atom(:lists.concat([name, ~c"@", host]))
+
+    case :net_adm.ping(node) do
       :pang ->
         start_it(host, name, node, args, linkTo, prog)
+
       :pong ->
         {:error, {:already_running, node}}
     end
@@ -107,8 +114,8 @@ defmodule :m_slave do
   end
 
   defp start_it(host, name, node, args, linkTo, prog) do
-    spawn(:slave, :wait_for_slave,
-            [self(), host, name, node, args, linkTo, prog])
+    spawn(:slave, :wait_for_slave, [self(), host, name, node, args, linkTo, prog])
+
     receive do
       {:result, result} ->
         result
@@ -117,25 +124,31 @@ defmodule :m_slave do
 
   def wait_for_slave(parent, host, name, node, args, linkTo, prog) do
     waiter = register_unique_name(0)
-    case (mk_cmd(host, name, args, waiter, prog)) do
+
+    case mk_cmd(host, name, args, waiter, prog) do
       {:ok, cmd} ->
         :erlang.open_port({:spawn, cmd}, [:stream])
+
         receive do
           {slavePid, :slave_started} ->
             :erlang.unregister(waiter)
             slave_started(parent, linkTo, slavePid)
-        after 32000 ->
-          ^node = :erlang.list_to_atom(:lists.concat([name, '@',
-                                                                host]))
-          case (:net_adm.ping(node)) do
-            :pong ->
-              :erlang.spawn(node, :erlang, :halt, [])
-              :ok
-            _ ->
-              :ok
-          end
-          send(parent, {:result, {:error, :timeout}})
+        after
+          32000 ->
+            ^node = :erlang.list_to_atom(:lists.concat([name, ~c"@", host]))
+
+            case :net_adm.ping(node) do
+              :pong ->
+                :erlang.spawn(node, :erlang, :halt, [])
+                :ok
+
+              _ ->
+                :ok
+            end
+
+            send(parent, {:result, {:error, :timeout}})
         end
+
       other ->
         send(parent, {:result, other})
     end
@@ -145,8 +158,9 @@ defmodule :m_slave do
     send(replyTo, {:result, {:ok, node(slave)}})
   end
 
-  defp slave_started(replyTo, master, slave) when (is_pid(master) and
-                                          is_pid(slave)) do
+  defp slave_started(replyTo, master, slave)
+       when is_pid(master) and
+              is_pid(slave) do
     :erlang.process_flag(:trap_exit, true)
     :erlang.link(master)
     :erlang.link(slave)
@@ -159,24 +173,28 @@ defmodule :m_slave do
       {:EXIT, ^master, _Reason} ->
         :erlang.unlink(slave)
         send(slave, {:nodedown, node()})
+
       {:EXIT, ^slave, _Reason} ->
         :erlang.unlink(master)
+
       _Other ->
         one_way_link(master, slave)
     end
   end
 
   defp register_unique_name(number) do
-    name = :erlang.list_to_atom(:lists.concat(['slave_waiter_', number]))
-    case ((try do
+    name = :erlang.list_to_atom(:lists.concat([~c"slave_waiter_", number]))
+
+    case (try do
             :erlang.register(name, self())
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       true ->
         name
+
       {:EXIT, {:badarg, _}} ->
         register_unique_name(number + 1)
     end
@@ -184,22 +202,34 @@ defmodule :m_slave do
 
   defp mk_cmd(host, name, args, waiter, prog0) do
     prog = quote_progname(prog0)
-    basicCmd = :lists.concat([prog, ' -detached -noinput -master ', node(), ' ',
-                                                   long_or_short(), name, '@',
-                                                                              host,
-                                                                                  ' -s slave slave_start ',
-                                                                                      node(),
-                                                                                          ' ',
-                                                                                              waiter,
-                                                                                                  ' ',
-                                                                                                      args])
-    case (after_char(?@, :erlang.atom_to_list(node()))) do
+
+    basicCmd =
+      :lists.concat([
+        prog,
+        ~c" -detached -noinput -master ",
+        node(),
+        ~c" ",
+        long_or_short(),
+        name,
+        ~c"@",
+        host,
+        ~c" -s slave slave_start ",
+        node(),
+        ~c" ",
+        waiter,
+        ~c" ",
+        args
+      ])
+
+    case after_char(?@, :erlang.atom_to_list(node())) do
       ^host ->
         {:ok, basicCmd}
+
       _ ->
-        case (rsh()) do
+        case rsh() do
           {:ok, rsh} ->
-            {:ok, :lists.concat([rsh, ' ', host, ' ', basicCmd])}
+            {:ok, :lists.concat([rsh, ~c" ", host, ~c" ", basicCmd])}
+
           other ->
             other
         end
@@ -207,55 +237,69 @@ defmodule :m_slave do
   end
 
   defp progname() do
-    case (:init.get_argument(:progname)) do
+    case :init.get_argument(:progname) do
       {:ok, [[prog]]} ->
         prog
+
       _Other ->
-        'no_prog_name'
+        ~c"no_prog_name"
     end
   end
 
   defp quote_progname(progname) do
-    do_quote_progname(:string.lexemes(to_list(progname), ' '))
+    do_quote_progname(:string.lexemes(to_list(progname), ~c" "))
   end
 
   defp do_quote_progname([prog]) do
-    '"' ++ prog ++ '"'
+    ~c"\"" ++ prog ++ ~c"\""
   end
 
   defp do_quote_progname([prog, arg | args]) do
-    case (:os.find_executable(prog)) do
+    case :os.find_executable(prog) do
       false ->
-        do_quote_progname([prog ++ ' ' ++ arg | args])
+        do_quote_progname([prog ++ ~c" " ++ arg | args])
+
       _ ->
-        '"' ++ prog ++ '"' ++ :lists.flatten(:lists.map(fn x ->
-                                                         [' ', x]
-                                                    end,
-                                                      [arg | args]))
+        ~c"\"" ++
+          prog ++
+          ~c"\"" ++
+          :lists.flatten(
+            :lists.map(
+              fn x ->
+                [~c" ", x]
+              end,
+              [arg | args]
+            )
+          )
     end
   end
 
   defp rsh() do
-    rsh = (case (:init.get_argument(:rsh)) do
-             {:ok, [[prog]]} ->
-               prog
-             _ ->
-               'ssh'
-           end)
-    case (:os.find_executable(rsh)) do
+    rsh =
+      case :init.get_argument(:rsh) do
+        {:ok, [[prog]]} ->
+          prog
+
+        _ ->
+          ~c"ssh"
+      end
+
+    case :os.find_executable(rsh) do
       false ->
         {:error, :no_rsh}
+
       path ->
         {:ok, path}
     end
   end
 
   defp long_or_short() do
-    case (:net_kernel.longnames()) do
+    case :net_kernel.longnames() do
       true ->
-        ' -name '
+        ~c" -name "
+
       false ->
-        ' -sname '
+        ~c" -sname "
     end
   end
 
@@ -277,6 +321,7 @@ defmodule :m_slave do
       {:nodedown, ^master} ->
         true
         :erlang.halt()
+
       _Other ->
         wloop(master)
     end
@@ -330,5 +375,4 @@ defmodule :m_slave do
   defp after_char(char, [_ | rest]) do
     after_char(char, rest)
   end
-
 end

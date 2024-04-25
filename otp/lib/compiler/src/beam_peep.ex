@@ -20,7 +20,7 @@ defmodule :m_beam_peep do
       {:function, name, arity, cLabel, is}
     catch
       class, error ->
-        :io.fwrite('Function: ~w/~w\n', [name, arity])
+        :io.fwrite(~c"Function: ~w/~w\n", [name, arity])
         :erlang.raise(class, error, __STACKTRACE__)
     end
   end

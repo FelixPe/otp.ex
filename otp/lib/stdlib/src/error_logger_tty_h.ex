@@ -2,15 +2,20 @@ defmodule :m_error_logger_tty_h do
   use Bitwise
   @behaviour :gen_event
   require Record
-  Record.defrecord(:r_st, :st, user: :undefined,
-                              prev_handler: :undefined, io_mod: :io,
-                              depth: :unlimited, modifier: '')
+
+  Record.defrecord(:r_st, :st,
+    user: :undefined,
+    prev_handler: :undefined,
+    io_mod: :io,
+    depth: :unlimited,
+    modifier: ~c""
+  )
+
   def init({[], {:error_logger, buf}}) do
     user = set_group_leader()
     depth = :error_logger.get_format_depth()
     modifier = modifier()
-    state = r_st(user: user, prev_handler: :error_logger,
-                depth: depth, modifier: modifier)
+    state = r_st(user: user, prev_handler: :error_logger, depth: depth, modifier: modifier)
     write_events(state, buf)
     {:ok, state}
   end
@@ -24,9 +29,7 @@ defmodule :m_error_logger_tty_h do
     user = set_group_leader()
     depth = :error_logger.get_format_depth()
     modifier = modifier()
-    {:ok,
-       r_st(user: user, prev_handler: [], depth: depth,
-           modifier: modifier)}
+    {:ok, r_st(user: user, prev_handler: [], depth: depth, modifier: modifier)}
   end
 
   def handle_event({_Type, gL, _Msg}, state)
@@ -39,14 +42,16 @@ defmodule :m_error_logger_tty_h do
     {:ok, state}
   end
 
-  def handle_info({:EXIT, user, _Reason},
-           r_st(user: user, prev_handler: prevHandler) = state) do
-    case (prevHandler) do
+  def handle_info(
+        {:EXIT, user, _Reason},
+        r_st(user: user, prev_handler: prevHandler) = state
+      ) do
+    case prevHandler do
       [] ->
         :remove_handler
+
       _ ->
-        {:swap_handler, :install_prev, state, prevHandler,
-           :go_back}
+        {:swap_handler, :install_prev, state, prevHandler, :go_back}
     end
   end
 
@@ -76,17 +81,20 @@ defmodule :m_error_logger_tty_h do
 
   def write_event(event, ioMod, {depth, enc}) do
     modifier = modifier(enc)
-    do_write_event(r_st(io_mod: ioMod, depth: depth,
-                       modifier: modifier),
-                     event)
+
+    do_write_event(
+      r_st(io_mod: ioMod, depth: depth, modifier: modifier),
+      event
+    )
   end
 
   defp set_group_leader() do
-    case (:erlang.whereis(:user)) do
+    case :erlang.whereis(:user) do
       user when is_pid(user) ->
         :erlang.link(user)
         :erlang.group_leader(user, self())
         user
+
       _ ->
         false
     end
@@ -107,22 +115,29 @@ defmodule :m_error_logger_tty_h do
   end
 
   defp do_write_event(r_st(modifier: m) = state, {time, event}) do
-    case (parse_event(event, m)) do
+    case parse_event(event, m) do
       :ignore ->
         :ok
+
       {title, pid, formatList} ->
         header = header(time, title, m)
         body = format_body(state, formatList)
-        atNode = (cond do
-                    node(pid) !== node() ->
-                      ['** at node ', :erlang.atom_to_list(node(pid)), ' **\n']
-                    true ->
-                      []
-                  end)
+
+        atNode =
+          cond do
+            node(pid) !== node() ->
+              [~c"** at node ", :erlang.atom_to_list(node(pid)), ~c" **\n"]
+
+            true ->
+              []
+          end
+
         str = [header, atNode, body]
-        case (r_st(state, :io_mod)) do
+
+        case r_st(state, :io_mod) do
           :io_lib ->
             str
+
           :io ->
             :io.put_chars(:user, str)
         end
@@ -134,15 +149,17 @@ defmodule :m_error_logger_tty_h do
   end
 
   defp format_body(r_st(modifier: m) = state, [{format, args} | t]) do
-    s = (try do
-           format(state, format, args)
-         catch
-           _, _ ->
-             format(state, 'ERROR: ~' ++ m ++ 'p - ~' ++ m ++ 'p\n', [format, args])
-         else
-           s0 ->
-             s0
-         end)
+    s =
+      try do
+        format(state, format, args)
+      catch
+        _, _ ->
+          format(state, ~c"ERROR: ~" ++ m ++ ~c"p - ~" ++ m ++ ~c"p\n", [format, args])
+      else
+        s0 ->
+          s0
+      end
+
     [s | format_body(state, t)]
   end
 
@@ -161,7 +178,7 @@ defmodule :m_error_logger_tty_h do
   end
 
   defp limit_format([%{control_char: c0} = m0 | t], depth)
-      when c0 === ?p or c0 === ?w do
+       when c0 === ?p or c0 === ?w do
     c = c0 - (?a - ?A)
     %{args: args} = m0
     m = %{m0 | control_char: c, args: args ++ [depth]}
@@ -177,31 +194,36 @@ defmodule :m_error_logger_tty_h do
   end
 
   defp parse_event({:error, _GL, {pid, format, args}}, _) do
-    {'ERROR REPORT', pid, [{format, args}]}
+    {~c"ERROR REPORT", pid, [{format, args}]}
   end
 
   defp parse_event({:info_msg, _GL, {pid, format, args}}, _) do
-    {'INFO REPORT', pid, [{format, args}]}
+    {~c"INFO REPORT", pid, [{format, args}]}
   end
 
   defp parse_event({:warning_msg, _GL, {pid, format, args}}, _) do
-    {'WARNING REPORT', pid, [{format, args}]}
+    {~c"WARNING REPORT", pid, [{format, args}]}
   end
 
-  defp parse_event({:error_report, _GL, {pid, :std_error, args}},
-            m) do
-    {'ERROR REPORT', pid, format_term(args, m)}
+  defp parse_event(
+         {:error_report, _GL, {pid, :std_error, args}},
+         m
+       ) do
+    {~c"ERROR REPORT", pid, format_term(args, m)}
   end
 
-  defp parse_event({:info_report, _GL, {pid, :std_info, args}},
-            m) do
-    {'INFO REPORT', pid, format_term(args, m)}
+  defp parse_event(
+         {:info_report, _GL, {pid, :std_info, args}},
+         m
+       ) do
+    {~c"INFO REPORT", pid, format_term(args, m)}
   end
 
-  defp parse_event({:warning_report, _GL,
-             {pid, :std_warning, args}},
-            m) do
-    {'WARNING REPORT', pid, format_term(args, m)}
+  defp parse_event(
+         {:warning_report, _GL, {pid, :std_warning, args}},
+         m
+       ) do
+    {~c"WARNING REPORT", pid, format_term(args, m)}
   end
 
   defp parse_event(_, _) do
@@ -209,25 +231,28 @@ defmodule :m_error_logger_tty_h do
   end
 
   defp format_term(term, m) when is_list(term) do
-    case (string_p(:lists.flatten(term))) do
+    case string_p(:lists.flatten(term)) do
       true ->
-        [{'~' ++ m ++ 's\n', [term]}]
+        [{~c"~" ++ m ++ ~c"s\n", [term]}]
+
       false ->
         format_term_list(term, m)
     end
   end
 
   defp format_term(term, m) do
-    [{'~' ++ m ++ 'p\n', [term]}]
+    [{~c"~" ++ m ++ ~c"p\n", [term]}]
   end
 
   defp format_term_list([{tag, data} | t], m) do
-    [{'    ~' ++ m ++ 'p: ~' ++ m ++ 'p\n', [tag, data]} |
-         format_term_list(t, m)]
+    [
+      {~c"    ~" ++ m ++ ~c"p: ~" ++ m ++ ~c"p\n", [tag, data]}
+      | format_term_list(t, m)
+    ]
   end
 
   defp format_term_list([data | t], m) do
-    [{'    ~' ++ m ++ 'p\n', [data]} | format_term_list(t, m)]
+    [{~c"    ~" ++ m ++ ~c"p\n", [data]} | format_term_list(t, m)]
   end
 
   defp format_term_list([], _) do
@@ -243,13 +268,15 @@ defmodule :m_error_logger_tty_h do
   end
 
   defp get_utc_config() do
-    case (:application.get_env(:sasl, :utc_log)) do
+    case :application.get_env(:sasl, :utc_log) do
       {:ok, val} ->
         val
+
       :undefined ->
-        case (:application.get_env(:stdlib, :utc_log)) do
+        case :application.get_env(:stdlib, :utc_log) do
           {:ok, val} ->
             val
+
           :undefined ->
             false
         end
@@ -257,18 +284,20 @@ defmodule :m_error_logger_tty_h do
   end
 
   defp header(time, title, m) do
-    case (get_utc_config()) do
+    case get_utc_config() do
       true ->
-        header(time, title, 'UTC ', m)
+        header(time, title, ~c"UTC ", m)
+
       _ ->
-        header(:calendar.universal_time_to_local_time(time),
-                 title, '', m)
+        header(:calendar.universal_time_to_local_time(time), title, ~c"", m)
     end
   end
 
   defp header({{y, mo, d}, {h, mi, s}}, title, uTC, m) do
-    :io_lib.format('~n=~' ++ m ++ 's==== ~p-~s-~p::~s:~s:~s ~s===~n',
-                     [title, d, month(mo), y, t(h), t(mi), t(s), uTC])
+    :io_lib.format(
+      ~c"~n=~" ++ m ++ ~c"s==== ~p-~s-~p::~s:~s:~s ~s===~n",
+      [title, d, month(mo), y, t(h), t(mi), t(s), uTC]
+    )
   end
 
   defp t(x) when is_integer(x) do
@@ -276,7 +305,7 @@ defmodule :m_error_logger_tty_h do
   end
 
   defp t(_) do
-    ''
+    ~c""
   end
 
   defp t1([x]) do
@@ -288,51 +317,51 @@ defmodule :m_error_logger_tty_h do
   end
 
   defp month(1) do
-    'Jan'
+    ~c"Jan"
   end
 
   defp month(2) do
-    'Feb'
+    ~c"Feb"
   end
 
   defp month(3) do
-    'Mar'
+    ~c"Mar"
   end
 
   defp month(4) do
-    'Apr'
+    ~c"Apr"
   end
 
   defp month(5) do
-    'May'
+    ~c"May"
   end
 
   defp month(6) do
-    'Jun'
+    ~c"Jun"
   end
 
   defp month(7) do
-    'Jul'
+    ~c"Jul"
   end
 
   defp month(8) do
-    'Aug'
+    ~c"Aug"
   end
 
   defp month(9) do
-    'Sep'
+    ~c"Sep"
   end
 
   defp month(10) do
-    'Oct'
+    ~c"Oct"
   end
 
   defp month(11) do
-    'Nov'
+    ~c"Nov"
   end
 
   defp month(12) do
-    'Dec'
+    ~c"Dec"
   end
 
   defp modifier() do
@@ -340,15 +369,14 @@ defmodule :m_error_logger_tty_h do
   end
 
   defp modifier(:latin1) do
-    ''
+    ~c""
   end
 
   defp modifier(_) do
-    't'
+    ~c"t"
   end
 
   defp encoding() do
     :proplists.get_value(:encoding, :io.getopts(), :latin1)
   end
-
 end

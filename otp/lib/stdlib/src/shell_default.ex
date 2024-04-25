@@ -1,39 +1,40 @@
 defmodule :m_shell_default do
   use Bitwise
   import :io, only: [format: 1]
+
   def help() do
-    format('** shell internal commands **~n')
-    format('b()        -- display all variable bindings\n')
-    format('e(N)       -- repeat the expression in query <N>\n')
-    format('f()        -- forget all variable bindings\n')
-    format('f(X)       -- forget the binding of variable X\n')
-    format('h()        -- history\n')
-    format('h(Mod)     -- help about module\n')
-    format('h(Mod,Func)-- help about function in module\n')
-    format('h(Mod,Func,Arity) -- help about function with arity in module\n')
-    format('ht(Mod)    -- help about a module\'s types\n')
-    format('ht(Mod,Type) -- help about type in module\n')
-    format('ht(Mod,Type,Arity) -- help about type with arity in module\n')
-    format('hcb(Mod)    -- help about a module\'s callbacks\n')
-    format('hcb(Mod,CB) -- help about callback in module\n')
-    format('hcb(Mod,CB,Arity) -- help about callback with arity in module\n')
-    format('history(N) -- set how many previous commands to keep\n')
-    format('results(N) -- set how many previous command results to keep\n')
-    format('catch_exception(B) -- how exceptions are handled\n')
-    format('v(N)       -- use the value of query <N>\n')
-    format('rd(R,D)    -- define a record\n')
-    format('rf()       -- remove all record information\n')
-    format('rf(R)      -- remove record information about R\n')
-    format('rl()       -- display all record information\n')
-    format('rl(R)      -- display record information about R\n')
-    format('rp(Term)   -- display Term using the shell\'s record information\n')
-    format('rr(File)   -- read record information from File (wildcards allowed)\n')
-    format('rr(F,R)    -- read selected record information from file(s)\n')
-    format('rr(F,R,O)  -- read selected record information with options\n')
-    format('** commands in module c **\n')
+    format(~c"** shell internal commands **~n")
+    format(~c"b()        -- display all variable bindings\n")
+    format(~c"e(N)       -- repeat the expression in query <N>\n")
+    format(~c"f()        -- forget all variable bindings\n")
+    format(~c"f(X)       -- forget the binding of variable X\n")
+    format(~c"h()        -- history\n")
+    format(~c"h(Mod)     -- help about module\n")
+    format(~c"h(Mod,Func)-- help about function in module\n")
+    format(~c"h(Mod,Func,Arity) -- help about function with arity in module\n")
+    format(~c"ht(Mod)    -- help about a module's types\n")
+    format(~c"ht(Mod,Type) -- help about type in module\n")
+    format(~c"ht(Mod,Type,Arity) -- help about type with arity in module\n")
+    format(~c"hcb(Mod)    -- help about a module's callbacks\n")
+    format(~c"hcb(Mod,CB) -- help about callback in module\n")
+    format(~c"hcb(Mod,CB,Arity) -- help about callback with arity in module\n")
+    format(~c"history(N) -- set how many previous commands to keep\n")
+    format(~c"results(N) -- set how many previous command results to keep\n")
+    format(~c"catch_exception(B) -- how exceptions are handled\n")
+    format(~c"v(N)       -- use the value of query <N>\n")
+    format(~c"rd(R,D)    -- define a record\n")
+    format(~c"rf()       -- remove all record information\n")
+    format(~c"rf(R)      -- remove record information about R\n")
+    format(~c"rl()       -- display all record information\n")
+    format(~c"rl(R)      -- display record information about R\n")
+    format(~c"rp(Term)   -- display Term using the shell's record information\n")
+    format(~c"rr(File)   -- read record information from File (wildcards allowed)\n")
+    format(~c"rr(F,R)    -- read selected record information from file(s)\n")
+    format(~c"rr(F,R,O)  -- read selected record information with options\n")
+    format(~c"** commands in module c **\n")
     :c.help()
-    format('** commands in module i (interpreter interface) **\n')
-    format('ih()       -- print help for the i module\n')
+    format(~c"** commands in module i (interpreter interface) **\n")
+    format(~c"ih()       -- print help for the i module\n")
     true
   end
 
@@ -330,13 +331,12 @@ defmodule :m_shell_default do
   end
 
   def unquote(:"$handle_undefined_function")(func, args) do
-    case (:shell.get_function(func, length(args))) do
+    case :shell.get_function(func, length(args)) do
       :undefined ->
-        :error_handler.raise_undef_exception(:shell_default,
-                                               func, args)
+        :error_handler.raise_undef_exception(:shell_default, func, args)
+
       fun when is_function(fun, length(args)) ->
         apply(fun, args)
     end
   end
-
 end

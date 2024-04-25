@@ -1166,7 +1166,7 @@ defmodule :m_cerl_typean do
 
               q =
                 :prettypr.beside(
-                  :prettypr.text('::'),
+                  :prettypr.text(~c"::"),
                   :prettypr.text(s)
                 )
 

@@ -3,13 +3,14 @@ defmodule :m_erl_signal_handler do
   @behaviour :gen_event
   require Record
   Record.defrecord(:r_state, :state, [])
+
   def start() do
-    case (:erlang.whereis(:erl_signal_server)) do
+    case :erlang.whereis(:erl_signal_server) do
       :undefined ->
         :ok
+
       _ ->
-        :gen_event.add_handler(:erl_signal_server,
-                                 :erl_signal_handler, [])
+        :gen_event.add_handler(:erl_signal_server, :erl_signal_handler, [])
     end
   end
 
@@ -18,7 +19,7 @@ defmodule :m_erl_signal_handler do
   end
 
   def handle_event(:sigusr1, s) do
-    :erlang.halt('Received SIGUSR1')
+    :erlang.halt(~c"Received SIGUSR1")
     {:ok, s}
   end
 
@@ -28,7 +29,7 @@ defmodule :m_erl_signal_handler do
   end
 
   def handle_event(:sigterm, s) do
-    :error_logger.info_msg('SIGTERM received - shutting down~n')
+    :error_logger.info_msg(~c"SIGTERM received - shutting down~n")
     :ok = :init.stop()
     {:ok, s}
   end
@@ -56,5 +57,4 @@ defmodule :m_erl_signal_handler do
   def terminate(_Args, _S) do
     :ok
   end
-
 end

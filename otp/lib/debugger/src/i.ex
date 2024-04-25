@@ -2,16 +2,22 @@ defmodule :m_i do
   use Bitwise
   import :io, only: [format: 1, format: 2]
   import :lists, only: [foreach: 2, sort: 1]
+
   def iv() do
-    vsn = :string.slice(:filename.basename(:code.lib_dir(:debugger)),
-                          9)
+    vsn =
+      :string.slice(
+        :filename.basename(:code.lib_dir(:debugger)),
+        9
+      )
+
     :erlang.list_to_atom(vsn)
   end
 
   def im() do
-    case (:debugger.start()) do
+    case :debugger.start() do
       {:ok, pid} ->
         pid
+
       {:error, {:already_started, pid}} ->
         pid
     end
@@ -53,10 +59,13 @@ defmodule :m_i do
     breaks1 = :int.all_breaks(module)
     :ok = :int.break_in(module, function, arity)
     breaks2 = :int.all_breaks(module)
-    :lists.foreach(fn {mod, line} ->
-                        :int.test_at_break(mod, line, cond__)
-                   end,
-                     breaks2 -- breaks1)
+
+    :lists.foreach(
+      fn {mod, line} ->
+        :int.test_at_break(mod, line, cond__)
+      end,
+      breaks2 -- breaks1
+    )
   end
 
   def ibd(mod, line) do
@@ -93,29 +102,33 @@ defmodule :m_i do
 
   def il() do
     mods = sort(:int.interpreted())
-    ilformat('Module', 'File')
-    foreach(fn mod ->
-                 ilformat(:erlang.atom_to_list(mod), get_file(mod))
-            end,
-              mods)
+    ilformat(~c"Module", ~c"File")
+
+    foreach(
+      fn mod ->
+        ilformat(:erlang.atom_to_list(mod), get_file(mod))
+      end,
+      mods
+    )
   end
 
   defp get_file(mod) do
-    case (:int.file(mod)) do
+    case :int.file(mod) do
       {:error, :not_loaded} ->
-        'not loaded'
+        ~c"not loaded"
+
       file ->
         file
     end
   end
 
   defp ilformat(a1, a2) do
-    format('~-20s     ~ts\n', [a1, a2])
+    format(~c"~-20s     ~ts\n", [a1, a2])
   end
 
   def ipb() do
     bps = :lists.keysort(1, :int.all_breaks())
-    bhformat('Module', 'Line', 'Status', 'Action', 'Condition')
+    bhformat(~c"Module", ~c"Line", ~c"Status", ~c"Action", ~c"Condition")
     pb_print(bps)
   end
 
@@ -129,21 +142,23 @@ defmodule :m_i do
 
   defp ipb1(module) do
     bps = :lists.keysort(1, :int.all_breaks(module))
-    bhformat('Module', 'Line', 'Status', 'Action', 'Condition')
+    bhformat(~c"Module", ~c"Line", ~c"Status", ~c"Action", ~c"Condition")
     pb_print(bps)
   end
 
-  defp pb_print([{{mod, line}, [status, action, _, :null | _]} |
-               bps]) do
-    bformat(mod, line, status, action, '')
+  defp pb_print([
+         {{mod, line}, [status, action, _, :null | _]}
+         | bps
+       ]) do
+    bformat(mod, line, status, action, ~c"")
     pb_print(bps)
   end
 
-  defp pb_print([{{mod, line},
-              [status, action, _, cond__ | _]} |
-               bps]) do
-    bformat(mod, line, status, action,
-              :io_lib.format('~w', [cond__]))
+  defp pb_print([
+         {{mod, line}, [status, action, _, cond__ | _]}
+         | bps
+       ]) do
+    bformat(mod, line, status, action, :io_lib.format(~c"~w", [cond__]))
     pb_print(bps)
   end
 
@@ -152,11 +167,11 @@ defmodule :m_i do
   end
 
   defp bhformat(a1, a2, a3, a4, a5) do
-    format('~-15s ~-9s ~-12s ~-12s ~-21s~n', [a1, a2, a3, a4, a5])
+    format(~c"~-15s ~-9s ~-12s ~-12s ~-21s~n", [a1, a2, a3, a4, a5])
   end
 
   defp bformat(a1, a2, a3, a4, a5) do
-    format('~-15w ~-9w ~-12w ~-12w ~-21s~n', [a1, a2, a3, a4, a5])
+    format(~c"~-15w ~-9w ~-12w ~-12w ~-21s~n", [a1, a2, a3, a4, a5])
   end
 
   def ist(flag) do
@@ -182,9 +197,10 @@ defmodule :m_i do
   end
 
   def ia(pid, fnk) do
-    case (:lists.keymember(pid, 1, :int.snapshot())) do
+    case :lists.keymember(pid, 1, :int.snapshot()) do
       false ->
         :no_proc
+
       true ->
         :int.attach(pid, fnk)
     end
@@ -196,21 +212,29 @@ defmodule :m_i do
 
   def ip() do
     stats = :int.snapshot()
-    hformat('Pid', 'Initial Call', 'Status', 'Info')
+    hformat(~c"Pid", ~c"Initial Call", ~c"Status", ~c"Info")
     ip(stats)
   end
 
   defp ip([{pid, {m, f, a}, status, {}} | stats]) do
-    hformat(:io_lib.format('~w', [pid]),
-              :io_lib.format('~w:~tw/~w', [m, f, length(a)]),
-              :io_lib.format('~w', [status]), '')
+    hformat(
+      :io_lib.format(~c"~w", [pid]),
+      :io_lib.format(~c"~w:~tw/~w", [m, f, length(a)]),
+      :io_lib.format(~c"~w", [status]),
+      ~c""
+    )
+
     ip(stats)
   end
 
   defp ip([{pid, {m, f, a}, status, info} | stats]) do
-    hformat(:io_lib.format('~w', [pid]),
-              :io_lib.format('~w:~tw/~w', [m, f, length(a)]),
-              :io_lib.format('~w', [status]), :io_lib.format('~w', [info]))
+    hformat(
+      :io_lib.format(~c"~w", [pid]),
+      :io_lib.format(~c"~w:~tw/~w", [m, f, length(a)]),
+      :io_lib.format(~c"~w", [status]),
+      :io_lib.format(~c"~w", [info])
+    )
+
     ip(stats)
   end
 
@@ -219,7 +243,7 @@ defmodule :m_i do
   end
 
   defp hformat(a1, a2, a3, a4) do
-    format('~-12s ~-21ts ~-9s ~-21s~n', [a1, a2, a3, a4])
+    format(~c"~-12s ~-21ts ~-9s ~-21s~n", [a1, a2, a3, a4])
   end
 
   def ic() do
@@ -227,40 +251,39 @@ defmodule :m_i do
   end
 
   def help() do
-    format('iv()         -- print the current version of the interpreter~n')
-    format('im()         -- pop up a monitor window~n')
-    format('ii(Mod)      -- interpret Mod(s) (or AbsMod(s))~n')
-    format('ii(Mod,Op)   -- interpret Mod(s) (or AbsMod(s))~n')
-    format('                use Op as options (same as for compile)~n')
-    format('iq(Mod)      -- do not interpret Mod(s)~n')
-    format('ini(Mod)     -- ii/1 at all Erlang nodes~n')
-    format('ini(Mod,Op)  -- ii/2 at all Erlang nodes~n')
-    format('inq(Mod)     -- iq at all Erlang nodes~n')
-    format('ib(Mod,Line) -- set a break point at Line in Mod~n')
-    format('ib(M,F,Arity)-- set a break point in M:F/Arity~n')
-    format('ibd(Mod,Line)-- disable the break point at Line in Mod~n')
-    format('ibe(Mod,Line)-- enable the break point at Line in Mod~n')
-    format('iba(M,L,Action)-- set a new action at break~n')
-    format('ibc(M,L,Action)-- set a new condition for break~n')
-    format('ir(Mod,Line) -- remove the break point at Line in Mod~n')
-    format('ir(M,F,Arity)-- remove the break point in M:F/Arity~n')
-    format('ir(Mod)      -- remove all break points in Mod~n')
-    format('ir()         -- remove all existing break points~n')
-    format('il()         -- list all interpreted modules~n')
-    format('ip()         -- print status of all interpreted processes~n')
-    format('ic()         -- remove all terminated interpreted processes~n')
-    format('ipb()        -- list all break points~n')
-    format('ipb(Mod)     -- list all break points in Mod~n')
-    format('ia(Pid)      -- attach to Pid~n')
-    format('ia(X,Y,Z)    -- attach to pid(X,Y,Z)~n')
-    format('ia(Pid,Fun)  -- use own Fun = {M,F} as attach application~n')
-    format('ia(X,Y,Z,Fun)-- use own Fun = {M,F} as attach application~n')
-    format('iaa([Flag])  -- set automatic attach to process~n')
-    format('                Flag is init,break and exit~n')
-    format('iaa([Fl],Fun)-- use own Fun = {M,F} as attach application~n')
-    format('ist(Flag)    -- set stack trace flag~n')
-    format('                Flag is all (true),no_tail or false~n')
+    format(~c"iv()         -- print the current version of the interpreter~n")
+    format(~c"im()         -- pop up a monitor window~n")
+    format(~c"ii(Mod)      -- interpret Mod(s) (or AbsMod(s))~n")
+    format(~c"ii(Mod,Op)   -- interpret Mod(s) (or AbsMod(s))~n")
+    format(~c"                use Op as options (same as for compile)~n")
+    format(~c"iq(Mod)      -- do not interpret Mod(s)~n")
+    format(~c"ini(Mod)     -- ii/1 at all Erlang nodes~n")
+    format(~c"ini(Mod,Op)  -- ii/2 at all Erlang nodes~n")
+    format(~c"inq(Mod)     -- iq at all Erlang nodes~n")
+    format(~c"ib(Mod,Line) -- set a break point at Line in Mod~n")
+    format(~c"ib(M,F,Arity)-- set a break point in M:F/Arity~n")
+    format(~c"ibd(Mod,Line)-- disable the break point at Line in Mod~n")
+    format(~c"ibe(Mod,Line)-- enable the break point at Line in Mod~n")
+    format(~c"iba(M,L,Action)-- set a new action at break~n")
+    format(~c"ibc(M,L,Action)-- set a new condition for break~n")
+    format(~c"ir(Mod,Line) -- remove the break point at Line in Mod~n")
+    format(~c"ir(M,F,Arity)-- remove the break point in M:F/Arity~n")
+    format(~c"ir(Mod)      -- remove all break points in Mod~n")
+    format(~c"ir()         -- remove all existing break points~n")
+    format(~c"il()         -- list all interpreted modules~n")
+    format(~c"ip()         -- print status of all interpreted processes~n")
+    format(~c"ic()         -- remove all terminated interpreted processes~n")
+    format(~c"ipb()        -- list all break points~n")
+    format(~c"ipb(Mod)     -- list all break points in Mod~n")
+    format(~c"ia(Pid)      -- attach to Pid~n")
+    format(~c"ia(X,Y,Z)    -- attach to pid(X,Y,Z)~n")
+    format(~c"ia(Pid,Fun)  -- use own Fun = {M,F} as attach application~n")
+    format(~c"ia(X,Y,Z,Fun)-- use own Fun = {M,F} as attach application~n")
+    format(~c"iaa([Flag])  -- set automatic attach to process~n")
+    format(~c"                Flag is init,break and exit~n")
+    format(~c"iaa([Fl],Fun)-- use own Fun = {M,F} as attach application~n")
+    format(~c"ist(Flag)    -- set stack trace flag~n")
+    format(~c"                Flag is all (true),no_tail or false~n")
     :ok
   end
-
 end

@@ -1,52 +1,59 @@
 defmodule :m_erl_erts_errors do
   use Bitwise
+
   def format_error(reason, [{m, f, as, info} | _]) do
-    errorInfoMap = :proplists.get_value(:error_info, info,
-                                          %{})
+    errorInfoMap = :proplists.get_value(:error_info, info, %{})
     cause = :maps.get(:cause, errorInfoMap, :none)
-    res = (case (m) do
-             :erlang ->
-               format_erlang_error(f, as, reason, cause)
-             :atomics ->
-               format_atomics_error(f, as, reason, cause)
-             :counters ->
-               format_counters_error(f, as, reason, cause)
-             :persistent_term ->
-               format_pt_error(f, as)
-             _ ->
-               []
-           end)
+
+    res =
+      case m do
+        :erlang ->
+          format_erlang_error(f, as, reason, cause)
+
+        :atomics ->
+          format_atomics_error(f, as, reason, cause)
+
+        :counters ->
+          format_counters_error(f, as, reason, cause)
+
+        :persistent_term ->
+          format_pt_error(f, as)
+
+        _ ->
+          []
+      end
+
     format_error_map(res, 1, %{})
   end
 
   def format_bs_fail(reason, [{_, _, _, info} | _]) do
-    errorInfoMap = :proplists.get_value(:error_info, info,
-                                          %{})
-    case (errorInfoMap) do
+    errorInfoMap = :proplists.get_value(:error_info, info, %{})
+
+    case errorInfoMap do
       %{cause: {segment0, type, error, value}} ->
-        segment1 = :maps.get(:override_segment_position,
-                               errorInfoMap, segment0)
-        prettyPrinter = :maps.get(:pretty_printer, errorInfoMap,
-                                    &possibly_truncated/1)
-        str0 = do_format_bs_fail(reason, type, error, value,
-                                   prettyPrinter)
-        str1 = :io_lib.format('segment ~p of type \'~ts\': ~ts', [segment1, type, str0])
+        segment1 = :maps.get(:override_segment_position, errorInfoMap, segment0)
+        prettyPrinter = :maps.get(:pretty_printer, errorInfoMap, &possibly_truncated/1)
+        str0 = do_format_bs_fail(reason, type, error, value, prettyPrinter)
+        str1 = :io_lib.format(~c"segment ~p of type '~ts': ~ts", [segment1, type, str0])
         str = :erlang.iolist_to_binary(str1)
         %{general: str, reason: "construction of binary failed"}
+
       %{} ->
         %{}
     end
   end
 
   defp format_atomics_error(:new, [size, options], reason, cause) do
-    case (reason) do
+    case reason do
       :system_limit ->
         ["atomics array size reached a system limit", must_be_list(options)]
+
       :badarg ->
-        case (cause) do
+        case cause do
           :badopt ->
             sizeError = must_be_pos_int(size)
             [sizeError, must_be_list(options, :bad_option)]
+
           _ ->
             [must_be_pos_int(size)]
         end
@@ -65,19 +72,23 @@ defmodule :m_erl_erts_errors do
     do_atomics_operation(args)
   end
 
-  defp format_atomics_error(:compare_exchange,
-            [ref, index, expected, desired]) do
+  defp format_atomics_error(
+         :compare_exchange,
+         [ref, index, expected, desired]
+       ) do
     try do
       :atomics.info(ref)
     catch
       :error, :badarg ->
-        [:bad_atomics_ref, must_be_pos_int(index),
-                               must_be_int(expected), must_be_int(desired)]
+        [:bad_atomics_ref, must_be_pos_int(index), must_be_int(expected), must_be_int(desired)]
     else
       %{min: min, max: max, size: maxIndex} ->
-        [[], must_be_int(index, 1, maxIndex),
-                 must_be_int(expected, min, max), must_be_int(desired,
-                                                                min, max)]
+        [
+          [],
+          must_be_int(index, 1, maxIndex),
+          must_be_int(expected, min, max),
+          must_be_int(desired, min, max)
+        ]
     end
   end
 
@@ -114,24 +125,24 @@ defmodule :m_erl_erts_errors do
       :atomics.info(ref)
     catch
       :error, :badarg ->
-        [:bad_atomics_ref, must_be_pos_int(index),
-                               must_be_int(value)]
+        [:bad_atomics_ref, must_be_pos_int(index), must_be_int(value)]
     else
       %{min: min, max: max, size: maxIndex} ->
-        [[], must_be_int(index, 1, maxIndex), must_be_int(value,
-                                                            min, max)]
+        [[], must_be_int(index, 1, maxIndex), must_be_int(value, min, max)]
     end
   end
 
   defp format_counters_error(:new, [size, options], reason, cause) do
-    case (reason) do
+    case reason do
       :system_limit ->
         ["counters array size reached a system limit", must_be_list(options)]
+
       :badarg ->
-        case (cause) do
+        case cause do
           :badopt ->
             sizeError = must_be_pos_int(size)
             [sizeError, must_be_list(options, :bad_option)]
+
           _ ->
             [must_be_pos_int(size)]
         end
@@ -167,15 +178,16 @@ defmodule :m_erl_erts_errors do
       :counters.info(ref)
     catch
       :error, :badarg ->
-        [:bad_counters_ref, must_be_pos_int(index),
-                                must_be_int(value)]
+        [:bad_counters_ref, must_be_pos_int(index), must_be_int(value)]
     else
       %{size: maxIndex} ->
-        case (must_be_int(index, 1, maxIndex)) do
+        case must_be_int(index, 1, maxIndex) do
           [] when is_integer(value) ->
             [[], [], :range]
+
           [] ->
             [[], [], :not_integer]
+
           indexError ->
             [[], indexError]
         end
@@ -207,8 +219,7 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:adler32_combine, [first, second, size], _) do
-    [must_be_adler32(first), must_be_adler32(second),
-                                 must_be_size(size)]
+    [must_be_adler32(first), must_be_adler32(second), must_be_size(size)]
   end
 
   defp format_erlang_error(:alias, [options], _) do
@@ -228,21 +239,28 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:atom_to_binary, [atom, encoding], _) do
-    [cond do
-       not is_atom(atom) ->
-         :not_atom
-       encoding === :latin1 ->
-         "contains a character not expressible in latin1"
-       true ->
-         []
-     end,
-         case (:lists.member(encoding,
-                               [:latin1, :unicode, :utf8])) do
-           true ->
-             []
-           false ->
-             "is an invalid encoding option"
-         end]
+    [
+      cond do
+        not is_atom(atom) ->
+          :not_atom
+
+        encoding === :latin1 ->
+          "contains a character not expressible in latin1"
+
+        true ->
+          []
+      end,
+      case :lists.member(
+             encoding,
+             [:latin1, :unicode, :utf8]
+           ) do
+        true ->
+          []
+
+        false ->
+          "is an invalid encoding option"
+      end
+    ]
   end
 
   defp format_erlang_error(:atom_to_list, [_], _) do
@@ -258,36 +276,41 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:binary_part, [bin, posLen], cause) do
-    case (posLen) do
-      {pos, len} when (is_integer(pos) and is_integer(len)) ->
-        case (format_erlang_error(:binary_part, [bin, pos, len],
-                                    cause)) do
+    case posLen do
+      {pos, len} when is_integer(pos) and is_integer(len) ->
+        case format_erlang_error(:binary_part, [bin, pos, len], cause) do
           [arg1, [], []] ->
             [arg1]
+
           [arg1, _, _] ->
             [arg1, :range]
         end
+
       _ ->
         [must_be_binary(bin), "not a valid {Pos,Length} tuple"]
     end
   end
 
   defp format_erlang_error(:binary_part, [bin, pos, len], _) do
-    case ([must_be_binary(bin), must_be_non_neg_int(pos),
-                                    must_be_int(len)]) do
+    case [must_be_binary(bin), must_be_non_neg_int(pos), must_be_int(len)] do
       [[], [], []] ->
-        arg2 = (cond do
-                  pos > byte_size(bin) ->
-                    :range
-                  true ->
-                    []
-                end)
-        case (arg2) do
+        arg2 =
+          cond do
+            pos > byte_size(bin) ->
+              :range
+
+            true ->
+              []
+          end
+
+        case arg2 do
           [] ->
             [[], [], :range]
+
           :range ->
             [[], arg2]
         end
+
       errors ->
         errors
     end
@@ -319,9 +342,10 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:binary_to_integer, [bin, base], _) do
-    case (must_be_base(base)) do
+    case must_be_base(base) do
       [] ->
         [must_be_binary(bin, {:not_encodable, "an integer"})]
+
       badBase ->
         [must_be_binary(bin, []), badBase]
     end
@@ -332,26 +356,32 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:binary_to_list, [bin, start, stop], _) do
-    case ([must_be_binary(bin), must_be_pos_int(start),
-                                    must_be_pos_int(stop)]) do
+    case [must_be_binary(bin), must_be_pos_int(start), must_be_pos_int(stop)] do
       [[], [], []] ->
         cond do
           start > stop ->
             [[], "start position greater than stop position"]
+
           true ->
-            [[], cond do
-                   start > byte_size(bin) ->
-                     :range
-                   true ->
-                     []
-                 end,
-                     cond do
-                       stop > byte_size(bin) ->
-                         :range
-                       true ->
-                         []
-                     end]
+            [
+              [],
+              cond do
+                start > byte_size(bin) ->
+                  :range
+
+                true ->
+                  []
+              end,
+              cond do
+                stop > byte_size(bin) ->
+                  :range
+
+                true ->
+                  []
+              end
+            ]
         end
+
       errors ->
         errors
     end
@@ -363,20 +393,26 @@ defmodule :m_erl_erts_errors do
 
   defp format_erlang_error(:binary_to_term, [bin, options], cause) do
     arg1 = must_be_binary(bin)
-    arg2 = (case (cause) do
-              :badopt ->
-                must_be_list(options, :bad_option)
-              _ ->
-                []
-            end)
-    case ({arg1, arg2}) do
+
+    arg2 =
+      case cause do
+        :badopt ->
+          must_be_list(options, :bad_option)
+
+        _ ->
+          []
+      end
+
+    case {arg1, arg2} do
       {[], []} ->
-        case (:lists.member(:safe, options)) do
+        case :lists.member(:safe, options) do
           true ->
             [:bad_or_unsafe_ext_term]
+
           false ->
             [:bad_ext_term]
         end
+
       {_, _} ->
         [arg1, arg2]
     end
@@ -415,21 +451,21 @@ defmodule :m_erl_erts_errors do
     [must_be_local_pid(pid), must_be_atom(module)]
   end
 
-  defp format_erlang_error(:check_process_code, [pid, module, _Options],
-            cause) do
-    format_erlang_error(:check_process_code, [pid, module],
-                          cause) ++ [case (cause) do
-                                       :bad_option ->
-                                         :bad_option
-                                       _ ->
-                                         []
-                                     end]
+  defp format_erlang_error(:check_process_code, [pid, module, _Options], cause) do
+    format_erlang_error(:check_process_code, [pid, module], cause) ++
+      [
+        case cause do
+          :bad_option ->
+            :bad_option
+
+          _ ->
+            []
+        end
+      ]
   end
 
-  defp format_erlang_error(:convert_time_unit, [time, fromUnit, toUnit],
-            _) do
-    [must_be_int(time), must_be_time_unit(fromUnit),
-                            must_be_time_unit(toUnit)]
+  defp format_erlang_error(:convert_time_unit, [time, fromUnit, toUnit], _) do
+    [must_be_int(time), must_be_time_unit(fromUnit), must_be_time_unit(toUnit)]
   end
 
   defp format_erlang_error(:crc32, args, cause) do
@@ -443,9 +479,11 @@ defmodule :m_erl_erts_errors do
   defp format_erlang_error(:decode_packet, [_, bin, options], cause) do
     arg2 = must_be_binary(bin)
     arg3 = maybe_option_list_error(options, arg2)
-    case (cause) do
+
+    case cause do
       :badopt ->
         ["invalid packet type", arg2, arg3]
+
       :none ->
         [[], arg2, arg3]
     end
@@ -477,10 +515,13 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:display_string, [device, _], :none) do
-    case (:lists.member(device,
-                          [:stdin, :stdout, :stderr])) do
+    case :lists.member(
+           device,
+           [:stdin, :stdout, :stderr]
+         ) do
       true ->
         [[], :not_string]
+
       false ->
         [:not_device, []]
     end
@@ -491,15 +532,19 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:element, [index, tuple], _) do
-    [cond do
-       not is_integer(index) ->
-         :not_integer
-       index <= 0 or index > tuple_size(tuple) ->
-         :range
-       true ->
-         []
-     end,
-         must_be_tuple(tuple)]
+    [
+      cond do
+        not is_integer(index) ->
+          :not_integer
+
+        index <= 0 or index > tuple_size(tuple) ->
+          :range
+
+        true ->
+          []
+      end,
+      must_be_tuple(tuple)
+    ]
   end
 
   defp format_erlang_error(:exit, [_, _], _) do
@@ -541,8 +586,7 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:function_exported, [m, f, a], _) do
-    [must_be_atom(m), must_be_atom(f),
-                          must_be_non_neg_int(a)]
+    [must_be_atom(m), must_be_atom(f), must_be_non_neg_int(a)]
   end
 
   defp format_erlang_error(:fun_info, [_], _) do
@@ -550,15 +594,19 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:fun_info, [fun, _], _) do
-    arg1 = (cond do
-              is_function(fun) ->
-                []
-              true ->
-                :not_fun
-            end)
-    case (arg1) do
+    arg1 =
+      cond do
+        is_function(fun) ->
+          []
+
+        true ->
+          :not_fun
+      end
+
+    case arg1 do
       [] ->
         [[], "invalid item"]
+
       _ ->
         [arg1]
     end
@@ -577,12 +625,16 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:garbage_collect, [pid, _], cause) do
-    [must_be_local_pid(pid), case (cause) do
-                               :bad_option ->
-                                 :bad_option
-                               _ ->
-                                 []
-                             end]
+    [
+      must_be_local_pid(pid),
+      case cause do
+        :bad_option ->
+          :bad_option
+
+        _ ->
+          []
+      end
+    ]
   end
 
   defp format_erlang_error(:get_cookie, [node], _) do
@@ -598,9 +650,10 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:halt, [_Status, options], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
         [[], must_be_list(options, :bad_option)]
+
       :none ->
         [:bad_status]
     end
@@ -631,13 +684,16 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:integer_to_list, [int, base], _) do
-    [cond do
-       is_integer(int) ->
-         []
-       true ->
-         :not_integer
-     end,
-         must_be_base(base)]
+    [
+      cond do
+        is_integer(int) ->
+          []
+
+        true ->
+          :not_integer
+      end,
+      must_be_base(base)
+    ]
   end
 
   defp format_erlang_error(:iolist_size, [_], _) do
@@ -657,12 +713,16 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:is_function, [_, arity], _) do
-    [[], cond do
-           is_integer(arity) ->
-             :range
-           true ->
-             :not_integer
-         end]
+    [
+      [],
+      cond do
+        is_integer(arity) ->
+          :range
+
+        true ->
+          :not_integer
+      end
+    ]
   end
 
   defp format_erlang_error(:is_map_key, [_, _], _) do
@@ -689,6 +749,7 @@ defmodule :m_erl_erts_errors do
     cond do
       is_pid(pid) ->
         [:dead_process]
+
       true ->
         [:not_pid]
     end
@@ -699,9 +760,10 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:list_to_existing_atom, [list], _) do
-    case (is_flat_char_list(list)) do
+    case is_flat_char_list(list) do
       false ->
         [must_be_list(list, :not_string)]
+
       true ->
         [:non_existing_atom]
     end
@@ -724,9 +786,10 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:list_to_integer, [list, base], _) do
-    case (must_be_base(base)) do
+    case must_be_base(base) do
       [] ->
         [must_be_list(list, {:not_encodable, "an integer"})]
+
       badBase ->
         [must_be_list(list, []), badBase]
     end
@@ -765,8 +828,7 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:make_fun, [mod, name, arity], _) do
-    [must_be_atom(mod), must_be_atom(name),
-                            must_be_non_neg_int(arity)]
+    [must_be_atom(mod), must_be_atom(name), must_be_non_neg_int(arity)]
   end
 
   defp format_erlang_error(:make_tuple, [_, _], _) do
@@ -786,17 +848,20 @@ defmodule :m_erl_erts_errors do
     cond do
       is_map(map) ->
         ["not present in map"]
+
       true ->
         [[], :not_map]
     end
   end
 
   defp format_erlang_error(:match_spec_test, [_Subject, _Ms, type], _) do
-    case (type) do
+    case type do
       :trace ->
         [:not_list]
+
       :table ->
         [:not_tuple]
+
       _ ->
         [[], [], "invalid type for match spec"]
     end
@@ -811,23 +876,28 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:md5_update, [context, data], _) do
-    [check_md5_context(context), try do
-                                   :erlang.iolist_size(data)
-                                 catch
-                                   :error, :badarg ->
-                                     :not_iodata
-                                 else
-                                   _ ->
-                                     []
-                                 end]
+    [
+      check_md5_context(context),
+      try do
+        :erlang.iolist_size(data)
+      catch
+        :error, :badarg ->
+          :not_iodata
+      else
+        _ ->
+          []
+      end
+    ]
   end
 
   defp format_erlang_error(:memory, [options], _) do
     cond do
       length(options) >= 0 ->
         [:bad_option]
+
       is_atom(options) ->
         ["invalid memory type option"]
+
       true ->
         ["not an atom or a list of atoms"]
     end
@@ -838,13 +908,15 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:monitor, [type, item], cause) do
-    case (cause) do
+    case cause do
       :badtype ->
         ["invalid monitor type"]
+
       :none ->
-        case (type) do
+        case type do
           :port ->
             [[], must_be_local_port(item)]
+
           :process ->
             [[], must_be_pid(item)]
         end
@@ -852,19 +924,25 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:monitor, [type, item, options], cause) do
-    itemError = (case (type) do
-                   :port ->
-                     must_be_local_port(item)
-                   :process ->
-                     must_be_pid(item)
-                   _ ->
-                     []
-                 end)
-    case (cause) do
+    itemError =
+      case type do
+        :port ->
+          must_be_local_port(item)
+
+        :process ->
+          must_be_pid(item)
+
+        _ ->
+          []
+      end
+
+    case cause do
       :badopt ->
         [[], itemError, must_be_list(options, :bad_option)]
+
       :badtype ->
         ["invalid monitor type"]
+
       :none ->
         [[], itemError]
     end
@@ -875,16 +953,19 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:monitor_node, [node, flag, options], cause) do
-    arg3 = (case (cause) do
-              :badopt ->
-                :bad_option
-              _ ->
-                []
-            end)
-    case (format_erlang_error(:monitor_node, [node, flag],
-                                cause)) do
+    arg3 =
+      case cause do
+        :badopt ->
+          :bad_option
+
+        _ ->
+          []
+      end
+
+    case format_erlang_error(:monitor_node, [node, flag], cause) do
       [[], []] ->
         [[], [], must_be_list(options, arg3)]
+
       errors ->
         errors ++ [must_be_list(options, arg3)]
     end
@@ -911,70 +992,91 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:nodes, [nTVal, opts], _) do
-    validNodeTypes = [:this, :connected, :visible, :hidden,
-                                                       :known]
-    [cond do
-       is_atom(nTVal) ->
-         case (:lists.member(nTVal, validNodeTypes)) do
-           true ->
-             []
-           false ->
-             "not a valid node type"
-         end
-       is_list(nTVal) ->
-         try do
-           :lists.foreach(fn nT ->
-                               case (:lists.member(nT, validNodeTypes)) do
-                                 true ->
-                                   []
-                                 false ->
-                                   throw(:invalid)
-                               end
-                          end,
-                            nTVal)
-           []
-         catch
-           :invalid ->
-             "not a list of valid node types"
-         end
-       true ->
-         "not a valid node type or list of valid node types"
-     end,
-         cond do
-           is_map(opts) ->
-             try do
-               :maps.foreach(fn :connection_id, bool
-                                    when is_boolean(bool) ->
-                                  :ok
-                                :node_type, bool when is_boolean(bool) ->
-                                  :ok
-                                _, _ ->
-                                  throw(:invalid)
-                             end,
-                               opts)
-               []
-             catch
-               :invalid ->
-                 "invalid options in map"
-             end
-           true ->
-             :not_map
-         end]
+    validNodeTypes = [:this, :connected, :visible, :hidden, :known]
+
+    [
+      cond do
+        is_atom(nTVal) ->
+          case :lists.member(nTVal, validNodeTypes) do
+            true ->
+              []
+
+            false ->
+              "not a valid node type"
+          end
+
+        is_list(nTVal) ->
+          try do
+            :lists.foreach(
+              fn nT ->
+                case :lists.member(nT, validNodeTypes) do
+                  true ->
+                    []
+
+                  false ->
+                    throw(:invalid)
+                end
+              end,
+              nTVal
+            )
+
+            []
+          catch
+            :invalid ->
+              "not a list of valid node types"
+          end
+
+        true ->
+          "not a valid node type or list of valid node types"
+      end,
+      cond do
+        is_map(opts) ->
+          try do
+            :maps.foreach(
+              fn
+                :connection_id, bool
+                when is_boolean(bool) ->
+                  :ok
+
+                :node_type, bool when is_boolean(bool) ->
+                  :ok
+
+                _, _ ->
+                  throw(:invalid)
+              end,
+              opts
+            )
+
+            []
+          catch
+            :invalid ->
+              "invalid options in map"
+          end
+
+        true ->
+          :not_map
+      end
+    ]
   end
 
   defp format_erlang_error(:open_port, [name, settings], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
         [must_be_tuple(name), :bad_option]
+
       _ when is_tuple(name) ->
-        case (:lists.keysearch(:args, 1, settings)) do
-          {:value, _} when :erlang.element(1,
-                                             name) !== :spawn_executable
-                           ->
+        case :lists.keysearch(:args, 1, settings) do
+          {:value, _}
+          when :erlang.element(
+                 1,
+                 name
+               ) !== :spawn_executable ->
             ["must be spawn_executable"]
+
           _ ->
             ["invalid port name"]
         end
+
       _ ->
         must_be_tuple(name)
     end
@@ -1008,12 +1110,11 @@ defmodule :m_erl_erts_errors do
     [must_be_local_port(port), must_be_iodata(command)]
   end
 
-  defp format_erlang_error(:port_command, [port, command, options],
-            cause) do
-    case (cause) do
+  defp format_erlang_error(:port_command, [port, command, options], cause) do
+    case cause do
       :badopt ->
-        [must_be_local_port(port), must_be_iodata(command),
-                                       must_be_list(options, :bad_option)]
+        [must_be_local_port(port), must_be_iodata(command), must_be_list(options, :bad_option)]
+
       _ ->
         [must_be_local_port(port), must_be_iodata(command)]
     end
@@ -1024,8 +1125,7 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:port_control, [port, operation, data], _) do
-    [must_be_local_port(port), must_be_operation(operation),
-                                   must_be_iodata(data)]
+    [must_be_local_port(port), must_be_operation(operation), must_be_iodata(data)]
   end
 
   defp format_erlang_error(:port_info, [port], _) do
@@ -1033,9 +1133,10 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:port_info, [port, _], cause) do
-    case (cause) do
+    case cause do
       :badtype ->
         [must_be_local_port(port)]
+
       _ ->
         [must_be_local_port(port), :bad_option]
     end
@@ -1050,37 +1151,44 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:process_display, [pid, _], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
         [must_be_local_pid(pid), "invalid value"]
+
       _ ->
         [must_be_local_pid(pid, :dead_process)]
     end
   end
 
   defp format_erlang_error(:process_flag, [_, _], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
         ["invalid process flag"]
+
       _ ->
         [[], "invalid value for this process flag"]
     end
   end
 
   defp format_erlang_error(:process_flag, [pid, option, _], cause) do
-    optionError = (case (option) do
-                     :save_calls ->
-                       []
-                     _ ->
-                       "invalid process flag"
-                   end)
-    case (cause) do
+    optionError =
+      case option do
+        :save_calls ->
+          []
+
+        _ ->
+          "invalid process flag"
+      end
+
+    case cause do
       :badtype ->
         [must_be_local_pid(pid, :dead_process), optionError]
+
       _ ->
-        case ({must_be_local_pid(pid), optionError}) do
+        case {must_be_local_pid(pid), optionError} do
           {[], []} ->
             [[], [], "invalid value for process flag 'save_calls'"]
+
           {pidError, _} ->
             [pidError, optionError]
         end
@@ -1093,9 +1201,11 @@ defmodule :m_erl_erts_errors do
 
   defp format_erlang_error(:process_info, [pid, _What], _) do
     arg1 = must_be_local_pid(pid)
-    case (arg1) do
+
+    case arg1 do
       [] ->
         [[], "invalid item or item list"]
+
       _ ->
         [arg1]
     end
@@ -1119,35 +1229,47 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:register, [name, pidOrPort], cause) do
-    case (cause) do
+    case cause do
       :registered_name ->
         [[], "this process or port already has a name"]
+
       :notalive ->
         [[], :dead_process]
+
       _ ->
-        errors = [cond do
-                    name === :undefined ->
-                      "'undefined' is not a valid name"
-                    is_atom(name) ->
-                      []
-                    true ->
-                      :not_atom
-                  end,
-                      cond do
-                        (is_pid(pidOrPort) and node(pidOrPort) !== node()) ->
-                          :not_local_pid
-                        (is_port(pidOrPort) and node(pidOrPort) !== node()) ->
-                          :not_local_port
-                        is_pid(pidOrPort) ->
-                          []
-                        is_port(pidOrPort) ->
-                          []
-                        true ->
-                          "not a pid or port"
-                      end]
-        case (errors) do
+        errors = [
+          cond do
+            name === :undefined ->
+              "'undefined' is not a valid name"
+
+            is_atom(name) ->
+              []
+
+            true ->
+              :not_atom
+          end,
+          cond do
+            is_pid(pidOrPort) and node(pidOrPort) !== node() ->
+              :not_local_pid
+
+            is_port(pidOrPort) and node(pidOrPort) !== node() ->
+              :not_local_port
+
+            is_pid(pidOrPort) ->
+              []
+
+            is_port(pidOrPort) ->
+              []
+
+            true ->
+              "not a pid or port"
+          end
+        ]
+
+        case errors do
           [[], []] ->
             ["name is in use"]
+
           [_, _] ->
             errors
         end
@@ -1167,9 +1289,10 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:send, [_, _, options], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
         [[], [], must_be_list(options, :bad_option)]
+
       _ ->
         [:bad_destination]
     end
@@ -1184,9 +1307,10 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:send_nosuspend, [_, _, options], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
         [[], [], must_be_list(options, :bad_option)]
+
       _ ->
         [:bad_destination]
     end
@@ -1257,39 +1381,56 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:spawn_opt, [fun, options], cause) do
-    [must_be_fun(fun), case (cause) do
-                         :badopt ->
-                           must_be_list(options, "invalid spawn option")
-                         :none ->
-                           []
-                       end]
+    [
+      must_be_fun(fun),
+      case cause do
+        :badopt ->
+          must_be_list(options, "invalid spawn option")
+
+        :none ->
+          []
+      end
+    ]
   end
 
   defp format_erlang_error(:spawn_opt, [node, fun, options], cause) do
-    [must_be_atom(node), must_be_fun(fun), case (cause) do
-                                             :badopt ->
-                                               must_be_list(options, "invalid spawn option")
-                                             :none ->
-                                               []
-                                           end]
+    [
+      must_be_atom(node),
+      must_be_fun(fun),
+      case cause do
+        :badopt ->
+          must_be_list(options, "invalid spawn option")
+
+        :none ->
+          []
+      end
+    ]
   end
 
   defp format_erlang_error(:spawn_opt, [m, f, a, options], cause) do
-    must_be_mf_args(m, f, a) ++ [case (cause) do
-                                   :badopt ->
-                                     must_be_list(options, "invalid spawn option")
-                                   :none ->
-                                     []
-                                 end]
+    must_be_mf_args(m, f, a) ++
+      [
+        case cause do
+          :badopt ->
+            must_be_list(options, "invalid spawn option")
+
+          :none ->
+            []
+        end
+      ]
   end
 
   defp format_erlang_error(:spawn_opt, [n, m, f, a, options], cause) do
-    must_be_node_mf_args(n, m, f, a) ++ [case (cause) do
-                                           :badopt ->
-                                             must_be_list(options, "invalid spawn option")
-                                           :none ->
-                                             []
-                                         end]
+    must_be_node_mf_args(n, m, f, a) ++
+      [
+        case cause do
+          :badopt ->
+            must_be_list(options, "invalid spawn option")
+
+          :none ->
+            []
+        end
+      ]
   end
 
   defp format_erlang_error(:spawn_request, [_], _) do
@@ -1297,22 +1438,23 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:spawn_request, [fun, _Options], cause)
-      when is_function(fun) do
-    case (cause) do
+       when is_function(fun) do
+    case cause do
       :badopt ->
         [[], :bad_option]
+
       _ ->
         []
     end
   end
 
   defp format_erlang_error(:spawn_request, [_Node, fun], _)
-      when is_function(fun) do
+       when is_function(fun) do
     [:not_atom]
   end
 
   defp format_erlang_error(:spawn_request, [node, _BadFun], _)
-      when is_atom(node) do
+       when is_atom(node) do
     [[], :not_fun]
   end
 
@@ -1321,20 +1463,22 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:spawn_request, [n, f, o], cause)
-      when is_function(f) do
-    case (cause) do
+       when is_function(f) do
+    case cause do
       :badopt ->
         [must_be_atom(n), [], must_be_list(o, :bad_option)]
+
       _ ->
         [must_be_atom(n), [], must_be_list(o, [])]
     end
   end
 
   defp format_erlang_error(:spawn_request, [n, f, o], cause)
-      when is_function(f) do
-    case (cause) do
+       when is_function(f) do
+    case cause do
       :badopt ->
         [must_be_atom(n), [], must_be_option_list(o)]
+
       _ ->
         nodeError = must_be_atom(n)
         [nodeError, [], maybe_option_list_error(o, nodeError)]
@@ -1346,23 +1490,25 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:spawn_request, [n, m, f, a], _)
-      when is_atom(f) do
+       when is_atom(f) do
     must_be_node_mf_args(n, m, f, a)
   end
 
   defp format_erlang_error(:spawn_request, [m, f, a, _Opts], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
         must_be_mf_args(m, f, a) ++ [:bad_option]
+
       _ ->
         must_be_mf_args(m, f, a)
     end
   end
 
   defp format_erlang_error(:spawn_request, [n, m, f, a, _Opts], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
         must_be_node_mf_args(n, m, f, a) ++ [:bad_option]
+
       _ ->
         must_be_node_mf_args(n, m, f, a)
     end
@@ -1373,42 +1519,51 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:split_binary, [bin, pos], _) do
-    case ([must_be_binary(bin),
-               must_be_non_neg_int(pos)]) do
+    case [must_be_binary(bin), must_be_non_neg_int(pos)] do
       [[], []] ->
         cond do
           pos > byte_size(bin) ->
             [[], :range]
+
           true ->
             []
         end
+
       errors ->
         errors
     end
   end
 
   defp format_erlang_error(:start_timer, [time, process, _], cause) do
-    [must_be_time(time, cause), cond do
-                                  (is_pid(process) and
-                                     node(process) !== node()) ->
-                                    :not_local_pid
-                                  (is_pid(process) and
-                                     node(process) === node()) or
-                                    is_atom(process) ->
-                                    []
-                                  true ->
-                                    "not a pid or an atom"
-                                end]
+    [
+      must_be_time(time, cause),
+      cond do
+        is_pid(process) and
+            node(process) !== node() ->
+          :not_local_pid
+
+        (is_pid(process) and
+           node(process) === node()) or
+            is_atom(process) ->
+          []
+
+        true ->
+          "not a pid or an atom"
+      end
+    ]
   end
 
   defp format_erlang_error(:start_timer, [a1, a2, a3, options], cause) do
-    format_erlang_error(:start_timer, [a1, a2, a3],
-                          cause) ++ [case (cause) do
-                                       :badopt ->
-                                         must_be_list(options, :bad_option)
-                                       _ ->
-                                         must_be_list(options, [])
-                                     end]
+    format_erlang_error(:start_timer, [a1, a2, a3], cause) ++
+      [
+        case cause do
+          :badopt ->
+            must_be_list(options, :bad_option)
+
+          _ ->
+            must_be_list(options, [])
+        end
+      ]
   end
 
   defp format_erlang_error(:subtract, [a, b], _) do
@@ -1416,33 +1571,46 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:suspend_process, [pid], _) do
-    [cond do
-       pid === self() ->
-         :self_not_allowed
-       true ->
-         must_be_local_pid(pid, :dead_process)
-     end]
+    [
+      cond do
+        pid === self() ->
+          :self_not_allowed
+
+        true ->
+          must_be_local_pid(pid, :dead_process)
+      end
+    ]
   end
 
   defp format_erlang_error(:suspend_process, [pid, options], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
-        [must_be_local_pid(pid, []), must_be_list(options,
-                                                    :bad_option)]
+        [
+          must_be_local_pid(pid, []),
+          must_be_list(
+            options,
+            :bad_option
+          )
+        ]
+
       _ ->
-        [cond do
-           pid === self() ->
-             :self_not_allowed
-           true ->
-             must_be_local_pid(pid, :dead_process)
-         end]
+        [
+          cond do
+            pid === self() ->
+              :self_not_allowed
+
+            true ->
+              must_be_local_pid(pid, :dead_process)
+          end
+        ]
     end
   end
 
   defp format_erlang_error(:system_flag, [_, _], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
         ["invalid system flag"]
+
       :none ->
         [[], "invalid value for this system flag"]
     end
@@ -1458,10 +1626,12 @@ defmodule :m_erl_erts_errors do
 
   defp format_erlang_error(:system_monitor, [pid, options], _) do
     cond do
-      (is_pid(pid) and node(pid) === node()) ->
+      is_pid(pid) and node(pid) === node() ->
         [[], must_be_list(options, "invalid system monitor option")]
+
       is_pid(pid) ->
         [:not_local_pid, must_be_list(options)]
+
       true ->
         [:not_pid, must_be_list(options)]
     end
@@ -1492,22 +1662,29 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:trace, [pidOrPort, how, options], cause) do
-    pidOrPortError = (cond do
-                        (is_pid(pidOrPort) and node(pidOrPort) !== node()) ->
-                          :not_local_pid
-                        (is_port(pidOrPort) and node(pidOrPort) !== node()) ->
-                          :not_local_port
-                        true ->
-                          []
-                      end)
+    pidOrPortError =
+      cond do
+        is_pid(pidOrPort) and node(pidOrPort) !== node() ->
+          :not_local_pid
+
+        is_port(pidOrPort) and node(pidOrPort) !== node() ->
+          :not_local_port
+
+        true ->
+          []
+      end
+
     howError = must_be_boolean(how)
-    case (cause) do
+
+    case cause do
       :badopt ->
         [pidOrPortError, howError, must_be_option_list(options)]
+
       _ ->
-        case ({howError, pidOrPortError}) do
+        case {howError, pidOrPortError} do
           {[], []} ->
             ["invalid spec for pid or port"]
+
           _ ->
             [pidOrPortError, howError, []]
         end
@@ -1515,20 +1692,28 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:trace_pattern = f, [_, _] = args, cause) do
-    [err1, err2 | _] = format_erlang_error(f, args ++ [[]],
-                                             cause)
+    [err1, err2 | _] = format_erlang_error(f, args ++ [[]], cause)
     [err1, err2]
   end
 
   defp format_erlang_error(:trace_pattern, [_, _, options], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
         [[], [], must_be_option_list(options)]
+
       :match_spec ->
-        [[], :bad_match_spec, maybe_option_list_error(options,
-                                                        :bad_match_spec)]
+        [
+          [],
+          :bad_match_spec,
+          maybe_option_list_error(
+            options,
+            :bad_match_spec
+          )
+        ]
+
       :call_count ->
         [[], [], "a match spec is not allowed in combination with these options"]
+
       _ ->
         ["invalid MFA specification", [], []]
     end
@@ -1536,8 +1721,9 @@ defmodule :m_erl_erts_errors do
 
   defp format_erlang_error(:trace_delivered, [pid], _) do
     cond do
-      (is_pid(pid) and node(pid) !== :node) ->
+      is_pid(pid) and node(pid) !== :node ->
         [:not_local_pid]
+
       true ->
         ["not a pid or 'all'"]
     end
@@ -1552,16 +1738,19 @@ defmodule :m_erl_erts_errors do
   end
 
   defp format_erlang_error(:trace_info, [tracee, _], cause) do
-    case (cause) do
+    case cause do
       :badopt ->
         cond do
-          (is_pid(tracee) and node(tracee) !== node()) ->
+          is_pid(tracee) and node(tracee) !== node() ->
             [:not_local_pid]
-          (is_port(tracee) and node(tracee) !== node()) ->
+
+          is_port(tracee) and node(tracee) !== node() ->
             [:not_local_port]
+
           true ->
             ["not a valid tracee specification"]
         end
+
       :none ->
         [[], "invalid trace item"]
     end
@@ -1607,13 +1796,13 @@ defmodule :m_erl_erts_errors do
     []
   end
 
-  defp do_format_bs_fail(:system_limit, :binary, :binary, :size,
-            _PrettyPrinter) do
-    :io_lib.format("the size of the binary/bitstring is too large (exceeding ~p bits)", [1 <<< 31 - 1])
+  defp do_format_bs_fail(:system_limit, :binary, :binary, :size, _PrettyPrinter) do
+    :io_lib.format("the size of the binary/bitstring is too large (exceeding ~p bits)", [
+      1 <<< (31 - 1)
+    ])
   end
 
-  defp do_format_bs_fail(:system_limit, _Type, :size, value,
-            _PrettyPrinter) do
+  defp do_format_bs_fail(:system_limit, _Type, :size, value, _PrettyPrinter) do
     :io_lib.format("the size ~p is too large", [value])
   end
 
@@ -1626,15 +1815,21 @@ defmodule :m_erl_erts_errors do
   end
 
   defp do_format_bs_fail(:float, :no_float, value, prettyPrinter) do
-    :io_lib.format("the value ~ts is outside the range expressible as a float", [prettyPrinter.(value)])
+    :io_lib.format("the value ~ts is outside the range expressible as a float", [
+      prettyPrinter.(value)
+    ])
   end
 
   defp do_format_bs_fail(:binary, :unit, value, prettyPrinter) do
-    :io_lib.format("the size of the value ~ts is not a multiple of the unit for the segment", [prettyPrinter.(value)])
+    :io_lib.format("the size of the value ~ts is not a multiple of the unit for the segment", [
+      prettyPrinter.(value)
+    ])
   end
 
   defp do_format_bs_fail(_Type, :short, value, prettyPrinter) do
-    :io_lib.format("the value ~ts is shorter than the size of the segment", [prettyPrinter.(value)])
+    :io_lib.format("the value ~ts is shorter than the size of the segment", [
+      prettyPrinter.(value)
+    ])
   end
 
   defp do_format_bs_fail(_Type, :size, value, prettyPrinter) do
@@ -1642,58 +1837,70 @@ defmodule :m_erl_erts_errors do
   end
 
   defp do_format_bs_fail(type, :type, value, prettyPrinter) do
-    f = <<"expected a",
-            case (type) do
-              :binary ->
-                " binary"
-              :float ->
-                " float or an integer"
-              :integer ->
-                "n integer"
-              _ ->
-                <<" non-negative integer encodable as ", :erlang.atom_to_binary(type) :: binary>>
-            end
-            ::
-            binary,
-            " but got: ~ts">>
+    f =
+      <<"expected a",
+        case type do
+          :binary ->
+            " binary"
+
+          :float ->
+            " float or an integer"
+
+          :integer ->
+            "n integer"
+
+          _ ->
+            <<" non-negative integer encodable as ", :erlang.atom_to_binary(type)::binary>>
+        end::binary, " but got: ~ts">>
+
     :io_lib.format(f, [prettyPrinter.(value)])
   end
 
   defp possibly_truncated(int) when is_integer(int) do
     bin = :erlang.integer_to_binary(int)
-    case (byte_size(bin)) do
+
+    case byte_size(bin) do
       size when size < 48 ->
         bin
+
       size ->
-        <<prefix :: size(12) - binary,
-            _ :: size(size - 24) - binary, suffix :: binary>> = bin
+        <<prefix::size(12)-binary, _::size(size - 24)-binary, suffix::binary>> = bin
         [prefix, "...", suffix]
     end
   end
 
   defp possibly_truncated(bin) when is_bitstring(bin) do
-    case (byte_size(bin)) do
+    case byte_size(bin) do
       size when size < 16 ->
-        :io_lib.format('~p', [bin])
+        :io_lib.format(~c"~p", [bin])
+
       size ->
-        <<prefix0 :: size(8) - binary,
-            _ :: size(size - 10) - binary,
-            suffix0 :: bitstring>> = bin
-        prefix1 = :erlang.iolist_to_binary(:io_lib.format('~w',
-                                                            [prefix0]))
-        <<prefix :: size(byte_size(prefix1) - 2) - binary,
-            _ :: binary>> = prefix1
-        <<_ :: size(2) - unit(8),
-            suffix
-            ::
-            binary>> = :erlang.iolist_to_binary(:io_lib.format('~w',
-                                                                 [suffix0]))
+        <<prefix0::size(8)-binary, _::size(size - 10)-binary, suffix0::bitstring>> = bin
+
+        prefix1 =
+          :erlang.iolist_to_binary(
+            :io_lib.format(
+              ~c"~w",
+              [prefix0]
+            )
+          )
+
+        <<prefix::size(byte_size(prefix1) - 2)-binary, _::binary>> = prefix1
+
+        <<_::size(2)-unit(8), suffix::binary>> =
+          :erlang.iolist_to_binary(
+            :io_lib.format(
+              ~c"~w",
+              [suffix0]
+            )
+          )
+
         [prefix, "...,", suffix]
     end
   end
 
   defp possibly_truncated(value) do
-    :io_lib.format('~P', [value, 20])
+    :io_lib.format(~c"~P", [value, 20])
   end
 
   defp list_to_something(list, error) do
@@ -1712,11 +1919,13 @@ defmodule :m_erl_erts_errors do
     cond do
       is_integer(n) ->
         cond do
-          (0 <= n and n < 1 <<< 32) ->
+          0 <= n and n < 1 <<< 32 ->
             []
+
           true ->
             :range
         end
+
       true ->
         :not_integer
     end
@@ -1742,8 +1951,9 @@ defmodule :m_erl_erts_errors do
     :not_atom
   end
 
-  defp must_be_base(n) when (is_integer(n) and 2 <= n and
-                     n <= 36) do
+  defp must_be_base(n)
+       when is_integer(n) and 2 <= n and
+              n <= 36 do
     []
   end
 
@@ -1848,8 +2058,7 @@ defmodule :m_erl_erts_errors do
   end
 
   defp must_be_mf_arity(m, f, a) do
-    [must_be_atom(m), must_be_atom(f),
-                          must_be_non_neg_int(a)]
+    [must_be_atom(m), must_be_atom(f), must_be_non_neg_int(a)]
   end
 
   defp must_be_node_mf_args(n, m, f, a) do
@@ -1857,12 +2066,16 @@ defmodule :m_erl_erts_errors do
   end
 
   defp must_be_node_fun(n, f) do
-    [must_be_atom(n) | cond do
-                         is_function(f) ->
-                           []
-                         true ->
-                           [:not_fun]
-                       end]
+    [
+      must_be_atom(n)
+      | cond do
+          is_function(f) ->
+            []
+
+          true ->
+            [:not_fun]
+        end
+    ]
   end
 
   defp must_be_int(n) when is_integer(n) do
@@ -1879,8 +2092,9 @@ defmodule :m_erl_erts_errors do
 
   defp must_be_int(n, min, max, default) when is_integer(n) do
     cond do
-      (min <= n and n <= max) ->
+      min <= n and n <= max ->
         default
+
       true ->
         :range
     end
@@ -1899,22 +2113,24 @@ defmodule :m_erl_erts_errors do
   end
 
   defp must_be_operation(operation) do
-    must_be_int(operation, 0, 1 <<< 32 - 1, [])
+    must_be_int(operation, 0, 1 <<< (32 - 1), [])
   end
 
   defp must_be_option_list(options) do
-    case (must_be_list(options)) do
+    case must_be_list(options) do
       [] ->
         :bad_option
+
       error ->
         error
     end
   end
 
   defp maybe_option_list_error(options, previousError) do
-    case ({previousError, must_be_list(options)}) do
+    case {previousError, must_be_list(options)} do
       {[], []} ->
         :bad_option
+
       {_, arg2} ->
         arg2
     end
@@ -1936,8 +2152,9 @@ defmodule :m_erl_erts_errors do
     must_be_local_pid(pid, [])
   end
 
-  defp must_be_local_pid(pid, _Error) when (is_pid(pid) and
-                               node(pid) !== node()) do
+  defp must_be_local_pid(pid, _Error)
+       when is_pid(pid) and
+              node(pid) !== node() do
     :not_local_pid
   end
 
@@ -1953,13 +2170,15 @@ defmodule :m_erl_erts_errors do
     must_be_local_port(term, [])
   end
 
-  defp must_be_local_port(port, _Error) when (is_port(port) and
-                                node(port) !== node()) do
+  defp must_be_local_port(port, _Error)
+       when is_port(port) and
+              node(port) !== node() do
     :not_local_port
   end
 
-  defp must_be_local_port(port, error) when is_port(port) or
-                              is_atom(port) do
+  defp must_be_local_port(port, error)
+       when is_port(port) or
+              is_atom(port) do
     error
   end
 
@@ -1979,6 +2198,7 @@ defmodule :m_erl_erts_errors do
     cond do
       n < 0 ->
         :range
+
       true ->
         []
     end
@@ -1989,14 +2209,16 @@ defmodule :m_erl_erts_errors do
   end
 
   defp must_be_time(time, cause) do
-    case (must_be_non_neg_int(time)) do
+    case must_be_non_neg_int(time) do
       [] ->
-        case (cause) do
+        case cause do
           :time ->
             :beyond_end_time
+
           _ ->
             []
         end
+
       error ->
         error
     end
@@ -2027,9 +2249,10 @@ defmodule :m_erl_erts_errors do
   end
 
   defp check_md5_context(context) when is_binary(context) do
-    case (byte_size(:erlang.md5_init()) === byte_size(context)) do
+    case byte_size(:erlang.md5_init()) === byte_size(context) do
       true ->
         []
+
       false ->
         "invalid MD5 context"
     end
@@ -2040,31 +2263,40 @@ defmodule :m_erl_erts_errors do
   end
 
   defp do_binary_to_atom(bin, enc0, defaultError) do
-    enc = (case (enc0) do
-             :latin1 ->
-               :latin1
-             :unicode ->
-               :unicode
-             :utf8 ->
-               :unicode
-             _ ->
-               :invalid
-           end)
-    case (enc) do
+    enc =
+      case enc0 do
+        :latin1 ->
+          :latin1
+
+        :unicode ->
+          :unicode
+
+        :utf8 ->
+          :unicode
+
+        _ ->
+          :invalid
+      end
+
+    case enc do
       :latin1 ->
         [must_be_binary(bin, defaultError)]
+
       :unicode ->
         cond do
           is_binary(bin) ->
-            case (:unicode.characters_to_list(bin, enc)) do
+            case :unicode.characters_to_list(bin, enc) do
               charList when is_list(charList) ->
                 [:non_existing_atom]
+
               _ ->
                 [:bad_unicode]
             end
+
           true ->
             [:not_binary]
         end
+
       :invalid ->
         [must_be_binary(bin), :bad_encode_option]
     end
@@ -2072,7 +2304,7 @@ defmodule :m_erl_erts_errors do
 
   defp is_flat_char_list([h | t]) do
     try do
-      <<h :: utf8>>
+      <<h::utf8>>
     catch
       :error, :badarg ->
         false
@@ -2091,31 +2323,43 @@ defmodule :m_erl_erts_errors do
   end
 
   defp maybe_posix_message(cause, hasDevice) do
-    case (:erl_posix_msg.message(cause)) do
-      'unknown POSIX error' ++ _ ->
+    case :erl_posix_msg.message(cause) do
+      ~c"unknown POSIX error" ++ _ ->
         :unknown
+
       posixStr when hasDevice ->
-        [:unicode.characters_to_binary(:io_lib.format('~ts (~tp)',
-                                                        [posixStr, cause]))]
+        [
+          :unicode.characters_to_binary(
+            :io_lib.format(
+              ~c"~ts (~tp)",
+              [posixStr, cause]
+            )
+          )
+        ]
+
       posixStr when not hasDevice ->
-        [{:general,
-            :unicode.characters_to_binary(:io_lib.format('~ts (~tp)',
-                                                           [posixStr, cause]))}]
+        [
+          {:general,
+           :unicode.characters_to_binary(
+             :io_lib.format(
+               ~c"~ts (~tp)",
+               [posixStr, cause]
+             )
+           )}
+        ]
     end
   end
 
-  defp format_error_map(['' | es], argNum, map) do
+  defp format_error_map([~c"" | es], argNum, map) do
     format_error_map(es, argNum + 1, map)
   end
 
   defp format_error_map([{:general, e} | es], argNum, map) do
-    format_error_map(es, argNum,
-                       Map.put(map, :general, expand_error(e)))
+    format_error_map(es, argNum, Map.put(map, :general, expand_error(e)))
   end
 
   defp format_error_map([e | es], argNum, map) do
-    format_error_map(es, argNum + 1,
-                       Map.put(map, argNum, expand_error(e)))
+    format_error_map(es, argNum + 1, Map.put(map, argNum, expand_error(e)))
   end
 
   defp format_error_map([], _, map) do
@@ -2305,5 +2549,4 @@ defmodule :m_erl_erts_errors do
   defp expand_error(e) when is_binary(e) do
     e
   end
-
 end

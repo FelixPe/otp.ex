@@ -1,50 +1,41 @@
 defmodule :m_ftp_response do
   use Bitwise
-  def parse_lines(bin, lines, :start) when (is_binary(bin) and
-                                     byte_size(bin) < 4) do
+
+  def parse_lines(bin, lines, :start)
+      when is_binary(bin) and
+             byte_size(bin) < 4 do
     {:continue, {bin, lines, :start}}
   end
 
-  def parse_lines(<<c1, c2, c3, ?-, rest :: binary>>, lines,
-           :start) do
-    parse_lines(rest, [?-, c3, c2, c1 | lines],
-                  {c1, c2, c3})
+  def parse_lines(<<c1, c2, c3, ?-, rest::binary>>, lines, :start) do
+    parse_lines(rest, [?-, c3, c2, c1 | lines], {c1, c2, c3})
   end
 
-  def parse_lines(<<c1, c2, c3, ?\s, bin :: binary>>, lines,
-           :start) do
+  def parse_lines(<<c1, c2, c3, ?\s, bin::binary>>, lines, :start) do
     parse_lines(bin, [?\s, c3, c2, c1 | lines], :finish)
   end
 
-  def parse_lines(<<?\r, ?\n, c1, c2, c3, ?\s, rest :: binary>>,
-           lines, {c1, c2, c3}) do
-    parse_lines(rest, [?\s, c3, c2, c1, ?\n, ?\r | lines],
-                  :finish)
+  def parse_lines(<<?\r, ?\n, c1, c2, c3, ?\s, rest::binary>>, lines, {c1, c2, c3}) do
+    parse_lines(rest, [?\s, c3, c2, c1, ?\n, ?\r | lines], :finish)
   end
 
-  def parse_lines(<<?\r, ?\n, c1, c2, c3>> = bin, lines,
-           {c1, c2, c3}) do
+  def parse_lines(<<?\r, ?\n, c1, c2, c3>> = bin, lines, {c1, c2, c3}) do
     {:continue, {bin, lines, {c1, c2, c3}}}
   end
 
-  def parse_lines(<<?\r, ?\n, c1, c2, c3, rest :: binary>>, lines,
-           {c1, c2, c3}) do
-    parse_lines(rest, [c3, c2, c1, ?\n, ?\r | lines],
-                  {c1, c2, c3})
+  def parse_lines(<<?\r, ?\n, c1, c2, c3, rest::binary>>, lines, {c1, c2, c3}) do
+    parse_lines(rest, [c3, c2, c1, ?\n, ?\r | lines], {c1, c2, c3})
   end
 
-  def parse_lines(<<?\r, ?\n, c1, c2>> = data, lines,
-           {c1, c2, _} = statusCode) do
+  def parse_lines(<<?\r, ?\n, c1, c2>> = data, lines, {c1, c2, _} = statusCode) do
     {:continue, {data, lines, statusCode}}
   end
 
-  def parse_lines(<<?\r, ?\n, c1>> = data, lines,
-           {c1, _, _} = statusCode) do
+  def parse_lines(<<?\r, ?\n, c1>> = data, lines, {c1, _, _} = statusCode) do
     {:continue, {data, lines, statusCode}}
   end
 
-  def parse_lines(<<?\r, ?\n>> = data, lines,
-           {_, _, _} = statusCode) do
+  def parse_lines(<<?\r, ?\n>> = data, lines, {_, _, _} = statusCode) do
     {:continue, {data, lines, statusCode}}
   end
 
@@ -56,8 +47,7 @@ defmodule :m_ftp_response do
     {:continue, {data, lines, statusCode}}
   end
 
-  def parse_lines(<<octet, rest :: binary>>, lines,
-           {_, _, _} = statusCode) do
+  def parse_lines(<<octet, rest::binary>>, lines, {_, _, _} = statusCode) do
     parse_lines(rest, [octet | lines], statusCode)
   end
 
@@ -65,7 +55,7 @@ defmodule :m_ftp_response do
     {:ok, :lists.reverse([?\n, ?\r | lines]), <<>>}
   end
 
-  def parse_lines(<<?\r, ?\n, rest :: binary>>, lines, :finish) do
+  def parse_lines(<<?\r, ?\n, rest::binary>>, lines, :finish) do
     {:ok, :lists.reverse([?\n, ?\r | lines]), rest}
   end
 
@@ -77,7 +67,7 @@ defmodule :m_ftp_response do
     {:continue, {data, lines, :finish}}
   end
 
-  def parse_lines(<<octet, rest :: binary>>, lines, :finish) do
+  def parse_lines(<<octet, rest::binary>>, lines, :finish) do
     parse_lines(rest, [octet | lines], :finish)
   end
 
@@ -93,63 +83,63 @@ defmodule :m_ftp_response do
   end
 
   def error_string(:echunk) do
-    'Synchronisation error during chunk sending.'
+    ~c"Synchronisation error during chunk sending."
   end
 
   def error_string(:eclosed) do
-    'Session has been closed.'
+    ~c"Session has been closed."
   end
 
   def error_string(:econn) do
-    'Connection to remote server prematurely closed.'
+    ~c"Connection to remote server prematurely closed."
   end
 
   def error_string(:eexists) do
-    'File or directory already exists.'
+    ~c"File or directory already exists."
   end
 
   def error_string(:ehost) do
-    'Host not found, FTP server not found, or connection rejected.'
+    ~c"Host not found, FTP server not found, or connection rejected."
   end
 
   def error_string(:elogin) do
-    'User not logged in.'
+    ~c"User not logged in."
   end
 
   def error_string(:enotbinary) do
-    'Term is not a binary.'
+    ~c"Term is not a binary."
   end
 
   def error_string(:epath) do
-    'No such file or directory, already exists, or permission denied.'
+    ~c"No such file or directory, already exists, or permission denied."
   end
 
   def error_string(:etype) do
-    'No such type.'
+    ~c"No such type."
   end
 
   def error_string(:euser) do
-    'User name or password not valid.'
+    ~c"User name or password not valid."
   end
 
   def error_string(:etnospc) do
-    'Insufficient storage space in system.'
+    ~c"Insufficient storage space in system."
   end
 
   def error_string(:enofile) do
-    'No files found or file unavailable'
+    ~c"No files found or file unavailable"
   end
 
   def error_string(:epnospc) do
-    'Exceeded storage allocation (for current directory or dataset).'
+    ~c"Exceeded storage allocation (for current directory or dataset)."
   end
 
   def error_string(:efnamena) do
-    'File name not allowed.'
+    ~c"File name not allowed."
   end
 
   def error_string(reason) do
-    :lists.flatten(:io_lib.format('Unknown error: ~w', [reason]))
+    :lists.flatten(:io_lib.format(~c"Unknown error: ~w", [reason]))
   end
 
   defp interpret_status(1, _, _) do
@@ -203,5 +193,4 @@ defmodule :m_ftp_response do
   defp interpret_status(5, _, _) do
     :perm_neg_compl
   end
-
 end

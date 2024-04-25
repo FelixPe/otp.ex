@@ -1,6 +1,7 @@
 defmodule :m_ftp do
   use Bitwise
   import Kernel, except: [send: 2]
+
   def start() do
     :application.start(:ftp)
   end
@@ -50,7 +51,7 @@ defmodule :m_ftp do
   end
 
   def ls(pid) do
-    ls(pid, '')
+    ls(pid, ~c"")
   end
 
   def ls(pid, dir) do
@@ -58,7 +59,7 @@ defmodule :m_ftp do
   end
 
   def nlist(pid) do
-    nlist(pid, '')
+    nlist(pid, ~c"")
   end
 
   def nlist(pid, dir) do
@@ -172,5 +173,4 @@ defmodule :m_ftp do
   def latest_ctrl_response(pid) do
     :ftp_internal.latest_ctrl_response(pid)
   end
-
 end

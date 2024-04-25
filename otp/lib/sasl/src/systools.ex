@@ -1,10 +1,20 @@
 defmodule :m_systools do
   use Bitwise
   require Record
-  Record.defrecord(:r_options, :options, includes: [], outdir: '.',
-                                   output_type: :undefined, defines: [],
-                                   warning: 1, verbose: false, optimize: 999,
-                                   specific: [], outfile: '', cwd: :undefined)
+
+  Record.defrecord(:r_options, :options,
+    includes: [],
+    outdir: ~c".",
+    output_type: :undefined,
+    defines: [],
+    warning: 1,
+    verbose: false,
+    optimize: 999,
+    specific: [],
+    outfile: ~c"",
+    cwd: :undefined
+  )
+
   def make_script([relName | opts]) when is_atom(relName) do
     make_script([relName], opts)
   end
@@ -26,45 +36,46 @@ defmodule :m_systools do
   end
 
   def script2boot(file) do
-    case (:systools_lib.file_term2binary(file ++ '.script',
-                                           file ++ '.boot')) do
+    case :systools_lib.file_term2binary(
+           file ++ ~c".script",
+           file ++ ~c".boot"
+         ) do
       {:error, error} ->
-        :io.format('~ts', [:systools_make.format_error(error)])
+        :io.format(~c"~ts", [:systools_make.format_error(error)])
         :error
+
       _ ->
         :ok
     end
   end
 
   def script2boot(file, output0, _Opt) do
-    input = file ++ '.script'
-    output = output0 ++ '.boot'
-    case (:systools_lib.file_term2binary(input, output)) do
+    input = file ++ ~c".script"
+    output = output0 ++ ~c".boot"
+
+    case :systools_lib.file_term2binary(input, output) do
       {:error, error} ->
-        :io.format('~ts', [:systools_make.format_error(error)])
+        :io.format(~c"~ts", [:systools_make.format_error(error)])
         :error
+
       _ ->
         :ok
     end
   end
 
   def make_relup(releaseName, upNameList, downNameList) do
-    :systools_relup.mk_relup(releaseName, upNameList,
-                               downNameList, [])
+    :systools_relup.mk_relup(releaseName, upNameList, downNameList, [])
   end
 
   def make_relup(releaseName, upNameList, downNameList, opts) do
-    :systools_relup.mk_relup(releaseName, upNameList,
-                               downNameList, opts)
+    :systools_relup.mk_relup(releaseName, upNameList, downNameList, opts)
   end
 
   def compile_rel(input, output, options) do
-    :systools_make.make_script(input, output,
-                                 translate_options(options))
+    :systools_make.make_script(input, output, translate_options(options))
   end
 
   defp translate_options(opts) do
     [{:path, r_options(opts, :includes)} | r_options(opts, :specific)]
   end
-
 end

@@ -6,7 +6,7 @@ defmodule :m_crypto do
   end
 
   def version() do
-    '??'
+    ~c"??"
   end
 
   def start() do
@@ -712,7 +712,7 @@ defmodule :m_crypto do
   end
 
   defp aead_tag_len(_) do
-    :erlang.error({:badarg, 'Not an AEAD cipher'})
+    :erlang.error({:badarg, ~c"Not an AEAD cipher"})
   end
 
   defp ng_crypto_init_nif(cipher, key, iVec, %{encrypt: encryptFlag, padding: padding}) do
@@ -1849,7 +1849,7 @@ defmodule :m_crypto do
   end
 
   defp on_load() do
-    libBaseName = 'crypto'
+    libBaseName = ~c"crypto"
     privDir = :code.priv_dir(:crypto)
 
     libName =
@@ -1858,15 +1858,15 @@ defmodule :m_crypto do
           libBaseName
 
         type ->
-          libTypeName = libBaseName ++ '.' ++ :erlang.atom_to_list(type)
+          libTypeName = libBaseName ++ ~c"." ++ :erlang.atom_to_list(type)
 
-          case :filelib.wildcard(:filename.join([privDir, 'lib', libTypeName ++ '*'])) != [] or
+          case :filelib.wildcard(:filename.join([privDir, ~c"lib", libTypeName ++ ~c"*"])) != [] or
                  :filelib.wildcard(
                    :filename.join([
                      privDir,
-                     'lib',
+                     ~c"lib",
                      :erlang.system_info(:system_architecture),
-                     libTypeName ++ '*'
+                     libTypeName ++ ~c"*"
                    ])
                  ) != [] do
             true ->
@@ -1877,7 +1877,7 @@ defmodule :m_crypto do
           end
       end
 
-    lib = :filename.join([privDir, 'lib', libName])
+    lib = :filename.join([privDir, ~c"lib", libName])
     libBin = path2bin(lib)
     fipsMode = :application.get_env(:crypto, :fips_mode, false) == true
 
@@ -1890,11 +1890,12 @@ defmodule :m_crypto do
           :ok
 
         {:error, {:load_failed, _}} = error1 ->
-          archLibDir = :filename.join([privDir, 'lib', :erlang.system_info(:system_architecture)])
+          archLibDir =
+            :filename.join([privDir, ~c"lib", :erlang.system_info(:system_architecture)])
 
           candidate =
             :filelib.wildcard(
-              :filename.join([archLibDir, libName ++ '*']),
+              :filename.join([archLibDir, libName ++ ~c"*"]),
               :erl_prim_loader
             )
 
@@ -1917,15 +1918,15 @@ defmodule :m_crypto do
         :ok
 
       {:error, {e, str}} ->
-        fmt = 'Unable to load crypto library. Failed with error:~n"~p, ~s"~n~s'
+        fmt = ~c"Unable to load crypto library. Failed with error:~n\"~p, ~s\"~n~s"
 
         extra =
           case e do
             :load_failed ->
-              'OpenSSL might not be installed on this system.\n'
+              ~c"OpenSSL might not be installed on this system.\n"
 
             _ ->
-              ''
+              ~c""
           end
 
         :error_logger.error_msg(fmt, [e, str, extra])
@@ -2595,7 +2596,7 @@ defmodule :m_crypto do
 
   def get_test_engine() do
     type = :erlang.system_info(:system_architecture)
-    libDir = :filename.join([:code.priv_dir(:crypto), 'lib'])
+    libDir = :filename.join([:code.priv_dir(:crypto), ~c"lib"])
     archDir = :filename.join([libDir, type])
 
     case :filelib.is_dir(archDir) do
@@ -2608,7 +2609,7 @@ defmodule :m_crypto do
   end
 
   defp check_otp_test_engine(libDir) do
-    case :filelib.wildcard('otp_test_engine*', libDir) do
+    case :filelib.wildcard(~c"otp_test_engine*", libDir) do
       [] ->
         {:error, :notexist}
 

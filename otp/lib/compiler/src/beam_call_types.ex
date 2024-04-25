@@ -3,77 +3,99 @@ defmodule :m_beam_call_types do
   import :lists, only: [any: 2, duplicate: 2, foldl: 3]
   require Record
   Record.defrecord(:r_t_atom, :t_atom, elements: :any)
-  Record.defrecord(:r_t_bitstring, :t_bitstring, size_unit: 1,
-                                       appendable: false)
+
+  Record.defrecord(:r_t_bitstring, :t_bitstring,
+    size_unit: 1,
+    appendable: false
+  )
+
   Record.defrecord(:r_t_bs_context, :t_bs_context, tail_unit: 1)
   Record.defrecord(:r_t_bs_matchable, :t_bs_matchable, tail_unit: 1)
   Record.defrecord(:r_t_float, :t_float, elements: :any)
-  Record.defrecord(:r_t_fun, :t_fun, arity: :any, target: :any,
-                                 type: :any)
+  Record.defrecord(:r_t_fun, :t_fun, arity: :any, target: :any, type: :any)
   Record.defrecord(:r_t_integer, :t_integer, elements: :any)
   Record.defrecord(:r_t_number, :t_number, elements: :any)
-  Record.defrecord(:r_t_map, :t_map, super_key: :any,
-                                 super_value: :any)
-  Record.defrecord(:r_t_cons, :t_cons, type: :any,
-                                  terminator: :any)
-  Record.defrecord(:r_t_list, :t_list, type: :any,
-                                  terminator: :any)
-  Record.defrecord(:r_t_tuple, :t_tuple, size: 0, exact: false,
-                                   elements: %{})
-  Record.defrecord(:r_t_union, :t_union, atom: :none, list: :none,
-                                   number: :none, tuple_set: :none,
-                                   other: :none)
-  def will_succeed(:erlang, op, [lHS, rHS]) when op === :"+" or
-                                         op === :- or op === :"*" do
+
+  Record.defrecord(:r_t_map, :t_map,
+    super_key: :any,
+    super_value: :any
+  )
+
+  Record.defrecord(:r_t_cons, :t_cons,
+    type: :any,
+    terminator: :any
+  )
+
+  Record.defrecord(:r_t_list, :t_list,
+    type: :any,
+    terminator: :any
+  )
+
+  Record.defrecord(:r_t_tuple, :t_tuple, size: 0, exact: false, elements: %{})
+
+  Record.defrecord(:r_t_union, :t_union,
+    atom: :none,
+    list: :none,
+    number: :none,
+    tuple_set: :none,
+    other: :none
+  )
+
+  def will_succeed(:erlang, op, [lHS, rHS])
+      when op === :+ or
+             op === :- or op === :* do
     succeeds_if_smallish(lHS, rHS)
   end
 
   def will_succeed(:erlang, op, [lHS, rHS] = args)
       when op === :div or op === :rem do
-    case ({meet(lHS, r_t_integer()), meet(rHS, r_t_integer())}) do
-      {r_t_integer(elements: {_, _}) = ^lHS,
-         r_t_integer(elements: {min, max}) = rHS}
-          when (is_integer(min) and min > 0) or
-                 (is_integer(max) and max < - 1)
-               ->
+    case {meet(lHS, r_t_integer()), meet(rHS, r_t_integer())} do
+      {r_t_integer(elements: {_, _}) = ^lHS, r_t_integer(elements: {min, max}) = rHS}
+      when (is_integer(min) and min > 0) or
+             (is_integer(max) and max < -1) ->
         :yes
+
       {r_t_integer(), r_t_integer()} ->
         fails_on_conflict(:erlang, op, args)
+
       {_, _} ->
         :no
     end
   end
 
   def will_succeed(:erlang, :bsr = op, [lHS, rHS] = args) do
-    case ({meet(lHS, r_t_integer()), meet(rHS, r_t_integer())}) do
-      {r_t_integer(elements: {_, _}) = ^lHS,
-         r_t_integer(elements: {minShift, _}) = rHS}
-          when (is_integer(minShift) and minShift >= 0) ->
+    case {meet(lHS, r_t_integer()), meet(rHS, r_t_integer())} do
+      {r_t_integer(elements: {_, _}) = ^lHS, r_t_integer(elements: {minShift, _}) = rHS}
+      when is_integer(minShift) and minShift >= 0 ->
         :yes
+
       {r_t_integer(), r_t_integer()} ->
         fails_on_conflict(:erlang, op, args)
+
       {_, _} ->
         :no
     end
   end
 
   def will_succeed(:erlang, :bsl = op, [lHS, rHS] = args) do
-    case ({meet(lHS, r_t_integer()), meet(rHS, r_t_integer())}) do
+    case {meet(lHS, r_t_integer()), meet(rHS, r_t_integer())} do
       {^lHS, r_t_integer(elements: {_, maxShift}) = ^rHS}
-          when (is_integer(maxShift) and maxShift < 64) ->
+      when is_integer(maxShift) and maxShift < 64 ->
         succeeds_if_smallish(lHS)
+
       {r_t_integer(), r_t_integer()} ->
         fails_on_conflict(:erlang, op, args)
+
       {_, _} ->
         :no
     end
   end
 
-  def will_succeed(:erlang, :"++", [lHS, _RHS]) do
+  def will_succeed(:erlang, :++, [lHS, _RHS]) do
     succeeds_if_type(lHS, proper_list())
   end
 
-  def will_succeed(:erlang, :"--", [_, _] = args) do
+  def will_succeed(:erlang, :--, [_, _] = args) do
     succeeds_if_types(args, proper_list())
   end
 
@@ -82,8 +104,9 @@ defmodule :m_beam_call_types do
     succeeds_if_types(args, :beam_types.make_boolean())
   end
 
-  def will_succeed(:erlang, op, [_, _] = args) when op === :band or
-                                            op === :bor or op === :bxor do
+  def will_succeed(:erlang, op, [_, _] = args)
+      when op === :band or
+             op === :bor or op === :bxor do
     succeeds_if_types(args, r_t_integer())
   end
 
@@ -96,16 +119,19 @@ defmodule :m_beam_call_types do
   end
 
   def will_succeed(:erlang, :element, [pos, tuple] = args) do
-    case (normalize(tuple)) do
+    case normalize(tuple) do
       r_t_tuple(exact: exact, size: sz) when sz >= 1 ->
-        case (meet(pos, r_t_integer(elements: {1, sz}))) do
+        case meet(pos, r_t_integer(elements: {1, sz})) do
           ^pos ->
             :yes
+
           :none when exact ->
             :no
+
           _ ->
             fails_on_conflict(:erlang, :element, args)
         end
+
       _ ->
         fails_on_conflict(:erlang, :element, args)
     end
@@ -116,13 +142,15 @@ defmodule :m_beam_call_types do
   end
 
   def will_succeed(:erlang, :is_function, [_, arity] = args) do
-    case (meet(arity, r_t_integer())) do
-      r_t_integer(elements: {min, _}) = ^arity when (is_integer(min) and
-                                             min >= 0)
-                                          ->
+    case meet(arity, r_t_integer()) do
+      r_t_integer(elements: {min, _}) = ^arity
+      when is_integer(min) and
+             min >= 0 ->
         :yes
+
       r_t_integer() ->
         fails_on_conflict(:erlang, :is_function, args)
+
       _ ->
         :no
     end
@@ -160,25 +188,30 @@ defmodule :m_beam_call_types do
     succeeds_if_types(args, :beam_types.make_boolean())
   end
 
-  def will_succeed(:erlang, :setelement,
-           [pos, tuple0, _Value] = args) do
-    posRange = r_t_integer(elements: {1, 1 <<< 24 - 1})
-    case ({meet(pos, posRange),
-             meet(tuple0, r_t_tuple(size: 1))}) do
+  def will_succeed(:erlang, :setelement, [pos, tuple0, _Value] = args) do
+    posRange = r_t_integer(elements: {1, 1 <<< (24 - 1)})
+
+    case {meet(pos, posRange), meet(tuple0, r_t_tuple(size: 1))} do
       {:none, _} ->
         :no
+
       {_, :none} ->
         :no
+
       {r_t_integer(elements: {min, max}) = ^pos, tuple} ->
         maxTupleSize = max_tuple_size(tuple)
+
         cond do
           maxTupleSize < min ->
             :no
-          (tuple0 === tuple and max <= maxTupleSize) ->
+
+          tuple0 === tuple and max <= maxTupleSize ->
             :yes
+
           true ->
             fails_on_conflict(:erlang, :setelement, args)
         end
+
       {_, _} ->
         fails_on_conflict(:erlang, :setelement, args)
     end
@@ -198,12 +231,16 @@ defmodule :m_beam_call_types do
   end
 
   def will_succeed(:erlang, :raise, [class, _Reason, nil]) do
-    case (meet(class,
-                 r_t_atom(elements: [:error, :exit, :throw]))) do
+    case meet(
+           class,
+           r_t_atom(elements: [:error, :exit, :throw])
+         ) do
       ^class ->
         :no
+
       :none ->
         :yes
+
       _ ->
         :maybe
     end
@@ -211,13 +248,16 @@ defmodule :m_beam_call_types do
 
   def will_succeed(mod, func, args) do
     arity = length(args)
-    case (:erl_bifs.is_safe(mod, func, arity)) do
+
+    case :erl_bifs.is_safe(mod, func, arity) do
       true ->
         :yes
+
       false ->
-        case (:erl_bifs.is_exit_bif(mod, func, arity)) do
+        case :erl_bifs.is_exit_bif(mod, func, arity) do
           true ->
             :no
+
           false ->
             fails_on_conflict(mod, func, args)
         end
@@ -226,9 +266,12 @@ defmodule :m_beam_call_types do
 
   defp max_tuple_size(r_t_union(tuple_set: [_ | _] = set) = union) do
     ^union = meet(union, r_t_tuple())
-    arities = (for {{arity, _Tag}, _Record} <- set do
-                 arity
-               end)
+
+    arities =
+      for {{arity, _Tag}, _Record} <- set do
+        arity
+      end
+
     :lists.max(arities)
   end
 
@@ -237,22 +280,24 @@ defmodule :m_beam_call_types do
   end
 
   defp max_tuple_size(r_t_tuple(exact: false)) do
-    1 <<< 24 - 1
+    1 <<< (24 - 1)
   end
 
   defp fails_on_conflict(mod, func, args) do
-    case (types(mod, func, args)) do
+    case types(mod, func, args) do
       {:none, _, _} ->
         :no
+
       {_, argTypes, _} ->
         fails_on_conflict_1(args, argTypes)
     end
   end
 
   defp fails_on_conflict_1([argType | args], [required | types]) do
-    case (meet(argType, required)) do
+    case meet(argType, required) do
       :none ->
         :no
+
       _ ->
         fails_on_conflict_1(args, types)
     end
@@ -263,80 +308,90 @@ defmodule :m_beam_call_types do
   end
 
   defp succeeds_if_types([lHS, rHS], required) do
-    case ({succeeds_if_type(lHS, required),
-             succeeds_if_type(rHS, required)}) do
+    case {succeeds_if_type(lHS, required), succeeds_if_type(rHS, required)} do
       {:yes, :yes} ->
         :yes
+
       {:no, _} ->
         :no
+
       {_, :no} ->
         :no
+
       {_, _} ->
         :maybe
     end
   end
 
   defp succeeds_if_type(argType, required) do
-    case (meet(argType, required)) do
+    case meet(argType, required) do
       ^argType ->
         :yes
+
       :none ->
         :no
+
       _ ->
         :maybe
     end
   end
 
   defp succeeds_if_smallish(r_t_integer(elements: {min, max}))
-      when (abs(min) >>> 128 === 0 and
-              abs(max) >>> 128 === 0) do
+       when abs(min) >>> 128 === 0 and
+              abs(max) >>> 128 === 0 do
     :yes
   end
 
   defp succeeds_if_smallish(argType) do
-    case (succeeds_if_type(argType, r_t_number())) do
+    case succeeds_if_type(argType, r_t_number()) do
       :yes ->
         :maybe
+
       other ->
         other
     end
   end
 
   defp succeeds_if_smallish(lHS, rHS) do
-    case ({succeeds_if_smallish(lHS),
-             succeeds_if_smallish(rHS)}) do
+    case {succeeds_if_smallish(lHS), succeeds_if_smallish(rHS)} do
       {:yes, :yes} ->
         :yes
+
       {:no, _} ->
         :no
+
       {_, :no} ->
         :no
+
       {_, _} ->
         :maybe
     end
   end
 
   def types(:erlang, :map_size, [_]) do
-    sub_safe(r_t_integer(elements: {0, 1 <<< 58 - 1}), [r_t_map()])
+    sub_safe(r_t_integer(elements: {0, 1 <<< (58 - 1)}), [r_t_map()])
   end
 
   def types(:erlang, :tuple_size, [src]) do
-    min = (case (normalize(meet(src, r_t_tuple()))) do
-             r_t_tuple(size: sz) ->
-               sz
-             _ ->
-               0
-           end)
-    max = 1 <<< 24 - 1
+    min =
+      case normalize(meet(src, r_t_tuple())) do
+        r_t_tuple(size: sz) ->
+          sz
+
+        _ ->
+          0
+      end
+
+    max = 1 <<< (24 - 1)
     sub_safe(r_t_integer(elements: {min, max}), [r_t_tuple()])
   end
 
   def types(:erlang, :bit_size, [_]) do
-    sub_safe(r_t_integer(elements: {0, 1 <<< 58 - 1}), [r_t_bitstring()])
+    sub_safe(r_t_integer(elements: {0, 1 <<< (58 - 1)}), [r_t_bitstring()])
   end
 
   def types(:erlang, :byte_size, [_]) do
-    sub_safe(r_t_integer(elements: {0, 1 <<< 58 - 1}), [r_t_bitstring()])
+    sub_safe(r_t_integer(elements: {0, 1 <<< (58 - 1)}), [r_t_bitstring()])
   end
 
   def types(:erlang, :hd, [src]) do
@@ -355,14 +410,19 @@ defmodule :m_beam_call_types do
   end
 
   def types(:erlang, :length, [src]) do
-    min = (case (src) do
-             r_t_cons() ->
-               1
-             _ ->
-               0
-           end)
-    sub_safe(r_t_integer(elements: {min, 1 <<< 58 - 1}),
-               [proper_list()])
+    min =
+      case src do
+        r_t_cons() ->
+          1
+
+        _ ->
+          0
+      end
+
+    sub_safe(
+      r_t_integer(elements: {min, 1 <<< (58 - 1)}),
+      [proper_list()]
+    )
   end
 
   def types(:erlang, :and, [_, _]) do
@@ -380,13 +440,16 @@ defmodule :m_beam_call_types do
     sub_unsafe(bool, [bool, bool])
   end
 
-  def types(:erlang, op, [arg1, arg2]) when op === :"<" or
-                                           op === :"=<" or op === :">=" or
-                                           op === :">" do
+  def types(:erlang, op, [arg1, arg2])
+      when op === :< or
+             op === :"=<" or op === :>= or
+             op === :> do
     {r1, r2} = {get_range(arg1), get_range(arg2)}
-    case (:beam_bounds.relop(op, r1, r2)) do
+
+    case :beam_bounds.relop(op, r1, r2) do
       :maybe ->
         sub_unsafe(:beam_types.make_boolean(), [:any, :any])
+
       bool when is_boolean(bool) ->
         sub_unsafe(r_t_atom(elements: [bool]), [:any, :any])
     end
@@ -405,20 +468,24 @@ defmodule :m_beam_call_types do
   end
 
   def types(:erlang, :is_boolean, [type]) do
-    case (:beam_types.is_boolean_type(type)) do
+    case :beam_types.is_boolean_type(type) do
       true ->
         sub_unsafe(r_t_atom(elements: [true]), [:any])
+
       false ->
-        case (meet(type, r_t_atom())) do
+        case meet(type, r_t_atom()) do
           r_t_atom(elements: [_ | _] = es) ->
-            case (any(&is_boolean/1, es)) do
+            case any(&is_boolean/1, es) do
               true ->
                 sub_unsafe(:beam_types.make_boolean(), [:any])
+
               false ->
                 sub_unsafe(r_t_atom(elements: [false]), [:any])
             end
+
           r_t_atom() ->
             sub_unsafe(:beam_types.make_boolean(), [:any])
+
           :none ->
             sub_unsafe(r_t_atom(elements: [false]), [:any])
         end
@@ -430,33 +497,42 @@ defmodule :m_beam_call_types do
   end
 
   def types(:erlang, :is_function, [type, arityType]) do
-    retType = (case (meet(arityType, r_t_integer())) do
-                 :none ->
-                   :none
-                 r_t_integer(elements: {arity, arity}) when is_integer(arity) ->
-                   cond do
-                     arity < 0 ->
-                       :none
-                     (0 <= arity and arity <= 255) ->
-                       case (meet(type, r_t_fun(arity: arity))) do
-                         ^type ->
-                           r_t_atom(elements: [true])
-                         :none ->
-                           r_t_atom(elements: [false])
-                         _ ->
-                           :beam_types.make_boolean()
-                       end
-                     arity > 255 ->
-                       r_t_atom(elements: [false])
-                   end
-                 r_t_integer() ->
-                   case (meet(type, r_t_fun())) do
-                     :none ->
-                       r_t_atom(elements: [false])
-                     _ ->
-                       :beam_types.make_boolean()
-                   end
-               end)
+    retType =
+      case meet(arityType, r_t_integer()) do
+        :none ->
+          :none
+
+        r_t_integer(elements: {arity, arity}) when is_integer(arity) ->
+          cond do
+            arity < 0 ->
+              :none
+
+            0 <= arity and arity <= 255 ->
+              case meet(type, r_t_fun(arity: arity)) do
+                ^type ->
+                  r_t_atom(elements: [true])
+
+                :none ->
+                  r_t_atom(elements: [false])
+
+                _ ->
+                  :beam_types.make_boolean()
+              end
+
+            arity > 255 ->
+              r_t_atom(elements: [false])
+          end
+
+        r_t_integer() ->
+          case meet(type, r_t_fun()) do
+            :none ->
+              r_t_atom(elements: [false])
+
+            _ ->
+              :beam_types.make_boolean()
+          end
+      end
+
     sub_unsafe(retType, [:any, :any])
   end
 
@@ -497,28 +573,38 @@ defmodule :m_beam_call_types do
   end
 
   def types(:erlang, :band, [_, _] = args) do
-    sub_unsafe(beam_bounds_type(:band, r_t_integer(), args),
-                 [r_t_integer(), r_t_integer()])
+    sub_unsafe(
+      beam_bounds_type(:band, r_t_integer(), args),
+      [r_t_integer(), r_t_integer()]
+    )
   end
 
   def types(:erlang, :bor, [_, _] = args) do
-    sub_unsafe(beam_bounds_type(:bor, r_t_integer(), args),
-                 [r_t_integer(), r_t_integer()])
+    sub_unsafe(
+      beam_bounds_type(:bor, r_t_integer(), args),
+      [r_t_integer(), r_t_integer()]
+    )
   end
 
   def types(:erlang, :bxor, [_, _] = args) do
-    sub_unsafe(beam_bounds_type(:bxor, r_t_integer(), args),
-                 [r_t_integer(), r_t_integer()])
+    sub_unsafe(
+      beam_bounds_type(:bxor, r_t_integer(), args),
+      [r_t_integer(), r_t_integer()]
+    )
   end
 
   def types(:erlang, :bsl, [_, _] = args) do
-    sub_unsafe(beam_bounds_type(:bsl, r_t_integer(), args),
-                 [r_t_integer(), r_t_integer()])
+    sub_unsafe(
+      beam_bounds_type(:bsl, r_t_integer(), args),
+      [r_t_integer(), r_t_integer()]
+    )
   end
 
   def types(:erlang, :bsr, [_, _] = args) do
-    sub_unsafe(beam_bounds_type(:bsr, r_t_integer(), args),
-                 [r_t_integer(), r_t_integer()])
+    sub_unsafe(
+      beam_bounds_type(:bsr, r_t_integer(), args),
+      [r_t_integer(), r_t_integer()]
+    )
   end
 
   def types(:erlang, :bnot, [_]) do
@@ -545,78 +631,97 @@ defmodule :m_beam_call_types do
     sub_unsafe(r_t_integer(), [r_t_number()])
   end
 
-  def types(:erlang, :"/", [_, _]) do
+  def types(:erlang, :/, [_, _]) do
     sub_unsafe(r_t_float(), [r_t_number(), r_t_number()])
   end
 
   def types(:erlang, :div, [_, _] = args) do
-    sub_unsafe(beam_bounds_type(:div, r_t_integer(), args),
-                 [r_t_integer(), r_t_integer()])
+    sub_unsafe(
+      beam_bounds_type(:div, r_t_integer(), args),
+      [r_t_integer(), r_t_integer()]
+    )
   end
 
   def types(:erlang, :rem, args) do
-    sub_unsafe(beam_bounds_type(:rem, r_t_integer(), args),
-                 [r_t_integer(), r_t_integer()])
+    sub_unsafe(
+      beam_bounds_type(:rem, r_t_integer(), args),
+      [r_t_integer(), r_t_integer()]
+    )
   end
 
-  def types(:erlang, op, [lHS, rHS]) when op === :"+" or
-                                         op === :- do
-    case (get_range(lHS, rHS, r_t_number())) do
-      {type, {a, b}, {c, _D}} when (is_integer(c) and c >= 0)
-                                   ->
+  def types(:erlang, op, [lHS, rHS])
+      when op === :+ or
+             op === :- do
+    case get_range(lHS, rHS, r_t_number()) do
+      {type, {a, b}, {c, _D}} when is_integer(c) and c >= 0 ->
         r = :beam_bounds.bounds(op, {a, b}, {c, :"+inf"})
-        retType = (case (type) do
-                     :integer ->
-                       r_t_integer(elements: r)
-                     :number ->
-                       r_t_number(elements: r)
-                   end)
+
+        retType =
+          case type do
+            :integer ->
+              r_t_integer(elements: r)
+
+            :number ->
+              r_t_number(elements: r)
+          end
+
         sub_unsafe(retType, [r_t_number(), r_t_number()])
-      {type, {a, _B}, {c, d}} when (op === :"+" and
-                                      is_integer(a) and a >= 0)
-                                   ->
+
+      {type, {a, _B}, {c, d}}
+      when op === :+ and
+             is_integer(a) and a >= 0 ->
         r = :beam_bounds.bounds(op, {a, :"+inf"}, {c, d})
-        retType = (case (type) do
-                     :integer ->
-                       r_t_integer(elements: r)
-                     :number ->
-                       r_t_number(elements: r)
-                   end)
+
+        retType =
+          case type do
+            :integer ->
+              r_t_integer(elements: r)
+
+            :number ->
+              r_t_number(elements: r)
+          end
+
         sub_unsafe(retType, [r_t_number(), r_t_number()])
+
       _ ->
         mixed_arith_types([lHS, rHS])
     end
   end
 
   def types(:erlang, :abs, [type]) do
-    case (meet(type, r_t_number())) do
+    case meet(type, r_t_number()) do
       r_t_float() ->
         sub_unsafe(r_t_float(), [r_t_float()])
+
       r_t_integer(elements: r) ->
         retType = r_t_integer(elements: :beam_bounds.bounds(:abs, r))
         sub_unsafe(retType, [r_t_integer()])
+
       r_t_number(elements: r) ->
         retType = r_t_number(elements: :beam_bounds.bounds(:abs, r))
         sub_unsafe(retType, [r_t_number()])
+
       _ ->
         sub_unsafe(r_t_number(), [r_t_number()])
     end
   end
 
-  def types(:erlang, :"++", [lHS, rHS]) do
+  def types(:erlang, :++, [lHS, rHS]) do
     listType = copy_list(lHS, :same_length, :proper)
     retType = join(listType, rHS)
     sub_unsafe(retType, [proper_list(), :any])
   end
 
-  def types(:erlang, :"--", [lHS, _]) do
+  def types(:erlang, :--, [lHS, _]) do
     retType = copy_list(lHS, :new_length, :proper)
     sub_unsafe(retType, [proper_list(), proper_list()])
   end
 
   def types(:erlang, :atom_to_list, [_]) do
-    sub_unsafe(proper_list(r_t_integer(elements: {0, 1114111})),
-                 [r_t_atom()])
+    sub_unsafe(
+      proper_list(r_t_integer(elements: {0, 1_114_111})),
+      [r_t_atom()]
+    )
   end
 
   def types(:erlang, :iolist_to_binary, [_]) do
@@ -694,10 +799,12 @@ defmodule :m_beam_call_types do
 
   def types(:erlang, :spawn_request, [_ | _] = args)
       when length(args) <= 5 do
-    sub_unsafe(:reference,
-                 for _ <- args do
-                   :any
-                 end)
+    sub_unsafe(
+      :reference,
+      for _ <- args do
+        :any
+      end
+    )
   end
 
   def types(:erlang, :binary_part, [_, _]) do
@@ -712,12 +819,15 @@ defmodule :m_beam_call_types do
   end
 
   def types(:erlang, :is_map_key, [key, map]) do
-    retType = (case (erlang_map_get_type(key, map)) do
-                 :none ->
-                   :beam_types.make_atom(false)
-                 _ ->
-                   :beam_types.make_boolean()
-               end)
+    retType =
+      case erlang_map_get_type(key, map) do
+        :none ->
+          :beam_types.make_atom(false)
+
+        _ ->
+          :beam_types.make_boolean()
+      end
+
     sub_unsafe(retType, [:any, r_t_map()])
   end
 
@@ -748,93 +858,126 @@ defmodule :m_beam_call_types do
   end
 
   def types(:erlang, :element, [pos, tuple0]) do
-    posRange = r_t_integer(elements: {1, 1 <<< 24 - 1})
-    case (meet(pos, posRange)) do
+    posRange = r_t_integer(elements: {1, 1 <<< (24 - 1)})
+
+    case meet(pos, posRange) do
       r_t_integer(elements: {index, index}) when index >= 1 ->
-        case (normalize(meet(tuple0, r_t_tuple(size: index)))) do
+        case normalize(meet(tuple0, r_t_tuple(size: index))) do
           r_t_tuple(elements: es) = tuple ->
             retType = :beam_types.get_tuple_element(index, es)
             sub_unsafe(retType, [posRange, tuple])
+
           :none ->
             sub_unsafe(:none, [posRange, r_t_tuple()])
         end
+
       _ ->
         sub_unsafe(:any, [posRange, r_t_tuple()])
     end
   end
 
-  def types(:erlang, :setelement,
-           [posType, tupleType, argType]) do
-    posRange = r_t_integer(elements: {1, 1 <<< 24 - 1})
-    retType = (case (meet(posType, posRange)) do
-                 r_t_integer(elements: {same, same}) ->
-                   :beam_types.update_tuple(tupleType, [{same, argType}])
-                 r_t_integer() ->
-                   case (normalize(meet(tupleType, r_t_tuple(size: 1)))) do
-                     r_t_tuple() = t ->
-                       r_t_tuple(t, elements: %{})
-                     :none ->
-                       :none
-                   end
-                 :none ->
-                   :none
-               end)
+  def types(:erlang, :setelement, [posType, tupleType, argType]) do
+    posRange = r_t_integer(elements: {1, 1 <<< (24 - 1)})
+
+    retType =
+      case meet(posType, posRange) do
+        r_t_integer(elements: {same, same}) ->
+          :beam_types.update_tuple(tupleType, [{same, argType}])
+
+        r_t_integer() ->
+          case normalize(meet(tupleType, r_t_tuple(size: 1))) do
+            r_t_tuple() = t ->
+              r_t_tuple(t, elements: %{})
+
+            :none ->
+              :none
+          end
+
+        :none ->
+          :none
+      end
+
     sub_unsafe(retType, [posRange, r_t_tuple(size: 1), :any])
   end
 
   def types(:erlang, :make_fun, [_, _, arity0]) do
-    type = (case (meet(arity0, r_t_integer())) do
-              r_t_integer(elements: {arity, arity}) when (arity >= 0 and
-                                                  arity <= 255)
-                                               ->
-                r_t_fun(arity: arity)
-              r_t_integer() ->
-                r_t_fun()
-              _ ->
-                :none
-            end)
+    type =
+      case meet(arity0, r_t_integer()) do
+        r_t_integer(elements: {arity, arity})
+        when arity >= 0 and
+               arity <= 255 ->
+          r_t_fun(arity: arity)
+
+        r_t_integer() ->
+          r_t_fun()
+
+        _ ->
+          :none
+      end
+
     sub_unsafe(type, [r_t_atom(), r_t_atom(), r_t_integer()])
   end
 
-  def types(:erlang, op, [lHS, rHS]) when op === :min or
-                                         op === :max do
+  def types(:erlang, op, [lHS, rHS])
+      when op === :min or
+             op === :max do
     r1 = get_range(lHS)
     r2 = get_range(rHS)
     r = :beam_bounds.bounds(op, r1, r2)
-    retType = (case ({lHS, rHS}) do
-                 {r_t_integer(), r_t_integer()} ->
-                   r_t_integer(elements: r)
-                 {r_t_integer(), r_t_number()} ->
-                   r_t_number(elements: r)
-                 {r_t_number(), r_t_integer()} ->
-                   r_t_number(elements: r)
-                 {r_t_number(), r_t_number()} ->
-                   r_t_number(elements: r)
-                 {_, _} ->
-                   join(lHS, rHS)
-               end)
+
+    retType =
+      case {lHS, rHS} do
+        {r_t_integer(), r_t_integer()} ->
+          r_t_integer(elements: r)
+
+        {r_t_integer(), r_t_number()} ->
+          r_t_number(elements: r)
+
+        {r_t_number(), r_t_integer()} ->
+          r_t_number(elements: r)
+
+        {r_t_number(), r_t_number()} ->
+          r_t_number(elements: r)
+
+        {_, _} ->
+          join(lHS, rHS)
+      end
+
     sub_unsafe(retType, [:any, :any])
   end
 
   def types(:erlang, name, args) do
     arity = length(args)
-    case (:erl_bifs.is_exit_bif(:erlang, name, arity)) do
+
+    case :erl_bifs.is_exit_bif(:erlang, name, arity) do
       true ->
         {:none, args, false}
+
       false ->
-        case (:erl_internal.arith_op(name, arity)) do
+        case :erl_internal.arith_op(name, arity) do
           true ->
             mixed_arith_types(args)
+
           false ->
-            isTest = :erl_internal.new_type_test(name,
-                                                   arity) or :erl_internal.comp_op(name,
-                                                                                     arity)
-            retType = (case (isTest) do
-                         true ->
-                           :beam_types.make_boolean()
-                         false ->
-                           :any
-                       end)
+            isTest =
+              :erl_internal.new_type_test(
+                name,
+                arity
+              ) or
+                :erl_internal.comp_op(
+                  name,
+                  arity
+                )
+
+            retType =
+              case isTest do
+                true ->
+                  :beam_types.make_boolean()
+
+                false ->
+                  :any
+              end
+
             sub_unsafe(retType, duplicate(arity, :any))
         end
     end
@@ -941,7 +1084,7 @@ defmodule :m_beam_call_types do
   end
 
   def types(:lists, :append, [_, _] = args) do
-    types(:erlang, :"++", args)
+    types(:erlang, :++, args)
   end
 
   def types(:lists, :append, [_]) do
@@ -949,7 +1092,7 @@ defmodule :m_beam_call_types do
   end
 
   def types(:lists, :subtract, [_, _] = args) do
-    types(:erlang, :"--", args)
+    types(:erlang, :--, args)
   end
 
   def types(:lists, :all, [_, _]) do
@@ -1045,17 +1188,21 @@ defmodule :m_beam_call_types do
   end
 
   def types(:lists, :keyfind, [keyType, posType, _]) do
-    tupleType = (case (meet(posType, r_t_integer())) do
-                   r_t_integer(elements: {index, index}) when (is_integer(index) and
-                                                       index >= 1)
-                                                    ->
-                     es = :beam_types.set_tuple_element(index, keyType, %{})
-                     r_t_tuple(size: index, elements: es)
-                   r_t_integer() ->
-                     r_t_tuple()
-                   :none ->
-                     :none
-                 end)
+    tupleType =
+      case meet(posType, r_t_integer()) do
+        r_t_integer(elements: {index, index})
+        when is_integer(index) and
+               index >= 1 ->
+          es = :beam_types.set_tuple_element(index, keyType, %{})
+          r_t_tuple(size: index, elements: es)
+
+        r_t_integer() ->
+          r_t_tuple()
+
+        :none ->
+          :none
+      end
+
     retType = join(tupleType, :beam_types.make_atom(false))
     sub_unsafe(retType, [:any, :any, r_t_list()])
   end
@@ -1073,8 +1220,12 @@ defmodule :m_beam_call_types do
   end
 
   def types(:lists, :search, [_, _]) do
-    tupleType = make_two_tuple(:beam_types.make_atom(:value),
-                                 :any)
+    tupleType =
+      make_two_tuple(
+        :beam_types.make_atom(:value),
+        :any
+      )
+
     retType = join(tupleType, :beam_types.make_atom(false))
     sub_unsafe(retType, [:any, r_t_list()])
   end
@@ -1091,61 +1242,83 @@ defmodule :m_beam_call_types do
   end
 
   def types(:maps, :filter, [_Fun, map]) do
-    retType = (case (meet(map, r_t_map())) do
-                 r_t_map() = t ->
-                   t
-                 _ ->
-                   :none
-               end)
+    retType =
+      case meet(map, r_t_map()) do
+        r_t_map() = t ->
+          t
+
+        _ ->
+          :none
+      end
+
     sub_unsafe(retType, [:any, r_t_map()])
   end
 
   def types(:maps, :find, [key, map]) do
-    tupleType = (case (erlang_map_get_type(key, map)) do
-                   :none ->
-                     :none
-                   valueType ->
-                     make_two_tuple(:beam_types.make_atom(:ok), valueType)
-                 end)
+    tupleType =
+      case erlang_map_get_type(key, map) do
+        :none ->
+          :none
+
+        valueType ->
+          make_two_tuple(:beam_types.make_atom(:ok), valueType)
+      end
+
     retType = join(:beam_types.make_atom(:error), tupleType)
     sub_unsafe(retType, [:any, r_t_map()])
   end
 
   def types(:maps, :fold, [fun, init, _Map]) do
-    retType = (case (meet(fun, r_t_fun(arity: 3))) do
-                 r_t_fun(type: type) ->
-                   join(type, init)
-                 _ ->
-                   init
-               end)
+    retType =
+      case meet(fun, r_t_fun(arity: 3)) do
+        r_t_fun(type: type) ->
+          join(type, init)
+
+        _ ->
+          init
+      end
+
     sub_unsafe(retType, [:any, :any, r_t_map()])
   end
 
   def types(:maps, :from_keys, [keys, value]) do
     keyType = erlang_hd_type(keys)
-    valueType = (case (keyType) do
-                   :none ->
-                     :none
-                   _ ->
-                     value
-                 end)
+
+    valueType =
+      case keyType do
+        :none ->
+          :none
+
+        _ ->
+          value
+      end
+
     retType = r_t_map(super_key: keyType, super_value: valueType)
     sub_unsafe(retType, [proper_list(), :any])
   end
 
   def types(:maps, :from_list, [pairs]) do
     pairType = erlang_hd_type(pairs)
-    retType = (case (normalize(meet(pairType,
-                                      r_t_tuple(exact: true, size: 2)))) do
-                 r_t_tuple(elements: es) ->
-                   sKey = :beam_types.get_tuple_element(1, es)
-                   sValue = :beam_types.get_tuple_element(2, es)
-                   r_t_map(super_key: sKey, super_value: sValue)
-                 :none when pairType === :none ->
-                   r_t_map(super_key: :none, super_value: :none)
-                 :none when pairType !== :none ->
-                   :none
-               end)
+
+    retType =
+      case normalize(
+             meet(
+               pairType,
+               r_t_tuple(exact: true, size: 2)
+             )
+           ) do
+        r_t_tuple(elements: es) ->
+          sKey = :beam_types.get_tuple_element(1, es)
+          sValue = :beam_types.get_tuple_element(2, es)
+          r_t_map(super_key: sKey, super_value: sValue)
+
+        :none when pairType === :none ->
+          r_t_map(super_key: :none, super_value: :none)
+
+        :none when pairType !== :none ->
+          :none
+      end
+
     sub_unsafe(retType, [proper_list()])
   end
 
@@ -1154,51 +1327,64 @@ defmodule :m_beam_call_types do
   end
 
   def types(:maps, :get, [key, map, default]) do
-    retType = (case (erlang_map_get_type(key, map)) do
-                 :none ->
-                   default
-                 valueType ->
-                   join(valueType, default)
-               end)
+    retType =
+      case erlang_map_get_type(key, map) do
+        :none ->
+          default
+
+        valueType ->
+          join(valueType, default)
+      end
+
     sub_unsafe(retType, [:any, r_t_map(), :any])
   end
 
   def types(:maps, :keys, [map]) do
-    retType = (case (meet(map, r_t_map())) do
-                 r_t_map(super_key: :none) ->
-                   nil
-                 r_t_map(super_key: sKey) ->
-                   proper_list(sKey)
-                 _ ->
-                   :none
-               end)
+    retType =
+      case meet(map, r_t_map()) do
+        r_t_map(super_key: :none) ->
+          nil
+
+        r_t_map(super_key: sKey) ->
+          proper_list(sKey)
+
+        _ ->
+          :none
+      end
+
     sub_unsafe(retType, [r_t_map()])
   end
 
   def types(:maps, :map, [fun, map0]) do
-    retType = (case ({meet(fun, r_t_fun(arity: 2)),
-                        meet(map0, r_t_map())}) do
-                 {r_t_fun(type: funRet), r_t_map(super_value: sValue0) = map} ->
-                   sValue = join(funRet, sValue0)
-                   r_t_map(map, super_value: sValue)
-                 {:none, r_t_map()} ->
-                   r_t_map(super_key: :none, super_value: :none)
-                 {_, :none} ->
-                   :none
-               end)
+    retType =
+      case {meet(fun, r_t_fun(arity: 2)), meet(map0, r_t_map())} do
+        {r_t_fun(type: funRet), r_t_map(super_value: sValue0) = map} ->
+          sValue = join(funRet, sValue0)
+          r_t_map(map, super_value: sValue)
+
+        {:none, r_t_map()} ->
+          r_t_map(super_key: :none, super_value: :none)
+
+        {_, :none} ->
+          :none
+      end
+
     sub_unsafe(retType, [:any, r_t_map()])
   end
 
   def types(:maps, :merge, [a, b]) do
-    retType = (case ({meet(a, r_t_map()), meet(b, r_t_map())}) do
-                 {r_t_map(super_key: sKeyA, super_value: sValueA),
-                    r_t_map(super_key: sKeyB, super_value: sValueB)} ->
-                   sKey = join(sKeyA, sKeyB)
-                   sValue = join(sValueA, sValueB)
-                   r_t_map(super_key: sKey, super_value: sValue)
-                 _ ->
-                   :none
-               end)
+    retType =
+      case {meet(a, r_t_map()), meet(b, r_t_map())} do
+        {r_t_map(super_key: sKeyA, super_value: sValueA),
+         r_t_map(super_key: sKeyB, super_value: sValueB)} ->
+          sKey = join(sKeyA, sKeyB)
+          sValue = join(sValueA, sValueB)
+          r_t_map(super_key: sKey, super_value: sValue)
+
+        _ ->
+          :none
+      end
+
     sub_unsafe(retType, [r_t_map(), r_t_map()])
   end
 
@@ -1208,14 +1394,17 @@ defmodule :m_beam_call_types do
   end
 
   def types(:maps, :put, [key, value, map]) do
-    retType = (case (meet(map, r_t_map())) do
-                 r_t_map(super_key: sKey0, super_value: sValue0) ->
-                   sKey = join(key, sKey0)
-                   sValue = join(value, sValue0)
-                   r_t_map(super_key: sKey, super_value: sValue)
-                 _ ->
-                   :none
-               end)
+    retType =
+      case meet(map, r_t_map()) do
+        r_t_map(super_key: sKey0, super_value: sValue0) ->
+          sKey = join(key, sKey0)
+          sValue = join(value, sValue0)
+          r_t_map(super_key: sKey, super_value: sValue)
+
+        _ ->
+          :none
+      end
+
     sub_unsafe(retType, [:any, :any, r_t_map()])
   end
 
@@ -1225,63 +1414,78 @@ defmodule :m_beam_call_types do
   end
 
   def types(:maps, :take, [key, map]) do
-    tupleType = (case (erlang_map_get_type(key, map)) do
-                   :none ->
-                     :none
-                   valueType ->
-                     mapType = meet(map, r_t_map())
-                     make_two_tuple(valueType, mapType)
-                 end)
+    tupleType =
+      case erlang_map_get_type(key, map) do
+        :none ->
+          :none
+
+        valueType ->
+          mapType = meet(map, r_t_map())
+          make_two_tuple(valueType, mapType)
+      end
+
     retType = join(:beam_types.make_atom(:error), tupleType)
     sub_unsafe(retType, [:any, r_t_map()])
   end
 
   def types(:maps, :to_list, [map]) do
-    retType = (case (meet(map, r_t_map())) do
-                 r_t_map(super_key: sKey, super_value: sValue) ->
-                   proper_list(make_two_tuple(sKey, sValue))
-                 _ ->
-                   :none
-               end)
+    retType =
+      case meet(map, r_t_map()) do
+        r_t_map(super_key: sKey, super_value: sValue) ->
+          proper_list(make_two_tuple(sKey, sValue))
+
+        _ ->
+          :none
+      end
+
     sub_unsafe(retType, [r_t_map()])
   end
 
   def types(:maps, :update_with, [_Key, fun, map0]) do
-    retType = (case ({meet(fun, r_t_fun(arity: 1)),
-                        meet(map0, r_t_map())}) do
-                 {r_t_fun(type: funRet), r_t_map(super_value: sValue0) = map}
-                     when funRet !== :none ->
-                   sValue = join(funRet, sValue0)
-                   r_t_map(map, super_value: sValue)
-                 _ ->
-                   :none
-               end)
+    retType =
+      case {meet(fun, r_t_fun(arity: 1)), meet(map0, r_t_map())} do
+        {r_t_fun(type: funRet), r_t_map(super_value: sValue0) = map}
+        when funRet !== :none ->
+          sValue = join(funRet, sValue0)
+          r_t_map(map, super_value: sValue)
+
+        _ ->
+          :none
+      end
+
     sub_unsafe(retType, [:any, r_t_fun(arity: 1), r_t_map()])
   end
 
   def types(:maps, :values, [map]) do
-    retType = (case (meet(map, r_t_map())) do
-                 r_t_map(super_value: :none) ->
-                   nil
-                 r_t_map(super_value: sValue) ->
-                   proper_list(sValue)
-                 _ ->
-                   :none
-               end)
+    retType =
+      case meet(map, r_t_map()) do
+        r_t_map(super_value: :none) ->
+          nil
+
+        r_t_map(super_value: sValue) ->
+          proper_list(sValue)
+
+        _ ->
+          :none
+      end
+
     sub_unsafe(retType, [r_t_map()])
   end
 
   def types(:maps, :with, [keys, map0]) do
-    retType = (case ({erlang_hd_type(keys),
-                        meet(map0, r_t_map())}) do
-                 {:none, _} ->
-                   r_t_map(super_key: :none, super_value: :none)
-                 {keysType, r_t_map(super_key: sKey0) = map} ->
-                   sKey = meet(keysType, sKey0)
-                   r_t_map(map, super_key: sKey)
-                 {_, _} ->
-                   :none
-               end)
+    retType =
+      case {erlang_hd_type(keys), meet(map0, r_t_map())} do
+        {:none, _} ->
+          r_t_map(super_key: :none, super_value: :none)
+
+        {keysType, r_t_map(super_key: sKey0) = map} ->
+          sKey = meet(keysType, sKey0)
+          r_t_map(map, super_key: sKey)
+
+        {_, _} ->
+          :none
+      end
+
     sub_unsafe(retType, [proper_list(), r_t_map()])
   end
 
@@ -1291,10 +1495,12 @@ defmodule :m_beam_call_types do
   end
 
   def types(_, _, args) do
-    sub_unsafe(:any,
-                 for _ <- args do
-                   :any
-                 end)
+    sub_unsafe(
+      :any,
+      for _ <- args do
+        :any
+      end
+    )
   end
 
   def arith_type({:bif, :-}, [arg]) do
@@ -1303,16 +1509,18 @@ defmodule :m_beam_call_types do
   end
 
   def arith_type({:bif, :bnot}, [arg0]) do
-    case (meet(arg0, r_t_integer())) do
+    case meet(arg0, r_t_integer()) do
       :none ->
         :none
+
       r_t_integer(elements: r) ->
         r_t_integer(elements: :beam_bounds.bounds(:bnot, r))
     end
   end
 
-  def arith_type({:bif, op}, [_, _] = argTypes) when op === :"+" or
-                                               op === :- or op === :"*" do
+  def arith_type({:bif, op}, [_, _] = argTypes)
+      when op === :+ or
+             op === :- or op === :* do
     beam_bounds_type(op, r_t_number(), argTypes)
   end
 
@@ -1328,65 +1536,91 @@ defmodule :m_beam_call_types do
   end
 
   defp mixed_arith_types(args0) do
-    [firstType | _] = (args = (for a <- args0 do
-                                 meet(a, r_t_number())
-                               end))
-    retType = foldl(fn r_t_integer(), r_t_integer() ->
-                         r_t_integer()
-                       r_t_integer(), r_t_number() ->
-                         r_t_number()
-                       r_t_integer(), r_t_float() ->
-                         r_t_float()
-                       r_t_float(), r_t_integer() ->
-                         r_t_float()
-                       r_t_float(), r_t_number() ->
-                         r_t_float()
-                       r_t_float(), r_t_float() ->
-                         r_t_float()
-                       r_t_number(), r_t_integer() ->
-                         r_t_number()
-                       r_t_number(), r_t_float() ->
-                         r_t_float()
-                       r_t_number(), r_t_number() ->
-                         r_t_number()
-                       _, _ ->
-                         :none
-                    end,
-                      firstType, args)
-    sub_unsafe(retType,
-                 for _ <- args do
-                   r_t_number()
-                 end)
+    [firstType | _] =
+      args =
+      for a <- args0 do
+        meet(a, r_t_number())
+      end
+
+    retType =
+      foldl(
+        fn
+          r_t_integer(), r_t_integer() ->
+            r_t_integer()
+
+          r_t_integer(), r_t_number() ->
+            r_t_number()
+
+          r_t_integer(), r_t_float() ->
+            r_t_float()
+
+          r_t_float(), r_t_integer() ->
+            r_t_float()
+
+          r_t_float(), r_t_number() ->
+            r_t_float()
+
+          r_t_float(), r_t_float() ->
+            r_t_float()
+
+          r_t_number(), r_t_integer() ->
+            r_t_number()
+
+          r_t_number(), r_t_float() ->
+            r_t_float()
+
+          r_t_number(), r_t_number() ->
+            r_t_number()
+
+          _, _ ->
+            :none
+        end,
+        firstType,
+        args
+      )
+
+    sub_unsafe(
+      retType,
+      for _ <- args do
+        r_t_number()
+      end
+    )
   end
 
   defp erlang_hd_type(src) do
-    case (meet(src, r_t_cons())) do
+    case meet(src, r_t_cons()) do
       r_t_cons(type: type) ->
         type
+
       :none ->
         :none
     end
   end
 
   defp erlang_tl_type(src) do
-    case (meet(src, r_t_cons())) do
+    case meet(src, r_t_cons()) do
       r_t_cons(terminator: term) = cons ->
         join(cons, term)
+
       :none ->
         :none
     end
   end
 
   defp beam_bounds_type(op, type, [lHS, rHS]) do
-    case (get_range(lHS, rHS, type)) do
+    case get_range(lHS, rHS, type) do
       {_, :none, _} ->
         :none
+
       {_, _, :none} ->
         :none
+
       {:float, _R1, _R2} ->
         r_t_float()
+
       {:integer, r1, r2} ->
         r_t_integer(elements: :beam_bounds.bounds(op, r1, r2))
+
       {:number, r1, r2} ->
         r_t_number(elements: :beam_bounds.bounds(op, r1, r2))
     end
@@ -1425,22 +1659,23 @@ defmodule :m_beam_call_types do
   end
 
   defp erlang_map_get_type(key, map) do
-    case (meet(map, r_t_map())) do
+    case meet(map, r_t_map()) do
       r_t_map(super_key: sKey, super_value: sValue) ->
-        case (meet(sKey, key)) do
+        case meet(sKey, key) do
           :none ->
             :none
+
           _ ->
             sValue
         end
+
       :none ->
         :none
     end
   end
 
   defp lists_fold_type(fun, init, list) do
-    lists_fold_type_1(meet(fun, r_t_fun(arity: 2)), init,
-                        meet(list, r_t_list()))
+    lists_fold_type_1(meet(fun, r_t_fun(arity: 2)), init, meet(list, r_t_list()))
   end
 
   defp lists_fold_type_1(_Fun, init, nil) do
@@ -1460,9 +1695,10 @@ defmodule :m_beam_call_types do
   end
 
   defp lists_map_type(fun, types) do
-    case (meet(fun, r_t_fun(arity: 1))) do
+    case meet(fun, r_t_fun(arity: 1)) do
       r_t_fun(type: type) ->
         lists_map_type_1(types, type)
+
       :none ->
         :none
     end
@@ -1489,17 +1725,18 @@ defmodule :m_beam_call_types do
   end
 
   defp lists_mapfold_type(fun, init, list) do
-    case ({meet(fun, r_t_fun(type: r_t_tuple(size: 2))),
-             meet(list, r_t_list())}) do
+    case {meet(fun, r_t_fun(type: r_t_tuple(size: 2))), meet(list, r_t_list())} do
       {_, nil} ->
         make_two_tuple(nil, init)
+
       {r_t_fun(type: r_t_tuple(elements: es)), listType} ->
         elementType = :beam_types.get_tuple_element(1, es)
         accType = :beam_types.get_tuple_element(2, es)
-        lists_mapfold_type_1(listType, elementType, init,
-                               accType)
+        lists_mapfold_type_1(listType, elementType, init, accType)
+
       {r_t_fun(type: :none), r_t_list()} ->
         make_two_tuple(nil, init)
+
       _ ->
         :none
     end
@@ -1515,13 +1752,15 @@ defmodule :m_beam_call_types do
   end
 
   defp lists_unzip_type(size, list) do
-    case (meet(list,
-                 r_t_list(type: r_t_tuple(exact: true, size: size)))) do
+    case meet(
+           list,
+           r_t_list(type: r_t_tuple(exact: true, size: size))
+         ) do
       :none ->
         :none
+
       listType ->
-        es = lut_make_elements(lut_list_types(size, listType),
-                                 1, %{})
+        es = lut_make_elements(lut_list_types(size, listType), 1, %{})
         r_t_tuple(size: size, exact: true, elements: es)
     end
   end
@@ -1538,6 +1777,7 @@ defmodule :m_beam_call_types do
   defp lut_list_types(size, r_t_cons(type: tuple)) do
     r_t_tuple(size: ^size, elements: es) = normalize(tuple)
     types = lut_element_types(1, size, es)
+
     for t <- types do
       proper_cons(t)
     end
@@ -1546,6 +1786,7 @@ defmodule :m_beam_call_types do
   defp lut_list_types(size, r_t_list(type: tuple)) do
     r_t_tuple(size: ^size, elements: es) = normalize(tuple)
     types = lut_element_types(1, size, es)
+
     for t <- types do
       proper_list(t)
     end
@@ -1565,9 +1806,11 @@ defmodule :m_beam_call_types do
   end
 
   defp lists_zip_types(types0) do
-    types = (for t <- types0 do
-               meet(t, r_t_list(terminator: nil))
-             end)
+    types =
+      for t <- types0 do
+        meet(t, r_t_list(terminator: nil))
+      end
+
     lists_zip_types_1(types, &proper_list/1, %{}, 1)
   end
 
@@ -1597,15 +1840,20 @@ defmodule :m_beam_call_types do
   end
 
   defp lists_zipwith_types(fun, types0) do
-    elementType = (case (meet(fun, r_t_fun())) do
-                     r_t_fun(type: t) ->
-                       t
-                     :none ->
-                       :none
-                   end)
-    types = (for t <- types0 do
-               meet(t, r_t_list(terminator: nil))
-             end)
+    elementType =
+      case meet(fun, r_t_fun()) do
+        r_t_fun(type: t) ->
+          t
+
+        :none ->
+          :none
+      end
+
+    types =
+      for t <- types0 do
+        meet(t, r_t_list(terminator: nil))
+      end
+
     lists_zipwith_type_1(types, elementType)
   end
 
@@ -1642,29 +1890,35 @@ defmodule :m_beam_call_types do
   end
 
   defp maps_remove_type(key, map0) do
-    case (meet(map0, r_t_map())) do
+    case meet(map0, r_t_map()) do
       r_t_map(super_key: sKey0) = map ->
-        case (:beam_types.is_singleton_type(key)) do
+        case :beam_types.is_singleton_type(key) do
           true ->
             sKey = :beam_types.subtract(sKey0, key)
             r_t_map(map, super_key: sKey)
+
           false ->
             map
         end
+
       :none ->
         :none
     end
   end
 
   defp sub_unsafe_type_test(argType, required) do
-    retType = (case (meet(argType, required)) do
-                 ^argType ->
-                   r_t_atom(elements: [true])
-                 :none ->
-                   r_t_atom(elements: [false])
-                 _ ->
-                   :beam_types.make_boolean()
-               end)
+    retType =
+      case meet(argType, required) do
+        ^argType ->
+          r_t_atom(elements: [true])
+
+        :none ->
+          r_t_atom(elements: [false])
+
+        _ ->
+          :beam_types.make_boolean()
+      end
+
     sub_unsafe(retType, [:any])
   end
 
@@ -1693,18 +1947,22 @@ defmodule :m_beam_call_types do
   end
 
   defp copy_list(list0, length, proper) do
-    case ({meet(list0, r_t_list()), length, proper}) do
-      {r_t_cons(type: type, terminator: term), :new_length,
-         :maybe_improper} ->
+    case {meet(list0, r_t_list()), length, proper} do
+      {r_t_cons(type: type, terminator: term), :new_length, :maybe_improper} ->
         r_t_list(type: type, terminator: term)
+
       {r_t_cons(type: type), :new_length, :proper} ->
         r_t_list(type: type, terminator: nil)
+
       {r_t_cons() = t, _, :proper} ->
         r_t_cons(t, terminator: nil)
+
       {r_t_list() = t, _, :proper} ->
         r_t_list(t, terminator: nil)
+
       {:none, _, _} ->
         :none
+
       {list, _, _} ->
         list
     end
@@ -1727,5 +1985,4 @@ defmodule :m_beam_call_types do
   defp meet(a, b) do
     :beam_types.meet(a, b)
   end
-
 end

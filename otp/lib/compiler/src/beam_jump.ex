@@ -1,30 +1,48 @@
 defmodule :m_beam_jump do
   use Bitwise
-  import :lists, only: [foldl: 3, keymember: 3,
-                          mapfoldl: 3, reverse: 1, reverse: 2]
+  import :lists, only: [foldl: 3, keymember: 3, mapfoldl: 3, reverse: 1, reverse: 2]
   require Record
   Record.defrecord(:r_t_atom, :t_atom, elements: :any)
-  Record.defrecord(:r_t_bitstring, :t_bitstring, size_unit: 1,
-                                       appendable: false)
+
+  Record.defrecord(:r_t_bitstring, :t_bitstring,
+    size_unit: 1,
+    appendable: false
+  )
+
   Record.defrecord(:r_t_bs_context, :t_bs_context, tail_unit: 1)
   Record.defrecord(:r_t_bs_matchable, :t_bs_matchable, tail_unit: 1)
   Record.defrecord(:r_t_float, :t_float, elements: :any)
-  Record.defrecord(:r_t_fun, :t_fun, arity: :any, target: :any,
-                                 type: :any)
+  Record.defrecord(:r_t_fun, :t_fun, arity: :any, target: :any, type: :any)
   Record.defrecord(:r_t_integer, :t_integer, elements: :any)
   Record.defrecord(:r_t_number, :t_number, elements: :any)
-  Record.defrecord(:r_t_map, :t_map, super_key: :any,
-                                 super_value: :any)
-  Record.defrecord(:r_t_cons, :t_cons, type: :any,
-                                  terminator: :any)
-  Record.defrecord(:r_t_list, :t_list, type: :any,
-                                  terminator: :any)
-  Record.defrecord(:r_t_tuple, :t_tuple, size: 0, exact: false,
-                                   elements: %{})
-  Record.defrecord(:r_t_union, :t_union, atom: :none, list: :none,
-                                   number: :none, tuple_set: :none,
-                                   other: :none)
+
+  Record.defrecord(:r_t_map, :t_map,
+    super_key: :any,
+    super_value: :any
+  )
+
+  Record.defrecord(:r_t_cons, :t_cons,
+    type: :any,
+    terminator: :any
+  )
+
+  Record.defrecord(:r_t_list, :t_list,
+    type: :any,
+    terminator: :any
+  )
+
+  Record.defrecord(:r_t_tuple, :t_tuple, size: 0, exact: false, elements: %{})
+
+  Record.defrecord(:r_t_union, :t_union,
+    atom: :none,
+    list: :none,
+    number: :none,
+    tuple_set: :none,
+    other: :none
+  )
+
   Record.defrecord(:r_tr, :tr, r: :undefined, t: :undefined)
+
   def module({mod, exp, attr, fs0, lc0}, _Opt) do
     {fs, lc} = mapfoldl(&function/2, lc0, fs0)
     {:ok, {mod, exp, attr, fs, lc}}
@@ -42,7 +60,7 @@ defmodule :m_beam_jump do
       {{:function, name, arity, cLabel, asm}, lc}
     catch
       class, error ->
-        :io.fwrite('Function: ~w/~w\n', [name, arity])
+        :io.fwrite(~c"Function: ~w/~w\n", [name, arity])
         :erlang.raise(class, error, __STACKTRACE__)
     end
   end
@@ -51,18 +69,24 @@ defmodule :m_beam_jump do
     eliminate_moves(is, %{}, [])
   end
 
-  defp eliminate_moves([{:select, :select_val, reg, {:f, fail},
-              list} = i |
-               is],
-            d0, acc) do
+  defp eliminate_moves(
+         [
+           {:select, :select_val, reg, {:f, fail}, list} = i
+           | is
+         ],
+         d0,
+         acc
+       ) do
     d1 = add_unsafe_label(fail, d0)
     d = update_value_dict(list, reg, d1)
     eliminate_moves(is, d, [i | acc])
   end
 
-  defp eliminate_moves([{:test, :is_eq_exact, _, [reg0, val]} = i,
-               {:block, blkIs0} | is],
-            d0, acc) do
+  defp eliminate_moves(
+         [{:test, :is_eq_exact, _, [reg0, val]} = i, {:block, blkIs0} | is],
+         d0,
+         acc
+       ) do
     d = update_unsafe_labels(i, d0)
     reg = unpack_typed_reg(reg0)
     regVal = {reg, val}
@@ -70,26 +94,33 @@ defmodule :m_beam_jump do
     eliminate_moves([{:block, blkIs} | is], d, [i | acc])
   end
 
-  defp eliminate_moves([{:test, :is_nonempty_list, fail, [reg]} = i |
-               is],
-            d0, acc) do
-    case (is_proper_list(reg, acc)) do
+  defp eliminate_moves(
+         [
+           {:test, :is_nonempty_list, fail, [reg]} = i
+           | is
+         ],
+         d0,
+         acc
+       ) do
+    case is_proper_list(reg, acc) do
       true ->
         d = update_value_dict([nil, fail], reg, d0)
         eliminate_moves(is, d, [i | acc])
+
       false ->
         d = update_unsafe_labels(i, d0)
         eliminate_moves(is, d, [i | acc])
     end
   end
 
-  defp eliminate_moves([{:label, lbl}, {:block, blkIs0} = blk | is], d,
-            acc0) do
+  defp eliminate_moves([{:label, lbl}, {:block, blkIs0} = blk | is], d, acc0) do
     acc = [{:label, lbl} | acc0]
-    case ({no_fallthrough(acc0), d}) do
+
+    case {no_fallthrough(acc0), d} do
       {true, %{^lbl => {_, _} = regVal}} ->
         blkIs = eliminate_moves_blk(blkIs0, regVal)
         eliminate_moves([{:block, blkIs} | is], d, acc)
+
       {_, _} ->
         eliminate_moves([blk | is], d, acc)
     end
@@ -116,16 +147,20 @@ defmodule :m_beam_jump do
     reverse(acc)
   end
 
-  defp eliminate_moves_call([{:"%", {:var_info, {:x, 0}, info}} = anno,
-               {:block, blkIs0} = blk | is],
-            d, acc0) do
+  defp eliminate_moves_call(
+         [{:%, {:var_info, {:x, 0}, info}} = anno, {:block, blkIs0} = blk | is],
+         d,
+         acc0
+       ) do
     acc = [anno | acc0]
     retType = :proplists.get_value(:type, info, :none)
-    case (:beam_types.get_singleton_value(retType)) do
+
+    case :beam_types.get_singleton_value(retType) do
       {:ok, value} ->
         regVal = {{:x, 0}, value_to_literal(value)}
         blkIs = eliminate_moves_blk(blkIs0, regVal)
         eliminate_moves([{:block, blkIs} | is], d, acc)
+
       :error ->
         eliminate_moves(is, d, [blk | acc])
     end
@@ -135,23 +170,31 @@ defmodule :m_beam_jump do
     eliminate_moves(is, d, acc)
   end
 
-  defp eliminate_moves_blk([{:set, [dst], [_], :move} | _] = is,
-            {_, dst}) do
+  defp eliminate_moves_blk(
+         [{:set, [dst], [_], :move} | _] = is,
+         {_, dst}
+       ) do
     is
   end
 
-  defp eliminate_moves_blk([{:set, [dst], [lit], :move} | is],
-            {dst, lit}) do
+  defp eliminate_moves_blk(
+         [{:set, [dst], [lit], :move} | is],
+         {dst, lit}
+       ) do
     is
   end
 
-  defp eliminate_moves_blk([{:set, [dst], [_], :move} | _] = is,
-            {dst, _}) do
+  defp eliminate_moves_blk(
+         [{:set, [dst], [_], :move} | _] = is,
+         {dst, _}
+       ) do
     is
   end
 
-  defp eliminate_moves_blk([{:set, [_], [_], :move} = i | is],
-            {_, _} = regVal) do
+  defp eliminate_moves_blk(
+         [{:set, [_], [_], :move} = i | is],
+         {_, _} = regVal
+       ) do
     [i | eliminate_moves_blk(is, regVal)]
   end
 
@@ -159,7 +202,7 @@ defmodule :m_beam_jump do
     is
   end
 
-  defp no_fallthrough([{:"%", _} | is]) do
+  defp no_fallthrough([{:%, _} | is]) do
     no_fallthrough(is)
   end
 
@@ -167,16 +210,17 @@ defmodule :m_beam_jump do
     is_unreachable_after(i)
   end
 
-  defp is_proper_list(reg, [{:"%", {:var_info, reg, info}} | _]) do
-    case (:proplists.get_value(:type, info)) do
+  defp is_proper_list(reg, [{:%, {:var_info, reg, info}} | _]) do
+    case :proplists.get_value(:type, info) do
       r_t_list(terminator: nil) ->
         true
+
       _ ->
         false
     end
   end
 
-  defp is_proper_list(reg, [{:"%", {:var_info, _, _}} | is]) do
+  defp is_proper_list(reg, [{:%, {:var_info, _, _}} | is]) do
     is_proper_list(reg, is)
   end
 
@@ -206,16 +250,22 @@ defmodule :m_beam_jump do
 
   defp update_value_dict([lit, {:f, lbl} | t], reg0, d0) do
     reg = unpack_typed_reg(reg0)
-    d = (case (d0) do
-           %{^lbl => :unsafe} ->
-             d0
-           %{^lbl => {^reg, ^lit}} ->
-             d0
-           %{^lbl => _} ->
-             %{d0 | lbl => :unsafe}
-           %{} ->
-             Map.put(d0, lbl, {reg, lit})
-         end)
+
+    d =
+      case d0 do
+        %{^lbl => :unsafe} ->
+          d0
+
+        %{^lbl => {^reg, ^lit}} ->
+          d0
+
+        %{^lbl => _} ->
+          %{d0 | lbl => :unsafe}
+
+        %{} ->
+          Map.put(d0, lbl, {reg, lit})
+      end
+
     update_value_dict(t, reg, d)
   end
 
@@ -249,21 +299,28 @@ defmodule :m_beam_jump do
   end
 
   defp insert_labels([{:test, op, _, _} = i | is], lc, acc) do
-    useful = (case (op) do
-                :is_lt ->
-                  true
-                :is_ge ->
-                  true
-                :is_eq_exact ->
-                  true
-                :is_ne_exact ->
-                  true
-                _ ->
-                  false
-              end)
-    case (useful) do
+    useful =
+      case op do
+        :is_lt ->
+          true
+
+        :is_ge ->
+          true
+
+        :is_eq_exact ->
+          true
+
+        :is_ne_exact ->
+          true
+
+        _ ->
+          false
+      end
+
+    case useful do
       false ->
         insert_labels(is, lc, [i | acc])
+
       true ->
         insert_labels(is, lc + 1, [{:label, lc}, i | acc])
     end
@@ -279,10 +336,15 @@ defmodule :m_beam_jump do
 
   defp share(is0) do
     is1 = eliminate_fallthroughs(is0, [])
-    is2 = find_fixpoint(fn is ->
-                             share_1(is)
-                        end,
-                          is1)
+
+    is2 =
+      find_fixpoint(
+        fn is ->
+          share_1(is)
+        end,
+        is1
+      )
+
     reverse(is2)
   end
 
@@ -291,69 +353,81 @@ defmodule :m_beam_jump do
     share_1(is, safe, %{}, %{}, [], [])
   end
 
-  defp share_1([{:label, l} = lbl | is], safe, dict0, lbls0,
-            [_ | _] = seq0, acc) do
+  defp share_1([{:label, l} = lbl | is], safe, dict0, lbls0, [_ | _] = seq0, acc) do
     seq = maybe_add_scope(seq0, l, safe)
-    case (dict0) do
+
+    case dict0 do
       %{^seq => label} ->
         lbls = Map.put(lbls0, l, label)
-        share_1(is, safe, dict0, lbls, [],
-                  [[lbl, {:jump, {:f, label}}] | acc])
+        share_1(is, safe, dict0, lbls, [], [[lbl, {:jump, {:f, label}}] | acc])
+
       %{} ->
-        case ((map_size(safe) === 0 or is_shareable(seq)) and unambigous_deallocation(seq)) do
+        case (map_size(safe) === 0 or is_shareable(seq)) and unambigous_deallocation(seq) do
           true ->
             dict = Map.put(dict0, seq, l)
             share_1(is, safe, dict, lbls0, [], [[lbl | seq] | acc])
+
           false ->
             share_1(is, safe, dict0, lbls0, [], [[lbl | seq] | acc])
         end
     end
   end
 
-  defp share_1([{:func_info, _, _, _} | _] = is0, _Safe, _,
-            lbls, [], acc0) do
-    f = (case (lbls === %{}) do
-           true ->
-             &:lists.reverse/2
-           false ->
-             fn is, acc ->
-                  :beam_utils.replace_labels(is, acc, lbls,
-                                               fn old ->
-                                                    old
-                                               end)
-             end
-         end)
+  defp share_1([{:func_info, _, _, _} | _] = is0, _Safe, _, lbls, [], acc0) do
+    f =
+      case lbls === %{} do
+        true ->
+          &:lists.reverse/2
+
+        false ->
+          fn is, acc ->
+            :beam_utils.replace_labels(is, acc, lbls, fn old ->
+              old
+            end)
+          end
+      end
+
     foldl(f, is0, acc0)
   end
 
-  defp share_1([{:catch, _, _} = i | is], safe, dict, _Lbls0,
-            seq, acc) do
+  defp share_1([{:catch, _, _} = i | is], safe, dict, _Lbls0, seq, acc) do
     share_1(is, safe, dict, %{}, [i | seq], acc)
   end
 
-  defp share_1([{:try, _, _} = i | is], safe, dict, _Lbls, seq,
-            acc) do
+  defp share_1([{:try, _, _} = i | is], safe, dict, _Lbls, seq, acc) do
     share_1(is, safe, dict, %{}, [i | seq], acc)
   end
 
-  defp share_1([{:jump, {:f, to}} = i, {:label, from} = lbl |
-                                      is],
-            safe, dict0, lbls0, _Seq, acc) do
+  defp share_1(
+         [
+           {:jump, {:f, to}} = i,
+           {:label, from} = lbl
+           | is
+         ],
+         safe,
+         dict0,
+         lbls0,
+         _Seq,
+         acc
+       ) do
     lbls = Map.put(lbls0, from, to)
     share_1(is, safe, dict0, lbls, [], [[lbl, i] | acc])
   end
 
   defp share_1([i | is], safe, dict, lbls, seq, acc) do
-    case (is_unreachable_after(i)) do
+    case is_unreachable_after(i) do
       false ->
         share_1(is, safe, dict, lbls, [i | seq], acc)
+
       true ->
         share_1(is, safe, dict, lbls, [i], acc)
     end
   end
 
-  defp unambigous_deallocation([{:bs_init, _, :bs_init_writable, _, _, _} |
-               is]) do
+  defp unambigous_deallocation([
+         {:bs_init, _, :bs_init_writable, _, _, _}
+         | is
+       ]) do
     find_deallocation(is)
   end
 
@@ -377,8 +451,10 @@ defmodule :m_beam_jump do
     find_deallocation(is)
   end
 
-  defp find_deallocation([{:bs_init, _, :bs_init_writable, _, _, _} |
-               is]) do
+  defp find_deallocation([
+         {:bs_init, _, :bs_init_writable, _, _, _}
+         | is
+       ]) do
     find_deallocation(is)
   end
 
@@ -411,19 +487,26 @@ defmodule :m_beam_jump do
   end
 
   defp maybe_add_scope(seq, l, safe) do
-    case (safe) do
+    case safe do
       %{^l => scope} ->
         add_scope(seq, scope)
+
       %{} ->
         seq
     end
   end
 
   defp add_scope([{:line, loc} = i | is], scope) do
-    case (keymember(:scope, 1, loc)) do
+    case keymember(:scope, 1, loc) do
       false ->
-        [{:line, [{:scope, scope} | loc]} | add_scope(is,
-                                                        scope)]
+        [
+          {:line, [{:scope, scope} | loc]}
+          | add_scope(
+              is,
+              scope
+            )
+        ]
+
       true ->
         [i | add_scope(is, scope)]
     end
@@ -515,38 +598,50 @@ defmodule :m_beam_jump do
 
   defp classify_labels([i | is], scope, safe0) do
     labels = instr_labels(i)
-    safe = foldl(fn l, a ->
-                      classify_add_label(l, scope, a)
-                 end,
-                   safe0, labels)
+
+    safe =
+      foldl(
+        fn l, a ->
+          classify_add_label(l, scope, a)
+        end,
+        safe0,
+        labels
+      )
+
     classify_labels(is, scope, safe)
   end
 
   defp classify_labels([], scope, safe) do
-    case (scope) do
+    case scope do
       0 ->
         %{}
+
       _ ->
         safe
     end
   end
 
   defp classify_add_label(l, scope, map) do
-    case (map) do
+    case map do
       %{^l => [^scope]} ->
         map
+
       %{^l => [_ | _] = set} ->
         Map.put(map, l, :ordsets.add_element(scope, set))
+
       %{} ->
         Map.put(map, l, [scope])
     end
   end
 
   defp eliminate_fallthroughs([{:label, l} = lbl | is], [i | _] = acc) do
-    case (is_unreachable_after(i)) do
+    case is_unreachable_after(i) do
       false ->
-        eliminate_fallthroughs(is,
-                                 [lbl, {:jump, {:f, l}} | acc])
+        eliminate_fallthroughs(
+          is,
+          [lbl, {:jump, {:f, l}} | acc]
+        )
+
       true ->
         eliminate_fallthroughs(is, [lbl | acc])
     end
@@ -565,13 +660,15 @@ defmodule :m_beam_jump do
   end
 
   defp move_1([i | is], ends, acc0) do
-    case (is_exit_instruction(i)) do
+    case is_exit_instruction(i) do
       false ->
         move_1(is, ends, [i | acc0])
+
       true ->
-        case (extract_seq(acc0, [i])) do
+        case extract_seq(acc0, [i]) do
           :no ->
             move_1(is, ends, [i | acc0])
+
           {:yes, end__, acc} ->
             move_1(is, [end__ | ends], acc)
         end
@@ -618,110 +715,135 @@ defmodule :m_beam_jump do
     :no
   end
 
-  Record.defrecord(:r_st, :st, entry: :undefined,
-                              replace: :undefined, labels: :undefined)
+  Record.defrecord(:r_st, :st, entry: :undefined, replace: :undefined, labels: :undefined)
+
   defp opt(is0, cLabel) do
-    find_fixpoint(fn is ->
-                       lbls = initial_labels(is)
-                       st = r_st(entry: cLabel, replace: %{}, labels: lbls)
-                       opt(is, [], st)
-                  end,
-                    is0)
+    find_fixpoint(
+      fn is ->
+        lbls = initial_labels(is)
+        st = r_st(entry: cLabel, replace: %{}, labels: lbls)
+        opt(is, [], st)
+      end,
+      is0
+    )
   end
 
   defp find_fixpoint(optFun, is0) do
-    case (optFun.(is0)) do
+    case optFun.(is0) do
       ^is0 ->
         is0
+
       is ->
         find_fixpoint(optFun, is)
     end
   end
 
-  defp opt([{:test, :is_eq_exact, {:f, l}, _} | [{:jump,
-                                                   {:f, l}} |
-                                                    _] = is],
-            acc, st) do
+  defp opt(
+         [
+           {:test, :is_eq_exact, {:f, l}, _}
+           | [
+               {:jump, {:f, l}}
+               | _
+             ] = is
+         ],
+         acc,
+         st
+       ) do
     opt(is, acc, st)
   end
 
-  defp opt([{:test, test0, {:f, l} = lbl, ops} = i0 |
-               [{:jump, to} | is] = is0],
-            acc, st) do
-    case (is_label_defined(is, l)) do
+  defp opt(
+         [
+           {:test, test0, {:f, l} = lbl, ops} = i0
+           | [{:jump, to} | is] = is0
+         ],
+         acc,
+         st
+       ) do
+    case is_label_defined(is, l) do
       false ->
         i = is_lt_to_is_ge(i0)
         opt(is0, [i | acc], label_used(lbl, st))
+
       true ->
-        case (invert_test(test0)) do
+        case invert_test(test0) do
           :not_possible ->
             i = is_lt_to_is_ge(i0)
             opt(is0, [i | acc], label_used(lbl, st))
+
           test ->
             opt([{:test, test, to, ops} | is], acc, st)
         end
     end
   end
 
-  defp opt([{:test, _, {:f, _} = lbl, _} = i0 | is], acc,
-            st) do
+  defp opt([{:test, _, {:f, _} = lbl, _} = i0 | is], acc, st) do
     i = is_lt_to_is_ge(i0)
     opt(is, [i | acc], label_used(lbl, st))
   end
 
-  defp opt([{:test, _, {:f, _} = lbl, _, _, _} = i | is],
-            acc, st) do
+  defp opt([{:test, _, {:f, _} = lbl, _, _, _} = i | is], acc, st) do
     opt(is, [i | acc], label_used(lbl, st))
   end
 
-  defp opt([{:select, :select_val, r, f, vls0} | is], acc,
-            st) do
-    case (prune_redundant_values(vls0, f)) do
+  defp opt([{:select, :select_val, r, f, vls0} | is], acc, st) do
+    case prune_redundant_values(vls0, f) do
       [] ->
         i = {:jump, f}
         opt([i | is], acc, st)
+
       [{:atom, _} = value, lbl] ->
-        is1 = [{:test, :is_eq_exact, f, [r, value]}, {:jump,
-                                                        lbl} |
-                                                         is]
+        is1 = [
+          {:test, :is_eq_exact, f, [r, value]},
+          {:jump, lbl}
+          | is
+        ]
+
         opt(is1, acc, st)
+
       [{:integer, _} = value, lbl] ->
-        is1 = [{:test, :is_eq_exact, f, [r, value]}, {:jump,
-                                                        lbl} |
-                                                         is]
+        is1 = [
+          {:test, :is_eq_exact, f, [r, value]},
+          {:jump, lbl}
+          | is
+        ]
+
         opt(is1, acc, st)
-      [{:atom, b1}, lbl, {:atom, b2}, lbl] when b1 === not b2
-                                                ->
+
+      [{:atom, b1}, lbl, {:atom, b2}, lbl] when b1 === not b2 ->
         is1 = [{:test, :is_boolean, f, [r]}, {:jump, lbl} | is]
         opt(is1, acc, st)
+
       [_ | _] = vls ->
         i = {:select, :select_val, r, f, vls}
-        skip_unreachable(is, [i | acc],
-                           label_used([f | vls], st))
+        skip_unreachable(is, [i | acc], label_used([f | vls], st))
     end
   end
 
-  defp opt([{:select, _, _R, fail, vls} = i | is], acc,
-            st) do
-    skip_unreachable(is, [i | acc],
-                       label_used([fail | vls], st))
+  defp opt([{:select, _, _R, fail, vls} = i | is], acc, st) do
+    skip_unreachable(is, [i | acc], label_used([fail | vls], st))
   end
 
-  defp opt([{:label, from} = i, {:label, to} | is], acc,
-            r_st(replace: replace) = st) do
-    opt([i | is], acc,
-          r_st(st, replace: Map.put(replace, to, from)))
+  defp opt([{:label, from} = i, {:label, to} | is], acc, r_st(replace: replace) = st) do
+    opt([i | is], acc, r_st(st, replace: Map.put(replace, to, from)))
   end
 
-  defp opt([{:jump, {:f, _} = x} | [{:label, _}, {:jump,
-                                                   x} |
-                                                    _] = is],
-            acc, st) do
+  defp opt(
+         [
+           {:jump, {:f, _} = x}
+           | [
+               {:label, _},
+               {:jump, x}
+               | _
+             ] = is
+         ],
+         acc,
+         st
+       ) do
     opt(is, acc, st)
   end
 
-  defp opt([{:jump, {:f, lbl}} | [{:label, lbl} | _] = is],
-            acc, st) do
+  defp opt([{:jump, {:f, lbl}} | [{:label, lbl} | _] = is], acc, st) do
     opt(is, acc, st)
   end
 
@@ -745,35 +867,38 @@ defmodule :m_beam_jump do
   defp opt([i | is], acc, r_st(labels: used0) = st0) do
     used = ulbl(i, used0)
     st = r_st(st0, labels: used)
-    case (is_unreachable_after(i)) do
+
+    case is_unreachable_after(i) do
       true ->
         skip_unreachable(is, [i | acc], st)
+
       false ->
         opt(is, [i | acc], st)
     end
   end
 
   defp opt([], acc, r_st(replace: replace0))
-      when replace0 !== %{} do
-    replace = normalize_replace(:maps.to_list(replace0),
-                                  replace0, [])
-    :beam_utils.replace_labels(acc, [], replace,
-                                 fn old ->
-                                      old
-                                 end)
+       when replace0 !== %{} do
+    replace = normalize_replace(:maps.to_list(replace0), replace0, [])
+
+    :beam_utils.replace_labels(acc, [], replace, fn old ->
+      old
+    end)
   end
 
   defp opt([], acc, r_st(replace: replace))
-      when replace === %{} do
+       when replace === %{} do
     reverse(acc)
   end
 
   defp is_lt_to_is_ge({:test, :is_lt, lbl, args} = i) do
-    case (args) do
+    case args do
       [{:integer, n}, {:tr, _, r_t_integer()} = src] ->
         {:test, :is_ge, lbl, [src, {:integer, n + 1}]}
+
       [{:tr, _, r_t_integer()} = src, {:integer, n}] ->
         {:test, :is_ge, lbl, [{:integer, n - 1}, src]}
+
       [_, _] ->
         i
     end
@@ -796,9 +921,10 @@ defmodule :m_beam_jump do
   end
 
   defp normalize_replace([{from, to0} | rest], replace, acc) do
-    case (replace) do
+    case replace do
       %{^to0 => to} ->
         normalize_replace([{from, to} | rest], replace, acc)
+
       _ ->
         normalize_replace(rest, replace, [{from, to0} | acc])
     end
@@ -808,19 +934,16 @@ defmodule :m_beam_jump do
     :maps.from_list(acc)
   end
 
-  defp collect_labels(is, label,
-            r_st(entry: entry, replace: replace) = st) do
+  defp collect_labels(is, label, r_st(entry: entry, replace: replace) = st) do
     collect_labels_1(is, label, entry, replace, st)
   end
 
-  defp collect_labels_1([{:label, entry} | _] = is, _Label, entry, acc,
-            st) do
+  defp collect_labels_1([{:label, entry} | _] = is, _Label, entry, acc, st) do
     {is, r_st(st, replace: acc)}
   end
 
   defp collect_labels_1([{:label, l} | is], label, entry, acc, st) do
-    collect_labels_1(is, label, entry,
-                       Map.put(acc, l, label), st)
+    collect_labels_1(is, label, entry, Map.put(acc, l, label), st)
   end
 
   defp collect_labels_1(is, _Label, _Entry, acc, st) do
@@ -867,15 +990,15 @@ defmodule :m_beam_jump do
     :not_possible
   end
 
-  defp skip_unreachable([{:label, l} | _Is] = is0,
-            [{:jump, {:f, l}} | acc], st) do
+  defp skip_unreachable([{:label, l} | _Is] = is0, [{:jump, {:f, l}} | acc], st) do
     opt(is0, acc, st)
   end
 
   defp skip_unreachable([{:label, l} | is] = is0, acc, st) do
-    case (is_label_used(l, st)) do
+    case is_label_used(l, st) do
       true ->
         opt(is0, acc, st)
+
       false ->
         skip_unreachable(is, acc, st)
     end
@@ -967,17 +1090,20 @@ defmodule :m_beam_jump do
     rem_unused(is, used, [])
   end
 
-  defp rem_unused([{:label, lbl} = i | is0], used,
-            [prev | _] = acc) do
-    case (:sets.is_element(lbl, used)) do
+  defp rem_unused([{:label, lbl} = i | is0], used, [prev | _] = acc) do
+    case :sets.is_element(lbl, used) do
       false ->
-        is = (case (is_unreachable_after(prev)) do
-                true ->
-                  drop_upto_label(is0)
-                false ->
-                  is0
-              end)
+        is =
+          case is_unreachable_after(prev) do
+            true ->
+              drop_upto_label(is0)
+
+            false ->
+              is0
+          end
+
         rem_unused(is, used, acc)
+
       true ->
         rem_unused(is0, used, [i | acc])
     end
@@ -1003,8 +1129,10 @@ defmodule :m_beam_jump do
     initial_labels(is, [lbl | acc])
   end
 
-  defp initial_labels([{:func_info, _, _, _}, {:label, lbl} | _],
-            acc) do
+  defp initial_labels(
+         [{:func_info, _, _, _}, {:label, lbl} | _],
+         acc
+       ) do
     :sets.from_list([lbl | acc], [{:version, 2}])
   end
 
@@ -1029,9 +1157,15 @@ defmodule :m_beam_jump do
     unshare_collect_short(is, Map.put(map, l, [:return]))
   end
 
-  defp unshare_collect_short([{:label, l}, {:deallocate, _} = d, :return |
-                                                  is],
-            map) do
+  defp unshare_collect_short(
+         [
+           {:label, l},
+           {:deallocate, _} = d,
+           :return
+           | is
+         ],
+         map
+       ) do
     unshare_collect_short(is, Map.put(map, l, [d, :return]))
   end
 
@@ -1044,9 +1178,10 @@ defmodule :m_beam_jump do
   end
 
   defp unshare_short([{:jump, {:f, f}} = i | is], map) do
-    case (map) do
+    case map do
       %{^f => seq} ->
         seq ++ unshare_short(is, map)
+
       %{} ->
         [i | unshare_short(is, map)]
     end
@@ -1061,11 +1196,13 @@ defmodule :m_beam_jump do
   end
 
   defp ulbl(i, used) do
-    case (instr_labels(i)) do
+    case instr_labels(i) do
       [] ->
         used
+
       [lbl] ->
         :sets.add_element(lbl, used)
+
       [_ | _] = l ->
         ulbl_list(l, used)
     end
@@ -1139,8 +1276,7 @@ defmodule :m_beam_jump do
     do_instr_labels(lbl)
   end
 
-  defp instr_labels({:put_map, lbl, _Op, _Src, _Dst, _Live,
-             _List}) do
+  defp instr_labels({:put_map, lbl, _Op, _Src, _Dst, _Live, _List}) do
     do_instr_labels(lbl)
   end
 
@@ -1149,9 +1285,10 @@ defmodule :m_beam_jump do
   end
 
   defp instr_labels({:bs_start_match4, fail, _, _, _}) do
-    case (fail) do
+    case fail do
       {:f, l} ->
         [l]
+
       {:atom, _} ->
         []
     end
@@ -1184,5 +1321,4 @@ defmodule :m_beam_jump do
   defp do_instr_labels_list([], acc) do
     acc
   end
-
 end

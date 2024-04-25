@@ -1,26 +1,30 @@
 defmodule :m_asn1rtt_jer do
   use Bitwise
+
   def encode_jer(module, type, val) do
     info = module.typeinfo(type)
     encode_jer(info, val)
   end
 
-  defp encode_jer({:sequence_tab, simple, sname, arity,
-             compInfos},
-            value)
-      when tuple_size(value) == arity + 1 do
+  defp encode_jer(
+         {:sequence_tab, simple, sname, arity, compInfos},
+         value
+       )
+       when tuple_size(value) == arity + 1 do
     [^sname | clist] = :erlang.tuple_to_list(value)
     encode_jer_component_tab(compInfos, clist, simple, %{})
   end
 
-  defp encode_jer({:sequence_map, _Sname, _Arity, compInfos},
-            value)
-      when is_map(value) do
+  defp encode_jer(
+         {:sequence_map, _Sname, _Arity, compInfos},
+         value
+       )
+       when is_map(value) do
     encode_jer_component_map(compInfos, value, [])
   end
 
   defp encode_jer({:sequence, sname, arity, compInfos}, value)
-      when tuple_size(value) == arity + 1 do
+       when tuple_size(value) == arity + 1 do
     [^sname | clist] = :erlang.tuple_to_list(value)
     encode_jer_component(compInfos, clist, [])
   end
@@ -46,33 +50,36 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp encode_jer({:INTEGER, {min, max}}, int)
-      when (is_integer(int) and max >= int and int >= min) do
+       when is_integer(int) and max >= int and int >= min do
     int
   end
 
   defp encode_jer({:INTEGER_NNL, _NNL}, int)
-      when is_integer(int) do
+       when is_integer(int) do
     int
   end
 
   defp encode_jer(type = {:INTEGER_NNL, nNList}, int)
-      when is_atom(int) do
-    case (:lists.keyfind(int, 1, nNList)) do
+       when is_atom(int) do
+    case :lists.keyfind(int, 1, nNList) do
       {_, newVal} ->
         newVal
+
       _ ->
         exit({:error, {:asn1, {type, int}}})
     end
   end
 
-  defp encode_jer({type = {:INTEGER_NNL, _NNList}, _Constraint},
-            int)
-      when is_atom(int) do
+  defp encode_jer(
+         {type = {:INTEGER_NNL, _NNList}, _Constraint},
+         int
+       )
+       when is_atom(int) do
     encode_jer(type, int)
   end
 
   defp encode_jer({{:INTEGER_NNL, _NNList}, constraint}, int)
-      when is_integer(int) do
+       when is_integer(int) do
     encode_jer({:INTEGER, constraint}, int)
   end
 
@@ -81,7 +88,7 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp encode_jer({:BOOLEAN, _Prop}, bool)
-      when is_boolean(bool) do
+       when is_boolean(bool) do
     bool
   end
 
@@ -90,12 +97,12 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp encode_jer(:legacy_octet_string, value)
-      when is_list(value) do
+       when is_list(value) do
     bitstring2json(:erlang.list_to_binary(value))
   end
 
   defp encode_jer({:legacy_octet_string, _Prop}, value)
-      when is_list(value) do
+       when is_list(value) do
     bitstring2json(:erlang.list_to_binary(value))
   end
 
@@ -104,27 +111,31 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp encode_jer({:octet_string, _Prop}, value)
-      when is_binary(value) do
+       when is_binary(value) do
     bitstring2json(value)
   end
 
   defp encode_jer({:ENUMERATED, enumMap}, val)
-      when :erlang.is_map_key(val, enumMap) do
+       when :erlang.is_map_key(val, enumMap) do
     val
   end
 
-  defp encode_jer({type = {:ENUMERATED, _EnumList}, _Constr},
-            val) do
+  defp encode_jer(
+         {type = {:ENUMERATED, _EnumList}, _Constr},
+         val
+       ) do
     encode_jer(type, val)
   end
 
   defp encode_jer({:ENUMERATED_EXT, _EnumMap}, val)
-      when is_atom(val) do
+       when is_atom(val) do
     val
   end
 
-  defp encode_jer({type = {:ENUMERATED_EXT, _EnumList}, _Constr},
-            val) do
+  defp encode_jer(
+         {type = {:ENUMERATED_EXT, _EnumList}, _Constr},
+         val
+       ) do
     encode_jer(type, val)
   end
 
@@ -140,13 +151,23 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp encode_jer({:choice, choices}, {alt, value}) do
-    case (:erlang.is_map_key(altBin = :erlang.atom_to_binary(alt,
-                                                               :utf8),
-                               choices)) do
+    case :erlang.is_map_key(
+           altBin =
+             :erlang.atom_to_binary(
+               alt,
+               :utf8
+             ),
+           choices
+         ) do
       true ->
-        encodedVal = encode_jer(:maps.get(altBin, choices),
-                                  value)
+        encodedVal =
+          encode_jer(
+            :maps.get(altBin, choices),
+            value
+          )
+
         %{altBin => encodedVal}
+
       false ->
         exit({:error, {:asn1, {:invalid_choice, alt, choices}}})
     end
@@ -158,8 +179,8 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp encode_jer({:bit_string, fixedLength}, value)
-      when (is_bitstring(value) and
-              is_integer(fixedLength)) do
+       when is_bitstring(value) and
+              is_integer(fixedLength) do
     value2 = jer_padbitstr(value, fixedLength)
     bitstring2json(value2)
   end
@@ -169,9 +190,11 @@ defmodule :m_asn1rtt_jer do
     encode_jer(:bit_string, bitStr)
   end
 
-  defp encode_jer({:compact_bit_string, fixedLength},
-            compact = {_Unused, binary})
-      when is_binary(binary) do
+  defp encode_jer(
+         {:compact_bit_string, fixedLength},
+         compact = {_Unused, binary}
+       )
+       when is_binary(binary) do
     bitStr = jer_compact2bitstr(compact)
     encode_jer({:bit_string, fixedLength}, bitStr)
   end
@@ -191,8 +214,10 @@ defmodule :m_asn1rtt_jer do
     encode_jer(:bit_string, value1)
   end
 
-  defp encode_jer({{:compact_bit_string_nnl, nNL}, fixedLength},
-            value) do
+  defp encode_jer(
+         {{:compact_bit_string_nnl, nNL}, fixedLength},
+         value
+       ) do
     value1 = jer_bit_str2bitstr(value, nNL)
     encode_jer({:bit_string, fixedLength}, value1)
   end
@@ -206,7 +231,7 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp encode_jer({:ObjClassFieldType, _, _}, val)
-      when is_binary(val) do
+       when is_binary(val) do
     val
   end
 
@@ -222,47 +247,64 @@ defmodule :m_asn1rtt_jer do
     exit({:error, {:asn1, {{:encode, type}, val}}})
   end
 
-  defp encode_jer_component_tab([{_Name, _Type, :OPTIONAL} | compInfos],
-            [:asn1_NOVALUE | rest], simple, mapAcc) do
-    encode_jer_component_tab(compInfos, rest, simple,
-                               mapAcc)
+  defp encode_jer_component_tab(
+         [{_Name, _Type, :OPTIONAL} | compInfos],
+         [:asn1_NOVALUE | rest],
+         simple,
+         mapAcc
+       ) do
+    encode_jer_component_tab(compInfos, rest, simple, mapAcc)
   end
 
-  defp encode_jer_component_tab([{_Name, _Type, {:DEFAULT, _}} | compInfos],
-            [:asn1_DEFAULT | rest], simple, mapAcc) do
-    encode_jer_component_tab(compInfos, rest, simple,
-                               mapAcc)
+  defp encode_jer_component_tab(
+         [{_Name, _Type, {:DEFAULT, _}} | compInfos],
+         [:asn1_DEFAULT | rest],
+         simple,
+         mapAcc
+       ) do
+    encode_jer_component_tab(compInfos, rest, simple, mapAcc)
   end
 
-  defp encode_jer_component_tab([{name, type, _OptOrDefault} | compInfos],
-            [value | rest], simple, mapAcc) do
+  defp encode_jer_component_tab(
+         [{name, type, _OptOrDefault} | compInfos],
+         [value | rest],
+         simple,
+         mapAcc
+       ) do
     enc = encode_jer(type, value)
-    encode_jer_component_tab(compInfos, rest, simple,
-                               Map.put(mapAcc, name, enc))
+    encode_jer_component_tab(compInfos, rest, simple, Map.put(mapAcc, name, enc))
   end
 
   defp encode_jer_component_tab([], _, _Simple, mapAcc) do
     mapAcc
   end
 
-  defp encode_jer_component_map([{name, aName, type, _OptOrDefault} |
-               compInfos],
-            mapVal, acc)
-      when :erlang.is_map_key(aName, mapVal) do
+  defp encode_jer_component_map(
+         [
+           {name, aName, type, _OptOrDefault}
+           | compInfos
+         ],
+         mapVal,
+         acc
+       )
+       when :erlang.is_map_key(aName, mapVal) do
     value = :maps.get(aName, mapVal)
     enc = encode_jer(type, value)
-    encode_jer_component_map(compInfos, mapVal,
-                               [{name, enc} | acc])
+    encode_jer_component_map(compInfos, mapVal, [{name, enc} | acc])
   end
 
-  defp encode_jer_component_map([{_Name, _AName, _Type, :OPTIONAL} | compInfos],
-            mapVal, acc) do
+  defp encode_jer_component_map([{_Name, _AName, _Type, :OPTIONAL} | compInfos], mapVal, acc) do
     encode_jer_component_map(compInfos, mapVal, acc)
   end
 
-  defp encode_jer_component_map([{_Name, _AName, _Type, {:DEFAULT, _}} |
-               compInfos],
-            mapVal, acc) do
+  defp encode_jer_component_map(
+         [
+           {_Name, _AName, _Type, {:DEFAULT, _}}
+           | compInfos
+         ],
+         mapVal,
+         acc
+       ) do
     encode_jer_component_map(compInfos, mapVal, acc)
   end
 
@@ -271,36 +313,35 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp encode_jer_component_map([], mapVal, acc)
-      when map_size(mapVal) == length(acc) do
+       when map_size(mapVal) == length(acc) do
     :lists.reverse(acc)
   end
 
   defp encode_jer_component_map(_, mapVal, acc) do
-    erroneousKeys = :maps.keys(mapVal) -- (for {k,
-                                                  _V} <- acc do
-                                             k
-                                           end)
-    exit({:error,
-            {:asn1,
-               {{:encode, :SEQUENCE},
-                  {:erroneous_keys, erroneousKeys}}}})
+    erroneousKeys =
+      :maps.keys(mapVal) --
+        for {k, _V} <- acc do
+          k
+        end
+
+    exit({:error, {:asn1, {{:encode, :SEQUENCE}, {:erroneous_keys, erroneousKeys}}}})
   end
 
-  defp encode_jer_component([{_Name, _Type, :OPTIONAL} | compInfos],
-            [:asn1_NOVALUE | rest], acc) do
+  defp encode_jer_component([{_Name, _Type, :OPTIONAL} | compInfos], [:asn1_NOVALUE | rest], acc) do
     encode_jer_component(compInfos, rest, acc)
   end
 
-  defp encode_jer_component([{_Name, _Type, {:DEFAULT, _}} | compInfos],
-            [:asn1_DEFAULT | rest], acc) do
+  defp encode_jer_component(
+         [{_Name, _Type, {:DEFAULT, _}} | compInfos],
+         [:asn1_DEFAULT | rest],
+         acc
+       ) do
     encode_jer_component(compInfos, rest, acc)
   end
 
-  defp encode_jer_component([{name, type, _OptOrDefault} | compInfos],
-            [value | rest], acc) do
+  defp encode_jer_component([{name, type, _OptOrDefault} | compInfos], [value | rest], acc) do
     enc = encode_jer(type, value)
-    encode_jer_component(compInfos, rest,
-                           [{name, enc} | acc])
+    encode_jer_component(compInfos, rest, [{name, enc} | acc])
   end
 
   defp encode_jer_component([], _, []) do
@@ -317,12 +358,12 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp decode_jer({:ENUMERATED, _EnumList}, val)
-      when is_binary(val) do
+       when is_binary(val) do
     :erlang.binary_to_existing_atom(val, :utf8)
   end
 
   defp decode_jer({:ENUMERATED, _EnumList}, val)
-      when is_boolean(val) do
+       when is_boolean(val) do
     val
   end
 
@@ -330,8 +371,10 @@ defmodule :m_asn1rtt_jer do
     :null
   end
 
-  defp decode_jer({type = {:ENUMERATED, _EnumList}, _Constr},
-            val) do
+  defp decode_jer(
+         {type = {:ENUMERATED, _EnumList}, _Constr},
+         val
+       ) do
     decode_jer(type, val)
   end
 
@@ -339,8 +382,10 @@ defmodule :m_asn1rtt_jer do
     decode_jer({:ENUMERATED, enumList}, val)
   end
 
-  defp decode_jer({type = {:ENUMERATED_EXT, _EnumList}, _Constr},
-            val) do
+  defp decode_jer(
+         {type = {:ENUMERATED_EXT, _EnumList}, _Constr},
+         val
+       ) do
     decode_jer(type, val)
   end
 
@@ -350,15 +395,16 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp decode_jer({:sequence, sname, _Arity, compInfos}, value)
-      when is_map(value) do
-    decodedComps = decode_jer_component(compInfos, value,
-                                          [])
+       when is_map(value) do
+    decodedComps = decode_jer_component(compInfos, value, [])
     :erlang.list_to_tuple([sname | decodedComps])
   end
 
-  defp decode_jer({:sequence_map, _Sname, _Arity, compInfos},
-            value)
-      when is_map(value) do
+  defp decode_jer(
+         {:sequence_map, _Sname, _Arity, compInfos},
+         value
+       )
+       when is_map(value) do
     decode_jer_component_map(compInfos, value, [])
   end
 
@@ -375,7 +421,7 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp decode_jer({:INTEGER, {min, max}}, int)
-      when (is_integer(int) and max >= int and int >= min) do
+       when is_integer(int) and max >= int and int >= min do
     int
   end
 
@@ -384,9 +430,10 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp decode_jer({:INTEGER_NNL, nNList}, int) do
-    case (:lists.keyfind(int, 2, nNList)) do
+    case :lists.keyfind(int, 2, nNList) do
       {newName, _} ->
         newName
+
       _ ->
         int
     end
@@ -397,7 +444,7 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp decode_jer({:BOOLEAN, _Prop}, bool)
-      when is_boolean(bool) do
+       when is_boolean(bool) do
     bool
   end
 
@@ -406,7 +453,7 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp decode_jer(:legacy_octet_string, str)
-      when is_binary(str) do
+       when is_binary(str) do
     json2octetstring2string(:erlang.binary_to_list(str))
   end
 
@@ -422,15 +469,14 @@ defmodule :m_asn1rtt_jer do
 
   defp decode_jer({:choice, choiceTypes}, choiceVal) do
     [{alt, val}] = :maps.to_list(choiceVal)
-    case (choiceTypes) do
+
+    case choiceTypes do
       %{^alt => type} ->
         ^type = :maps.get(alt, choiceTypes)
-        {:erlang.binary_to_atom(alt, :utf8),
-           decode_jer(type, val)}
+        {:erlang.binary_to_atom(alt, :utf8), decode_jer(type, val)}
+
       _ ->
-        exit({:error,
-                {:asn1,
-                   {:invalid_choice, alt, :maps.keys(choiceTypes)}}})
+        exit({:error, {:asn1, {:invalid_choice, alt, :maps.keys(choiceTypes)}}})
     end
   end
 
@@ -439,21 +485,31 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp decode_jer({:bit_string, fixedLength}, str)
-      when is_binary(str) do
+       when is_binary(str) do
     json2bitstring(:erlang.binary_to_list(str), fixedLength)
   end
 
-  defp decode_jer({:bit_string_nnl, nNL},
-            %{"value" => str, "length" => length}) do
-    bitStr = json2bitstring(:erlang.binary_to_list(str),
-                              length)
+  defp decode_jer(
+         {:bit_string_nnl, nNL},
+         %{"value" => str, "length" => length}
+       ) do
+    bitStr =
+      json2bitstring(
+        :erlang.binary_to_list(str),
+        length
+      )
+
     jer_bitstr2names(bitStr, nNL)
   end
 
   defp decode_jer({{:bit_string_nnl, nNL}, fixedLength}, str)
-      when is_binary(str) do
-    bitStr = json2bitstring(:erlang.binary_to_list(str),
-                              fixedLength)
+       when is_binary(str) do
+    bitStr =
+      json2bitstring(
+        :erlang.binary_to_list(str),
+        fixedLength
+      )
+
     jer_bitstr2names(bitStr, nNL)
   end
 
@@ -461,23 +517,35 @@ defmodule :m_asn1rtt_jer do
     decode_jer({:bit_string_nnl, nNL}, value)
   end
 
-  defp decode_jer({{:compact_bit_string_nnl, nNL}, fixedLength},
-            value) do
+  defp decode_jer(
+         {{:compact_bit_string_nnl, nNL}, fixedLength},
+         value
+       ) do
     decode_jer({{:bit_string_nnl, nNL}, fixedLength}, value)
   end
 
-  defp decode_jer(:compact_bit_string,
-            %{"value" => str, "length" => length}) do
-    bitStr = json2bitstring(:erlang.binary_to_list(str),
-                              length)
+  defp decode_jer(
+         :compact_bit_string,
+         %{"value" => str, "length" => length}
+       ) do
+    bitStr =
+      json2bitstring(
+        :erlang.binary_to_list(str),
+        length
+      )
+
     jer_bitstr2compact(bitStr)
   end
 
   defp decode_jer({:compact_bit_string, fixedLength}, str) do
-    bitStr = json2bitstring(:erlang.binary_to_list(str),
-                              fixedLength)
-    unused = (8 - rem(fixedLength, 8)) &&& 7
-    {unused, <<bitStr :: bitstring, 0 :: size(unused)>>}
+    bitStr =
+      json2bitstring(
+        :erlang.binary_to_list(str),
+        fixedLength
+      )
+
+    unused = 8 - rem(fixedLength, 8) &&& 7
+    {unused, <<bitStr::bitstring, 0::size(unused)>>}
   end
 
   defp decode_jer(:"OBJECT IDENTIFIER", oidBin) when is_binary(oidBin) do
@@ -489,7 +557,7 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp decode_jer({:ObjClassFieldType, _, _}, bin)
-      when is_binary(bin) do
+       when is_binary(bin) do
     bin
   end
 
@@ -505,68 +573,81 @@ defmodule :m_asn1rtt_jer do
     exit({:error, {:asn1, {{:decode, type}, val}}})
   end
 
-  defp decode_jer_component([{name, type, _OptOrDefault} | compInfos], vMap,
-            acc)
-      when :erlang.is_map_key(name, vMap) do
+  defp decode_jer_component([{name, type, _OptOrDefault} | compInfos], vMap, acc)
+       when :erlang.is_map_key(name, vMap) do
     value = :maps.get(name, vMap)
     dec = decode_jer(type, value)
     decode_jer_component(compInfos, vMap, [dec | acc])
   end
 
-  defp decode_jer_component([{_Name, _Type, :OPTIONAL} | compInfos], vMap,
-            acc) do
-    decode_jer_component(compInfos, vMap,
-                           [:asn1_NOVALUE | acc])
+  defp decode_jer_component([{_Name, _Type, :OPTIONAL} | compInfos], vMap, acc) do
+    decode_jer_component(compInfos, vMap, [:asn1_NOVALUE | acc])
   end
 
-  defp decode_jer_component([{_Name, _Type, {:DEFAULT, dvalue}} |
-               compInfos],
-            vMap, acc) do
+  defp decode_jer_component(
+         [
+           {_Name, _Type, {:DEFAULT, dvalue}}
+           | compInfos
+         ],
+         vMap,
+         acc
+       ) do
     decode_jer_component(compInfos, vMap, [dvalue | acc])
   end
 
-  defp decode_jer_component([{name, _Type, _OptOrDefault} | _CompInfos],
-            vMap, _Acc) do
-    exit({:error,
-            {:asn1,
-               {{:decode, {:mandatory_component_missing, name}},
-                  vMap}}})
+  defp decode_jer_component([{name, _Type, _OptOrDefault} | _CompInfos], vMap, _Acc) do
+    exit({:error, {:asn1, {{:decode, {:mandatory_component_missing, name}}, vMap}}})
   end
 
   defp decode_jer_component([], _, acc) do
     :lists.reverse(acc)
   end
 
-  defp decode_jer_component_map([{name, atomName, type, _OptOrDefault} |
-               compInfos],
-            vMap, acc)
-      when :erlang.is_map_key(name, vMap) do
+  defp decode_jer_component_map(
+         [
+           {name, atomName, type, _OptOrDefault}
+           | compInfos
+         ],
+         vMap,
+         acc
+       )
+       when :erlang.is_map_key(name, vMap) do
     value = :maps.get(name, vMap)
     dec = decode_jer(type, value)
-    decode_jer_component_map(compInfos, vMap,
-                               [{atomName, dec} | acc])
+    decode_jer_component_map(compInfos, vMap, [{atomName, dec} | acc])
   end
 
-  defp decode_jer_component_map([{_Name, _AtomName, _Type, :OPTIONAL} |
-               compInfos],
-            vMap, acc) do
+  defp decode_jer_component_map(
+         [
+           {_Name, _AtomName, _Type, :OPTIONAL}
+           | compInfos
+         ],
+         vMap,
+         acc
+       ) do
     decode_jer_component_map(compInfos, vMap, acc)
   end
 
-  defp decode_jer_component_map([{_Name, atomName, _Type, {:DEFAULT, dvalue}} |
-               compInfos],
-            vMap, acc) do
-    decode_jer_component_map(compInfos, vMap,
-                               [{atomName, dvalue} | acc])
+  defp decode_jer_component_map(
+         [
+           {_Name, atomName, _Type, {:DEFAULT, dvalue}}
+           | compInfos
+         ],
+         vMap,
+         acc
+       ) do
+    decode_jer_component_map(compInfos, vMap, [{atomName, dvalue} | acc])
   end
 
-  defp decode_jer_component_map([{name, _AtomName, _Type, _OptOrDefault} |
-               _CompInfos],
-            vMap, _Acc) do
-    exit({:error,
-            {:asn1,
-               {{:decode, {:mandatory_component_missing, name}},
-                  vMap}}})
+  defp decode_jer_component_map(
+         [
+           {name, _AtomName, _Type, _OptOrDefault}
+           | _CompInfos
+         ],
+         vMap,
+         _Acc
+       ) do
+    exit({:error, {:asn1, {{:decode, {:mandatory_component_missing, name}}, vMap}}})
   end
 
   defp decode_jer_component_map([], _, acc) do
@@ -595,10 +676,14 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp json2bitstring([a1, a2], length, acc) do
-    int = :erlang.list_to_integer([a1, a2],
-                                    16) >>> (8 - length)
+    int =
+      :erlang.list_to_integer(
+        [a1, a2],
+        16
+      ) >>> (8 - length)
+
     bin = :erlang.list_to_binary(:lists.reverse(acc))
-    <<bin :: binary, int :: size(length)>>
+    <<bin::binary, int::size(length)>>
   end
 
   defp json2bitstring([a1, a2 | rest], length, acc) do
@@ -617,29 +702,34 @@ defmodule :m_asn1rtt_jer do
 
   defp bitstring2json(bitStr) do
     pad = 8 - rem(bit_size(bitStr), 8)
-    newStr = <<bitStr :: bitstring, 0 :: size(pad)>>
+    newStr = <<bitStr::bitstring, 0::size(pad)>>
     octetstring2json(:erlang.binary_to_list(newStr))
   end
 
   defp octetstring2json(list) when is_list(list) do
-    :erlang.list_to_binary(for x <- list do
-                             (
-                               num = :erlang.integer_to_list(x, 16)
-                               cond do
-                                 length(num) == 1 ->
-                                   '0' ++ num
-                                 true ->
-                                   num
-                               end
-                             )
-                           end)
+    :erlang.list_to_binary(
+      for x <- list do
+        num = :erlang.integer_to_list(x, 16)
+
+        cond do
+          length(num) == 1 ->
+            ~c"0" ++ num
+
+          true ->
+            num
+        end
+      end
+    )
   end
 
   defp oid2json(oid) when is_tuple(oid) do
     oidList = :erlang.tuple_to_list(oid)
-    oidNumberStr = (for v <- oidList do
-                      :erlang.integer_to_list(v)
-                    end)
+
+    oidNumberStr =
+      for v <- oidList do
+        :erlang.integer_to_list(v)
+      end
+
     oid2json(oidNumberStr, [])
   end
 
@@ -657,9 +747,12 @@ defmodule :m_asn1rtt_jer do
 
   defp json2oid(oidStr) when is_binary(oidStr) do
     oidList = :binary.split(oidStr, ["."], [:global])
-    oidNumList = (for num <- oidList do
-                    :erlang.binary_to_integer(num)
-                  end)
+
+    oidNumList =
+      for num <- oidList do
+        :erlang.binary_to_integer(num)
+      end
+
     :erlang.list_to_tuple(oidNumList)
   end
 
@@ -672,18 +765,23 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp jer_bit_str2bitstr(bitList = [bit | _], _NamedBitList)
-      when bit == 1 or bit == 0 do
-    int = :erlang.list_to_integer(for b <- bitList do
-                                    case (b) do
-                                      0 ->
-                                        ?0
-                                      1 ->
-                                        ?1
-                                    end
-                                  end,
-                                    2)
+       when bit == 1 or bit == 0 do
+    int =
+      :erlang.list_to_integer(
+        for b <- bitList do
+          case b do
+            0 ->
+              ?0
+
+            1 ->
+              ?1
+          end
+        end,
+        2
+      )
+
     len = length(bitList)
-    <<int :: size(len)>>
+    <<int::size(len)>>
   end
 
   defp jer_bit_str2bitstr([h | _] = bits, namedBitList) when is_atom(h) do
@@ -699,14 +797,13 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp jer_bit_str2bitstr(bitStr, _NamedBitList)
-      when is_bitstring(bitStr) do
+       when is_bitstring(bitStr) do
     bitStr
   end
 
   defp jer_compact2bitstr({unused, binary}) do
     size = bit_size(binary) - unused
-    <<bitStr :: size(size) - bitstring,
-        _ :: bitstring>> = binary
+    <<bitStr::size(size)-bitstring, _::bitstring>> = binary
     bitStr
   end
 
@@ -714,12 +811,13 @@ defmodule :m_asn1rtt_jer do
     jer_int2bitstr(int)
   end
 
-  defp jer_compact2bitstr(bitList = [bit | _]) when bit == 1 or
-                                      bit == 0 do
+  defp jer_compact2bitstr(bitList = [bit | _])
+       when bit == 1 or
+              bit == 0 do
     intStr = jer_skip_trailing_zeroes(bitList, [])
     int = :erlang.list_to_integer(intStr, 2)
     len = length(intStr)
-    <<int :: size(len)>>
+    <<int::size(len)>>
   end
 
   defp jer_skip_trailing_zeroes([1 | rest], acc) do
@@ -739,18 +837,18 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp jer_padbitstr(bitStr, fixedLength)
-      when bit_size(bitStr) == fixedLength do
+       when bit_size(bitStr) == fixedLength do
     bitStr
   end
 
   defp jer_padbitstr(bitStr, fixedLength)
-      when bit_size(bitStr) < fixedLength do
+       when bit_size(bitStr) < fixedLength do
     len = bit_size(bitStr)
     padLen = fixedLength - len
-    <<bitStr :: bitstring, 0 :: size(padLen)>>
+    <<bitStr::bitstring, 0::size(padLen)>>
   end
 
-  defp jer_int2bitstr(int) when (is_integer(int) and int >= 0) do
+  defp jer_int2bitstr(int) when is_integer(int) and int >= 0 do
     jer_int2bitstr(int, <<>>)
   end
 
@@ -760,19 +858,21 @@ defmodule :m_asn1rtt_jer do
 
   defp jer_int2bitstr(int, acc) do
     bit = int &&& 1
-    jer_int2bitstr(int >>> 1,
-                     <<acc :: bitstring, bit :: size(1)>>)
+
+    jer_int2bitstr(
+      int >>> 1,
+      <<acc::bitstring, bit::size(1)>>
+    )
   end
 
   defp jer_bitstr2compact(bitStr) do
     size = bit_size(bitStr)
-    unused = (8 - rem(size, 8)) &&& 7
-    {unused, <<bitStr :: bitstring, 0 :: size(unused)>>}
+    unused = 8 - rem(size, 8) &&& 7
+    {unused, <<bitStr::bitstring, 0::size(unused)>>}
   end
 
   defp jer_do_encode_named_bit_string([firstVal | restVal], namedBitList) do
-    toSetPos = jer_get_all_bitposes([firstVal | restVal],
-                                      namedBitList, [])
+    toSetPos = jer_get_all_bitposes([firstVal | restVal], namedBitList, [])
     size = :lists.max(toSetPos) + 1
     bitList = jer_make_and_set_list(size, toSetPos, 0)
     jer_encode_bitstring(bitList)
@@ -783,10 +883,11 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp jer_get_all_bitposes([val | rest], namedBitList, ack)
-      when is_atom(val) do
-    case (:lists.keyfind(val, 1, namedBitList)) do
+       when is_atom(val) do
+    case :lists.keyfind(val, 1, namedBitList) do
       {_ValName, valPos} ->
         jer_get_all_bitposes(rest, namedBitList, [valPos | ack])
+
       _ ->
         exit({:error, {:asn1, {:bitstring_namedbit, val}}})
     end
@@ -809,8 +910,7 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp jer_make_and_set_list(len, [pos | setPos], xPos) do
-    [0 | jer_make_and_set_list(len - 1, [pos | setPos],
-                                 xPos + 1)]
+    [0 | jer_make_and_set_list(len - 1, [pos | setPos], xPos + 1)]
   end
 
   defp jer_make_and_set_list(len, [], xPos) do
@@ -818,7 +918,10 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp jer_encode_bitstring([b8, b7, b6, b5, b4, b3, b2, b1 | rest]) do
-    val = b8 <<< 7 ||| (b7 <<< 6) ||| (b6 <<< 5) ||| (b5 <<< 4) ||| (b4 <<< 3) ||| (b3 <<< 2) ||| (b2 <<< 1) ||| b1
+    val =
+      b8 <<< 7 ||| b7 <<< 6 ||| b6 <<< 5 ||| b5 <<< 4 ||| b4 <<< 3 ||| b3 <<< 2 ||| b2 <<< 1 |||
+        b1
+
     jer_encode_bitstring(rest, <<val>>)
   end
 
@@ -827,7 +930,10 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp jer_encode_bitstring([b8, b7, b6, b5, b4, b3, b2, b1 | rest], acc) do
-    val = b8 <<< 7 ||| (b7 <<< 6) ||| (b6 <<< 5) ||| (b5 <<< 4) ||| (b4 <<< 3) ||| (b3 <<< 2) ||| (b2 <<< 1) ||| b1
+    val =
+      b8 <<< 7 ||| b7 <<< 6 ||| b6 <<< 5 ||| b5 <<< 4 ||| b4 <<< 3 ||| b3 <<< 2 ||| b2 <<< 1 |||
+        b1
+
     jer_encode_bitstring(rest, [acc, val])
   end
 
@@ -844,8 +950,10 @@ defmodule :m_asn1rtt_jer do
   end
 
   defp jer_unused_bitlist([bit | rest], acc) do
-    jer_unused_bitlist(rest,
-                         <<acc :: bitstring, bit :: size(1)>>)
+    jer_unused_bitlist(
+      rest,
+      <<acc::bitstring, bit::size(1)>>
+    )
   end
 
   defp jer_bitstr2names(bitStr, []) do
@@ -857,29 +965,23 @@ defmodule :m_asn1rtt_jer do
     jer_bitstr2names(bitStr, sortedList, 0, [])
   end
 
-  defp jer_bitstr2names(<<1 :: size(1), bitStr :: bitstring>>,
-            [{name, pos} | rest], pos, acc) do
+  defp jer_bitstr2names(<<1::size(1), bitStr::bitstring>>, [{name, pos} | rest], pos, acc) do
     jer_bitstr2names(bitStr, rest, pos + 1, [name | acc])
   end
 
-  defp jer_bitstr2names(<<1 :: size(1), bitStr :: bitstring>>, nNL, num,
-            acc) do
-    jer_bitstr2names(bitStr, nNL, num + 1,
-                       [{:bit, num} | acc])
+  defp jer_bitstr2names(<<1::size(1), bitStr::bitstring>>, nNL, num, acc) do
+    jer_bitstr2names(bitStr, nNL, num + 1, [{:bit, num} | acc])
   end
 
-  defp jer_bitstr2names(<<0 :: size(1), bitStr :: bitstring>>,
-            [{_, num} | rest], num, acc) do
+  defp jer_bitstr2names(<<0::size(1), bitStr::bitstring>>, [{_, num} | rest], num, acc) do
     jer_bitstr2names(bitStr, rest, num + 1, acc)
   end
 
-  defp jer_bitstr2names(<<0 :: size(1), bitStr :: bitstring>>, nNL, num,
-            acc) do
+  defp jer_bitstr2names(<<0::size(1), bitStr::bitstring>>, nNL, num, acc) do
     jer_bitstr2names(bitStr, nNL, num + 1, acc)
   end
 
   defp jer_bitstr2names(<<>>, _, _, acc) do
     :lists.reverse(acc)
   end
-
 end

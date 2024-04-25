@@ -3,8 +3,8 @@ defmodule :m_dyntrace do
   @on_load :on_load
   defp on_load() do
     privDir = :code.priv_dir(:runtime_tools)
-    libName = 'dyntrace'
-    lib = :filename.join([privDir, 'lib', libName])
+    libName = ~c"dyntrace"
+    lib = :filename.join([privDir, ~c"lib", libName])
 
     status =
       case :erlang.load_nif(lib, 0) do
@@ -12,8 +12,10 @@ defmodule :m_dyntrace do
           :ok
 
         {:error, {:load_failed, _}} = error1 ->
-          archLibDir = :filename.join([privDir, 'lib', :erlang.system_info(:system_architecture)])
-          candidate = :filelib.wildcard(:filename.join([archLibDir, libName ++ '*']))
+          archLibDir =
+            :filename.join([privDir, ~c"lib", :erlang.system_info(:system_architecture)])
+
+          candidate = :filelib.wildcard(:filename.join([archLibDir, libName ++ ~c"*"]))
 
           case candidate do
             [] ->
@@ -39,7 +41,7 @@ defmodule :m_dyntrace do
 
           _ ->
             :error_logger.error_msg(
-              'Unable to load dyntrace library. Failed with error:~n\n"~p, ~s"~nDynamic tracing is enabled but the driver is not built correctly~n',
+              ~c"Unable to load dyntrace library. Failed with error:~n\n\"~p, ~s\"~nDynamic tracing is enabled but the driver is not built correctly~n",
               [e, str]
             )
 

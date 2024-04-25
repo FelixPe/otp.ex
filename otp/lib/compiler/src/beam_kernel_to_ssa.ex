@@ -1,127 +1,231 @@
 defmodule :m_beam_kernel_to_ssa do
   use Bitwise
-  import :lists, only: [all: 2, append: 1, flatmap: 2,
-                          foldl: 3, keyfind: 3, keysort: 2, mapfoldl: 3,
-                          member: 2, reverse: 1, sort: 1]
+
+  import :lists,
+    only: [
+      all: 2,
+      append: 1,
+      flatmap: 2,
+      foldl: 3,
+      keyfind: 3,
+      keysort: 2,
+      mapfoldl: 3,
+      member: 2,
+      reverse: 1,
+      sort: 1
+    ]
+
   require Record
-  Record.defrecord(:r_k_literal, :k_literal, anno: [],
-                                     val: :undefined)
+
+  Record.defrecord(:r_k_literal, :k_literal,
+    anno: [],
+    val: :undefined
+  )
+
   Record.defrecord(:r_k_tuple, :k_tuple, anno: [], es: :undefined)
-  Record.defrecord(:r_k_map, :k_map, anno: [],
-                                 var: :EFE_TODO_NESTED_RECORD, op: :undefined,
-                                 es: :undefined)
-  Record.defrecord(:r_k_map_pair, :k_map_pair, anno: [],
-                                      key: :undefined, val: :undefined)
-  Record.defrecord(:r_k_cons, :k_cons, anno: [], hd: :undefined,
-                                  tl: :undefined)
-  Record.defrecord(:r_k_binary, :k_binary, anno: [],
-                                    segs: :undefined)
-  Record.defrecord(:r_k_bin_seg, :k_bin_seg, anno: [],
-                                     size: :undefined, unit: :undefined,
-                                     type: :undefined, flags: :undefined,
-                                     seg: :undefined, next: :undefined)
-  Record.defrecord(:r_k_bin_int, :k_bin_int, anno: [],
-                                     size: :undefined, unit: :undefined,
-                                     flags: :undefined, val: :undefined,
-                                     next: :undefined)
+
+  Record.defrecord(:r_k_map, :k_map,
+    anno: [],
+    var: :EFE_TODO_NESTED_RECORD,
+    op: :undefined,
+    es: :undefined
+  )
+
+  Record.defrecord(:r_k_map_pair, :k_map_pair, anno: [], key: :undefined, val: :undefined)
+  Record.defrecord(:r_k_cons, :k_cons, anno: [], hd: :undefined, tl: :undefined)
+
+  Record.defrecord(:r_k_binary, :k_binary,
+    anno: [],
+    segs: :undefined
+  )
+
+  Record.defrecord(:r_k_bin_seg, :k_bin_seg,
+    anno: [],
+    size: :undefined,
+    unit: :undefined,
+    type: :undefined,
+    flags: :undefined,
+    seg: :undefined,
+    next: :undefined
+  )
+
+  Record.defrecord(:r_k_bin_int, :k_bin_int,
+    anno: [],
+    size: :undefined,
+    unit: :undefined,
+    flags: :undefined,
+    val: :undefined,
+    next: :undefined
+  )
+
   Record.defrecord(:r_k_bin_end, :k_bin_end, anno: [])
   Record.defrecord(:r_k_var, :k_var, anno: [], name: :undefined)
-  Record.defrecord(:r_k_local, :k_local, anno: [],
-                                   name: :undefined, arity: :undefined)
-  Record.defrecord(:r_k_remote, :k_remote, anno: [],
-                                    mod: :undefined, name: :undefined,
-                                    arity: :undefined)
-  Record.defrecord(:r_k_internal, :k_internal, anno: [],
-                                      name: :undefined, arity: :undefined)
-  Record.defrecord(:r_k_mdef, :k_mdef, anno: [],
-                                  name: :undefined, exports: :undefined,
-                                  attributes: :undefined, body: :undefined)
-  Record.defrecord(:r_k_fdef, :k_fdef, anno: [],
-                                  func: :undefined, arity: :undefined,
-                                  vars: :undefined, body: :undefined)
-  Record.defrecord(:r_k_seq, :k_seq, anno: [], arg: :undefined,
-                                 body: :undefined)
-  Record.defrecord(:r_k_put, :k_put, anno: [], arg: :undefined,
-                                 ret: [])
-  Record.defrecord(:r_k_bif, :k_bif, anno: [], op: :undefined,
-                                 args: :undefined, ret: [])
-  Record.defrecord(:r_k_test, :k_test, anno: [], op: :undefined,
-                                  args: :undefined)
-  Record.defrecord(:r_k_call, :k_call, anno: [], op: :undefined,
-                                  args: :undefined, ret: [])
-  Record.defrecord(:r_k_enter, :k_enter, anno: [], op: :undefined,
-                                   args: :undefined)
-  Record.defrecord(:r_k_try, :k_try, anno: [], arg: :undefined,
-                                 vars: :undefined, body: :undefined,
-                                 evars: :undefined, handler: :undefined,
-                                 ret: [])
-  Record.defrecord(:r_k_try_enter, :k_try_enter, anno: [],
-                                       arg: :undefined, vars: :undefined,
-                                       body: :undefined, evars: :undefined,
-                                       handler: :undefined)
-  Record.defrecord(:r_k_catch, :k_catch, anno: [],
-                                   body: :undefined, ret: [])
-  Record.defrecord(:r_k_letrec_goto, :k_letrec_goto, anno: [],
-                                         label: :undefined, vars: [],
-                                         first: :undefined, then: :undefined,
-                                         ret: [])
-  Record.defrecord(:r_k_goto, :k_goto, anno: [],
-                                  label: :undefined, args: [])
-  Record.defrecord(:r_k_match, :k_match, anno: [],
-                                   body: :undefined, ret: [])
-  Record.defrecord(:r_k_alt, :k_alt, anno: [],
-                                 first: :undefined, then: :undefined)
-  Record.defrecord(:r_k_select, :k_select, anno: [],
-                                    var: :undefined, types: :undefined)
-  Record.defrecord(:r_k_type_clause, :k_type_clause, anno: [],
-                                         type: :undefined, values: :undefined)
-  Record.defrecord(:r_k_val_clause, :k_val_clause, anno: [],
-                                        val: :undefined, body: :undefined)
-  Record.defrecord(:r_k_guard, :k_guard, anno: [],
-                                   clauses: :undefined)
-  Record.defrecord(:r_k_guard_clause, :k_guard_clause, anno: [],
-                                          guard: :undefined, body: :undefined)
+  Record.defrecord(:r_k_local, :k_local, anno: [], name: :undefined, arity: :undefined)
+
+  Record.defrecord(:r_k_remote, :k_remote,
+    anno: [],
+    mod: :undefined,
+    name: :undefined,
+    arity: :undefined
+  )
+
+  Record.defrecord(:r_k_internal, :k_internal, anno: [], name: :undefined, arity: :undefined)
+
+  Record.defrecord(:r_k_mdef, :k_mdef,
+    anno: [],
+    name: :undefined,
+    exports: :undefined,
+    attributes: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_k_fdef, :k_fdef,
+    anno: [],
+    func: :undefined,
+    arity: :undefined,
+    vars: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_k_seq, :k_seq, anno: [], arg: :undefined, body: :undefined)
+  Record.defrecord(:r_k_put, :k_put, anno: [], arg: :undefined, ret: [])
+  Record.defrecord(:r_k_bif, :k_bif, anno: [], op: :undefined, args: :undefined, ret: [])
+  Record.defrecord(:r_k_test, :k_test, anno: [], op: :undefined, args: :undefined)
+  Record.defrecord(:r_k_call, :k_call, anno: [], op: :undefined, args: :undefined, ret: [])
+  Record.defrecord(:r_k_enter, :k_enter, anno: [], op: :undefined, args: :undefined)
+
+  Record.defrecord(:r_k_try, :k_try,
+    anno: [],
+    arg: :undefined,
+    vars: :undefined,
+    body: :undefined,
+    evars: :undefined,
+    handler: :undefined,
+    ret: []
+  )
+
+  Record.defrecord(:r_k_try_enter, :k_try_enter,
+    anno: [],
+    arg: :undefined,
+    vars: :undefined,
+    body: :undefined,
+    evars: :undefined,
+    handler: :undefined
+  )
+
+  Record.defrecord(:r_k_catch, :k_catch, anno: [], body: :undefined, ret: [])
+
+  Record.defrecord(:r_k_letrec_goto, :k_letrec_goto,
+    anno: [],
+    label: :undefined,
+    vars: [],
+    first: :undefined,
+    then: :undefined,
+    ret: []
+  )
+
+  Record.defrecord(:r_k_goto, :k_goto, anno: [], label: :undefined, args: [])
+  Record.defrecord(:r_k_match, :k_match, anno: [], body: :undefined, ret: [])
+  Record.defrecord(:r_k_alt, :k_alt, anno: [], first: :undefined, then: :undefined)
+  Record.defrecord(:r_k_select, :k_select, anno: [], var: :undefined, types: :undefined)
+
+  Record.defrecord(:r_k_type_clause, :k_type_clause,
+    anno: [],
+    type: :undefined,
+    values: :undefined
+  )
+
+  Record.defrecord(:r_k_val_clause, :k_val_clause, anno: [], val: :undefined, body: :undefined)
+
+  Record.defrecord(:r_k_guard, :k_guard,
+    anno: [],
+    clauses: :undefined
+  )
+
+  Record.defrecord(:r_k_guard_clause, :k_guard_clause,
+    anno: [],
+    guard: :undefined,
+    body: :undefined
+  )
+
   Record.defrecord(:r_k_break, :k_break, anno: [], args: [])
   Record.defrecord(:r_k_return, :k_return, anno: [], args: [])
-  Record.defrecord(:r_k_opaque, :k_opaque, anno: [],
-                                    val: :undefined)
-  Record.defrecord(:r_b_module, :b_module, anno: %{},
-                                    name: :undefined, exports: :undefined,
-                                    attributes: :undefined, body: :undefined)
-  Record.defrecord(:r_b_function, :b_function, anno: %{},
-                                      args: :undefined, bs: :undefined,
-                                      cnt: :undefined)
-  Record.defrecord(:r_b_blk, :b_blk, anno: %{}, is: :undefined,
-                                 last: :undefined)
-  Record.defrecord(:r_b_set, :b_set, anno: %{}, dst: :none,
-                                 op: :undefined, args: [])
+
+  Record.defrecord(:r_k_opaque, :k_opaque,
+    anno: [],
+    val: :undefined
+  )
+
+  Record.defrecord(:r_b_module, :b_module,
+    anno: %{},
+    name: :undefined,
+    exports: :undefined,
+    attributes: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_b_function, :b_function,
+    anno: %{},
+    args: :undefined,
+    bs: :undefined,
+    cnt: :undefined
+  )
+
+  Record.defrecord(:r_b_blk, :b_blk, anno: %{}, is: :undefined, last: :undefined)
+  Record.defrecord(:r_b_set, :b_set, anno: %{}, dst: :none, op: :undefined, args: [])
   Record.defrecord(:r_b_ret, :b_ret, anno: %{}, arg: :undefined)
-  Record.defrecord(:r_b_br, :b_br, anno: %{}, bool: :undefined,
-                                succ: :undefined, fail: :undefined)
-  Record.defrecord(:r_b_switch, :b_switch, anno: %{},
-                                    arg: :undefined, fail: :undefined,
-                                    list: :undefined)
+
+  Record.defrecord(:r_b_br, :b_br,
+    anno: %{},
+    bool: :undefined,
+    succ: :undefined,
+    fail: :undefined
+  )
+
+  Record.defrecord(:r_b_switch, :b_switch,
+    anno: %{},
+    arg: :undefined,
+    fail: :undefined,
+    list: :undefined
+  )
+
   Record.defrecord(:r_b_var, :b_var, name: :undefined)
   Record.defrecord(:r_b_literal, :b_literal, val: :undefined)
-  Record.defrecord(:r_b_remote, :b_remote, mod: :undefined,
-                                    name: :undefined, arity: :undefined)
-  Record.defrecord(:r_b_local, :b_local, name: :undefined,
-                                   arity: :undefined)
-  Record.defrecord(:r_cg, :cg, lcount: 1, bfail: 1,
-                              catch_label: :none, vars: %{}, break: 0, recv: 0,
-                              ultimate_failure: 0, labels: %{},
-                              no_make_fun3: false, checks: [])
-  Record.defrecord(:r_cg_break, :cg_break, args: :undefined,
-                                    phi: :undefined)
+  Record.defrecord(:r_b_remote, :b_remote, mod: :undefined, name: :undefined, arity: :undefined)
+
+  Record.defrecord(:r_b_local, :b_local,
+    name: :undefined,
+    arity: :undefined
+  )
+
+  Record.defrecord(:r_cg, :cg,
+    lcount: 1,
+    bfail: 1,
+    catch_label: :none,
+    vars: %{},
+    break: 0,
+    recv: 0,
+    ultimate_failure: 0,
+    labels: %{},
+    no_make_fun3: false,
+    checks: []
+  )
+
+  Record.defrecord(:r_cg_break, :cg_break,
+    args: :undefined,
+    phi: :undefined
+  )
+
   Record.defrecord(:r_cg_phi, :cg_phi, vars: :undefined)
   Record.defrecord(:r_cg_unreachable, :cg_unreachable, [])
-  def module(r_k_mdef(name: mod, exports: es, attributes: attr,
-             body: forms),
-           opts) do
+
+  def module(
+        r_k_mdef(name: mod, exports: es, attributes: attr, body: forms),
+        opts
+      ) do
     noMakeFun3 = :proplists.get_bool(:no_make_fun3, opts)
     body = functions(forms, mod, noMakeFun3)
-    module = r_b_module(name: mod, exports: es, attributes: attr,
-                 body: body)
+    module = r_b_module(name: mod, exports: es, attributes: attr, body: body)
     {:ok, module}
   end
 
@@ -131,9 +235,11 @@ defmodule :m_beam_kernel_to_ssa do
     end
   end
 
-  defp function(r_k_fdef(anno: anno0, func: name, arity: arity,
-              vars: as0, body: kb),
-            mod, noMakeFun3) do
+  defp function(
+         r_k_fdef(anno: anno0, func: name, arity: arity, vars: as0, body: kb),
+         mod,
+         noMakeFun3
+       ) do
     try do
       r_k_match() = kb
       st0 = r_cg(no_make_fun3: noMakeFun3)
@@ -141,16 +247,20 @@ defmodule :m_beam_kernel_to_ssa do
       {asm, st} = cg_fun(kb, st1)
       anno1 = line_anno(anno0)
       anno2 = Map.put(anno1, :func_info, {mod, name, arity})
-      anno = (case (r_cg(st, :checks)) do
-                [] ->
-                  anno2
-                checks ->
-                  Map.put(anno2, :ssa_checks, checks)
-              end)
+
+      anno =
+        case r_cg(st, :checks) do
+          [] ->
+            anno2
+
+          checks ->
+            Map.put(anno2, :ssa_checks, checks)
+        end
+
       r_b_function(anno: anno, args: as, bs: asm, cnt: r_cg(st, :lcount))
     catch
       class, error ->
-        :io.fwrite('Function: ~w/~w\n', [name, arity])
+        :io.fwrite(~c"Function: ~w/~w\n", [name, arity])
         :erlang.raise(class, error, __STACKTRACE__)
     end
   end
@@ -158,8 +268,13 @@ defmodule :m_beam_kernel_to_ssa do
   defp cg_fun(ke, st0) do
     {ultimateFail, failIs, st1} = make_failure(:badarg, st0)
     1 = ultimateFail
-    st2 = r_cg(st1, bfail: ultimateFail, 
-                   ultimate_failure: ultimateFail)
+
+    st2 =
+      r_cg(st1,
+        bfail: ultimateFail,
+        ultimate_failure: ultimateFail
+      )
+
     {b, st} = cg(ke, st2)
     asm = [{:label, 0} | b ++ failIs]
     finalize(asm, st)
@@ -168,11 +283,20 @@ defmodule :m_beam_kernel_to_ssa do
   defp make_failure(reason, st0) do
     {lbl, st1} = new_label(st0)
     {dst, st} = new_ssa_var(:"@ssa_ret", st1)
-    is = [{:label, lbl}, r_b_set(op: :call, dst: dst,
-                             args: [r_b_remote(mod: r_b_literal(val: :erlang),
-                                        name: r_b_literal(val: :error), arity: 1),
-                                        r_b_literal(val: reason)]),
-                             r_b_ret(arg: dst)]
+
+    is = [
+      {:label, lbl},
+      r_b_set(
+        op: :call,
+        dst: dst,
+        args: [
+          r_b_remote(mod: r_b_literal(val: :erlang), name: r_b_literal(val: :error), arity: 1),
+          r_b_literal(val: reason)
+        ]
+      ),
+      r_b_ret(arg: dst)
+    ]
+
     {lbl, is, st}
   end
 
@@ -198,15 +322,17 @@ defmodule :m_beam_kernel_to_ssa do
     bif_cg(bif, le, st)
   end
 
-  defp cg(r_k_try(arg: ta, vars: vs, body: tb, evars: evs,
-              handler: th, ret: rs),
-            st) do
+  defp cg(
+         r_k_try(arg: ta, vars: vs, body: tb, evars: evs, handler: th, ret: rs),
+         st
+       ) do
     try_cg(ta, vs, tb, evs, th, rs, st)
   end
 
-  defp cg(r_k_try_enter(arg: ta, vars: vs, body: tb, evars: evs,
-              handler: th),
-            st) do
+  defp cg(
+         r_k_try_enter(arg: ta, vars: vs, body: tb, evars: evs, handler: th),
+         st
+       ) do
     try_enter_cg(ta, vs, tb, evs, th, st)
   end
 
@@ -228,52 +354,64 @@ defmodule :m_beam_kernel_to_ssa do
     {[r_cg_break(args: args, phi: br)], st}
   end
 
-  defp cg(r_k_letrec_goto(label: label, vars: vs0, first: first,
-              then: then, ret: rs),
-            r_cg(break: oldBreak, labels: labels0) = st0) do
+  defp cg(
+         r_k_letrec_goto(label: label, vars: vs0, first: first, then: then, ret: rs),
+         r_cg(break: oldBreak, labels: labels0) = st0
+       ) do
     {tf, st1} = new_label(st0)
     {b, st2} = new_label(st1)
     labels = Map.put(labels0, label, tf)
     {vs, st3} = new_ssa_vars(vs0, st2)
-    {fis, st4} = cg(first,
-                      r_cg(st3, labels: labels,  break: b))
+
+    {fis, st4} =
+      cg(
+        first,
+        r_cg(st3, labels: labels, break: b)
+      )
+
     {sis, st5} = cg(then, st4)
     st6 = r_cg(st5, labels: labels0)
     {breakVars, st} = new_ssa_vars(rs, st6)
     postPhi = r_cg_phi(vars: breakVars)
-    failPhi = (case (vs) do
-                 [] ->
-                   []
-                 [_ | _] ->
-                   [r_cg_phi(vars: vs)]
-               end)
-    {fis ++ [{:label, tf}] ++ failPhi ++ sis ++ [{:label,
-                                                    b},
-                                                     postPhi],
-       r_cg(st, break: oldBreak)}
+
+    failPhi =
+      case vs do
+        [] ->
+          []
+
+        [_ | _] ->
+          [r_cg_phi(vars: vs)]
+      end
+
+    {fis ++ [{:label, tf}] ++ failPhi ++ sis ++ [{:label, b}, postPhi], r_cg(st, break: oldBreak)}
   end
 
-  defp cg(r_k_goto(label: label, args: []),
-            r_cg(labels: labels) = st) do
+  defp cg(
+         r_k_goto(label: label, args: []),
+         r_cg(labels: labels) = st
+       ) do
     branch = :erlang.map_get(label, labels)
     {[make_uncond_branch(branch)], st}
   end
 
-  defp cg(r_k_goto(label: label, args: as0),
-            r_cg(labels: labels) = st) do
+  defp cg(
+         r_k_goto(label: label, args: as0),
+         r_cg(labels: labels) = st
+       ) do
     as = ssa_args(as0, st)
     branch = :erlang.map_get(label, labels)
     break = r_cg_break(args: as, phi: branch)
     {[break], st}
   end
 
-  defp cg(r_k_opaque(val: {:ssa_check_when, _, _, _, _} = check),
-            st) do
+  defp cg(
+         r_k_opaque(val: {:ssa_check_when, _, _, _, _} = check),
+         st
+       ) do
     {[], r_cg(st, checks: [check | r_cg(st, :checks)])}
   end
 
-  defp do_match_cg(m, rs,
-            r_cg(bfail: bfail, break: oldBreak) = st0) do
+  defp do_match_cg(m, rs, r_cg(bfail: bfail, break: oldBreak) = st0) do
     {b, st1} = new_label(st0)
     {mis, st2} = match_cg(m, bfail, r_cg(st1, break: b))
     st3 = r_cg(st2, break: oldBreak)
@@ -289,40 +427,44 @@ defmodule :m_beam_kernel_to_ssa do
   end
 
   defp match_cg(r_k_select(var: r_k_var() = v, types: scs), fail, st) do
-    match_fmf(fn s, f, sta ->
-                   select_cg(s, v, f, fail, sta)
-              end,
-                fail, st, scs)
+    match_fmf(
+      fn s, f, sta ->
+        select_cg(s, v, f, fail, sta)
+      end,
+      fail,
+      st,
+      scs
+    )
   end
 
   defp match_cg(r_k_guard(clauses: gcs), fail, st) do
-    match_fmf(fn g, f, sta ->
-                   guard_clause_cg(g, f, sta)
-              end,
-                fail, st, gcs)
+    match_fmf(
+      fn g, f, sta ->
+        guard_clause_cg(g, f, sta)
+      end,
+      fail,
+      st,
+      gcs
+    )
   end
 
   defp match_cg(ke, _Fail, st0) do
     cg(ke, st0)
   end
 
-  defp select_cg(r_k_type_clause(type: :k_binary, values: [s]), var, tf, vf,
-            st) do
+  defp select_cg(r_k_type_clause(type: :k_binary, values: [s]), var, tf, vf, st) do
     select_binary(s, var, tf, vf, st)
   end
 
-  defp select_cg(r_k_type_clause(type: :k_bin_seg, values: vs), var, tf, _Vf,
-            st) do
+  defp select_cg(r_k_type_clause(type: :k_bin_seg, values: vs), var, tf, _Vf, st) do
     select_bin_segs(vs, var, tf, st)
   end
 
-  defp select_cg(r_k_type_clause(type: :k_bin_int, values: vs), var, tf, _Vf,
-            st) do
+  defp select_cg(r_k_type_clause(type: :k_bin_int, values: vs), var, tf, _Vf, st) do
     select_bin_segs(vs, var, tf, st)
   end
 
-  defp select_cg(r_k_type_clause(type: :k_bin_end, values: [s]), var, tf, _Vf,
-            st) do
+  defp select_cg(r_k_type_clause(type: :k_bin_end, values: [s]), var, tf, _Vf, st) do
     select_bin_end(s, var, tf, st)
   end
 
@@ -330,80 +472,76 @@ defmodule :m_beam_kernel_to_ssa do
     select_map(vs, var, tf, vf, st)
   end
 
-  defp select_cg(r_k_type_clause(type: :k_cons, values: [s]), var, tf, vf,
-            st) do
+  defp select_cg(r_k_type_clause(type: :k_cons, values: [s]), var, tf, vf, st) do
     select_cons(s, var, tf, vf, st)
   end
 
-  defp select_cg(r_k_type_clause(type: :k_nil, values: [s]), var, tf, vf,
-            st) do
+  defp select_cg(r_k_type_clause(type: :k_nil, values: [s]), var, tf, vf, st) do
     select_nil(s, var, tf, vf, st)
   end
 
-  defp select_cg(r_k_type_clause(type: :k_literal, values: vs), var, tf, vf,
-            st) do
+  defp select_cg(r_k_type_clause(type: :k_literal, values: vs), var, tf, vf, st) do
     select_literal(vs, var, tf, vf, st)
   end
 
   defp select_cg(r_k_type_clause(type: type, values: scs), var, tf, vf, st0) do
-    {vis, st1} = mapfoldl(fn s, sta ->
-                               {val, is, stb} = select_val(s, var, vf, sta)
-                               {{is, [val]}, stb}
-                          end,
-                            st0, scs)
+    {vis, st1} =
+      mapfoldl(
+        fn s, sta ->
+          {val, is, stb} = select_val(s, var, vf, sta)
+          {{is, [val]}, stb}
+        end,
+        st0,
+        scs
+      )
+
     optVls = combine(:lists.sort(combine(vis)))
     {vls, sis, st2} = select_labels(optVls, st1, [], [])
     arg = ssa_arg(var, st2)
-    {is, st} = select_val_cg(type, arg, vls, tf, vf, sis,
-                               st2)
+    {is, st} = select_val_cg(type, arg, vls, tf, vf, sis, st2)
     {is, st}
   end
 
-  defp select_val_cg(:k_atom, {:bool, dst}, vls, _Tf, _Vf, sis,
-            st) do
+  defp select_val_cg(:k_atom, {:bool, dst}, vls, _Tf, _Vf, sis, st) do
     r_b_var() = dst
-    [{r_b_literal(val: false), fail}, {r_b_literal(val: true),
-                               succ}] = sort(vls)
+    [{r_b_literal(val: false), fail}, {r_b_literal(val: true), succ}] = sort(vls)
     br = r_b_br(bool: dst, succ: succ, fail: fail)
     {[br | sis], st}
   end
 
-  defp select_val_cg(:k_atom, {:succeeded, dst}, vls, _Tf, _Vf, sis,
-            st0) do
-    [{r_b_literal(val: false), fail}, {r_b_literal(val: true),
-                               succ}] = sort(vls)
+  defp select_val_cg(:k_atom, {:succeeded, dst}, vls, _Tf, _Vf, sis, st0) do
+    [{r_b_literal(val: false), fail}, {r_b_literal(val: true), succ}] = sort(vls)
     r_b_var() = dst
     {bool, st} = new_ssa_var(:"@ssa_bool", st0)
-    succeeded = r_b_set(op: {:succeeded, :guard}, dst: bool,
-                    args: [dst])
+    succeeded = r_b_set(op: {:succeeded, :guard}, dst: bool, args: [dst])
     br = r_b_br(bool: bool, succ: succ, fail: fail)
     {[succeeded, br | sis], st}
   end
 
   defp select_val_cg(:k_tuple, tuple, vls, tf, vf, sis, st0) do
-    {is0, st1} = make_cond_branch({:bif, :is_tuple},
-                                    [tuple], tf, st0)
+    {is0, st1} = make_cond_branch({:bif, :is_tuple}, [tuple], tf, st0)
     {arity, st2} = new_ssa_var(:"@ssa_arity", st1)
-    getArity = r_b_set(op: {:bif, :tuple_size}, dst: arity,
-                   args: [tuple])
-    {is, st} = select_val_cg(:k_int, arity, vls, vf, vf,
-                               sis, st2)
+    getArity = r_b_set(op: {:bif, :tuple_size}, dst: arity, args: [tuple])
+    {is, st} = select_val_cg(:k_int, arity, vls, vf, vf, sis, st2)
     {is0 ++ [getArity] ++ is, st}
   end
 
   defp select_val_cg(type, r, vls, tf, vf, sis, st0) do
-    {typeIs, st1} = (cond do
-                       tf === vf ->
-                         {[], st0}
-                       true ->
-                         test = select_type_test(type)
-                         make_cond_branch(test, [r], tf, st0)
-                     end)
-    case (vls) do
+    {typeIs, st1} =
+      cond do
+        tf === vf ->
+          {[], st0}
+
+        true ->
+          test = select_type_test(type)
+          make_cond_branch(test, [r], tf, st0)
+      end
+
+    case vls do
       [{val, succ}] ->
-        {is, st} = make_cond({:bif, :"=:="}, [r, val], vf, succ,
-                               st1)
+        {is, st} = make_cond({:bif, :"=:="}, [r, val], vf, succ, st1)
         {typeIs ++ is ++ sis, st}
+
       [_ | _] ->
         {typeIs ++ [r_b_switch(arg: r, fail: vf, list: vls) | sis], st1}
     end
@@ -435,8 +573,7 @@ defmodule :m_beam_kernel_to_ssa do
 
   defp select_labels([{is, vs} | vis], st0, vls, sis) do
     {lbl, st1} = new_label(st0)
-    select_labels(vis, st1, add_vls(vs, lbl, vls),
-                    [[{:label, lbl} | is] | sis])
+    select_labels(vis, st1, add_vls(vs, lbl, vls), [[{:label, lbl} | is] | sis])
   end
 
   defp select_labels([], st, vls, sis) do
@@ -453,53 +590,80 @@ defmodule :m_beam_kernel_to_ssa do
 
   defp select_literal(s, v, tf, vf, st) do
     src = ssa_arg(v, st)
+
     f = fn valClause, fail, st0 ->
-             {val, valIs, st1} = select_val(valClause, v, vf, st0)
-             args = [src, r_b_literal(val: val)]
-             {is, st2} = make_cond_branch({:bif, :"=:="}, args, fail,
-                                            st1)
-             {is ++ valIs, st2}
-        end
+      {val, valIs, st1} = select_val(valClause, v, vf, st0)
+      args = [src, r_b_literal(val: val)]
+      {is, st2} = make_cond_branch({:bif, :"=:="}, args, fail, st1)
+      {is ++ valIs, st2}
+    end
+
     match_fmf(f, tf, st, s)
   end
 
-  defp select_cons(r_k_val_clause(val: r_k_cons(hd: hd, tl: tl), body: b), v, tf, vf,
-            st0) do
+  defp select_cons(r_k_val_clause(val: r_k_cons(hd: hd, tl: tl), body: b), v, tf, vf, st0) do
     es = [hd, tl]
     {eis, st1} = select_extract_cons(v, es, st0)
     {bis, st2} = match_cg(b, vf, st1)
     src = ssa_arg(v, st2)
-    {is, st} = make_cond_branch(:is_nonempty_list, [src],
-                                  tf, st2)
+    {is, st} = make_cond_branch(:is_nonempty_list, [src], tf, st2)
     {is ++ eis ++ bis, st}
   end
 
   defp select_nil(r_k_val_clause(val: r_k_literal(val: []), body: b), v, tf, vf, st0) do
     {bis, st1} = match_cg(b, vf, st0)
     src = ssa_arg(v, st1)
-    {is, st} = make_cond_branch({:bif, :"=:="},
-                                  [src, r_b_literal(val: [])], tf, st1)
+    {is, st} = make_cond_branch({:bif, :"=:="}, [src, r_b_literal(val: [])], tf, st1)
     {is ++ bis, st}
   end
 
-  defp select_binary(r_k_val_clause(val: r_k_binary(segs: r_k_var(name: ctx0)), body: b),
-            r_k_var() = src, tf, vf, st0) do
+  defp select_binary(
+         r_k_val_clause(val: r_k_binary(segs: r_k_var(name: ctx0)), body: b),
+         r_k_var() = src,
+         tf,
+         vf,
+         st0
+       ) do
     {ctx, st1} = new_ssa_var(ctx0, st0)
     {bis0, st2} = match_cg(b, vf, st1)
     {testIs, st} = make_succeeded(ctx, {:guard, tf}, st2)
-    bis1 = [r_b_set(op: :bs_start_match, dst: ctx,
-                args: [r_b_literal(val: :new), ssa_arg(src,
-                                               st)])] ++ testIs ++ bis0
+
+    bis1 =
+      [
+        r_b_set(
+          op: :bs_start_match,
+          dst: ctx,
+          args: [
+            r_b_literal(val: :new),
+            ssa_arg(
+              src,
+              st
+            )
+          ]
+        )
+      ] ++ testIs ++ bis0
+
     bis = finish_bs_matching(bis1)
     {bis, st}
   end
 
-  defp finish_bs_matching([r_b_set(op: :bs_match,
-               args: [r_b_literal(val: :string), ctx, r_b_literal(val: binList)]) = set |
-               is])
-      when is_list(binList) do
-    i = r_b_set(set, args: [r_b_literal(val: :string), ctx,
-                                           r_b_literal(val: :erlang.list_to_bitstring(binList))])
+  defp finish_bs_matching([
+         r_b_set(
+           op: :bs_match,
+           args: [r_b_literal(val: :string), ctx, r_b_literal(val: binList)]
+         ) = set
+         | is
+       ])
+       when is_list(binList) do
+    i =
+      r_b_set(set,
+        args: [
+          r_b_literal(val: :string),
+          ctx,
+          r_b_literal(val: :erlang.list_to_bitstring(binList))
+        ]
+      )
+
     finish_bs_matching([i | is])
   end
 
@@ -546,69 +710,102 @@ defmodule :m_beam_kernel_to_ssa do
   defp make_succeeded_1(var, kind, fail, st0) do
     {bool, st1} = new_ssa_var(:"@ssa_bool", st0)
     {succ, st} = new_label(st1)
-    check = [r_b_set(op: {:succeeded, kind}, dst: bool,
-                 args: [var]),
-                 r_b_br(bool: bool, succ: succ, fail: fail)]
+
+    check = [
+      r_b_set(op: {:succeeded, kind}, dst: bool, args: [var]),
+      r_b_br(bool: bool, succ: succ, fail: fail)
+    ]
+
     {check ++ [{:label, succ}], st}
   end
 
   defp select_bin_segs(scs, ivar, tf, st) do
-    match_fmf(fn s, fail, sta ->
-                   select_bin_seg(s, ivar, fail, sta)
-              end,
-                tf, st, scs)
+    match_fmf(
+      fn s, fail, sta ->
+        select_bin_seg(s, ivar, fail, sta)
+      end,
+      tf,
+      st,
+      scs
+    )
   end
 
-  defp select_bin_seg(r_k_val_clause(val: r_k_bin_seg(size: size, unit: u, type: t, seg: seg,
-                     flags: fs, next: next),
-              body: b, anno: anno),
-            r_k_var() = src, fail, st0) do
+  defp select_bin_seg(
+         r_k_val_clause(
+           val: r_k_bin_seg(size: size, unit: u, type: t, seg: seg, flags: fs, next: next),
+           body: b,
+           anno: anno
+         ),
+         r_k_var() = src,
+         fail,
+         st0
+       ) do
     lineAnno = line_anno(anno)
     ctx = get_context(src, st0)
-    {mis, st1} = select_extract_bin(next, size, u, t, fs,
-                                      fail, ctx, lineAnno, st0)
+    {mis, st1} = select_extract_bin(next, size, u, t, fs, fail, ctx, lineAnno, st0)
     {extracted, st2} = new_ssa_var(r_k_var(seg, :name), st1)
     {bis, st} = match_cg(b, fail, st2)
-    bsGet = r_b_set(op: :bs_extract, dst: extracted,
-                args: [ssa_arg(next, st)])
+    bsGet = r_b_set(op: :bs_extract, dst: extracted, args: [ssa_arg(next, st)])
     is = mis ++ [bsGet] ++ bis
     {is, st}
   end
 
-  defp select_bin_seg(r_k_val_clause(val: r_k_bin_int(size: sz, unit: u, flags: fs, val: val,
-                     next: next),
-              body: b),
-            r_k_var() = src, fail, st0) do
+  defp select_bin_seg(
+         r_k_val_clause(
+           val: r_k_bin_int(size: sz, unit: u, flags: fs, val: val, next: next),
+           body: b
+         ),
+         r_k_var() = src,
+         fail,
+         st0
+       ) do
     ctx = get_context(src, st0)
-    {mis, st1} = select_extract_int(next, val, sz, u, fs,
-                                      fail, ctx, st0)
+    {mis, st1} = select_extract_int(next, val, sz, u, fs, fail, ctx, st0)
     {bis, st} = match_cg(b, fail, st1)
-    is = (case (mis ++ bis) do
-            [r_b_set(op: :bs_match,
-                 args: [r_b_literal(val: :string), otherCtx1, bin1]),
-                 r_b_set(op: {:succeeded, :guard}, dst: bool1), r_b_br(bool: bool1,
-                                                              succ: succ,
-                                                              fail: ^fail),
-                                                              {:label, succ},
-                                                                  r_b_set(op: :bs_match,
-                                                                      dst: dst,
-                                                                      args: [r_b_literal(val: :string),
-                                                                                 _OtherCtx2,
-                                                                                     bin2]) |
-                                                                      [r_b_set(op: {:succeeded,
-                                                                                :guard},
-                                                                           dst: bool2),
-                                                                           r_b_br(bool: bool2,
-                                                                               fail: ^fail) |
-                                                                               _] = is0] ->
-              {r_b_literal(val: b1), r_b_literal(val: b2)} = {bin1, bin2}
-              bin = r_b_literal(val: [b1, b2])
-              set = r_b_set(op: :bs_match, dst: dst,
-                        args: [r_b_literal(val: :string), otherCtx1, bin])
-              [set | is0]
-            is0 ->
-              is0
-          end)
+
+    is =
+      case mis ++ bis do
+        [
+          r_b_set(
+            op: :bs_match,
+            args: [r_b_literal(val: :string), otherCtx1, bin1]
+          ),
+          r_b_set(op: {:succeeded, :guard}, dst: bool1),
+          r_b_br(
+            bool: bool1,
+            succ: succ,
+            fail: ^fail
+          ),
+          {:label, succ},
+          r_b_set(
+            op: :bs_match,
+            dst: dst,
+            args: [r_b_literal(val: :string), _OtherCtx2, bin2]
+          )
+          | [
+              r_b_set(
+                op: {:succeeded, :guard},
+                dst: bool2
+              ),
+              r_b_br(
+                bool: bool2,
+                fail: ^fail
+              )
+              | _
+            ] = is0
+        ] ->
+          {r_b_literal(val: b1), r_b_literal(val: b2)} = {bin1, bin2}
+          bin = r_b_literal(val: [b1, b2])
+
+          set =
+            r_b_set(op: :bs_match, dst: dst, args: [r_b_literal(val: :string), otherCtx1, bin])
+
+          [set | is0]
+
+        is0 ->
+          is0
+      end
+
     {is, st}
   end
 
@@ -619,64 +816,74 @@ defmodule :m_beam_kernel_to_ssa do
   defp select_bin_end(r_k_val_clause(val: r_k_bin_end(), body: b), src, tf, st0) do
     ctx = get_context(src, st0)
     {bis, st1} = match_cg(b, tf, st0)
-    {testIs, st} = make_cond_branch(:bs_test_tail,
-                                      [ctx, r_b_literal(val: 0)], tf, st1)
+    {testIs, st} = make_cond_branch(:bs_test_tail, [ctx, r_b_literal(val: 0)], tf, st1)
     is = testIs ++ bis
     {is, st}
   end
 
-  defp select_extract_bin(r_k_var(name: hd), size0, unit, type, flags, vf, ctx,
-            anno, st0) do
+  defp select_extract_bin(r_k_var(name: hd), size0, unit, type, flags, vf, ctx, anno, st0) do
     {dst, st1} = new_ssa_var(hd, st0)
-    size = (case ({size0, ssa_arg(size0, st0)}) do
-              {r_k_var(), r_b_literal(val: :all)} ->
-                r_b_literal(val: :bad_size)
-              {_, size1} ->
-                size1
-            end)
-    build_bs_instr(anno, type, vf, ctx, size, unit, flags,
-                     dst, st1)
+
+    size =
+      case {size0, ssa_arg(size0, st0)} do
+        {r_k_var(), r_b_literal(val: :all)} ->
+          r_b_literal(val: :bad_size)
+
+        {_, size1} ->
+          size1
+      end
+
+    build_bs_instr(anno, type, vf, ctx, size, unit, flags, dst, st1)
   end
 
-  defp select_extract_int(r_k_var(name: tl), 0, r_k_literal(val: 0), _U, _Fs, _Vf, ctx,
-            st0) do
+  defp select_extract_int(r_k_var(name: tl), 0, r_k_literal(val: 0), _U, _Fs, _Vf, ctx, st0) do
     st = set_ssa_var(tl, ctx, st0)
     {[], st}
   end
 
-  defp select_extract_int(r_k_var(name: tl), val, r_k_literal(val: sz), u, fs, vf, ctx,
-            st0)
-      when is_integer(sz) do
+  defp select_extract_int(r_k_var(name: tl), val, r_k_literal(val: sz), u, fs, vf, ctx, st0)
+       when is_integer(sz) do
     {dst, st1} = new_ssa_var(tl, st0)
     bits = u * sz
-    bin = (case (member(:big, fs)) do
-             true ->
-               <<val :: size(bits)>>
-             false ->
-               true = member(:little, fs)
-               <<val :: size(bits) - little>>
-           end)
+
+    bin =
+      case member(:big, fs) do
+        true ->
+          <<val::size(bits)>>
+
+        false ->
+          true = member(:little, fs)
+          <<val::size(bits)-little>>
+      end
+
     ^bits = bit_size(bin)
     {testIs, st} = make_succeeded(dst, {:guard, vf}, st1)
-    set = r_b_set(op: :bs_match, dst: dst,
-              args: [r_b_literal(val: :string), ctx, r_b_literal(val: bin)])
+
+    set =
+      r_b_set(
+        op: :bs_match,
+        dst: dst,
+        args: [r_b_literal(val: :string), ctx, r_b_literal(val: bin)]
+      )
+
     {[set | testIs], st}
   end
 
-  defp build_bs_instr(anno, type, fail, ctx, size, unit0, flags0, dst,
-            st0) do
+  defp build_bs_instr(anno, type, fail, ctx, size, unit0, flags0, dst, st0) do
     unit = r_b_literal(val: unit0)
     flags = r_b_literal(val: flags0)
     needSize = bs_need_size(type)
     typeArg = r_b_literal(val: type)
-    get = (case (needSize) do
-             true ->
-               r_b_set(anno: anno, op: :bs_match, dst: dst,
-                   args: [typeArg, ctx, flags, size, unit])
-             false ->
-               r_b_set(anno: anno, op: :bs_match, dst: dst,
-                   args: [typeArg, ctx, flags])
-           end)
+
+    get =
+      case needSize do
+        true ->
+          r_b_set(anno: anno, op: :bs_match, dst: dst, args: [typeArg, ctx, flags, size, unit])
+
+        false ->
+          r_b_set(anno: anno, op: :bs_match, dst: dst, args: [typeArg, ctx, flags])
+      end
+
     {is, st} = make_succeeded(dst, {:guard, fail}, st0)
     {[get | is], st}
   end
@@ -694,31 +901,43 @@ defmodule :m_beam_kernel_to_ssa do
 
   defp select_extract_tuple(src, vs, st0) do
     tuple = ssa_arg(src, st0)
+
     f = fn r_k_var(anno: anno, name: v), {elem, s0} ->
-             case (member(:unused, anno)) do
-               true ->
-                 {[], {elem + 1, s0}}
-               false ->
-                 args = [tuple, r_b_literal(val: elem)]
-                 {dst, s} = new_ssa_var(v, s0)
-                 get = r_b_set(op: :get_tuple_element, dst: dst, args: args)
-                 {[get], {elem + 1, s}}
-             end
-        end
+      case member(:unused, anno) do
+        true ->
+          {[], {elem + 1, s0}}
+
+        false ->
+          args = [tuple, r_b_literal(val: elem)]
+          {dst, s} = new_ssa_var(v, s0)
+          get = r_b_set(op: :get_tuple_element, dst: dst, args: args)
+          {[get], {elem + 1, s}}
+      end
+    end
+
     {es, {_, st}} = flatmapfoldl(f, {0, st0}, vs)
     {es, st}
   end
 
   defp select_map(scs, v, tf, vf, st0) do
     mapSrc = ssa_arg(v, st0)
-    {is, st1} = match_fmf(fn r_k_val_clause(val: r_k_map(op: :exact, es: es),
-                                 body: b),
-                               fail, st1 ->
-                               select_map_val(v, es, b, fail, st1)
-                          end,
-                            vf, st0, scs)
-    {testIs, st} = make_cond_branch({:bif, :is_map},
-                                      [mapSrc], tf, st1)
+
+    {is, st1} =
+      match_fmf(
+        fn r_k_val_clause(
+             val: r_k_map(op: :exact, es: es),
+             body: b
+           ),
+           fail,
+           st1 ->
+          select_map_val(v, es, b, fail, st1)
+        end,
+        vf,
+        st0,
+        scs
+      )
+
+    {testIs, st} = make_cond_branch({:bif, :is_map}, [mapSrc], tf, st1)
     {testIs ++ is, st}
   end
 
@@ -733,8 +952,7 @@ defmodule :m_beam_kernel_to_ssa do
     r_k_map_pair(key: key0, val: r_k_var(name: dst0)) = p
     key = ssa_arg(key0, st0)
     {dst, st1} = new_ssa_var(dst0, st0)
-    set = r_b_set(op: :get_map_element, dst: dst,
-              args: [mapSrc, key])
+    set = r_b_set(op: :get_map_element, dst: dst, args: [mapSrc, key])
     {testIs, st2} = make_succeeded(dst, {:guard, fail}, st1)
     {is, st} = select_extract_map(ps, src, fail, st2)
     {[set | testIs] ++ is, st}
@@ -759,14 +977,21 @@ defmodule :m_beam_kernel_to_ssa do
     {gis ++ bis, st}
   end
 
-  defp guard_cg(r_k_try(arg: ts, vars: [], body: r_k_break(args: []),
-              evars: [], handler: r_k_break(args: [])),
-            fail, r_cg(bfail: oldBfail, break: oldBreak) = st0) do
+  defp guard_cg(
+         r_k_try(
+           arg: ts,
+           vars: [],
+           body: r_k_break(args: []),
+           evars: [],
+           handler: r_k_break(args: [])
+         ),
+         fail,
+         r_cg(bfail: oldBfail, break: oldBreak) = st0
+       ) do
     {next, st1} = new_label(st0)
-    {tis, st2} = guard_cg(ts, fail,
-                            r_cg(st1, bfail: fail,  break: next))
+    {tis, st2} = guard_cg(ts, fail, r_cg(st1, bfail: fail, break: next))
     is = tis ++ [{:label, next}, r_cg_phi(vars: [])]
-    {is, r_cg(st2, bfail: oldBfail,  break: oldBreak)}
+    {is, r_cg(st2, bfail: oldBfail, break: oldBreak)}
   end
 
   defp guard_cg(r_k_test(op: test0, args: as), fail, st0) do
@@ -789,27 +1014,32 @@ defmodule :m_beam_kernel_to_ssa do
   end
 
   defp test_cg(:"/=", inverted, as, fail, st) do
-    test_cg(:"==", not inverted, as, fail, st)
+    test_cg(:==, not inverted, as, fail, st)
   end
 
   defp test_cg(test, inverted, as0, fail, st0) do
     as = ssa_args(as0, st0)
-    case ({test, ssa_args(as0, st0)}) do
-      {:is_record,
-         [tuple, r_b_literal(val: atom) = tag, r_b_literal(val: int) = arity]}
-          when (is_atom(atom) and is_integer(int)) ->
+
+    case {test, ssa_args(as0, st0)} do
+      {:is_record, [tuple, r_b_literal(val: atom) = tag, r_b_literal(val: int) = arity]}
+      when is_atom(atom) and is_integer(int) ->
         false = inverted
         test_is_record_cg(fail, tuple, tag, arity, st0)
+
       {_, ^as} ->
         {bool, st1} = new_ssa_var(:"@ssa_bool", st0)
         {succ, st} = new_label(st1)
         bif = r_b_set(op: {:bif, test}, dst: bool, args: as)
-        br = (case (inverted) do
-                false ->
-                  r_b_br(bool: bool, succ: succ, fail: fail)
-                true ->
-                  r_b_br(bool: bool, succ: fail, fail: succ)
-              end)
+
+        br =
+          case inverted do
+            false ->
+              r_b_br(bool: bool, succ: succ, fail: fail)
+
+            true ->
+              r_b_br(bool: bool, succ: fail, fail: succ)
+          end
+
         {[bif, br, {:label, succ}], st}
     end
   end
@@ -817,16 +1047,11 @@ defmodule :m_beam_kernel_to_ssa do
   defp test_is_record_cg(fail, tuple, tagVal, arityVal, st0) do
     {arity, st1} = new_ssa_var(:"@ssa_arity", st0)
     {tag, st2} = new_ssa_var(:"@ssa_tag", st1)
-    {is0, st3} = make_cond_branch({:bif, :is_tuple},
-                                    [tuple], fail, st2)
-    getArity = r_b_set(op: {:bif, :tuple_size}, dst: arity,
-                   args: [tuple])
-    {is1, st4} = make_cond_branch({:bif, :"=:="},
-                                    [arity, arityVal], fail, st3)
-    getTag = r_b_set(op: :get_tuple_element, dst: tag,
-                 args: [tuple, r_b_literal(val: 0)])
-    {is2, st} = make_cond_branch({:bif, :"=:="}, [tag, tagVal],
-                                   fail, st4)
+    {is0, st3} = make_cond_branch({:bif, :is_tuple}, [tuple], fail, st2)
+    getArity = r_b_set(op: {:bif, :tuple_size}, dst: arity, args: [tuple])
+    {is1, st4} = make_cond_branch({:bif, :"=:="}, [arity, arityVal], fail, st3)
+    getTag = r_b_set(op: :get_tuple_element, dst: tag, args: [tuple, r_b_literal(val: 0)])
+    {is2, st} = make_cond_branch({:bif, :"=:="}, [tag, tagVal], fail, st4)
     is = is0 ++ [getArity] ++ is1 ++ [getTag] ++ is2
     {is, st}
   end
@@ -842,13 +1067,14 @@ defmodule :m_beam_kernel_to_ssa do
     {r ++ [{:label, fail}] ++ rs, st3}
   end
 
-  defp fail_context(r_cg(catch_label: catch__, bfail: fail,
-              ultimate_failure: ult)) do
+  defp fail_context(r_cg(catch_label: catch__, bfail: fail, ultimate_failure: ult)) do
     cond do
       fail !== ult ->
         {:guard, fail}
+
       catch__ === :none ->
         {:no_catch, fail}
+
       is_integer(catch__) ->
         {:in_catch, catch__}
     end
@@ -858,18 +1084,17 @@ defmodule :m_beam_kernel_to_ssa do
     call_cg(func, as, [r_k_var(name: :"@ssa_ignored")], le, st)
   end
 
-  defp call_cg(func, as, [r_k_var(name: r) | moreRs] = rs, le,
-            st0) do
-    case (fail_context(st0)) do
+  defp call_cg(func, as, [r_k_var(name: r) | moreRs] = rs, le, st0) do
+    case fail_context(st0) do
       {:guard, fail} ->
         r_k_remote(mod: r_k_literal(val: :erlang), name: r_k_literal(val: :error)) = func
         st = set_unused_ssa_vars(rs, st0)
         {[make_uncond_branch(fail), r_cg_unreachable()], st}
+
       failCtx ->
         args = ssa_args([func | as], st0)
         {ret, st1} = new_ssa_var(r, st0)
-        call = r_b_set(anno: line_anno(le), op: :call, dst: ret,
-                   args: args)
+        call = r_b_set(anno: line_anno(le), op: :call, dst: ret, args: args)
         st2 = set_unused_ssa_vars(moreRs, st1)
         {testIs, st} = make_succeeded(ret, failCtx, st2)
         {[call | testIs], st}
@@ -877,79 +1102,91 @@ defmodule :m_beam_kernel_to_ssa do
   end
 
   defp enter_cg(func, as0, le, st0) do
-    {:no_catch, _} = (failCtx = fail_context(st0))
+    {:no_catch, _} = failCtx = fail_context(st0)
     as = ssa_args([func | as0], st0)
     {ret, st2} = new_ssa_var(:"@ssa_ret", st0)
-    call = r_b_set(anno: line_anno(le), op: :call, dst: ret,
-               args: as)
+    call = r_b_set(anno: line_anno(le), op: :call, dst: ret, args: as)
     {testIs, st} = make_succeeded(ret, failCtx, st2)
     {[call | testIs] ++ [r_b_ret(arg: ret)], st}
   end
 
-  defp bif_cg(r_k_bif(anno: a, op: r_k_internal(name: name), args: as,
-              ret: rs),
-            _Le, st) do
+  defp bif_cg(r_k_bif(anno: a, op: r_k_internal(name: name), args: as, ret: rs), _Le, st) do
     internal_cg(internal_anno(a), name, as, rs, st)
   end
 
-  defp bif_cg(r_k_bif(op: r_k_remote(mod: r_k_literal(val: :erlang),
-                    name: r_k_literal(val: name)),
-              args: as, ret: rs),
-            le, st) do
+  defp bif_cg(
+         r_k_bif(
+           op:
+             r_k_remote(
+               mod: r_k_literal(val: :erlang),
+               name: r_k_literal(val: name)
+             ),
+           args: as,
+           ret: rs
+         ),
+         le,
+         st
+       ) do
     bif_cg(name, as, rs, le, st)
   end
 
   defp internal_anno(le) do
     anno = line_anno(le)
-    case (keyfind(:inlined, 1, le)) do
+
+    case keyfind(:inlined, 1, le) do
       false ->
         anno
+
       {:inlined, nameArity} ->
         Map.put(anno, :inlined, nameArity)
     end
   end
 
   defp internal_cg(anno, op, as, rs, st0)
-      when op === :match_fail or op === :raise or
-             op === :raw_raise do
-    {dst, st1} = (case (rs) do
-                    [r_k_var(name: dst0) | rest] ->
-                      {var, stV} = new_ssa_var(dst0, st0)
-                      {var, set_unused_ssa_vars(rest, stV)}
-                    [] ->
-                      new_ssa_var(:"@exception", st0)
-                  end)
-    {kind, _Fail} = (context = fail_context(st1))
+       when op === :match_fail or op === :raise or
+              op === :raw_raise do
+    {dst, st1} =
+      case rs do
+        [r_k_var(name: dst0) | rest] ->
+          {var, stV} = new_ssa_var(dst0, st0)
+          {var, set_unused_ssa_vars(rest, stV)}
+
+        [] ->
+          new_ssa_var(:"@exception", st0)
+      end
+
+    {kind, _Fail} = context = fail_context(st1)
     true = kind !== :guard or op === :match_fail
     args = ssa_args(as, st1)
-    set = r_b_set(anno: anno, op: fix_op(op, st1), dst: dst,
-              args: args)
+    set = r_b_set(anno: anno, op: fix_op(op, st1), dst: dst, args: args)
     {testIs, st} = make_succeeded(dst, context, st1)
     {[set | testIs], st}
   end
 
-  defp internal_cg(anno, :recv_peek_message, [],
-            [r_k_var(name: succeeded0), r_k_var(name: dst0)], st0) do
+  defp internal_cg(
+         anno,
+         :recv_peek_message,
+         [],
+         [r_k_var(name: succeeded0), r_k_var(name: dst0)],
+         st0
+       ) do
     {dst, st1} = new_ssa_var(dst0, st0)
     st = new_succeeded_value(succeeded0, dst, st1)
-    set = r_b_set(anno: anno, op: :peek_message, dst: dst,
-              args: [r_b_literal(val: :none)])
+    set = r_b_set(anno: anno, op: :peek_message, dst: dst, args: [r_b_literal(val: :none)])
     {[set], st}
   end
 
-  defp internal_cg(_Anno, :recv_wait_timeout, as,
-            [r_k_var(name: succeeded0)], st0) do
+  defp internal_cg(_Anno, :recv_wait_timeout, as, [r_k_var(name: succeeded0)], st0) do
     args = ssa_args(as, st0)
     {wait, st1} = new_ssa_var(:"@ssa_wait", st0)
-    {succ, st2} = make_succeeded(wait, fail_context(st1),
-                                   st1)
+    {succ, st2} = make_succeeded(wait, fail_context(st1), st1)
     st = new_bool_value(succeeded0, wait, st2)
     set = r_b_set(op: :wait_timeout, dst: wait, args: args)
     {[set | succ], st}
   end
 
   defp internal_cg(anno, op0, as, [r_k_var(name: dst0)], st0)
-      when is_atom(op0) do
+       when is_atom(op0) do
     {dst, st} = new_ssa_var(dst0, st0)
     args = ssa_args(as, st)
     op = fix_op(op0, st)
@@ -979,19 +1216,21 @@ defmodule :m_beam_kernel_to_ssa do
 
   defp bif_cg(bif, as0, [r_k_var(name: dst0)], le, st0) do
     {dst, st1} = new_ssa_var(dst0, st0)
-    case ({bif, ssa_args(as0, st0)}) do
-      {:is_record,
-         [tuple, r_b_literal(val: atom) = tag, r_b_literal(val: int) = arity]}
-          when (is_atom(atom) and is_integer(int)) ->
+
+    case {bif, ssa_args(as0, st0)} do
+      {:is_record, [tuple, r_b_literal(val: atom) = tag, r_b_literal(val: int) = arity]}
+      when is_atom(atom) and is_integer(int) ->
         bif_is_record_cg(dst, tuple, tag, arity, st1)
+
       {_, as} ->
-        i = r_b_set(anno: line_anno(le), op: {:bif, bif}, dst: dst,
-                args: as)
-        case (:erl_bifs.is_safe(:erlang, bif, length(as))) do
+        i = r_b_set(anno: line_anno(le), op: {:bif, bif}, dst: dst, args: as)
+
+        case :erl_bifs.is_safe(:erlang, bif, length(as)) do
           false ->
             failCtx = fail_context(st1)
             {is, st} = make_succeeded(dst, failCtx, st1)
             {[i | is], st}
+
           true ->
             {[i], st1}
         end
@@ -1003,22 +1242,23 @@ defmodule :m_beam_kernel_to_ssa do
     {tag, st2} = new_ssa_var(:"@ssa_tag", st1)
     {phi, st3} = new_label(st2)
     {false__, st4} = new_label(st3)
-    {is0, st5} = make_cond_branch({:bif, :is_tuple},
-                                    [tuple], false__, st4)
-    getArity = r_b_set(op: {:bif, :tuple_size}, dst: arity,
-                   args: [tuple])
-    {is1, st6} = make_cond_branch({:bif, :"=:="},
-                                    [arity, arityVal], false__, st5)
-    getTag = r_b_set(op: :get_tuple_element, dst: tag,
-                 args: [tuple, r_b_literal(val: 0)])
-    {is2, st} = make_cond_branch({:bif, :"=:="}, [tag, tagVal],
-                                   false__, st6)
-    is3 = [r_cg_break(args: [r_b_literal(val: true)], phi: phi), {:label,
-                                                 false__},
-                                                  r_cg_break(args: [r_b_literal(val: false)],
-                                                      phi: phi),
-                                                      {:label, phi},
-                                                          r_cg_phi(vars: [dst])]
+    {is0, st5} = make_cond_branch({:bif, :is_tuple}, [tuple], false__, st4)
+    getArity = r_b_set(op: {:bif, :tuple_size}, dst: arity, args: [tuple])
+    {is1, st6} = make_cond_branch({:bif, :"=:="}, [arity, arityVal], false__, st5)
+    getTag = r_b_set(op: :get_tuple_element, dst: tag, args: [tuple, r_b_literal(val: 0)])
+    {is2, st} = make_cond_branch({:bif, :"=:="}, [tag, tagVal], false__, st6)
+
+    is3 = [
+      r_cg_break(args: [r_b_literal(val: true)], phi: phi),
+      {:label, false__},
+      r_cg_break(
+        args: [r_b_literal(val: false)],
+        phi: phi
+      ),
+      {:label, phi},
+      r_cg_phi(vars: [dst])
+    ]
+
     is = is0 ++ [getArity] ++ is1 ++ [getTag] ++ is2 ++ is3
     {is, st}
   end
@@ -1031,49 +1271,57 @@ defmodule :m_beam_kernel_to_ssa do
     {tryTag, st5} = new_ssa_var(:"@ssa_catch_tag", st4)
     {ssaVs, st6} = new_ssa_vars(vs, st5)
     {ssaEvs, st7} = new_ssa_vars(evs, st6)
-    {ais, st8} = cg(ta, r_cg(st7, break: b,  catch_label: h))
-    case ({vs, tb, th, is_guard_cg_safe_list(ais)}) do
+    {ais, st8} = cg(ta, r_cg(st7, break: b, catch_label: h))
+
+    case {vs, tb, th, is_guard_cg_safe_list(ais)} do
       {[r_k_var(name: x)], r_k_break(args: [r_k_var(name: x)]), r_k_break(args: [r_k_literal()]),
-         true} ->
-        {protIs, st9} = guard_cg(ta, h,
-                                   r_cg(st7, break: b,  bfail: h))
+       true} ->
+        {protIs, st9} = guard_cg(ta, h, r_cg(st7, break: b, bfail: h))
         {his, st10} = cg(th, st9)
         {retVars, st} = new_ssa_vars(rs, st10)
-        is = protIs ++ [{:label, h}] ++ his ++ [{:label, b},
-                                                    r_cg_phi(vars: retVars)]
-        {is,
-           r_cg(st, break: r_cg(st0, :break),  bfail: r_cg(st7, :bfail))}
+        is = protIs ++ [{:label, h}] ++ his ++ [{:label, b}, r_cg_phi(vars: retVars)]
+        {is, r_cg(st, break: r_cg(st0, :break), bfail: r_cg(st7, :bfail))}
+
       {[r_k_var(name: x)], r_k_break(args: [r_k_literal() = succLit0, r_k_var(name: x)]),
-         r_k_break(args: [r_k_literal(val: false), r_k_literal()]), true} ->
+       r_k_break(args: [r_k_literal(val: false), r_k_literal()]), true} ->
         {finalLabel, st9} = new_label(st7)
-        {protIs, st10} = guard_cg(ta, h,
-                                    r_cg(st9, break: b,  bfail: h))
+        {protIs, st10} = guard_cg(ta, h, r_cg(st9, break: b, bfail: h))
         {his, st11} = cg(th, r_cg(st10, break: finalLabel))
         {retVars, st12} = new_ssa_vars(rs, st11)
         {result, st} = new_ssa_var(:"@ssa_result", st12)
         succLit = ssa_arg(succLit0, st)
-        is = protIs ++ [{:label, h}] ++ his ++ [{:label, b},
-                                                    r_cg_phi(vars: [result]),
-                                                        r_cg_break(args: [succLit,
-                                                                     result],
-                                                            phi: finalLabel),
-                                                            {:label,
-                                                               finalLabel},
-                                                                r_cg_phi(vars: retVars)]
-        {is,
-           r_cg(st, break: r_cg(st0, :break),  bfail: r_cg(st7, :bfail))}
+
+        is =
+          protIs ++
+            [{:label, h}] ++
+            his ++
+            [
+              {:label, b},
+              r_cg_phi(vars: [result]),
+              r_cg_break(
+                args: [succLit, result],
+                phi: finalLabel
+              ),
+              {:label, finalLabel},
+              r_cg_phi(vars: retVars)
+            ]
+
+        {is, r_cg(st, break: r_cg(st0, :break), bfail: r_cg(st7, :bfail))}
+
       {_, r_k_break(args: []), r_k_break(args: []), true} ->
-        {protIs, st9} = guard_cg(ta, h,
-                                   r_cg(st7, break: b,  bfail: h))
+        {protIs, st9} = guard_cg(ta, h, r_cg(st7, break: b, bfail: h))
         {his, st10} = cg(th, st9)
         {retVars, st} = new_ssa_vars(rs, st10)
-        is = protIs ++ [{:label, h}] ++ his ++ [{:label, b},
-                                                    r_cg_phi(vars: retVars)]
-        {is,
-           r_cg(st, break: r_cg(st0, :break),  bfail: r_cg(st7, :bfail))}
+        is = protIs ++ [{:label, h}] ++ his ++ [{:label, b}, r_cg_phi(vars: retVars)]
+        {is, r_cg(st, break: r_cg(st0, :break), bfail: r_cg(st7, :bfail))}
+
       {_, _, _, _} ->
-        st9 = r_cg(st8, break: e, 
-                       catch_label: r_cg(st7, :catch_label))
+        st9 =
+          r_cg(st8,
+            break: e,
+            catch_label: r_cg(st7, :catch_label)
+          )
+
         {bis, st10} = cg(tb, st9)
         {his, st11} = cg(th, st10)
         {breakVars, st12} = new_ssa_vars(rs, st11)
@@ -1081,19 +1329,26 @@ defmodule :m_beam_kernel_to_ssa do
         extractVs = extract_vars(ssaEvs, catchedAgg, 0)
         killTryTag = r_b_set(op: :kill_try_tag, args: [tryTag])
         args = [r_b_literal(val: :try), tryTag]
-        handler = [{:label, h}, r_b_set(op: :landingpad,
-                                    dst: catchedAgg,
-                                    args: args)] ++ extractVs ++ [killTryTag]
-        {[r_b_set(op: :new_try_tag, dst: tryTag,
-              args: [r_b_literal(val: :try)]),
-              r_b_br(bool: tryTag, succ: next, fail: h), {:label,
-                                                       next}] ++ ais ++ [{:label,
-                                                                            b},
-                                                                             r_cg_phi(vars: ssaVs),
-                                                                                 killTryTag] ++ bis ++ handler ++ his ++ [{:label,
-                                                                                                                             e},
-                                                                                                                              r_cg_phi(vars: breakVars)],
-           r_cg(st13, break: r_cg(st0, :break))}
+
+        handler =
+          [
+            {:label, h},
+            r_b_set(
+              op: :landingpad,
+              dst: catchedAgg,
+              args: args
+            )
+          ] ++ extractVs ++ [killTryTag]
+
+        {[
+           r_b_set(op: :new_try_tag, dst: tryTag, args: [r_b_literal(val: :try)]),
+           r_b_br(bool: tryTag, succ: next, fail: h),
+           {:label, next}
+         ] ++
+           ais ++
+           [{:label, b}, r_cg_phi(vars: ssaVs), killTryTag] ++
+           bis ++ handler ++ his ++ [{:label, e}, r_cg_phi(vars: breakVars)],
+         r_cg(st13, break: r_cg(st0, :break))}
     end
   end
 
@@ -1102,11 +1357,13 @@ defmodule :m_beam_kernel_to_ssa do
   end
 
   defp is_guard_cg_safe(r_b_set(op: :call, args: args)) do
-    case (args) do
-      [r_b_remote(mod: r_b_literal(val: :erlang), name: r_b_literal(val: :error),
-           arity: 1) |
-           _] ->
+    case args do
+      [
+        r_b_remote(mod: r_b_literal(val: :erlang), name: r_b_literal(val: :error), arity: 1)
+        | _
+      ] ->
         true
+
       _ ->
         false
     end
@@ -1147,7 +1404,7 @@ defmodule :m_beam_kernel_to_ssa do
     {tryTag, st4} = new_ssa_var(:"@ssa_catch_tag", st3)
     {ssaVs, st5} = new_ssa_vars(vs, st4)
     {ssaEvs, st6} = new_ssa_vars(evs, st5)
-    {ais, st7} = cg(ta, r_cg(st6, break: b,  catch_label: h))
+    {ais, st7} = cg(ta, r_cg(st6, break: b, catch_label: h))
     st8 = r_cg(st7, catch_label: r_cg(st6, :catch_label))
     {bis, st9} = cg(tb, st8)
     {his, st10} = cg(th, st9)
@@ -1155,17 +1412,23 @@ defmodule :m_beam_kernel_to_ssa do
     extractVs = extract_vars(ssaEvs, catchedAgg, 0)
     killTryTag = r_b_set(op: :kill_try_tag, args: [tryTag])
     args = [r_b_literal(val: :try), tryTag]
-    handler = [{:label, h}, r_b_set(op: :landingpad,
-                                dst: catchedAgg,
-                                args: args)] ++ extractVs ++ [killTryTag]
-    {[r_b_set(op: :new_try_tag, dst: tryTag,
-          args: [r_b_literal(val: :try)]),
-          r_b_br(bool: tryTag, succ: next, fail: h), {:label,
-                                                   next}] ++ ais ++ [{:label,
-                                                                        b},
-                                                                         r_cg_phi(vars: ssaVs),
-                                                                             killTryTag] ++ bis ++ handler ++ his,
-       r_cg(st, break: r_cg(st0, :break))}
+
+    handler =
+      [
+        {:label, h},
+        r_b_set(
+          op: :landingpad,
+          dst: catchedAgg,
+          args: args
+        )
+      ] ++ extractVs ++ [killTryTag]
+
+    {[
+       r_b_set(op: :new_try_tag, dst: tryTag, args: [r_b_literal(val: :try)]),
+       r_b_br(bool: tryTag, succ: next, fail: h),
+       {:label, next}
+     ] ++ ais ++ [{:label, b}, r_cg_phi(vars: ssaVs), killTryTag] ++ bis ++ handler ++ his,
+     r_cg(st, break: r_cg(st0, :break))}
   end
 
   defp extract_vars([v | vs], agg, n) do
@@ -1184,41 +1447,59 @@ defmodule :m_beam_kernel_to_ssa do
     {catchReg, st4} = new_ssa_var(:"@ssa_catch_tag", st3)
     {dst, st5} = new_ssa_var(r, st4)
     {succ, st6} = new_label(st5)
-    {cis, st7} = cg(block,
-                      r_cg(st6, break: succ,  catch_label: h))
+
+    {cis, st7} =
+      cg(
+        block,
+        r_cg(st6, break: succ, catch_label: h)
+      )
+
     {catchedVal, st8} = new_ssa_var(:"@catched_val", st7)
     {succVal, st9} = new_ssa_var(:"@success_val", st8)
     {catchedAgg, st10} = new_ssa_var(:"@ssa_agg", st9)
     {catchEndVal, st} = new_ssa_var(:"@catch_end_val", st10)
     args = [r_b_literal(val: :catch), catchReg]
-    {[r_b_set(op: :new_try_tag, dst: catchReg,
-          args: [r_b_literal(val: :catch)]),
-          r_b_br(bool: catchReg, succ: next, fail: h), {:label,
-                                                     next}] ++ cis ++ [{:label,
-                                                                          h},
-                                                                           r_b_set(op: :landingpad,
-                                                                               dst: catchedAgg,
-                                                                               args: args),
-                                                                               r_b_set(op: :extract,
-                                                                                   dst: catchedVal,
-                                                                                   args: [catchedAgg,
-                                                                                              r_b_literal(val: 0)]),
-                                                                                   r_cg_break(args: [catchedVal],
-                                                                                       phi: b),
-                                                                                       {:label,
-                                                                                          succ},
-                                                                                           r_cg_phi(vars: [succVal]),
-                                                                                               r_cg_break(args: [succVal],
-                                                                                                   phi: b),
-                                                                                                   {:label,
-                                                                                                      b},
-                                                                                                       r_cg_phi(vars: [catchEndVal]),
-                                                                                                           r_b_set(op: :catch_end,
-                                                                                                               dst: dst,
-                                                                                                               args: [catchReg,
-                                                                                                                          catchEndVal])],
-       r_cg(st, break: r_cg(st1, :break), 
-               catch_label: r_cg(st1, :catch_label))}
+
+    {[
+       r_b_set(op: :new_try_tag, dst: catchReg, args: [r_b_literal(val: :catch)]),
+       r_b_br(bool: catchReg, succ: next, fail: h),
+       {:label, next}
+     ] ++
+       cis ++
+       [
+         {:label, h},
+         r_b_set(
+           op: :landingpad,
+           dst: catchedAgg,
+           args: args
+         ),
+         r_b_set(
+           op: :extract,
+           dst: catchedVal,
+           args: [catchedAgg, r_b_literal(val: 0)]
+         ),
+         r_cg_break(
+           args: [catchedVal],
+           phi: b
+         ),
+         {:label, succ},
+         r_cg_phi(vars: [succVal]),
+         r_cg_break(
+           args: [succVal],
+           phi: b
+         ),
+         {:label, b},
+         r_cg_phi(vars: [catchEndVal]),
+         r_b_set(
+           op: :catch_end,
+           dst: dst,
+           args: [catchReg, catchEndVal]
+         )
+       ],
+     r_cg(st,
+       break: r_cg(st1, :break),
+       catch_label: r_cg(st1, :catch_label)
+     )}
   end
 
   defp put_cg([r_k_var(name: r)], r_k_cons(hd: hd, tl: tl), _Le, st0) do
@@ -1241,32 +1522,39 @@ defmodule :m_beam_kernel_to_ssa do
     cg_binary(dst, segs, failCtx, le, st1)
   end
 
-  defp put_cg([r_k_var(name: r)],
-            r_k_map(op: op, var: map, es: [r_k_map_pair(key: r_k_var() = k, val: v)]), le,
-            st0) do
+  defp put_cg(
+         [r_k_var(name: r)],
+         r_k_map(op: op, var: map, es: [r_k_map_pair(key: r_k_var() = k, val: v)]),
+         le,
+         st0
+       ) do
     srcMap = ssa_arg(map, st0)
     lineAnno = line_anno(le)
     list = [ssa_arg(k, st0), ssa_arg(v, st0)]
     {dst, st1} = new_ssa_var(r, st0)
-    {is, st} = put_cg_map(lineAnno, op, srcMap, dst, list,
-                            st1)
+    {is, st} = put_cg_map(lineAnno, op, srcMap, dst, list, st1)
     {is, st}
   end
 
-  defp put_cg([r_k_var(name: r)], r_k_map(op: op, var: map, es: es), le,
-            st0) do
-    [] = (for r_k_map_pair(key: r_k_var() = var) <- es do
-            var
-          end)
+  defp put_cg([r_k_var(name: r)], r_k_map(op: op, var: map, es: es), le, st0) do
+    [] =
+      for r_k_map_pair(key: r_k_var() = var) <- es do
+        var
+      end
+
     srcMap = ssa_arg(map, st0)
     lineAnno = line_anno(le)
-    list = flatmap(fn r_k_map_pair(key: k, val: v) ->
-                        [ssa_arg(k, st0), ssa_arg(v, st0)]
-                   end,
-                     es)
+
+    list =
+      flatmap(
+        fn r_k_map_pair(key: k, val: v) ->
+          [ssa_arg(k, st0), ssa_arg(v, st0)]
+        end,
+        es
+      )
+
     {dst, st1} = new_ssa_var(r, st0)
-    {is, st} = put_cg_map(lineAnno, op, srcMap, dst, list,
-                            st1)
+    {is, st} = put_cg_map(lineAnno, op, srcMap, dst, list, st1)
     {is, st}
   end
 
@@ -1278,11 +1566,12 @@ defmodule :m_beam_kernel_to_ssa do
 
   defp put_cg_map(lineAnno, op, srcMap, dst, list, st0) do
     args = [r_b_literal(val: op), srcMap | list]
-    putMap = r_b_set(anno: lineAnno, op: :put_map, dst: dst,
-                 args: args)
+    putMap = r_b_set(anno: lineAnno, op: :put_map, dst: dst, args: args)
+
     cond do
       op === :assoc ->
         {[putMap], st0}
+
       true ->
         failCtx = fail_context(st0)
         {is, st} = make_succeeded(dst, failCtx, st0)
@@ -1292,47 +1581,83 @@ defmodule :m_beam_kernel_to_ssa do
 
   defp cg_binary(dst, segs0, failCtx, le, st0) do
     segs1 = cg_bin_segments(segs0, st0)
-    segs = (case (segs1) do
-              [r_b_literal(val: :binary), unitFlags, val, r_b_literal(val: :all) |
-                                                    segs2] ->
-                op = (case (member(:single_use, le)) do
-                        true ->
-                          :private_append
-                        false ->
-                          :append
-                      end)
-                [r_b_literal(val: op), unitFlags, val, r_b_literal(val: :all) | segs2]
-              _ ->
-                segs1
-            end)
+
+    segs =
+      case segs1 do
+        [
+          r_b_literal(val: :binary),
+          unitFlags,
+          val,
+          r_b_literal(val: :all)
+          | segs2
+        ] ->
+          op =
+            case member(:single_use, le) do
+              true ->
+                :private_append
+
+              false ->
+                :append
+            end
+
+          [r_b_literal(val: op), unitFlags, val, r_b_literal(val: :all) | segs2]
+
+        _ ->
+          segs1
+      end
+
     lineAnno = line_anno(le)
-    build = r_b_set(anno: lineAnno, op: :bs_create_bin,
-                args: segs, dst: dst)
+    build = r_b_set(anno: lineAnno, op: :bs_create_bin, args: segs, dst: dst)
     {testIs, st} = make_succeeded(dst, failCtx, st0)
     {[build | testIs], st}
   end
 
-  defp cg_bin_segments(r_k_bin_seg(anno: anno, type: type, flags: flags0,
-              seg: src0, size: size0, unit: u, next: next),
-            st) do
-    seg = (case (:lists.keyfind(:segment, 1, anno)) do
-             false ->
-               []
-             {:segment, _} = seg0 ->
-               [seg0]
-           end)
+  defp cg_bin_segments(
+         r_k_bin_seg(
+           anno: anno,
+           type: type,
+           flags: flags0,
+           seg: src0,
+           size: size0,
+           unit: u,
+           next: next
+         ),
+         st
+       ) do
+    seg =
+      case :lists.keyfind(:segment, 1, anno) do
+        false ->
+          []
+
+        {:segment, _} = seg0 ->
+          [seg0]
+      end
+
     [src, size] = ssa_args([src0, size0], st)
     typeArg = r_b_literal(val: type)
-    unit = (case (u) do
-              :undefined ->
-                0
-              _ ->
-                u
-            end)
+
+    unit =
+      case u do
+        :undefined ->
+          0
+
+        _ ->
+          u
+      end
+
     flags = strip_bs_construct_flags(flags0)
     unitFlags = r_b_literal(val: [unit | flags ++ seg])
-    [typeArg, unitFlags, src, size | cg_bin_segments(next,
-                                                       st)]
+
+    [
+      typeArg,
+      unitFlags,
+      src,
+      size
+      | cg_bin_segments(
+          next,
+          st
+        )
+    ]
   end
 
   defp cg_bin_segments(r_k_bin_end(), _St) do
@@ -1357,18 +1682,22 @@ defmodule :m_beam_kernel_to_ssa do
 
   defp strip_bs_construct_flags(flags) do
     for flag <- flags,
-          (case (flag) do
-             :little ->
-               true
-             :native ->
-               true
-             :big ->
-               false
-             :signed ->
-               false
-             :unsigned ->
-               false
-           end) do
+        (case flag do
+           :little ->
+             true
+
+           :native ->
+             true
+
+           :big ->
+             false
+
+           :signed ->
+             false
+
+           :unsigned ->
+             false
+         end) do
       flag
     end
   end
@@ -1394,7 +1723,7 @@ defmodule :m_beam_kernel_to_ssa do
   end
 
   defp ssa_arg(r_k_local(name: name, arity: arity), _)
-      when is_atom(name) do
+       when is_atom(name) do
     r_b_local(name: r_b_literal(val: name), arity: arity)
   end
 
@@ -1409,20 +1738,29 @@ defmodule :m_beam_kernel_to_ssa do
   end
 
   defp new_ssa_vars(vs, st) do
-    mapfoldl(fn r_k_var(name: v), s ->
-                  new_ssa_var(v, s)
-             end,
-               st, vs)
+    mapfoldl(
+      fn r_k_var(name: v), s ->
+        new_ssa_var(v, s)
+      end,
+      st,
+      vs
+    )
   end
 
   defp new_ssa_var(varBase, r_cg(lcount: uniq, vars: vars) = st0)
-      when is_atom(varBase) or is_integer(varBase) do
-    case (vars) do
+       when is_atom(varBase) or is_integer(varBase) do
+    case vars do
       %{^varBase => _} ->
         var = r_b_var(name: {varBase, uniq})
-        st = r_cg(st0, lcount: uniq + 1, 
-                      vars: Map.put(vars, varBase, var))
+
+        st =
+          r_cg(st0,
+            lcount: uniq + 1,
+            vars: Map.put(vars, varBase, var)
+          )
+
         {var, st}
+
       %{} ->
         var = r_b_var(name: varBase)
         st = r_cg(st0, vars: Map.put(vars, varBase, var))
@@ -1431,14 +1769,17 @@ defmodule :m_beam_kernel_to_ssa do
   end
 
   defp set_unused_ssa_vars(vars, st) do
-    foldl(fn r_k_var(name: v), s ->
-               set_ssa_var(v, r_b_literal(val: :unused), s)
-          end,
-            st, vars)
+    foldl(
+      fn r_k_var(name: v), s ->
+        set_ssa_var(v, r_b_literal(val: :unused), s)
+      end,
+      st,
+      vars
+    )
   end
 
   defp set_ssa_var(varBase, val, r_cg(vars: vars) = st)
-      when is_atom(varBase) or is_integer(varBase) do
+       when is_atom(varBase) or is_integer(varBase) do
     r_cg(st, vars: Map.put(vars, varBase, val))
   end
 
@@ -1451,7 +1792,7 @@ defmodule :m_beam_kernel_to_ssa do
   end
 
   defp line_anno([{line, column}, {:file, name}])
-      when (is_integer(line) and is_integer(column)) do
+       when is_integer(line) and is_integer(column) do
     line_anno_1(name, line)
   end
 
@@ -1481,7 +1822,7 @@ defmodule :m_beam_kernel_to_ssa do
   end
 
   defp find_loc([{line, column} | t], file, _)
-      when (is_integer(line) and is_integer(column)) do
+       when is_integer(line) and is_integer(column) do
     find_loc(t, file, line)
   end
 
@@ -1517,13 +1858,13 @@ defmodule :m_beam_kernel_to_ssa do
     fix_phis_1(is, :none, %{})
   end
 
-  defp fix_phis_1([{:label, lbl}, r_cg_phi(vars: vars) | is0], _Lbl,
-            map0) do
-    case (map0) do
+  defp fix_phis_1([{:label, lbl}, r_cg_phi(vars: vars) | is0], _Lbl, map0) do
+    case map0 do
       %{^lbl => pairs} ->
         phis = gen_phis(vars, pairs)
         map = :maps.remove(lbl, map0)
         [{:label, lbl}] ++ phis ++ fix_phis_1(is0, lbl, map)
+
       %{} ->
         is = drop_upto_label(is0)
         fix_phis_1(is, :none, map0)
@@ -1540,17 +1881,23 @@ defmodule :m_beam_kernel_to_ssa do
   end
 
   defp fix_phis_1([r_cg_break(args: args, phi: target) | is], lbl, map)
-      when is_integer(lbl) do
-    pairs1 = (case (map) do
-                %{^target => pairs0} ->
-                  pairs0
-                %{} ->
-                  []
-              end)
-    pairs = [for arg <- args do
-               {arg, lbl}
-             end |
-                 pairs1]
+       when is_integer(lbl) do
+    pairs1 =
+      case map do
+        %{^target => pairs0} ->
+          pairs0
+
+        %{} ->
+          []
+      end
+
+    pairs = [
+      for arg <- args do
+        {arg, lbl}
+      end
+      | pairs1
+    ]
+
     i = make_uncond_branch(target)
     [i | fix_phis_1(is, :none, Map.put(map, target, pairs))]
   end
@@ -1590,9 +1937,11 @@ defmodule :m_beam_kernel_to_ssa do
     drop_upto_label(is)
   end
 
-  defp fix_sets([r_b_set(op: :remove_message, dst: dst) = set,
-               r_b_ret(arg: dst) = ret | is],
-            acc, st) do
+  defp fix_sets(
+         [r_b_set(op: :remove_message, dst: dst) = set, r_b_ret(arg: dst) = ret | is],
+         acc,
+         st
+       ) do
     fix_sets(is, [r_b_ret(ret, arg: r_b_literal(val: :ok)), set | acc], st)
   end
 
@@ -1621,8 +1970,7 @@ defmodule :m_beam_kernel_to_ssa do
   end
 
   defp build_graph_1([{:label, l} | is], lbls, [_ | _] = blockAcc) do
-    make_blocks(lbls, blockAcc) ++ build_graph_1(is, [l],
-                                                   [])
+    make_blocks(lbls, blockAcc) ++ build_graph_1(is, [l], [])
   end
 
   defp build_graph_1([i | is], lbls, blockAcc) do
@@ -1637,9 +1985,9 @@ defmodule :m_beam_kernel_to_ssa do
     is = reverse(is0)
     last = :beam_ssa.normalize(last0)
     block = r_b_blk(is: is, last: last)
+
     for l <- lbls do
       {l, block}
     end
   end
-
 end

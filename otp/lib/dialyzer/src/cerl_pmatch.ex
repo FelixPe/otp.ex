@@ -88,7 +88,7 @@ defmodule :m_cerl_pmatch do
         match_var_con_1(vs, cs, else__, env)
 
       false ->
-        f = new_fvar('match_', 0, env)
+        f = new_fvar(~c"match_", 0, env)
         else1 = :cerl.c_apply(f, [])
         env1 = add_vars([f], env)
 

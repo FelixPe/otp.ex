@@ -2,9 +2,14 @@ defmodule :m_gen_event do
   use Bitwise
   import Kernel, except: [send: 2]
   require Record
-  Record.defrecord(:r_handler, :handler, module: :undefined,
-                                   id: false, state: :undefined,
-                                   supervised: false)
+
+  Record.defrecord(:r_handler, :handler,
+    module: :undefined,
+    id: false,
+    state: :undefined,
+    supervised: false
+  )
+
   def start() do
     :gen.start(:gen_event, :nolink, :"no callback module", [], [])
   end
@@ -21,8 +26,9 @@ defmodule :m_gen_event do
     :erlang.error(:badarg, [arg])
   end
 
-  def start(name, options) when (is_tuple(name) and
-                                is_list(options)) do
+  def start(name, options)
+      when is_tuple(name) and
+             is_list(options) do
     :gen.start(:gen_event, :nolink, name, :"no callback module", [], options)
   end
 
@@ -46,8 +52,9 @@ defmodule :m_gen_event do
     :erlang.error(:badarg, [arg])
   end
 
-  def start_link(name, options) when (is_tuple(name) and
-                                is_list(options)) do
+  def start_link(name, options)
+      when is_tuple(name) and
+             is_list(options) do
     :gen.start(:gen_event, :link, name, :"no callback module", [], options)
   end
 
@@ -71,8 +78,9 @@ defmodule :m_gen_event do
     :erlang.error(:badarg, [arg])
   end
 
-  def start_monitor(name, options) when (is_tuple(name) and
-                                is_list(options)) do
+  def start_monitor(name, options)
+      when is_tuple(name) and
+             is_list(options) do
     :gen.start(:gen_event, :monitor, name, :"no callback module", [], options)
   end
 
@@ -90,8 +98,7 @@ defmodule :m_gen_event do
     debug = :gen.debug_options(name, options)
     hibernateAfterTimeout = :gen.hibernate_after(options)
     :proc_lib.init_ack(starter, {:ok, self()})
-    loop(parent, name, [], hibernateAfterTimeout, debug,
-           false)
+    loop(parent, name, [], hibernateAfterTimeout, debug, false)
   end
 
   def add_handler(m, handler, args) do
@@ -129,12 +136,13 @@ defmodule :m_gen_event do
 
   def send_request(m, handler, request, label, reqIdCol) do
     try do
-      :gen.send_request(m, self(), {:call, handler, request},
-                          label, reqIdCol)
+      :gen.send_request(m, self(), {:call, handler, request}, label, reqIdCol)
     catch
       :error, :badarg ->
-        :erlang.error(:badarg,
-                        [m, handler, request, label, reqIdCol])
+        :erlang.error(
+          :badarg,
+          [m, handler, request, label, reqIdCol]
+        )
     end
   end
 
@@ -147,6 +155,7 @@ defmodule :m_gen_event do
     else
       {:reply, {:error, _} = err} ->
         err
+
       return ->
         return
     end
@@ -161,6 +170,7 @@ defmodule :m_gen_event do
     else
       {{:reply, {:error, _} = err}, label, newReqIdCol} ->
         {err, label, newReqIdCol}
+
       return ->
         return
     end
@@ -175,6 +185,7 @@ defmodule :m_gen_event do
     else
       {:reply, {:error, _} = err} ->
         err
+
       return ->
         return
     end
@@ -189,6 +200,7 @@ defmodule :m_gen_event do
     else
       {{:reply, {:error, _} = err}, label, newReqIdCol} ->
         {err, label, newReqIdCol}
+
       return ->
         return
     end
@@ -203,6 +215,7 @@ defmodule :m_gen_event do
     else
       {:reply, {:error, _} = err} ->
         err
+
       return ->
         return
     end
@@ -217,6 +230,7 @@ defmodule :m_gen_event do
     else
       {{:reply, {:error, _} = err}, label, newReqIdCol} ->
         {err, label, newReqIdCol}
+
       return ->
         return
     end
@@ -284,6 +298,7 @@ defmodule :m_gen_event do
 
   defp call1(m, handler, query) do
     cmd = {:call, handler, query}
+
     try do
       :gen.call(m, self(), cmd)
     catch
@@ -297,12 +312,12 @@ defmodule :m_gen_event do
 
   defp call1(m, handler, query, timeout) do
     cmd = {:call, handler, query}
+
     try do
       :gen.call(m, self(), cmd, timeout)
     catch
       :exit, reason ->
-        exit({reason,
-                {:gen_event, :call, [m, handler, query, timeout]}})
+        exit({reason, {:gen_event, :call, [m, handler, query, timeout]}})
     else
       {:ok, res} ->
         res
@@ -310,24 +325,26 @@ defmodule :m_gen_event do
   end
 
   defp send({:global, name}, cmd) do
-    (try do
+    try do
       :global.send(name, cmd)
     catch
       :error, e -> {:EXIT, {e, __STACKTRACE__}}
       :exit, e -> {:EXIT, e}
       e -> e
-    end)
+    end
+
     :ok
   end
 
   defp send({:via, mod, name}, cmd) do
-    (try do
+    try do
       mod.send(name, cmd)
     catch
       :error, e -> {:EXIT, {e, __STACKTRACE__}}
       :exit, e -> {:EXIT, e}
       e -> e
-    end)
+    end
+
     :ok
   end
 
@@ -336,139 +353,130 @@ defmodule :m_gen_event do
     :ok
   end
 
-  defp loop(parent, serverName, mSL, hibernateAfterTimeout,
-            debug, true) do
-    :proc_lib.hibernate(:gen_event, :wake_hib,
-                          [parent, serverName, mSL, hibernateAfterTimeout,
-                                                        debug])
+  defp loop(parent, serverName, mSL, hibernateAfterTimeout, debug, true) do
+    :proc_lib.hibernate(:gen_event, :wake_hib, [
+      parent,
+      serverName,
+      mSL,
+      hibernateAfterTimeout,
+      debug
+    ])
   end
 
-  defp loop(parent, serverName, mSL, hibernateAfterTimeout,
-            debug, _) do
-    fetch_msg(parent, serverName, mSL,
-                hibernateAfterTimeout, debug, false)
+  defp loop(parent, serverName, mSL, hibernateAfterTimeout, debug, _) do
+    fetch_msg(parent, serverName, mSL, hibernateAfterTimeout, debug, false)
   end
 
-  def wake_hib(parent, serverName, mSL, hibernateAfterTimeout,
-           debug) do
-    fetch_msg(parent, serverName, mSL,
-                hibernateAfterTimeout, debug, true)
+  def wake_hib(parent, serverName, mSL, hibernateAfterTimeout, debug) do
+    fetch_msg(parent, serverName, mSL, hibernateAfterTimeout, debug, true)
   end
 
-  defp fetch_msg(parent, serverName, mSL, hibernateAfterTimeout,
-            debug, hib) do
+  defp fetch_msg(parent, serverName, mSL, hibernateAfterTimeout, debug, hib) do
     receive do
       msg ->
-        decode_msg(msg, parent, serverName, mSL,
-                     hibernateAfterTimeout, debug, hib)
-    after hibernateAfterTimeout ->
-      loop(parent, serverName, mSL, hibernateAfterTimeout,
-             debug, true)
+        decode_msg(msg, parent, serverName, mSL, hibernateAfterTimeout, debug, hib)
+    after
+      hibernateAfterTimeout ->
+        loop(parent, serverName, mSL, hibernateAfterTimeout, debug, true)
     end
   end
 
-  defp decode_msg(msg, parent, serverName, mSL,
-            hibernateAfterTimeout, debug, hib) do
-    case (msg) do
+  defp decode_msg(msg, parent, serverName, mSL, hibernateAfterTimeout, debug, hib) do
+    case msg do
       {:system, from, req} ->
-        :sys.handle_system_msg(req, from, parent, :gen_event,
-                                 debug,
-                                 [serverName, mSL, hibernateAfterTimeout, hib],
-                                 hib)
+        :sys.handle_system_msg(
+          req,
+          from,
+          parent,
+          :gen_event,
+          debug,
+          [serverName, mSL, hibernateAfterTimeout, hib],
+          hib
+        )
+
       {:EXIT, ^parent, reason} ->
         terminate_server(reason, parent, mSL, serverName)
+
       _Msg when debug === [] ->
-        handle_msg(msg, parent, serverName, mSL,
-                     hibernateAfterTimeout, [])
+        handle_msg(msg, parent, serverName, mSL, hibernateAfterTimeout, [])
+
       _Msg ->
-        debug1 = :sys.handle_debug(debug, &print_event/3,
-                                     serverName, {:in, msg})
-        handle_msg(msg, parent, serverName, mSL,
-                     hibernateAfterTimeout, debug1)
+        debug1 = :sys.handle_debug(debug, &print_event/3, serverName, {:in, msg})
+        handle_msg(msg, parent, serverName, mSL, hibernateAfterTimeout, debug1)
     end
   end
 
-  defp handle_msg(msg, parent, serverName, mSL,
-            hibernateAfterTimeout, debug) do
-    case (msg) do
+  defp handle_msg(msg, parent, serverName, mSL, hibernateAfterTimeout, debug) do
+    case msg do
       {:notify, event} ->
-        {hib, mSL1} = server_notify(event, :handle_event, mSL,
-                                      serverName)
-        loop(parent, serverName, mSL1, hibernateAfterTimeout,
-               debug, hib)
+        {hib, mSL1} = server_notify(event, :handle_event, mSL, serverName)
+        loop(parent, serverName, mSL1, hibernateAfterTimeout, debug, hib)
+
       {_From, tag, {:sync_notify, event}} ->
-        {hib, mSL1} = server_notify(event, :handle_event, mSL,
-                                      serverName)
+        {hib, mSL1} = server_notify(event, :handle_event, mSL, serverName)
         reply(tag, :ok)
-        loop(parent, serverName, mSL1, hibernateAfterTimeout,
-               debug, hib)
+        loop(parent, serverName, mSL1, hibernateAfterTimeout, debug, hib)
+
       {:EXIT, from, reason} ->
         mSL1 = handle_exit(from, reason, mSL, serverName)
-        loop(parent, serverName, mSL1, hibernateAfterTimeout,
-               debug, false)
+        loop(parent, serverName, mSL1, hibernateAfterTimeout, debug, false)
+
       {_From, tag, {:call, handler, query}} ->
-        {hib, reply, mSL1} = server_call(handler, query, mSL,
-                                           serverName)
+        {hib, reply, mSL1} = server_call(handler, query, mSL, serverName)
         reply(tag, reply)
-        loop(parent, serverName, mSL1, hibernateAfterTimeout,
-               debug, hib)
+        loop(parent, serverName, mSL1, hibernateAfterTimeout, debug, hib)
+
       {_From, tag, {:add_handler, handler, args}} ->
-        {hib, reply, mSL1} = server_add_handler(handler, args,
-                                                  mSL)
+        {hib, reply, mSL1} = server_add_handler(handler, args, mSL)
         reply(tag, reply)
-        loop(parent, serverName, mSL1, hibernateAfterTimeout,
-               debug, hib)
+        loop(parent, serverName, mSL1, hibernateAfterTimeout, debug, hib)
+
       {_From, tag, {:add_sup_handler, handler, args, supP}} ->
-        {hib, reply, mSL1} = server_add_sup_handler(handler,
-                                                      args, mSL, supP)
+        {hib, reply, mSL1} = server_add_sup_handler(handler, args, mSL, supP)
         reply(tag, reply)
-        loop(parent, serverName, mSL1, hibernateAfterTimeout,
-               debug, hib)
+        loop(parent, serverName, mSL1, hibernateAfterTimeout, debug, hib)
+
       {_From, tag, {:delete_handler, handler, args}} ->
-        {reply, mSL1} = server_delete_handler(handler, args,
-                                                mSL, serverName)
+        {reply, mSL1} = server_delete_handler(handler, args, mSL, serverName)
         reply(tag, reply)
-        loop(parent, serverName, mSL1, hibernateAfterTimeout,
-               debug, false)
-      {_From, tag,
-         {:swap_handler, handler1, args1, handler2, args2}} ->
-        {hib, reply, mSL1} = server_swap_handler(handler1,
-                                                   args1, handler2, args2, mSL,
-                                                   serverName)
+        loop(parent, serverName, mSL1, hibernateAfterTimeout, debug, false)
+
+      {_From, tag, {:swap_handler, handler1, args1, handler2, args2}} ->
+        {hib, reply, mSL1} =
+          server_swap_handler(handler1, args1, handler2, args2, mSL, serverName)
+
         reply(tag, reply)
-        loop(parent, serverName, mSL1, hibernateAfterTimeout,
-               debug, hib)
-      {_From, tag,
-         {:swap_sup_handler, handler1, args1, handler2, args2,
-            sup}} ->
-        {hib, reply, mSL1} = server_swap_handler(handler1,
-                                                   args1, handler2, args2, mSL,
-                                                   sup, serverName)
+        loop(parent, serverName, mSL1, hibernateAfterTimeout, debug, hib)
+
+      {_From, tag, {:swap_sup_handler, handler1, args1, handler2, args2, sup}} ->
+        {hib, reply, mSL1} =
+          server_swap_handler(handler1, args1, handler2, args2, mSL, sup, serverName)
+
         reply(tag, reply)
-        loop(parent, serverName, mSL1, hibernateAfterTimeout,
-               debug, hib)
+        loop(parent, serverName, mSL1, hibernateAfterTimeout, debug, hib)
+
       {_From, tag, :stop} ->
-        (try do
+        try do
           terminate_server(:normal, parent, mSL, serverName)
         catch
           :error, e -> {:EXIT, {e, __STACKTRACE__}}
           :exit, e -> {:EXIT, e}
           e -> e
-        end)
+        end
+
         reply(tag, :ok)
+
       {_From, tag, :which_handlers} ->
         reply(tag, the_handlers(mSL))
-        loop(parent, serverName, mSL, hibernateAfterTimeout,
-               debug, false)
+        loop(parent, serverName, mSL, hibernateAfterTimeout, debug, false)
+
       {_From, tag, :get_modules} ->
         reply(tag, get_modules(mSL))
-        loop(parent, serverName, mSL, hibernateAfterTimeout,
-               debug, false)
+        loop(parent, serverName, mSL, hibernateAfterTimeout, debug, false)
+
       other ->
-        {hib, mSL1} = server_notify(other, :handle_info, mSL,
-                                      serverName)
-        loop(parent, serverName, mSL1, hibernateAfterTimeout,
-               debug, hib)
+        {hib, mSL1} = server_notify(other, :handle_info, mSL, serverName)
+        loop(parent, serverName, mSL1, hibernateAfterTimeout, debug, hib)
     end
   end
 
@@ -483,104 +491,130 @@ defmodule :m_gen_event do
   end
 
   defp do_unlink(parent, mSL) do
-    :lists.foreach(fn handler
-                          when r_handler(handler, :supervised) === parent ->
-                        true
-                      handler when is_pid(r_handler(handler, :supervised)) ->
-                        :erlang.unlink(r_handler(handler, :supervised))
-                        true
-                      _ ->
-                        true
-                   end,
-                     mSL)
+    :lists.foreach(
+      fn
+        handler
+        when r_handler(handler, :supervised) === parent ->
+          true
+
+        handler when is_pid(r_handler(handler, :supervised)) ->
+          :erlang.unlink(r_handler(handler, :supervised))
+          true
+
+        _ ->
+          true
+      end,
+      mSL
+    )
   end
 
   defp handle_exit(from, reason, mSL, sName) do
     mSL1 = terminate_supervised(from, reason, mSL, sName)
-    {_, mSL2} = server_notify({:EXIT, from, reason},
-                                :handle_info, mSL1, sName)
+    {_, mSL2} = server_notify({:EXIT, from, reason}, :handle_info, mSL1, sName)
     mSL2
   end
 
   defp terminate_supervised(pid, reason, mSL, sName) do
-    f = fn ha when r_handler(ha, :supervised) === pid ->
-             do_terminate(r_handler(ha, :module), ha, {:stop, reason},
-                            r_handler(ha, :state), {:parent_terminated, {pid, reason}},
-                            sName, :shutdown)
-             false
-           _ ->
-             true
-        end
+    f = fn
+      ha when r_handler(ha, :supervised) === pid ->
+        do_terminate(
+          r_handler(ha, :module),
+          ha,
+          {:stop, reason},
+          r_handler(ha, :state),
+          {:parent_terminated, {pid, reason}},
+          sName,
+          :shutdown
+        )
+
+        false
+
+      _ ->
+        true
+    end
+
     :lists.filter(f, mSL)
   end
 
-  def system_continue(parent, debug,
-           [serverName, mSL, hibernateAfterTimeout, hib]) do
-    loop(parent, serverName, mSL, hibernateAfterTimeout,
-           debug, hib)
+  def system_continue(parent, debug, [serverName, mSL, hibernateAfterTimeout, hib]) do
+    loop(parent, serverName, mSL, hibernateAfterTimeout, debug, hib)
   end
 
-  def system_terminate(reason, parent, _Debug,
-           [serverName, mSL, _HibernateAfterTimeout, _Hib]) do
+  def system_terminate(reason, parent, _Debug, [serverName, mSL, _HibernateAfterTimeout, _Hib]) do
     terminate_server(reason, parent, mSL, serverName)
   end
 
-  def system_code_change([serverName, mSL, hibernateAfterTimeout, hib],
-           module, oldVsn, extra) do
-    mSL1 = :lists.zf(fn h when r_handler(h, :module) === module ->
-                          {:ok, newState} = module.code_change(oldVsn,
-                                                                 r_handler(h, :state),
-                                                                 extra)
-                          {true, r_handler(h, state: newState)}
-                        _ ->
-                          true
-                     end,
-                       mSL)
+  def system_code_change([serverName, mSL, hibernateAfterTimeout, hib], module, oldVsn, extra) do
+    mSL1 =
+      :lists.zf(
+        fn
+          h when r_handler(h, :module) === module ->
+            {:ok, newState} =
+              module.code_change(
+                oldVsn,
+                r_handler(h, :state),
+                extra
+              )
+
+            {true, r_handler(h, state: newState)}
+
+          _ ->
+            true
+        end,
+        mSL
+      )
+
     {:ok, [serverName, mSL1, hibernateAfterTimeout, hib]}
   end
 
-  def system_get_state([_ServerName, mSL, _HibernateAfterTimeout,
-                                _Hib]) do
+  def system_get_state([_ServerName, mSL, _HibernateAfterTimeout, _Hib]) do
     {:ok,
-       for r_handler(module: mod, id: id, state: state) <- mSL do
-         {mod, id, state}
-       end}
+     for r_handler(module: mod, id: id, state: state) <- mSL do
+       {mod, id, state}
+     end}
   end
 
-  def system_replace_state(stateFun,
-           [serverName, mSL, hibernateAfterTimeout, hib]) do
-    {nMSL, nStates} = :lists.unzip(for (r_handler(module: mod,
-                                            id: id,
-                                            state: state) = hS) <- mSL do
-                                     (
-                                       cur = {mod, id, state}
-                                       try do
-                                         nState = ({^mod, ^id,
-                                                      nS} = stateFun.(cur))
-                                         {r_handler(hS, state: nS), nState}
-                                       catch
-                                         _, _ ->
-                                           {hS, cur}
-                                       end
-                                     )
-                                   end)
-    {:ok, nStates,
-       [serverName, nMSL, hibernateAfterTimeout, hib]}
+  def system_replace_state(
+        stateFun,
+        [serverName, mSL, hibernateAfterTimeout, hib]
+      ) do
+    {nMSL, nStates} =
+      :lists.unzip(
+        for r_handler(
+              module: mod,
+              id: id,
+              state: state
+            ) = hS <- mSL do
+          cur = {mod, id, state}
+
+          try do
+            nState = {^mod, ^id, nS} = stateFun.(cur)
+            {r_handler(hS, state: nS), nState}
+          catch
+            _, _ ->
+              {hS, cur}
+          end
+        end
+      )
+
+    {:ok, nStates, [serverName, nMSL, hibernateAfterTimeout, hib]}
   end
 
   defp print_event(dev, {:in, msg}, name) do
-    case (msg) do
+    case msg do
       {:notify, event} ->
-        :io.format(dev, '*DBG* ~tp got event ~tp~n', [name, event])
+        :io.format(dev, ~c"*DBG* ~tp got event ~tp~n", [name, event])
+
       {_, _, {:call, handler, query}} ->
-        :io.format(dev, '*DBG* ~tp(~tp) got call ~tp~n', [name, handler, query])
+        :io.format(dev, ~c"*DBG* ~tp(~tp) got call ~tp~n", [name, handler, query])
+
       _ ->
-        :io.format(dev, '*DBG* ~tp got ~tp~n', [name, msg])
+        :io.format(dev, ~c"*DBG* ~tp got ~tp~n", [name, msg])
     end
   end
 
   defp print_event(dev, dbg, name) do
-    :io.format(dev, '*DBG* ~tp : ~tp~n', [name, dbg])
+    :io.format(dev, ~c"*DBG* ~tp : ~tp~n", [name, dbg])
   end
 
   defp server_add_handler({mod, id}, args, mSL) do
@@ -594,17 +628,19 @@ defmodule :m_gen_event do
   end
 
   defp server_add_handler(mod, handler, args, mSL) do
-    case ((try do
+    case (try do
             mod.init(args)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       {:ok, state} ->
         {false, :ok, [r_handler(handler, state: state) | mSL]}
+
       {:ok, state, :hibernate} ->
         {true, :ok, [r_handler(handler, state: state) | mSL]}
+
       other ->
         {false, other, mSL}
     end
@@ -623,35 +659,35 @@ defmodule :m_gen_event do
   end
 
   defp server_delete_handler(handlerId, args, mSL, sName) do
-    case (split(handlerId, mSL)) do
+    case split(handlerId, mSL) do
       {mod, handler, mSL1} ->
-        {do_terminate(mod, handler, args, r_handler(handler, :state),
-                        :delete, sName, :normal),
-           mSL1}
+        {do_terminate(mod, handler, args, r_handler(handler, :state), :delete, sName, :normal),
+         mSL1}
+
       :error ->
         {{:error, :module_not_found}, mSL}
     end
   end
 
   defp server_swap_handler(handler1, args1, handler2, args2, mSL, sName) do
-    {state2, sup, mSL1} = split_and_terminate(handler1,
-                                                args1, mSL, sName, handler2,
-                                                false)
-    case (s_s_h(sup, handler2, {args2, state2}, mSL1)) do
+    {state2, sup, mSL1} = split_and_terminate(handler1, args1, mSL, sName, handler2, false)
+
+    case s_s_h(sup, handler2, {args2, state2}, mSL1) do
       {hib, :ok, mSL2} ->
         {hib, :ok, mSL2}
+
       {hib, what, mSL2} ->
         {hib, {:error, what}, mSL2}
     end
   end
 
-  defp server_swap_handler(handler1, args1, handler2, args2, mSL, sup,
-            sName) do
-    {state2, _, mSL1} = split_and_terminate(handler1, args1,
-                                              mSL, sName, handler2, sup)
-    case (s_s_h(sup, handler2, {args2, state2}, mSL1)) do
+  defp server_swap_handler(handler1, args1, handler2, args2, mSL, sup, sName) do
+    {state2, _, mSL1} = split_and_terminate(handler1, args1, mSL, sName, handler2, sup)
+
+    case s_s_h(sup, handler2, {args2, state2}, mSL1) do
       {hib, :ok, mSL2} ->
         {hib, :ok, mSL2}
+
       {hib, what, mSL2} ->
         {hib, {:error, what}, mSL2}
     end
@@ -666,33 +702,44 @@ defmodule :m_gen_event do
   end
 
   defp split_and_terminate(handlerId, args, mSL, sName, handler2, sup) do
-    case (split(handlerId, mSL)) do
+    case split(handlerId, mSL) do
       {mod, handler, mSL1} ->
         oldSup = r_handler(handler, :supervised)
-        newSup = (cond do
-                    not sup ->
-                      oldSup
-                    true ->
-                      sup
-                  end)
-        {do_terminate(mod, handler, args, r_handler(handler, :state),
-                        :swapped, sName, {:swapped, handler2, newSup}),
-           oldSup, mSL1}
+
+        newSup =
+          cond do
+            not sup ->
+              oldSup
+
+            true ->
+              sup
+          end
+
+        {do_terminate(
+           mod,
+           handler,
+           args,
+           r_handler(handler, :state),
+           :swapped,
+           sName,
+           {:swapped, handler2, newSup}
+         ), oldSup, mSL1}
+
       :error ->
         {:error, false, mSL}
     end
   end
 
   defp server_notify(event, func, [handler | t], sName) do
-    case (server_update(handler, func, event, sName)) do
+    case server_update(handler, func, event, sName) do
       {:ok, handler1} ->
-        {hib, newHandlers} = server_notify(event, func, t,
-                                             sName)
+        {hib, newHandlers} = server_notify(event, func, t, sName)
         {hib, [handler1 | newHandlers]}
+
       {:hibernate, handler1} ->
-        {_Hib, newHandlers} = server_notify(event, func, t,
-                                              sName)
+        {_Hib, newHandlers} = server_notify(event, func, t, sName)
         {true, [handler1 | newHandlers]}
+
       :no ->
         server_notify(event, func, t, sName)
     end
@@ -705,83 +752,93 @@ defmodule :m_gen_event do
   defp server_update(handler1, func, event, sName) do
     mod1 = r_handler(handler1, :module)
     state = r_handler(handler1, :state)
-    case ((try do
+
+    case (try do
             apply(mod1, func, [event, state])
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       {:ok, state1} ->
         {:ok, r_handler(handler1, state: state1)}
+
       {:ok, state1, :hibernate} ->
         {:hibernate, r_handler(handler1, state: state1)}
+
       {:swap_handler, args1, state1, handler2, args2} ->
-        do_swap(mod1, handler1, args1, state1, handler2, args2,
-                  sName)
+        do_swap(mod1, handler1, args1, state1, handler2, args2, sName)
+
       :remove_handler ->
-        do_terminate(mod1, handler1, :remove_handler, state,
-                       :remove, sName, :normal)
+        do_terminate(mod1, handler1, :remove_handler, state, :remove, sName, :normal)
         :no
-      {:EXIT,
-         {:undef, [{^mod1, :handle_info, [_, _], _} | _]}} ->
-        case (:logger.allow(:warning, :gen_event)) do
+
+      {:EXIT, {:undef, [{^mod1, :handle_info, [_, _], _} | _]}} ->
+        case :logger.allow(:warning, :gen_event) do
           true ->
-            :erlang.apply(:logger, :macro_log,
-                            [%{mfa: {:gen_event, :server_update, 4}, line: 826,
-                                 file: 'otp/lib/stdlib/src/gen_event.erl'},
-                                 :warning, %{label:
-                                             {:gen_event, :no_handle_info},
-                                               module: mod1, message: event},
-                                               %{domain: [:otp],
-                                                   report_cb:
-                                                   &:gen_event.format_log/2,
-                                                   error_logger:
-                                                   %{tag: :warning_msg,
-                                                       report_cb:
-                                                       &:gen_event.format_log/1}}])
+            :erlang.apply(:logger, :macro_log, [
+              %{
+                mfa: {:gen_event, :server_update, 4},
+                line: 826,
+                file: ~c"otp/lib/stdlib/src/gen_event.erl"
+              },
+              :warning,
+              %{label: {:gen_event, :no_handle_info}, module: mod1, message: event},
+              %{
+                domain: [:otp],
+                report_cb: &:gen_event.format_log/2,
+                error_logger: %{tag: :warning_msg, report_cb: &:gen_event.format_log/1}
+              }
+            ])
+
           false ->
             :ok
         end
+
         {:ok, handler1}
+
       other ->
-        do_terminate(mod1, handler1, {:error, other}, state,
-                       event, sName, :crash)
+        do_terminate(mod1, handler1, {:error, other}, state, event, sName, :crash)
         :no
     end
   end
 
-  defp do_swap(mod1, handler1, args1, state1, handler2, args2,
-            sName) do
-    state2 = do_terminate(mod1, handler1, args1, state1,
-                            :swapped, sName,
-                            {:swapped, handler2, r_handler(handler1, :supervised)})
+  defp do_swap(mod1, handler1, args1, state1, handler2, args2, sName) do
+    state2 =
+      do_terminate(
+        mod1,
+        handler1,
+        args1,
+        state1,
+        :swapped,
+        sName,
+        {:swapped, handler2, r_handler(handler1, :supervised)}
+      )
+
     {mod2, handler} = new_handler(handler2, handler1)
-    case ((try do
+
+    case (try do
             mod2.init({args2, state2})
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       {:ok, state2a} ->
         {:ok, r_handler(handler, state: state2a)}
+
       other ->
-        report_terminate(handler, :crash, {:error, other},
-                           sName, false)
+        report_terminate(handler, :crash, {:error, other}, sName, false)
         :no
     end
   end
 
   defp new_handler({mod, id}, handler1) do
-    {mod,
-       r_handler(module: mod, id: id,
-           supervised: r_handler(handler1, :supervised))}
+    {mod, r_handler(module: mod, id: id, supervised: r_handler(handler1, :supervised))}
   end
 
   defp new_handler(mod, handler1) do
-    {mod,
-       r_handler(module: mod, supervised: r_handler(handler1, :supervised))}
+    {mod, r_handler(module: mod, supervised: r_handler(handler1, :supervised))}
   end
 
   defp split(ha, mSL) do
@@ -789,12 +846,12 @@ defmodule :m_gen_event do
   end
 
   defp split({mod, id}, [ha | t], l)
-      when (r_handler(ha, :module) === mod and r_handler(ha, :id) === id) do
+       when r_handler(ha, :module) === mod and r_handler(ha, :id) === id do
     {mod, ha, :lists.reverse(l, t)}
   end
 
   defp split(mod, [ha | t], l)
-      when (r_handler(ha, :module) === mod and not r_handler(ha, :id)) do
+       when r_handler(ha, :module) === mod and not r_handler(ha, :id) do
     {mod, ha, :lists.reverse(l, t)}
   end
 
@@ -807,28 +864,31 @@ defmodule :m_gen_event do
   end
 
   defp server_call(handler, query, mSL, sName) do
-    case (search(handler, mSL)) do
+    case search(handler, mSL) do
       {:ok, ha} ->
-        case (server_call_update(ha, query, sName)) do
+        case server_call_update(ha, query, sName) do
           {:no, reply} ->
             {false, reply, delete(handler, mSL)}
+
           {{:ok, ha1}, reply} ->
             {false, reply, replace(handler, mSL, ha1)}
+
           {{:hibernate, ha1}, reply} ->
             {true, reply, replace(handler, mSL, ha1)}
         end
+
       false ->
         {false, {:error, :bad_module}, mSL}
     end
   end
 
   defp search({mod, id}, [ha | _MSL])
-      when (r_handler(ha, :module) === mod and r_handler(ha, :id) === id) do
+       when r_handler(ha, :module) === mod and r_handler(ha, :id) === id do
     {:ok, ha}
   end
 
   defp search(mod, [ha | _MSL])
-      when (r_handler(ha, :module) === mod and not r_handler(ha, :id)) do
+       when r_handler(ha, :module) === mod and not r_handler(ha, :id) do
     {:ok, ha}
   end
 
@@ -841,12 +901,12 @@ defmodule :m_gen_event do
   end
 
   defp delete({mod, id}, [ha | mSL])
-      when (r_handler(ha, :module) === mod and r_handler(ha, :id) === id) do
+       when r_handler(ha, :module) === mod and r_handler(ha, :id) === id do
     mSL
   end
 
   defp delete(mod, [ha | mSL])
-      when (r_handler(ha, :module) === mod and not r_handler(ha, :id)) do
+       when r_handler(ha, :module) === mod and not r_handler(ha, :id) do
     mSL
   end
 
@@ -859,12 +919,12 @@ defmodule :m_gen_event do
   end
 
   defp replace({mod, id}, [ha | mSL], newHa)
-      when (r_handler(ha, :module) === mod and r_handler(ha, :id) === id) do
+       when r_handler(ha, :module) === mod and r_handler(ha, :id) === id do
     [newHa | mSL]
   end
 
   defp replace(mod, [ha | mSL], newHa)
-      when (r_handler(ha, :module) === mod and not r_handler(ha, :id)) do
+       when r_handler(ha, :module) === mod and not r_handler(ha, :id) do
     [newHa | mSL]
   end
 
@@ -879,56 +939,55 @@ defmodule :m_gen_event do
   defp server_call_update(handler1, query, sName) do
     mod1 = r_handler(handler1, :module)
     state = r_handler(handler1, :state)
-    case ((try do
+
+    case (try do
             mod1.handle_call(query, state)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       {:ok, reply, state1} ->
         {{:ok, r_handler(handler1, state: state1)}, reply}
+
       {:ok, reply, state1, :hibernate} ->
         {{:hibernate, r_handler(handler1, state: state1)}, reply}
-      {:swap_handler, reply, args1, state1, handler2,
-         args2} ->
-        {do_swap(mod1, handler1, args1, state1, handler2, args2,
-                   sName),
-           reply}
+
+      {:swap_handler, reply, args1, state1, handler2, args2} ->
+        {do_swap(mod1, handler1, args1, state1, handler2, args2, sName), reply}
+
       {:remove_handler, reply} ->
-        do_terminate(mod1, handler1, :remove_handler, state,
-                       :remove, sName, :normal)
+        do_terminate(mod1, handler1, :remove_handler, state, :remove, sName, :normal)
         {:no, reply}
+
       other ->
-        do_terminate(mod1, handler1, {:error, other}, state,
-                       query, sName, :crash)
+        do_terminate(mod1, handler1, {:error, other}, state, query, sName, :crash)
         {:no, {:error, other}}
     end
   end
 
-  defp do_terminate(mod, handler, args, state, lastIn, sName,
-            reason) do
-    case (:erlang.function_exported(mod, :terminate, 2)) do
+  defp do_terminate(mod, handler, args, state, lastIn, sName, reason) do
+    case :erlang.function_exported(mod, :terminate, 2) do
       true ->
-        res = ((try do
-                 mod.terminate(args, state)
-               catch
-                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                 :exit, e -> {:EXIT, e}
-                 e -> e
-               end))
-        report_terminate(handler, reason, args, state, lastIn,
-                           sName, res)
+        res =
+          try do
+            mod.terminate(args, state)
+          catch
+            :error, e -> {:EXIT, {e, __STACKTRACE__}}
+            :exit, e -> {:EXIT, e}
+            e -> e
+          end
+
+        report_terminate(handler, reason, args, state, lastIn, sName, res)
         res
+
       false ->
-        report_terminate(handler, reason, args, state, lastIn,
-                           sName, :ok)
+        report_terminate(handler, reason, args, state, lastIn, sName, :ok)
         :ok
     end
   end
 
-  defp report_terminate(handler, :crash, {:error, why}, state, lastIn,
-            sName, _) do
+  defp report_terminate(handler, :crash, {:error, why}, state, lastIn, sName, _) do
     report_terminate(handler, why, state, lastIn, sName)
   end
 
@@ -938,9 +997,11 @@ defmodule :m_gen_event do
 
   defp report_terminate(handler, reason, state, lastIn, sName) do
     report_error(handler, reason, state, lastIn, sName)
-    case (r_handler(handler, :supervised)) do
+
+    case r_handler(handler, :supervised) do
       false ->
         :ok
+
       pid ->
         send(pid, {:gen_event_EXIT, handler(handler), reason})
         :ok
@@ -960,50 +1021,65 @@ defmodule :m_gen_event do
   end
 
   defp report_error(handler, exit, state, lastIn, sName) do
-    {reason, reasonFun} = (case (exit) do
-                             {:EXIT, {r, sT}} ->
-                               {r,
-                                  fn reason ->
-                                       {:EXIT, {reason, sT}}
-                                  end}
-                             {:EXIT, r} ->
-                               {r,
-                                  fn reason ->
-                                       {:EXIT, reason}
-                                  end}
-                             r ->
-                               {r,
-                                  fn reason ->
-                                       reason
-                                  end}
-                           end)
-    status = :gen.format_status(r_handler(handler, :module),
-                                  :terminate,
-                                  %{state: state, message: lastIn,
-                                      reason: reason},
-                                  [:erlang.get(), state])
-    case (:logger.allow(:error, :gen_event)) do
+    {reason, reasonFun} =
+      case exit do
+        {:EXIT, {r, sT}} ->
+          {r,
+           fn reason ->
+             {:EXIT, {reason, sT}}
+           end}
+
+        {:EXIT, r} ->
+          {r,
+           fn reason ->
+             {:EXIT, reason}
+           end}
+
+        r ->
+          {r,
+           fn reason ->
+             reason
+           end}
+      end
+
+    status =
+      :gen.format_status(
+        r_handler(handler, :module),
+        :terminate,
+        %{state: state, message: lastIn, reason: reason},
+        [:erlang.get(), state]
+      )
+
+    case :logger.allow(:error, :gen_event) do
       true ->
-        :erlang.apply(:logger, :macro_log,
-                        [%{mfa: {:gen_event, :report_error, 5}, line: 1009,
-                             file: 'otp/lib/stdlib/src/gen_event.erl'},
-                             :error, %{label: {:gen_event, :terminate},
-                                         handler: handler(handler), name: sName,
-                                         last_message:
-                                         :maps.get(:message, status),
-                                         state:
-                                         :maps.get(:"$status", status,
-                                                     :maps.get(:state, status)),
-                                         reason:
-                                         reasonFun.(:maps.get(:reason,
-                                                                status))},
-                                         %{domain: [:otp],
-                                             report_cb:
-                                             &:gen_event.format_log/2,
-                                             error_logger:
-                                             %{tag: :error,
-                                                 report_cb:
-                                                 &:gen_event.format_log/1}}])
+        :erlang.apply(:logger, :macro_log, [
+          %{
+            mfa: {:gen_event, :report_error, 5},
+            line: 1009,
+            file: ~c"otp/lib/stdlib/src/gen_event.erl"
+          },
+          :error,
+          %{
+            label: {:gen_event, :terminate},
+            handler: handler(handler),
+            name: sName,
+            last_message: :maps.get(:message, status),
+            state: :maps.get(:"$status", status, :maps.get(:state, status)),
+            reason:
+              reasonFun.(
+                :maps.get(
+                  :reason,
+                  status
+                )
+              )
+          },
+          %{
+            domain: [:otp],
+            report_cb: &:gen_event.format_log/2,
+            error_logger: %{tag: :error, report_cb: &:gen_event.format_log/1}
+          }
+        ])
+
       false ->
         :ok
     end
@@ -1011,78 +1087,113 @@ defmodule :m_gen_event do
 
   def format_log(report) do
     depth = :error_logger.get_format_depth()
-    formatOpts = %{chars_limit: :unlimited, depth: depth,
-                     single_line: false, encoding: :utf8}
-    format_log_multi(limit_report(report, depth),
-                       formatOpts)
+    formatOpts = %{chars_limit: :unlimited, depth: depth, single_line: false, encoding: :utf8}
+
+    format_log_multi(
+      limit_report(report, depth),
+      formatOpts
+    )
   end
 
   defp limit_report(report, :unlimited) do
     report
   end
 
-  defp limit_report(%{label: {:gen_event, :terminate},
-              last_message: lastIn, state: state,
-              reason: reason} = report,
-            depth) do
-    Map.merge(report, %{last_message:
-                        :io_lib.limit_term(lastIn, depth),
-                          state: :io_lib.limit_term(state, depth),
-                          reason: :io_lib.limit_term(reason, depth)})
+  defp limit_report(
+         %{label: {:gen_event, :terminate}, last_message: lastIn, state: state, reason: reason} =
+           report,
+         depth
+       ) do
+    Map.merge(report, %{
+      last_message: :io_lib.limit_term(lastIn, depth),
+      state: :io_lib.limit_term(state, depth),
+      reason: :io_lib.limit_term(reason, depth)
+    })
   end
 
-  defp limit_report(%{label: {:gen_event, :no_handle_info},
-              message: msg} = report,
-            depth) do
-    Map.put(report, :message,
-                      :io_lib.limit_term(msg, depth))
+  defp limit_report(
+         %{label: {:gen_event, :no_handle_info}, message: msg} = report,
+         depth
+       ) do
+    Map.put(report, :message, :io_lib.limit_term(msg, depth))
   end
 
   def format_log(report, formatOpts0) do
-    default = %{chars_limit: :unlimited, depth: :unlimited,
-                  single_line: false, encoding: :utf8}
+    default = %{chars_limit: :unlimited, depth: :unlimited, single_line: false, encoding: :utf8}
     formatOpts = :maps.merge(default, formatOpts0)
-    ioOpts = (case (formatOpts) do
-                %{chars_limit: :unlimited} ->
-                  []
-                %{chars_limit: limit} ->
-                  [{:chars_limit, limit}]
-              end)
+
+    ioOpts =
+      case formatOpts do
+        %{chars_limit: :unlimited} ->
+          []
+
+        %{chars_limit: limit} ->
+          [{:chars_limit, limit}]
+      end
+
     {format, args} = format_log_single(report, formatOpts)
     :io_lib.format(format, args, ioOpts)
   end
 
-  defp format_log_single(%{label: {:gen_event, :terminate},
-              handler: handler, name: sName, last_message: lastIn,
-              state: state, reason: reason},
-            %{single_line: true, depth: depth} = formatOpts) do
+  defp format_log_single(
+         %{
+           label: {:gen_event, :terminate},
+           handler: handler,
+           name: sName,
+           last_message: lastIn,
+           state: state,
+           reason: reason
+         },
+         %{single_line: true, depth: depth} = formatOpts
+       ) do
     p = p(formatOpts)
     reason1 = fix_reason(reason)
-    format1 = :lists.append(['Generic event handler ', p, ' crashed. Installed: ', p, '. Last event: ', p, '. State: ', p, '. Reason: ', p,
-                                                            '.'])
-    args1 = (case (depth) do
-               :unlimited ->
-                 [handler, sName, lastIn, state, reason1]
-               _ ->
-                 [handler, depth, sName, depth, lastIn, depth, state,
-                                                                   depth,
-                                                                       reason1,
-                                                                           depth]
-             end)
+
+    format1 =
+      :lists.append([
+        ~c"Generic event handler ",
+        p,
+        ~c" crashed. Installed: ",
+        p,
+        ~c". Last event: ",
+        p,
+        ~c". State: ",
+        p,
+        ~c". Reason: ",
+        p,
+        ~c"."
+      ])
+
+    args1 =
+      case depth do
+        :unlimited ->
+          [handler, sName, lastIn, state, reason1]
+
+        _ ->
+          [handler, depth, sName, depth, lastIn, depth, state, depth, reason1, depth]
+      end
+
     {format1, args1}
   end
 
-  defp format_log_single(%{label: {:gen_event, :no_handle_info},
-              module: mod, message: msg},
-            %{single_line: true, depth: depth} = formatOpts) do
+  defp format_log_single(
+         %{label: {:gen_event, :no_handle_info}, module: mod, message: msg},
+         %{single_line: true, depth: depth} = formatOpts
+       ) do
     p = p(formatOpts)
-    format = :lists.append(['Undefined handle_info in ', p, '. Unhandled message: ', p, '.'])
-    args = (case (depth) do
-              :unlimited ->
-                [mod, msg]
-              _ ->
-                [mod, depth, msg, depth]
-            end)
+
+    format =
+      :lists.append([~c"Undefined handle_info in ", p, ~c". Unhandled message: ", p, ~c"."])
+
+    args =
+      case depth do
+        :unlimited ->
+          [mod, msg]
+
+        _ ->
+          [mod, depth, msg, depth]
+      end
+
     {format, args}
   end
 
@@ -1090,49 +1201,80 @@ defmodule :m_gen_event do
     format_log_multi(report, formatOpts)
   end
 
-  defp format_log_multi(%{label: {:gen_event, :terminate},
-              handler: handler, name: sName, last_message: lastIn,
-              state: state, reason: reason},
-            %{depth: depth} = formatOpts) do
+  defp format_log_multi(
+         %{
+           label: {:gen_event, :terminate},
+           handler: handler,
+           name: sName,
+           last_message: lastIn,
+           state: state,
+           reason: reason
+         },
+         %{depth: depth} = formatOpts
+       ) do
     reason1 = fix_reason(reason)
     p = p(formatOpts)
-    format = :lists.append(['** gen_event handler ', p, ' crashed.\n', '** Was installed in ', p, '\n', '** Last event was: ', p, '\n', '** When handler state == ', p,
-                                                              '\n', '** Reason == ', p, '\n'])
-    args = (case (depth) do
-              :unlimited ->
-                [handler, sName, lastIn, state, reason1]
-              _ ->
-                [handler, depth, sName, depth, lastIn, depth, state,
-                                                                  depth,
-                                                                      reason1,
-                                                                          depth]
-            end)
+
+    format =
+      :lists.append([
+        ~c"** gen_event handler ",
+        p,
+        ~c" crashed.\n",
+        ~c"** Was installed in ",
+        p,
+        ~c"\n",
+        ~c"** Last event was: ",
+        p,
+        ~c"\n",
+        ~c"** When handler state == ",
+        p,
+        ~c"\n",
+        ~c"** Reason == ",
+        p,
+        ~c"\n"
+      ])
+
+    args =
+      case depth do
+        :unlimited ->
+          [handler, sName, lastIn, state, reason1]
+
+        _ ->
+          [handler, depth, sName, depth, lastIn, depth, state, depth, reason1, depth]
+      end
+
     {format, args}
   end
 
-  defp format_log_multi(%{label: {:gen_event, :no_handle_info},
-              module: mod, message: msg},
-            %{depth: depth} = formatOpts) do
+  defp format_log_multi(
+         %{label: {:gen_event, :no_handle_info}, module: mod, message: msg},
+         %{depth: depth} = formatOpts
+       ) do
     p = p(formatOpts)
-    format = '** Undefined handle_info in ~p\n** Unhandled message: ' ++ p ++ '\n'
-    args = (case (depth) do
-              :unlimited ->
-                [mod, msg]
-              _ ->
-                [mod, msg, depth]
-            end)
+    format = ~c"** Undefined handle_info in ~p\n** Unhandled message: " ++ p ++ ~c"\n"
+
+    args =
+      case depth do
+        :unlimited ->
+          [mod, msg]
+
+        _ ->
+          [mod, msg, depth]
+      end
+
     {format, args}
   end
 
-  defp fix_reason({:EXIT,
-             {:undef, [{m, f, a, _L} | _] = mFAs} = reason}) do
-    case (:code.is_loaded(m)) do
+  defp fix_reason({:EXIT, {:undef, [{m, f, a, _L} | _] = mFAs} = reason}) do
+    case :code.is_loaded(m) do
       false ->
         {:"module could not be loaded", mFAs}
+
       _ ->
-        case (:erlang.function_exported(m, f, length(a))) do
+        case :erlang.function_exported(m, f, length(a)) do
           true ->
             reason
+
           false ->
             {:"function not exported", mFAs}
         end
@@ -1147,33 +1289,32 @@ defmodule :m_gen_event do
     reason
   end
 
-  defp p(%{single_line: single, depth: depth,
-              encoding: enc}) do
-    '~' ++ single(single) ++ mod(enc) ++ p(depth)
+  defp p(%{single_line: single, depth: depth, encoding: enc}) do
+    ~c"~" ++ single(single) ++ mod(enc) ++ p(depth)
   end
 
   defp p(:unlimited) do
-    'p'
+    ~c"p"
   end
 
   defp p(_Depth) do
-    'P'
+    ~c"P"
   end
 
   defp single(true) do
-    '0'
+    ~c"0"
   end
 
   defp single(false) do
-    ''
+    ~c""
   end
 
   defp mod(:latin1) do
-    ''
+    ~c""
   end
 
   defp mod(_) do
-    't'
+    ~c"t"
   end
 
   defp handler(handler) when not r_handler(handler, :id) do
@@ -1192,8 +1333,7 @@ defmodule :m_gen_event do
 
   defp stop_handlers([handler | t], sName) do
     mod = r_handler(handler, :module)
-    do_terminate(mod, handler, :stop, r_handler(handler, :state),
-                   :stop, sName, :shutdown)
+    do_terminate(mod, handler, :stop, r_handler(handler, :state), :stop, sName, :shutdown)
     stop_handlers(t, sName)
   end
 
@@ -1202,36 +1342,47 @@ defmodule :m_gen_event do
   end
 
   defp get_modules(mSL) do
-    mods = (for handler <- mSL do
-              r_handler(handler, :module)
-            end)
+    mods =
+      for handler <- mSL do
+        r_handler(handler, :module)
+      end
+
     :ordsets.to_list(:ordsets.from_list(mods))
   end
 
   def format_status(opt, statusData) do
-    [pDict, sysState, parent, debug, [serverName, mSL,
-                                                      _HibernateAfterTimeout,
-                                                          _Hib]] = statusData
-    header = :gen.format_status_header('Status for event handler', serverName)
-    {fmtMSL, logs} = :lists.mapfoldl(fn r_handler(module: mod,
-                                            state: state) = mS,
-                                          logs ->
-                                          status = :gen.format_status(mod, opt,
-                                                                        %{log:
-                                                                          logs,
-                                                                            state:
-                                                                            state},
-                                                                        [pDict,
-                                                                             state])
-                                          {r_handler(mS, state: :maps.get(:"$status", status,
-                                                                    :maps.get(:state,
-                                                                                status))),
-                                             :maps.get(:log, status)}
-                                     end,
-                                       :sys.get_log(debug), mSL)
-    [{:header, header}, {:data,
-                           [{'Status', sysState}, {'Logged Events', logs}, {'Parent', parent}]},
-                            {:items, {'Installed handlers', fmtMSL}}]
-  end
+    [pDict, sysState, parent, debug, [serverName, mSL, _HibernateAfterTimeout, _Hib]] = statusData
+    header = :gen.format_status_header(~c"Status for event handler", serverName)
 
+    {fmtMSL, logs} =
+      :lists.mapfoldl(
+        fn r_handler(
+             module: mod,
+             state: state
+           ) = mS,
+           logs ->
+          status = :gen.format_status(mod, opt, %{log: logs, state: state}, [pDict, state])
+
+          {r_handler(mS,
+             state:
+               :maps.get(
+                 :"$status",
+                 status,
+                 :maps.get(
+                   :state,
+                   status
+                 )
+               )
+           ), :maps.get(:log, status)}
+        end,
+        :sys.get_log(debug),
+        mSL
+      )
+
+    [
+      {:header, header},
+      {:data, [{~c"Status", sysState}, {~c"Logged Events", logs}, {~c"Parent", parent}]},
+      {:items, {~c"Installed handlers", fmtMSL}}
+    ]
+  end
 end

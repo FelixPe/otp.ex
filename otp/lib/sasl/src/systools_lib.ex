@@ -1,42 +1,60 @@
 defmodule :m_systools_lib do
   use Bitwise
   require Record
-  Record.defrecord(:r_file_info, :file_info, size: :undefined,
-                                     type: :undefined, access: :undefined,
-                                     atime: :undefined, mtime: :undefined,
-                                     ctime: :undefined, mode: :undefined,
-                                     links: :undefined,
-                                     major_device: :undefined,
-                                     minor_device: :undefined,
-                                     inode: :undefined, uid: :undefined,
-                                     gid: :undefined)
-  Record.defrecord(:r_file_descriptor, :file_descriptor, module: :undefined,
-                                           data: :undefined)
+
+  Record.defrecord(:r_file_info, :file_info,
+    size: :undefined,
+    type: :undefined,
+    access: :undefined,
+    atime: :undefined,
+    mtime: :undefined,
+    ctime: :undefined,
+    mode: :undefined,
+    links: :undefined,
+    major_device: :undefined,
+    minor_device: :undefined,
+    inode: :undefined,
+    uid: :undefined,
+    gid: :undefined
+  )
+
+  Record.defrecord(:r_file_descriptor, :file_descriptor,
+    module: :undefined,
+    data: :undefined
+  )
+
   def file_term2binary(fileIn, fileOut) do
-    case (read_term(fileIn)) do
+    case read_term(fileIn) do
       {:ok, term} ->
-        case (:file.write_file(fileOut,
-                                 :erlang.term_to_binary(term))) do
+        case :file.write_file(
+               fileOut,
+               :erlang.term_to_binary(term)
+             ) do
           :ok ->
             :ok
+
           {:error, error} ->
             {:error, {:open, fileOut, error}}
         end
+
       other ->
         other
     end
   end
 
   def read_term(file) do
-    case (:file.open(file, [:read])) do
+    case :file.open(file, [:read]) do
       {:ok, stream} ->
         res = read_term_from_stream(stream, file)
-        case (:file.close(stream)) do
+
+        case :file.close(stream) do
           :ok ->
             res
+
           {:error, error} ->
             {:error, {:close, file, error}}
         end
+
       {:error, error} ->
         {:error, {:open, file, error}}
     end
@@ -44,18 +62,26 @@ defmodule :m_systools_lib do
 
   def read_term_from_stream(stream, file) do
     encoding = :epp.set_encoding(stream)
-    r = :io.request(stream,
-                      {:get_until, encoding, :"", :erl_scan, :tokens, [1]})
-    case (r) do
+
+    r =
+      :io.request(
+        stream,
+        {:get_until, encoding, :"", :erl_scan, :tokens, [1]}
+      )
+
+    case r do
       {:ok, toks, _EndLine} ->
-        case (:erl_parse.parse_term(toks)) do
+        case :erl_parse.parse_term(toks) do
           {:ok, term} ->
             {:ok, term}
+
           {:error, error} ->
             {:error, {:parse, file, error}}
         end
+
       {:error, _E, _EndLine} ->
         {:error, {:read, file}}
+
       {:eof, _EndLine} ->
         {:error, {:read, file}}
     end
@@ -64,13 +90,14 @@ defmodule :m_systools_lib do
   def get_dirs(regPath) when is_list(regPath) do
     names = :filename.split(regPath)
     expNames = expand_names(names)
-    (try do
+
+    try do
       get_dirs(expNames, [], true)
     catch
       :error, e -> {:EXIT, {e, __STACKTRACE__}}
       :exit, e -> {:EXIT, e}
       e -> e
-    end)
+    end
   end
 
   def get_dirs(_) do
@@ -79,13 +106,15 @@ defmodule :m_systools_lib do
 
   def get_path(regPath) when is_list(regPath) do
     f = fn regP ->
-             case (get_dirs(regP)) do
-               {:ok, dirs} ->
-                 {true, dirs}
-               _ ->
-                 false
-             end
-        end
+      case get_dirs(regP) do
+        {:ok, dirs} ->
+          {true, dirs}
+
+        _ ->
+          false
+      end
+    end
+
     flat(:lists.zf(f, regPath), [])
   end
 
@@ -94,21 +123,26 @@ defmodule :m_systools_lib do
   end
 
   defp expand_names(names) do
-    :lists.map(fn '*' ->
-                    {true, '[^/]+'}
-                  n ->
-                    case (:lists.member(?*, n)) do
-                      true ->
-                        {true, expand(n, [])}
-                      _ ->
-                        {false, n}
-                    end
-               end,
-                 names)
+    :lists.map(
+      fn
+        ~c"*" ->
+          {true, ~c"[^/]+"}
+
+        n ->
+          case :lists.member(?*, n) do
+            true ->
+              {true, expand(n, [])}
+
+            _ ->
+              {false, n}
+          end
+      end,
+      names
+    )
   end
 
   defp expand([?* | t], ack) do
-    expand(t, '*]/^[' ++ ack)
+    expand(t, ~c"*]/^[" ++ ack)
   end
 
   defp expand([h | t], ack) do
@@ -132,31 +166,37 @@ defmodule :m_systools_lib do
   end
 
   defp add_dir(name, [], true) do
-    case (dir_p(name)) do
+    case dir_p(name) do
       true ->
         [name]
+
       _ ->
         []
     end
   end
 
   defp add_dir(name, dirs, _Root) do
-    :lists.zf(fn d0 ->
-                   d = :filename.join(d0, name)
-                   case (dir_p(d)) do
-                     true ->
-                       {true, d}
-                     _ ->
-                       false
-                   end
-              end,
-                dirs)
+    :lists.zf(
+      fn d0 ->
+        d = :filename.join(d0, name)
+
+        case dir_p(d) do
+          true ->
+            {true, d}
+
+          _ ->
+            false
+        end
+      end,
+      dirs
+    )
   end
 
   defp add_dirs(regName, _Dirs, true) do
-    case (regexp_match(regName, '.', true)) do
+    case regexp_match(regName, ~c".", true) do
       {true, addDirs} ->
         addDirs
+
       _ ->
         []
     end
@@ -164,34 +204,41 @@ defmodule :m_systools_lib do
 
   defp add_dirs(regName, dirs, root) do
     fun = fn dir ->
-               regexp_match(regName, dir, root)
-          end
+      regexp_match(regName, dir, root)
+    end
+
     flat(:lists.zf(fun, dirs), [])
   end
 
   defp regexp_match(regName, d0, root) do
-    case (:file.list_dir(d0)) do
+    case :file.list_dir(d0) do
       {:ok, files} when length(files) > 0 ->
-        case (:re.compile(regName, [:unicode])) do
+        case :re.compile(regName, [:unicode]) do
           {:ok, mP} ->
             fR = fn f ->
-                      case (:re.run(f, mP, [{:capture, :first, :list}])) do
-                        {:match, [^f]} ->
-                          dirF = join(d0, f, root)
-                          case (dir_p(dirF)) do
-                            true ->
-                              {true, dirF}
-                            _ ->
-                              false
-                          end
-                        _ ->
-                          false
-                      end
-                 end
+              case :re.run(f, mP, [{:capture, :first, :list}]) do
+                {:match, [^f]} ->
+                  dirF = join(d0, f, root)
+
+                  case dir_p(dirF) do
+                    true ->
+                      {true, dirF}
+
+                    _ ->
+                      false
+                  end
+
+                _ ->
+                  false
+              end
+            end
+
             {true, :lists.zf(fR, files)}
+
           _ ->
             false
         end
+
       _ ->
         false
     end
@@ -206,9 +253,10 @@ defmodule :m_systools_lib do
   end
 
   defp dir_p(dirF) do
-    case (:file.read_file_info(dirF)) do
+    case :file.read_file_info(dirF) do
       {:ok, info} when r_file_info(info, :type) == :directory ->
         true
+
       _ ->
         false
     end
@@ -231,8 +279,9 @@ defmodule :m_systools_lib do
   end
 
   def werror(options, warnings) do
-    :lists.member(:warnings_as_errors,
-                    options) and warnings !== []
+    :lists.member(
+      :warnings_as_errors,
+      options
+    ) and warnings !== []
   end
-
 end

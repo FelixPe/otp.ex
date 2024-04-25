@@ -6,9 +6,10 @@ defmodule :m_ssl_server_session_cache_db do
   end
 
   def lookup(cache, key) do
-    case (:gb_trees.lookup(key, cache)) do
+    case :gb_trees.lookup(key, cache) do
       {:value, session} ->
         session
+
       :none ->
         :undefined
     end
@@ -29,5 +30,4 @@ defmodule :m_ssl_server_session_cache_db do
   def terminate(_) do
     :ok
   end
-
 end

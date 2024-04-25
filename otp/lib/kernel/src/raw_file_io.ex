@@ -1,9 +1,13 @@
 defmodule :m_raw_file_io do
   use Bitwise
+
   def open(filename, modes) do
-    moduleOrder = [{:raw_file_io_list, &match_list/1},
-                       {:raw_file_io_compressed, &match_compressed/1},
-                           {:raw_file_io_delayed, &match_delayed/1}]
+    moduleOrder = [
+      {:raw_file_io_list, &match_list/1},
+      {:raw_file_io_compressed, &match_compressed/1},
+      {:raw_file_io_delayed, &match_delayed/1}
+    ]
+
     open_1(moduleOrder, filename, add_implicit_modes(modes))
   end
 
@@ -12,28 +16,33 @@ defmodule :m_raw_file_io do
   end
 
   defp open_1([{module, match} | rest], filename, modes) do
-    case (:lists.any(match, modes)) do
+    case :lists.any(match, modes) do
       true ->
-        {options, childModes} = :lists.partition(fn mode ->
-                                                      match.(mode)
-                                                 end,
-                                                   modes)
+        {options, childModes} =
+          :lists.partition(
+            fn mode ->
+              match.(mode)
+            end,
+            modes
+          )
+
         module.open_layer(filename, childModes, options)
+
       false ->
         open_1(rest, filename, modes)
     end
   end
 
   defp add_implicit_modes(modes0) do
-    modes1 = add_unless_matched(modes0, &match_writable/1,
-                                  :read)
+    modes1 = add_unless_matched(modes0, &match_writable/1, :read)
     add_unless_matched(modes1, &match_binary/1, :list)
   end
 
   defp add_unless_matched(modes, match, default) do
-    case (:lists.any(match, modes)) do
+    case :lists.any(match, modes) do
       false ->
         [default | modes]
+
       true ->
         modes
     end
@@ -94,5 +103,4 @@ defmodule :m_raw_file_io do
   defp match_binary(_Other) do
     false
   end
-
 end

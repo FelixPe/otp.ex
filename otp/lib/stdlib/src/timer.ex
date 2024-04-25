@@ -1,14 +1,17 @@
 defmodule :m_timer do
   use Bitwise
-  def apply_after(0, m, f, a) when (is_atom(m) and is_atom(f) and
-                             is_list(a)) do
+
+  def apply_after(0, m, f, a)
+      when is_atom(m) and is_atom(f) and
+             is_list(a) do
     _ = do_apply({m, f, a}, false)
     {:ok, {:instant, make_ref()}}
   end
 
-  def apply_after(time, m, f, a) when (is_integer(time) and
-                                time >= 0 and is_atom(m) and is_atom(f) and
-                                is_list(a)) do
+  def apply_after(time, m, f, a)
+      when is_integer(time) and
+             time >= 0 and is_atom(m) and is_atom(f) and
+             is_list(a) do
     req(:apply_once, {system_time(), time, {m, f, a}})
   end
 
@@ -23,14 +26,15 @@ defmodule :m_timer do
   end
 
   def send_after(0, {regName, node} = dest, message)
-      when (is_atom(regName) and is_atom(node)) do
+      when is_atom(regName) and is_atom(node) do
     send(dest, message)
     {:ok, {:instant, make_ref()}}
   end
 
-  def send_after(time, pid, message) when (is_integer(time) and
-                                     time >= 0 and is_pid(pid) and
-                                     node(pid) === node()) do
+  def send_after(time, pid, message)
+      when is_integer(time) and
+             time >= 0 and is_pid(pid) and
+             node(pid) === node() do
     tRef = :erlang.send_after(time, pid, message)
     {:ok, {:send_local, tRef}}
   end
@@ -44,7 +48,7 @@ defmodule :m_timer do
   end
 
   def send_after(time, {regName, node} = dest, message)
-      when (is_atom(regName) and is_atom(node)) do
+      when is_atom(regName) and is_atom(node) do
     apply_after(time, :timer, :send, [dest, message])
   end
 
@@ -72,49 +76,59 @@ defmodule :m_timer do
     exit_after(time, self(), :kill)
   end
 
-  def apply_interval(time, m, f, a) when (is_integer(time) and
-                                time >= 0 and is_atom(m) and is_atom(f) and
-                                is_list(a)) do
-    req(:apply_interval,
-          {system_time(), time, self(), {m, f, a}})
+  def apply_interval(time, m, f, a)
+      when is_integer(time) and
+             time >= 0 and is_atom(m) and is_atom(f) and
+             is_list(a) do
+    req(
+      :apply_interval,
+      {system_time(), time, self(), {m, f, a}}
+    )
   end
 
   def apply_interval(_Time, _M, _F, _A) do
     {:error, :badarg}
   end
 
-  def apply_repeatedly(time, m, f, a) when (is_integer(time) and
-                                time >= 0 and is_atom(m) and is_atom(f) and
-                                is_list(a)) do
-    req(:apply_repeatedly,
-          {system_time(), time, self(), {m, f, a}})
+  def apply_repeatedly(time, m, f, a)
+      when is_integer(time) and
+             time >= 0 and is_atom(m) and is_atom(f) and
+             is_list(a) do
+    req(
+      :apply_repeatedly,
+      {system_time(), time, self(), {m, f, a}}
+    )
   end
 
   def apply_repeatedly(_Time, _M, _F, _A) do
     {:error, :badarg}
   end
 
-  def send_interval(time, pid, message) when (is_integer(time) and
-                                     time >= 0 and is_pid(pid)) do
-    req(:apply_interval,
-          {system_time(), time, pid,
-             {:timer, :send, [pid, message]}})
+  def send_interval(time, pid, message)
+      when is_integer(time) and
+             time >= 0 and is_pid(pid) do
+    req(
+      :apply_interval,
+      {system_time(), time, pid, {:timer, :send, [pid, message]}}
+    )
   end
 
   def send_interval(time, regName, message)
-      when (is_integer(time) and time >= 0 and
-              is_atom(regName)) do
-    req(:apply_interval,
-          {system_time(), time, regName,
-             {:timer, :send, [regName, message]}})
+      when is_integer(time) and time >= 0 and
+             is_atom(regName) do
+    req(
+      :apply_interval,
+      {system_time(), time, regName, {:timer, :send, [regName, message]}}
+    )
   end
 
   def send_interval(time, dest = {regName, node}, message)
-      when (is_integer(time) and time >= 0 and
-              is_atom(regName) and is_atom(node)) do
-    req(:apply_interval,
-          {system_time(), time, dest,
-             {:timer, :send, [dest, message]}})
+      when is_integer(time) and time >= 0 and
+             is_atom(regName) and is_atom(node) do
+    req(
+      :apply_interval,
+      {system_time(), time, dest, {:timer, :send, [dest, message]}}
+    )
   end
 
   def send_interval(_Time, _Pid, _Message) do
@@ -147,15 +161,19 @@ defmodule :m_timer do
     {:error, :badarg}
   end
 
-  def sleep(t) when (is_integer(t) and t > 4294967295) do
-    receive do after 4294967295 ->
-      sleep(t - 4294967295)
+  def sleep(t) when is_integer(t) and t > 4_294_967_295 do
+    receive do
+    after
+      4_294_967_295 ->
+        sleep(t - 4_294_967_295)
     end
   end
 
   def sleep(t) do
-    receive do after t ->
-      :ok
+    receive do
+    after
+      t ->
+        :ok
     end
   end
 
@@ -171,8 +189,7 @@ defmodule :m_timer do
     t1 = :erlang.monotonic_time()
     val = f.()
     t2 = :erlang.monotonic_time()
-    time = :erlang.convert_time_unit(t2 - t1, :native,
-                                       timeUnit)
+    time = :erlang.convert_time_unit(t2 - t1, :native, timeUnit)
     {time, val}
   end
 
@@ -184,8 +201,7 @@ defmodule :m_timer do
     t1 = :erlang.monotonic_time()
     val = apply(f, a)
     t2 = :erlang.monotonic_time()
-    time = :erlang.convert_time_unit(t2 - t1, :native,
-                                       timeUnit)
+    time = :erlang.convert_time_unit(t2 - t1, :native, timeUnit)
     {time, val}
   end
 
@@ -193,13 +209,12 @@ defmodule :m_timer do
     t1 = :erlang.monotonic_time()
     val = apply(m, f, a)
     t2 = :erlang.monotonic_time()
-    time = :erlang.convert_time_unit(t2 - t1, :native,
-                                       timeUnit)
+    time = :erlang.convert_time_unit(t2 - t1, :native, timeUnit)
     {time, val}
   end
 
   def now_diff({a2, b2, c2}, {a1, b1, c1}) do
-    ((a2 - a1) * 1000000 + b2 - b1) * 1000000 + c2 - c1
+    ((a2 - a1) * 1_000_000 + b2 - b1) * 1_000_000 + c2 - c1
   end
 
   def seconds(seconds) do
@@ -224,33 +239,45 @@ defmodule :m_timer do
   end
 
   defp do_start() do
-    case (:supervisor.start_child(:kernel_sup,
-                                    %{id: :timer_server,
-                                        start: {:timer, :start_link, []},
-                                        restart: :permanent, shutdown: 1000,
-                                        type: :worker, modules: [:timer]})) do
+    case :supervisor.start_child(
+           :kernel_sup,
+           %{
+             id: :timer_server,
+             start: {:timer, :start_link, []},
+             restart: :permanent,
+             shutdown: 1000,
+             type: :worker,
+             modules: [:timer]
+           }
+         ) do
       {:ok, pid} ->
         {:ok, pid}
+
       {:ok, pid, _} ->
         {:ok, pid}
+
       {:error, {:already_started, pid}} ->
         {:ok, pid}
+
       {:error, :already_present} ->
-        case (:supervisor.restart_child(:kernel_sup,
-                                          :timer_server)) do
+        case :supervisor.restart_child(
+               :kernel_sup,
+               :timer_server
+             ) do
           {:ok, pid} ->
             {:ok, pid}
+
           {:error, {:already_started, pid}} ->
             {:ok, pid}
         end
+
       error ->
         error
     end
   end
 
   def start_link() do
-    :gen_server.start_link({:local, :timer_server}, :timer,
-                             [], [])
+    :gen_server.start_link({:local, :timer_server}, :timer, [], [])
   end
 
   def init([]) do
@@ -273,35 +300,32 @@ defmodule :m_timer do
     :gen_server.call(:timer_server, {req, arg}, :infinity)
   end
 
-  def handle_call({:apply_once, {started, time, mFA}}, _From,
-           tab) do
+  def handle_call({:apply_once, {started, time, mFA}}, _From, tab) do
     timeout = started + time
-    reply = (try do
-               :erlang.start_timer(timeout, self(), {:apply_once, mFA},
-                                     [{:abs, true}])
-             catch
-               :error, :badarg ->
-                 {:error, :badarg}
-             else
-               sRef ->
-                 :ets.insert(tab, {sRef})
-                 {:ok, {:once, sRef}}
-             end)
+
+    reply =
+      try do
+        :erlang.start_timer(timeout, self(), {:apply_once, mFA}, [{:abs, true}])
+      catch
+        :error, :badarg ->
+          {:error, :badarg}
+      else
+        sRef ->
+          :ets.insert(tab, {sRef})
+          {:ok, {:once, sRef}}
+      end
+
     {:reply, reply, tab}
   end
 
-  def handle_call({:apply_interval, {started, time, pid, mFA}},
-           _From, tab) do
-    {tRef, tPid, tag} = start_interval_loop(started, time,
-                                              pid, mFA, false)
+  def handle_call({:apply_interval, {started, time, pid, mFA}}, _From, tab) do
+    {tRef, tPid, tag} = start_interval_loop(started, time, pid, mFA, false)
     :ets.insert(tab, {tRef, tPid, tag})
     {:reply, {:ok, {:interval, tRef}}, tab}
   end
 
-  def handle_call({:apply_repeatedly, {started, time, pid, mFA}},
-           _From, tab) do
-    {tRef, tPid, tag} = start_interval_loop(started, time,
-                                              pid, mFA, true)
+  def handle_call({:apply_repeatedly, {started, time, pid, mFA}}, _From, tab) do
+    {tRef, tPid, tag} = start_interval_loop(started, time, pid, mFA, true)
     :ets.insert(tab, {tRef, tPid, tag})
     {:reply, {:ok, {:interval, tRef}}, tab}
   end
@@ -312,12 +336,15 @@ defmodule :m_timer do
   end
 
   def handle_call({:cancel, {:interval, tRef}}, _From, tab) do
-    _ = (case (remove_timer(tRef, tab)) do
-           true ->
-             :erlang.demonitor(tRef, [:flush])
-           false ->
-             :ok
-         end)
+    _ =
+      case remove_timer(tRef, tab) do
+        true ->
+          :erlang.demonitor(tRef, [:flush])
+
+        false ->
+          :ok
+      end
+
     {:reply, {:ok, :cancel}, tab}
   end
 
@@ -326,12 +353,15 @@ defmodule :m_timer do
   end
 
   def handle_info({:timeout, tRef, {:apply_once, mFA}}, tab) do
-    _ = (case (:ets.take(tab, tRef)) do
-           [{^tRef}] ->
-             do_apply(mFA, false)
-           [] ->
-             :ok
-         end)
+    _ =
+      case :ets.take(tab, tRef) do
+        [{^tRef}] ->
+          do_apply(mFA, false)
+
+        [] ->
+          :ok
+      end
+
     {:noreply, tab}
   end
 
@@ -353,14 +383,21 @@ defmodule :m_timer do
   end
 
   def terminate(reason, tab) do
-    _ = :ets.foldl(fn {tRef}, acc ->
-                        _ = cancel_timer(tRef)
-                        acc
-                      {_TRef, tPid, tag}, acc ->
-                        send(tPid, {:cancel, tag})
-                        acc
-                   end,
-                     :undefined, tab)
+    _ =
+      :ets.foldl(
+        fn
+          {tRef}, acc ->
+            _ = cancel_timer(tRef)
+            acc
+
+          {_TRef, tPid, tag}, acc ->
+            send(tPid, {:cancel, tag})
+            acc
+        end,
+        :undefined,
+        tab
+      )
+
     true = :ets.delete(tab)
     terminate(reason, :undefined)
   end
@@ -372,88 +409,106 @@ defmodule :m_timer do
   defp start_interval_loop(started, time, targetPid, mFA, waitComplete) do
     tag = make_ref()
     timeServerPid = self()
-    {tPid, tRef} = spawn_monitor(fn () ->
-                                      timeServerRef = :erlang.monitor(:process,
-                                                                        timeServerPid)
-                                      targetRef = :erlang.monitor(:process,
-                                                                    targetPid)
-                                      timerRef = schedule_interval_timer(started,
-                                                                           time,
-                                                                           mFA)
-                                      _ = interval_loop(timeServerRef,
-                                                          targetRef, tag,
-                                                          waitComplete,
-                                                          timerRef)
-                                 end)
+
+    {tPid, tRef} =
+      spawn_monitor(fn ->
+        timeServerRef =
+          :erlang.monitor(
+            :process,
+            timeServerPid
+          )
+
+        targetRef =
+          :erlang.monitor(
+            :process,
+            targetPid
+          )
+
+        timerRef =
+          schedule_interval_timer(
+            started,
+            time,
+            mFA
+          )
+
+        _ = interval_loop(timeServerRef, targetRef, tag, waitComplete, timerRef)
+      end)
+
     {tRef, tPid, tag}
   end
 
-  defp interval_loop(timerServerMon, targetMon, tag, waitComplete,
-            timerRef0) do
+  defp interval_loop(timerServerMon, targetMon, tag, waitComplete, timerRef0) do
     receive do
       {:cancel, ^tag} ->
         :ok = cancel_timer(timerRef0)
+
       {:DOWN, ^timerServerMon, :process, _, _} ->
         :ok = cancel_timer(timerRef0)
+
       {:DOWN, ^targetMon, :process, _, _} ->
         :ok = cancel_timer(timerRef0)
-      {:timeout, ^timerRef0,
-         {:apply_interval, curTimeout, time, mFA}} ->
-        case (do_apply(mFA, waitComplete)) do
+
+      {:timeout, ^timerRef0, {:apply_interval, curTimeout, time, mFA}} ->
+        case do_apply(mFA, waitComplete) do
           {:ok, {:spawn, actionMon}} ->
             receive do
               {:cancel, ^tag} ->
                 :ok
+
               {:DOWN, ^timerServerMon, :process, _, _} ->
                 :ok
+
               {:DOWN, ^targetMon, :process, _, _} ->
                 :ok
+
               {:DOWN, ^actionMon, :process, _, _} ->
-                timerRef1 = schedule_interval_timer(curTimeout, time,
-                                                      mFA)
-                interval_loop(timerServerMon, targetMon, tag,
-                                waitComplete, timerRef1)
+                timerRef1 = schedule_interval_timer(curTimeout, time, mFA)
+                interval_loop(timerServerMon, targetMon, tag, waitComplete, timerRef1)
             end
+
           _ ->
-            timerRef1 = schedule_interval_timer(curTimeout, time,
-                                                  mFA)
-            interval_loop(timerServerMon, targetMon, tag,
-                            waitComplete, timerRef1)
+            timerRef1 = schedule_interval_timer(curTimeout, time, mFA)
+            interval_loop(timerServerMon, targetMon, tag, waitComplete, timerRef1)
         end
     end
   end
 
   defp schedule_interval_timer(curTimeout, time, mFA) do
     nextTimeout = curTimeout + time
-    case (nextTimeout <= system_time()) do
+
+    case nextTimeout <= system_time() do
       true ->
         timerRef = make_ref()
-        send(self(), {:timeout, timerRef,
-                        {:apply_interval, nextTimeout, time, mFA}})
+        send(self(), {:timeout, timerRef, {:apply_interval, nextTimeout, time, mFA}})
         timerRef
+
       false ->
-        :erlang.start_timer(nextTimeout, self(),
-                              {:apply_interval, nextTimeout, time, mFA},
-                              [{:abs, true}])
+        :erlang.start_timer(nextTimeout, self(), {:apply_interval, nextTimeout, time, mFA}, [
+          {:abs, true}
+        ])
     end
   end
 
   defp remove_timer(tRef, tab) do
-    case (:ets.take(tab, tRef)) do
+    case :ets.take(tab, tRef) do
       [{^tRef}] ->
         :ok = cancel_timer(tRef)
         true
+
       [{^tRef, tPid, tag}] ->
         send(tPid, {:cancel, tag})
         true
+
       [] ->
         false
     end
   end
 
   defp cancel_timer(tRef) do
-    :erlang.cancel_timer(tRef,
-                           [{:async, true}, {:info, false}])
+    :erlang.cancel_timer(
+      tRef,
+      [{:async, true}, {:info, false}]
+    )
   end
 
   defp do_apply({:timer, :send, a}, _) do
@@ -527,5 +582,4 @@ defmodule :m_timer do
   defp get_pid(_) do
     :undefined
   end
-
 end

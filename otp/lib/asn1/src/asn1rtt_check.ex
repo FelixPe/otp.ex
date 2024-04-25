@@ -1,5 +1,6 @@
 defmodule :m_asn1rtt_check do
   use Bitwise
+
   def check_fail(_) do
     throw(false)
   end
@@ -9,9 +10,10 @@ defmodule :m_asn1rtt_check do
   end
 
   def check_int(value, defValue, nNL) when is_atom(value) do
-    case (:lists.keyfind(value, 1, nNL)) do
+    case :lists.keyfind(value, 1, nNL) do
       {_, ^defValue} ->
         true
+
       _ ->
         throw(false)
     end
@@ -27,15 +29,15 @@ defmodule :m_asn1rtt_check do
 
   defp check_bitstring(defVal, {unused, binary}) do
     sz = bit_size(binary) - unused
-    <<val :: size(sz) - bitstring,
-        _ :: size(unused)>> = binary
+    <<val::size(sz)-bitstring, _::size(unused)>> = binary
     check_bitstring(defVal, val)
   end
 
   defp check_bitstring(defVal, val) when is_bitstring(val) do
-    case (val === defVal) do
+    case val === defVal do
       false ->
         throw(false)
+
       true ->
         true
     end
@@ -49,7 +51,7 @@ defmodule :m_asn1rtt_check do
     check_bitstring_integer(def__, val)
   end
 
-  defp check_bitstring_list(<<h :: size(1), t1 :: bitstring>>, [h | t2]) do
+  defp check_bitstring_list(<<h::size(1), t1::bitstring>>, [h | t2]) do
     check_bitstring_list(t1, t2)
   end
 
@@ -61,8 +63,8 @@ defmodule :m_asn1rtt_check do
     throw(false)
   end
 
-  defp check_bitstring_integer(<<h :: size(1), t1 :: bitstring>>, int)
-      when h === int &&& 1 do
+  defp check_bitstring_integer(<<h::size(1), t1::bitstring>>, int)
+       when h === int &&& 1 do
     check_bitstring_integer(t1, int >>> 1)
   end
 
@@ -76,24 +78,31 @@ defmodule :m_asn1rtt_check do
 
   def check_legacy_named_bitstring([int | _] = val, bs, bsSize)
       when is_integer(int) do
-    check_named_bitstring(for b <- val, into: <<>> do
-                            <<b :: size(1)>>
-                          end,
-                            bs, bsSize)
+    check_named_bitstring(
+      for b <- val, into: <<>> do
+        <<b::size(1)>>
+      end,
+      bs,
+      bsSize
+    )
   end
 
   def check_legacy_named_bitstring({unused, val0}, bs, bsSize) do
     sz = bit_size(val0) - unused
-    <<val :: size(sz) - bits, _ :: bits>> = val0
+    <<val::size(sz)-bits, _::bits>> = val0
     check_named_bitstring(val, bs, bsSize)
   end
 
   def check_legacy_named_bitstring(val, bs, bsSize) when is_integer(val) do
     l = legacy_int_to_bitlist(val)
-    check_named_bitstring(for b <- l, into: <<>> do
-                            <<b :: size(1)>>
-                          end,
-                            bs, bsSize)
+
+    check_named_bitstring(
+      for b <- l, into: <<>> do
+        <<b::size(1)>>
+      end,
+      bs,
+      bsSize
+    )
   end
 
   def check_legacy_named_bitstring(val, bs, bsSize) do
@@ -102,24 +111,33 @@ defmodule :m_asn1rtt_check do
 
   def check_legacy_named_bitstring([int | _] = val, names, bs, bsSize)
       when is_integer(int) do
-    check_named_bitstring(for b <- val, into: <<>> do
-                            <<b :: size(1)>>
-                          end,
-                            names, bs, bsSize)
+    check_named_bitstring(
+      for b <- val, into: <<>> do
+        <<b::size(1)>>
+      end,
+      names,
+      bs,
+      bsSize
+    )
   end
 
   def check_legacy_named_bitstring({unused, val0}, names, bs, bsSize) do
     sz = bit_size(val0) - unused
-    <<val :: size(sz) - bits, _ :: bits>> = val0
+    <<val::size(sz)-bits, _::bits>> = val0
     check_named_bitstring(val, names, bs, bsSize)
   end
 
   def check_legacy_named_bitstring(val, names, bs, bsSize) when is_integer(val) do
     l = legacy_int_to_bitlist(val)
-    check_named_bitstring(for b <- l, into: <<>> do
-                            <<b :: size(1)>>
-                          end,
-                            names, bs, bsSize)
+
+    check_named_bitstring(
+      for b <- l, into: <<>> do
+        <<b::size(1)>>
+      end,
+      names,
+      bs,
+      bsSize
+    )
   end
 
   def check_legacy_named_bitstring(val, names, bs, bsSize) do
@@ -140,18 +158,21 @@ defmodule :m_asn1rtt_check do
 
   def check_named_bitstring(val, bs, bsSize) do
     rest = bit_size(val) - bsSize
-    case (val) do
-      <<^bs :: size(bsSize) - bits, 0 :: size(rest)>> ->
+
+    case val do
+      <<^bs::size(bsSize)-bits, 0::size(rest)>> ->
         true
+
       _ ->
         throw(false)
     end
   end
 
   def check_named_bitstring([_ | _] = val, names, _, _) do
-    case (:lists.sort(val)) do
+    case :lists.sort(val) do
       ^names ->
         true
+
       _ ->
         throw(false)
     end
@@ -163,9 +184,11 @@ defmodule :m_asn1rtt_check do
 
   def check_named_bitstring(val, _, bs, bsSize) do
     rest = bit_size(val) - bsSize
-    case (val) do
-      <<^bs :: size(bsSize) - bits, 0 :: size(rest)>> ->
+
+    case val do
+      <<^bs::size(bsSize)-bits, 0::size(rest)>> ->
         true
+
       _ ->
         throw(false)
     end
@@ -176,9 +199,10 @@ defmodule :m_asn1rtt_check do
   end
 
   def check_octetstring(v, def__) when is_list(v) do
-    case (:erlang.list_to_binary(v)) do
+    case :erlang.list_to_binary(v) do
       ^def__ ->
         true
+
       _ ->
         throw(false)
     end
@@ -197,9 +221,10 @@ defmodule :m_asn1rtt_check do
   end
 
   defp check_oid([h | t], [k | ks], tail) do
-    case (:lists.member(h, k)) do
+    case :lists.member(h, k) do
       false ->
         throw(false)
+
       true ->
         check_oid(t, ks, tail)
     end
@@ -222,8 +247,7 @@ defmodule :m_asn1rtt_check do
   end
 
   def check_objectdescriptor(oD, oD) do
-    throw({:error,
-             {:not_implemented_yet, :check_objectdescriptor}})
+    throw({:error, {:not_implemented_yet, :check_objectdescriptor}})
   end
 
   def check_real(_, :asn1_DEFAULT) do
@@ -276,12 +300,12 @@ defmodule :m_asn1rtt_check do
   end
 
   def check_literal_sof(value, default) do
-    case (:lists.sort(value)) do
+    case :lists.sort(value) do
       ^default ->
         true
+
       _ ->
         throw(false)
     end
   end
-
 end

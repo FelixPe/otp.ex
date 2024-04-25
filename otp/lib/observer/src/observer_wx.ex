@@ -2,199 +2,386 @@ defmodule :m_observer_wx do
   use Bitwise
   @behaviour :wx_object
   require Record
-  Record.defrecord(:r_wx, :wx, id: :undefined,
-                              obj: :undefined, userData: :undefined,
-                              event: :undefined)
-  Record.defrecord(:r_wxActivate, :wxActivate, type: :undefined,
-                                      active: :undefined)
-  Record.defrecord(:r_wxAuiManager, :wxAuiManager, type: :undefined,
-                                        manager: :undefined, pane: :undefined,
-                                        button: :undefined,
-                                        veto_flag: :undefined,
-                                        canveto_flag: :undefined,
-                                        dc: :undefined)
-  Record.defrecord(:r_wxAuiNotebook, :wxAuiNotebook, type: :undefined,
-                                         old_selection: :undefined,
-                                         selection: :undefined,
-                                         drag_source: :undefined)
-  Record.defrecord(:r_wxBookCtrl, :wxBookCtrl, type: :undefined,
-                                      nSel: :undefined, nOldSel: :undefined)
-  Record.defrecord(:r_wxCalendar, :wxCalendar, type: :undefined,
-                                      wday: :undefined, date: :undefined)
+
+  Record.defrecord(:r_wx, :wx,
+    id: :undefined,
+    obj: :undefined,
+    userData: :undefined,
+    event: :undefined
+  )
+
+  Record.defrecord(:r_wxActivate, :wxActivate,
+    type: :undefined,
+    active: :undefined
+  )
+
+  Record.defrecord(:r_wxAuiManager, :wxAuiManager,
+    type: :undefined,
+    manager: :undefined,
+    pane: :undefined,
+    button: :undefined,
+    veto_flag: :undefined,
+    canveto_flag: :undefined,
+    dc: :undefined
+  )
+
+  Record.defrecord(:r_wxAuiNotebook, :wxAuiNotebook,
+    type: :undefined,
+    old_selection: :undefined,
+    selection: :undefined,
+    drag_source: :undefined
+  )
+
+  Record.defrecord(:r_wxBookCtrl, :wxBookCtrl,
+    type: :undefined,
+    nSel: :undefined,
+    nOldSel: :undefined
+  )
+
+  Record.defrecord(:r_wxCalendar, :wxCalendar,
+    type: :undefined,
+    wday: :undefined,
+    date: :undefined
+  )
+
   Record.defrecord(:r_wxChildFocus, :wxChildFocus, type: :undefined)
   Record.defrecord(:r_wxClipboardText, :wxClipboardText, type: :undefined)
   Record.defrecord(:r_wxClose, :wxClose, type: :undefined)
-  Record.defrecord(:r_wxColourPicker, :wxColourPicker, type: :undefined,
-                                          colour: :undefined)
-  Record.defrecord(:r_wxCommand, :wxCommand, type: :undefined,
-                                     cmdString: :undefined,
-                                     commandInt: :undefined,
-                                     extraLong: :undefined)
-  Record.defrecord(:r_wxContextMenu, :wxContextMenu, type: :undefined,
-                                         pos: :undefined)
-  Record.defrecord(:r_wxDate, :wxDate, type: :undefined,
-                                  date: :undefined)
+
+  Record.defrecord(:r_wxColourPicker, :wxColourPicker,
+    type: :undefined,
+    colour: :undefined
+  )
+
+  Record.defrecord(:r_wxCommand, :wxCommand,
+    type: :undefined,
+    cmdString: :undefined,
+    commandInt: :undefined,
+    extraLong: :undefined
+  )
+
+  Record.defrecord(:r_wxContextMenu, :wxContextMenu,
+    type: :undefined,
+    pos: :undefined
+  )
+
+  Record.defrecord(:r_wxDate, :wxDate,
+    type: :undefined,
+    date: :undefined
+  )
+
   Record.defrecord(:r_wxDisplayChanged, :wxDisplayChanged, type: :undefined)
-  Record.defrecord(:r_wxDropFiles, :wxDropFiles, type: :undefined,
-                                       pos: :undefined, files: :undefined)
-  Record.defrecord(:r_wxErase, :wxErase, type: :undefined,
-                                   dc: :undefined)
-  Record.defrecord(:r_wxFileDirPicker, :wxFileDirPicker, type: :undefined,
-                                           path: :undefined)
-  Record.defrecord(:r_wxFocus, :wxFocus, type: :undefined,
-                                   win: :undefined)
-  Record.defrecord(:r_wxFontPicker, :wxFontPicker, type: :undefined,
-                                        font: :undefined)
-  Record.defrecord(:r_wxGrid, :wxGrid, type: :undefined,
-                                  row: :undefined, col: :undefined,
-                                  pos: :undefined, selecting: :undefined,
-                                  control: :undefined, meta: :undefined,
-                                  shift: :undefined, alt: :undefined)
+
+  Record.defrecord(:r_wxDropFiles, :wxDropFiles,
+    type: :undefined,
+    pos: :undefined,
+    files: :undefined
+  )
+
+  Record.defrecord(:r_wxErase, :wxErase,
+    type: :undefined,
+    dc: :undefined
+  )
+
+  Record.defrecord(:r_wxFileDirPicker, :wxFileDirPicker,
+    type: :undefined,
+    path: :undefined
+  )
+
+  Record.defrecord(:r_wxFocus, :wxFocus,
+    type: :undefined,
+    win: :undefined
+  )
+
+  Record.defrecord(:r_wxFontPicker, :wxFontPicker,
+    type: :undefined,
+    font: :undefined
+  )
+
+  Record.defrecord(:r_wxGrid, :wxGrid,
+    type: :undefined,
+    row: :undefined,
+    col: :undefined,
+    pos: :undefined,
+    selecting: :undefined,
+    control: :undefined,
+    meta: :undefined,
+    shift: :undefined,
+    alt: :undefined
+  )
+
   Record.defrecord(:r_wxHelp, :wxHelp, type: :undefined)
-  Record.defrecord(:r_wxHtmlLink, :wxHtmlLink, type: :undefined,
-                                      linkInfo: :undefined)
-  Record.defrecord(:r_wxIconize, :wxIconize, type: :undefined,
-                                     iconized: :undefined)
+
+  Record.defrecord(:r_wxHtmlLink, :wxHtmlLink,
+    type: :undefined,
+    linkInfo: :undefined
+  )
+
+  Record.defrecord(:r_wxIconize, :wxIconize,
+    type: :undefined,
+    iconized: :undefined
+  )
+
   Record.defrecord(:r_wxIdle, :wxIdle, type: :undefined)
   Record.defrecord(:r_wxInitDialog, :wxInitDialog, type: :undefined)
-  Record.defrecord(:r_wxJoystick, :wxJoystick, type: :undefined,
-                                      pos: :undefined, zPosition: :undefined,
-                                      buttonChange: :undefined,
-                                      buttonState: :undefined,
-                                      joyStick: :undefined)
-  Record.defrecord(:r_wxKey, :wxKey, type: :undefined,
-                                 x: :undefined, y: :undefined,
-                                 keyCode: :undefined, controlDown: :undefined,
-                                 shiftDown: :undefined, altDown: :undefined,
-                                 metaDown: :undefined, uniChar: :undefined,
-                                 rawCode: :undefined, rawFlags: :undefined)
-  Record.defrecord(:r_wxList, :wxList, type: :undefined,
-                                  code: :undefined, oldItemIndex: :undefined,
-                                  itemIndex: :undefined, col: :undefined,
-                                  pointDrag: :undefined)
+
+  Record.defrecord(:r_wxJoystick, :wxJoystick,
+    type: :undefined,
+    pos: :undefined,
+    zPosition: :undefined,
+    buttonChange: :undefined,
+    buttonState: :undefined,
+    joyStick: :undefined
+  )
+
+  Record.defrecord(:r_wxKey, :wxKey,
+    type: :undefined,
+    x: :undefined,
+    y: :undefined,
+    keyCode: :undefined,
+    controlDown: :undefined,
+    shiftDown: :undefined,
+    altDown: :undefined,
+    metaDown: :undefined,
+    uniChar: :undefined,
+    rawCode: :undefined,
+    rawFlags: :undefined
+  )
+
+  Record.defrecord(:r_wxList, :wxList,
+    type: :undefined,
+    code: :undefined,
+    oldItemIndex: :undefined,
+    itemIndex: :undefined,
+    col: :undefined,
+    pointDrag: :undefined
+  )
+
   Record.defrecord(:r_wxMaximize, :wxMaximize, type: :undefined)
-  Record.defrecord(:r_wxMenu, :wxMenu, type: :undefined,
-                                  menuId: :undefined, menu: :undefined)
+  Record.defrecord(:r_wxMenu, :wxMenu, type: :undefined, menuId: :undefined, menu: :undefined)
   Record.defrecord(:r_wxMouseCaptureChanged, :wxMouseCaptureChanged, type: :undefined)
   Record.defrecord(:r_wxMouseCaptureLost, :wxMouseCaptureLost, type: :undefined)
-  Record.defrecord(:r_wxMouse, :wxMouse, type: :undefined,
-                                   x: :undefined, y: :undefined,
-                                   leftDown: :undefined, middleDown: :undefined,
-                                   rightDown: :undefined,
-                                   controlDown: :undefined,
-                                   shiftDown: :undefined, altDown: :undefined,
-                                   metaDown: :undefined,
-                                   wheelRotation: :undefined,
-                                   wheelDelta: :undefined,
-                                   linesPerAction: :undefined)
-  Record.defrecord(:r_wxMove, :wxMove, type: :undefined,
-                                  pos: :undefined, rect: :undefined)
-  Record.defrecord(:r_wxNavigationKey, :wxNavigationKey, type: :undefined,
-                                           dir: :undefined, focus: :undefined)
+
+  Record.defrecord(:r_wxMouse, :wxMouse,
+    type: :undefined,
+    x: :undefined,
+    y: :undefined,
+    leftDown: :undefined,
+    middleDown: :undefined,
+    rightDown: :undefined,
+    controlDown: :undefined,
+    shiftDown: :undefined,
+    altDown: :undefined,
+    metaDown: :undefined,
+    wheelRotation: :undefined,
+    wheelDelta: :undefined,
+    linesPerAction: :undefined
+  )
+
+  Record.defrecord(:r_wxMove, :wxMove, type: :undefined, pos: :undefined, rect: :undefined)
+
+  Record.defrecord(:r_wxNavigationKey, :wxNavigationKey,
+    type: :undefined,
+    dir: :undefined,
+    focus: :undefined
+  )
+
   Record.defrecord(:r_wxPaint, :wxPaint, type: :undefined)
   Record.defrecord(:r_wxPaletteChanged, :wxPaletteChanged, type: :undefined)
   Record.defrecord(:r_wxQueryNewPalette, :wxQueryNewPalette, type: :undefined)
-  Record.defrecord(:r_wxSash, :wxSash, type: :undefined,
-                                  edge: :undefined, dragRect: :undefined,
-                                  dragStatus: :undefined)
-  Record.defrecord(:r_wxScroll, :wxScroll, type: :undefined,
-                                    commandInt: :undefined,
-                                    extraLong: :undefined)
-  Record.defrecord(:r_wxScrollWin, :wxScrollWin, type: :undefined,
-                                       commandInt: :undefined,
-                                       extraLong: :undefined)
-  Record.defrecord(:r_wxSetCursor, :wxSetCursor, type: :undefined,
-                                       x: :undefined, y: :undefined,
-                                       cursor: :undefined)
-  Record.defrecord(:r_wxShow, :wxShow, type: :undefined,
-                                  show: :undefined)
-  Record.defrecord(:r_wxSize, :wxSize, type: :undefined,
-                                  size: :undefined, rect: :undefined)
-  Record.defrecord(:r_wxSpin, :wxSpin, type: :undefined,
-                                  commandInt: :undefined)
+
+  Record.defrecord(:r_wxSash, :wxSash,
+    type: :undefined,
+    edge: :undefined,
+    dragRect: :undefined,
+    dragStatus: :undefined
+  )
+
+  Record.defrecord(:r_wxScroll, :wxScroll,
+    type: :undefined,
+    commandInt: :undefined,
+    extraLong: :undefined
+  )
+
+  Record.defrecord(:r_wxScrollWin, :wxScrollWin,
+    type: :undefined,
+    commandInt: :undefined,
+    extraLong: :undefined
+  )
+
+  Record.defrecord(:r_wxSetCursor, :wxSetCursor,
+    type: :undefined,
+    x: :undefined,
+    y: :undefined,
+    cursor: :undefined
+  )
+
+  Record.defrecord(:r_wxShow, :wxShow,
+    type: :undefined,
+    show: :undefined
+  )
+
+  Record.defrecord(:r_wxSize, :wxSize, type: :undefined, size: :undefined, rect: :undefined)
+
+  Record.defrecord(:r_wxSpin, :wxSpin,
+    type: :undefined,
+    commandInt: :undefined
+  )
+
   Record.defrecord(:r_wxSplitter, :wxSplitter, type: :undefined)
-  Record.defrecord(:r_wxStyledText, :wxStyledText, type: :undefined,
-                                        position: :undefined, key: :undefined,
-                                        modifiers: :undefined,
-                                        modificationType: :undefined,
-                                        text: :undefined, length: :undefined,
-                                        linesAdded: :undefined,
-                                        line: :undefined,
-                                        foldLevelNow: :undefined,
-                                        foldLevelPrev: :undefined,
-                                        margin: :undefined, message: :undefined,
-                                        wParam: :undefined, lParam: :undefined,
-                                        listType: :undefined, x: :undefined,
-                                        y: :undefined, dragText: :undefined,
-                                        dragAllowMove: :undefined,
-                                        dragResult: :undefined)
+
+  Record.defrecord(:r_wxStyledText, :wxStyledText,
+    type: :undefined,
+    position: :undefined,
+    key: :undefined,
+    modifiers: :undefined,
+    modificationType: :undefined,
+    text: :undefined,
+    length: :undefined,
+    linesAdded: :undefined,
+    line: :undefined,
+    foldLevelNow: :undefined,
+    foldLevelPrev: :undefined,
+    margin: :undefined,
+    message: :undefined,
+    wParam: :undefined,
+    lParam: :undefined,
+    listType: :undefined,
+    x: :undefined,
+    y: :undefined,
+    dragText: :undefined,
+    dragAllowMove: :undefined,
+    dragResult: :undefined
+  )
+
   Record.defrecord(:r_wxSysColourChanged, :wxSysColourChanged, type: :undefined)
   Record.defrecord(:r_wxTaskBarIcon, :wxTaskBarIcon, type: :undefined)
-  Record.defrecord(:r_wxTree, :wxTree, type: :undefined,
-                                  item: :undefined, itemOld: :undefined,
-                                  pointDrag: :undefined)
+
+  Record.defrecord(:r_wxTree, :wxTree,
+    type: :undefined,
+    item: :undefined,
+    itemOld: :undefined,
+    pointDrag: :undefined
+  )
+
   Record.defrecord(:r_wxUpdateUI, :wxUpdateUI, type: :undefined)
-  Record.defrecord(:r_wxWebView, :wxWebView, type: :undefined,
-                                     string: :undefined, int: :undefined,
-                                     target: :undefined, url: :undefined)
+
+  Record.defrecord(:r_wxWebView, :wxWebView,
+    type: :undefined,
+    string: :undefined,
+    int: :undefined,
+    target: :undefined,
+    url: :undefined
+  )
+
   Record.defrecord(:r_wxWindowCreate, :wxWindowCreate, type: :undefined)
   Record.defrecord(:r_wxWindowDestroy, :wxWindowDestroy, type: :undefined)
-  Record.defrecord(:r_wxMouseState, :wxMouseState, x: :undefined,
-                                        y: :undefined, leftDown: :undefined,
-                                        middleDown: :undefined,
-                                        rightDown: :undefined,
-                                        controlDown: :undefined,
-                                        shiftDown: :undefined,
-                                        altDown: :undefined,
-                                        metaDown: :undefined,
-                                        cmdDown: :undefined)
-  Record.defrecord(:r_wxHtmlLinkInfo, :wxHtmlLinkInfo, href: :undefined,
-                                          target: :undefined)
-  Record.defrecord(:r_file_info, :file_info, size: :undefined,
-                                     type: :undefined, access: :undefined,
-                                     atime: :undefined, mtime: :undefined,
-                                     ctime: :undefined, mode: :undefined,
-                                     links: :undefined,
-                                     major_device: :undefined,
-                                     minor_device: :undefined,
-                                     inode: :undefined, uid: :undefined,
-                                     gid: :undefined)
-  Record.defrecord(:r_file_descriptor, :file_descriptor, module: :undefined,
-                                           data: :undefined)
-  Record.defrecord(:r_match_spec, :match_spec, name: '', term: [],
-                                      str: [], func: '')
-  Record.defrecord(:r_tpattern, :tpattern, m: :undefined,
-                                    fa: :undefined, ms: :undefined)
-  Record.defrecord(:r_traced_func, :traced_func, func_name: :undefined,
-                                       arity: :undefined,
-                                       match_spec: :EFE_TODO_NESTED_RECORD)
-  Record.defrecord(:r_create_menu, :create_menu, id: :undefined,
-                                       text: :undefined, help: [],
-                                       type: :append, check: false)
-  Record.defrecord(:r_colors, :colors, fg: :undefined,
-                                  even: :undefined, odd: :undefined)
-  Record.defrecord(:r_attrs, :attrs, even: :undefined,
-                                 odd: :undefined, searched: :undefined,
-                                 deleted: :undefined, changed_odd: :undefined,
-                                 changed_even: :undefined, new_odd: :undefined,
-                                 new_even: :undefined)
-  Record.defrecord(:r_ti, :ti, tick: 0, disp: 10 / 2,
-                              fetch: 2, secs: 60)
-  Record.defrecord(:r_win, :win, name: :undefined,
-                               panel: :undefined, size: :undefined,
-                               geom: :undefined, graphs: [], no_samples: 0,
-                               max: :undefined, state: :undefined, info: [])
-  Record.defrecord(:r_state, :state, frame: :undefined,
-                                 menubar: :undefined, menus: [],
-                                 status_bar: :undefined, notebook: :undefined,
-                                 main_panel: :undefined, panels: :undefined,
-                                 active_tab: :undefined, node: :undefined,
-                                 nodes: :undefined, prev_node: '', log: false,
-                                 reply_to: false, config: :undefined)
+
+  Record.defrecord(:r_wxMouseState, :wxMouseState,
+    x: :undefined,
+    y: :undefined,
+    leftDown: :undefined,
+    middleDown: :undefined,
+    rightDown: :undefined,
+    controlDown: :undefined,
+    shiftDown: :undefined,
+    altDown: :undefined,
+    metaDown: :undefined,
+    cmdDown: :undefined
+  )
+
+  Record.defrecord(:r_wxHtmlLinkInfo, :wxHtmlLinkInfo,
+    href: :undefined,
+    target: :undefined
+  )
+
+  Record.defrecord(:r_file_info, :file_info,
+    size: :undefined,
+    type: :undefined,
+    access: :undefined,
+    atime: :undefined,
+    mtime: :undefined,
+    ctime: :undefined,
+    mode: :undefined,
+    links: :undefined,
+    major_device: :undefined,
+    minor_device: :undefined,
+    inode: :undefined,
+    uid: :undefined,
+    gid: :undefined
+  )
+
+  Record.defrecord(:r_file_descriptor, :file_descriptor,
+    module: :undefined,
+    data: :undefined
+  )
+
+  Record.defrecord(:r_match_spec, :match_spec, name: ~c"", term: [], str: [], func: ~c"")
+  Record.defrecord(:r_tpattern, :tpattern, m: :undefined, fa: :undefined, ms: :undefined)
+
+  Record.defrecord(:r_traced_func, :traced_func,
+    func_name: :undefined,
+    arity: :undefined,
+    match_spec: :EFE_TODO_NESTED_RECORD
+  )
+
+  Record.defrecord(:r_create_menu, :create_menu,
+    id: :undefined,
+    text: :undefined,
+    help: [],
+    type: :append,
+    check: false
+  )
+
+  Record.defrecord(:r_colors, :colors, fg: :undefined, even: :undefined, odd: :undefined)
+
+  Record.defrecord(:r_attrs, :attrs,
+    even: :undefined,
+    odd: :undefined,
+    searched: :undefined,
+    deleted: :undefined,
+    changed_odd: :undefined,
+    changed_even: :undefined,
+    new_odd: :undefined,
+    new_even: :undefined
+  )
+
+  Record.defrecord(:r_ti, :ti, tick: 0, disp: 10 / 2, fetch: 2, secs: 60)
+
+  Record.defrecord(:r_win, :win,
+    name: :undefined,
+    panel: :undefined,
+    size: :undefined,
+    geom: :undefined,
+    graphs: [],
+    no_samples: 0,
+    max: :undefined,
+    state: :undefined,
+    info: []
+  )
+
+  Record.defrecord(:r_state, :state,
+    frame: :undefined,
+    menubar: :undefined,
+    menus: [],
+    status_bar: :undefined,
+    notebook: :undefined,
+    main_panel: :undefined,
+    panels: :undefined,
+    active_tab: :undefined,
+    node: :undefined,
+    nodes: :undefined,
+    prev_node: ~c"",
+    log: false,
+    reply_to: false,
+    config: :undefined
+  )
+
   def start() do
-    case (:wx_object.start(:observer_wx, [], [])) do
+    case :wx_object.start(:observer_wx, [], []) do
       err = {:error, _} ->
         err
+
       _Obj ->
         :ok
     end
@@ -233,7 +420,8 @@ defmodule :m_observer_wx do
   end
 
   def get_scale() do
-    scaleStr = :os.getenv('OBSERVER_SCALE', '1')
+    scaleStr = :os.getenv(~c"OBSERVER_SCALE", ~c"1")
+
     try do
       :erlang.list_to_integer(scaleStr)
     catch
@@ -242,6 +430,7 @@ defmodule :m_observer_wx do
     else
       scale when scale < 1 ->
         1
+
       scale ->
         scale
     end
@@ -250,18 +439,24 @@ defmodule :m_observer_wx do
   def init(_Args) do
     :erlang.register(:observer, self())
     :wx.new()
-    (try do
-      :wxSystemOptions.setOption('mac.listctrl.always_use_generic', 1)
+
+    try do
+      :wxSystemOptions.setOption(~c"mac.listctrl.always_use_generic", 1)
     catch
       :error, e -> {:EXIT, {e, __STACKTRACE__}}
       :exit, e -> {:EXIT, e}
       e -> e
-    end)
+    end
+
     scale = get_scale()
-    frame = :wxFrame.new(:wx.null(), - 1, 'Observer',
-                           [{:size, {scale * 850, scale * 600}}, {:style,
-                                                                    2048 ||| 64 ||| 1024 ||| 512 ||| 4096 ||| 536870912 ||| 4194304}])
-    iconFile = :filename.join(:code.priv_dir(:observer), 'erlang_observer.png')
+
+    frame =
+      :wxFrame.new(:wx.null(), -1, ~c"Observer", [
+        {:size, {scale * 850, scale * 600}},
+        {:style, 2048 ||| 64 ||| 1024 ||| 512 ||| 4096 ||| 536_870_912 ||| 4_194_304}
+      ])
+
+    iconFile = :filename.join(:code.priv_dir(:observer), ~c"erlang_observer.png")
     icon = :wxIcon.new(iconFile, [{:type, 2 + 9 + 1 + 3}])
     :wxFrame.setIcon(frame, icon)
     :wxIcon.destroy(icon)
@@ -274,9 +469,11 @@ defmodule :m_observer_wx do
 
   defp setup(r_state(frame: frame) = state) do
     config = load_config()
+
     cnf = fn who ->
-               :proplists.get_value(who, config, %{})
-          end
+      :proplists.get_value(who, config, %{})
+    end
+
     menuBar = :wxMenuBar.new()
     {nodes, nodeMenus} = get_nodes()
     defMenus = default_menus(nodeMenus)
@@ -284,87 +481,97 @@ defmodule :m_observer_wx do
     :wxFrame.setMenuBar(frame, menuBar)
     panel = :wxPanel.new(frame, [])
     notebook = :wxNotebook.new(panel, 3, [{:style, 0}])
-    sysPanel = :observer_sys_wx.start_link(notebook, self(),
-                                             cnf.(:sys_panel))
-    :wxNotebook.addPage(notebook, sysPanel, 'System', [])
+    sysPanel = :observer_sys_wx.start_link(notebook, self(), cnf.(:sys_panel))
+    :wxNotebook.addPage(notebook, sysPanel, ~c"System", [])
     mainSizer = :wxBoxSizer.new(8)
-    :wxSizer.add(mainSizer, notebook,
-                   [{:proportion, 1}, {:flag, 8192}])
+    :wxSizer.add(mainSizer, notebook, [{:proportion, 1}, {:flag, 8192}])
     :wxPanel.setSizer(panel, mainSizer)
     statusBar = :wxStatusBar.new(frame)
     :wxFrame.setStatusBar(frame, statusBar)
     :wxFrame.setTitle(frame, :erlang.atom_to_list(node()))
-    :wxStatusBar.setStatusText(statusBar,
-                                 :erlang.atom_to_list(node()))
-    :wxNotebook.connect(notebook,
-                          :command_notebook_page_changed,
-                          [{:skip, true}, {:id, 3}])
+
+    :wxStatusBar.setStatusText(
+      statusBar,
+      :erlang.atom_to_list(node())
+    )
+
+    :wxNotebook.connect(
+      notebook,
+      :command_notebook_page_changed,
+      [{:skip, true}, {:id, 3}]
+    )
+
     :wxFrame.connect(frame, :close_window, [])
-    :wxMenu.connect(frame, :command_menu_selected,
-                      [{:skip, true}])
+    :wxMenu.connect(frame, :command_menu_selected, [{:skip, true}])
     :wxFrame.show(frame)
-    doFreeze = [:wxe_util.get_const(:wxMAJOR_VERSION),
-                    :wxe_util.get_const(:wxMINOR_VERSION)] < [2,
-                                                                  9] or :erlang.element(1,
-                                                                                          :os.type()) === :win32
+
+    doFreeze =
+      [:wxe_util.get_const(:wxMAJOR_VERSION), :wxe_util.get_const(:wxMINOR_VERSION)] < [2, 9] or
+        :erlang.element(
+          1,
+          :os.type()
+        ) === :win32
+
     doFreeze and :wxWindow.freeze(panel)
-    perfPanel = :observer_perf_wx.start_link(notebook,
-                                               self(), cnf.(:perf_panel))
-    :wxNotebook.addPage(notebook, perfPanel, 'Load Charts', [])
-    allcPanel = :observer_alloc_wx.start_link(notebook,
-                                                self(), cnf.(:allc_panel))
-    :wxNotebook.addPage(notebook, allcPanel, 'Memory Allocators', [])
-    appPanel = :observer_app_wx.start_link(notebook, self(),
-                                             cnf.(:app_panel))
-    :wxNotebook.addPage(notebook, appPanel, 'Applications', [])
-    proPanel = :observer_pro_wx.start_link(notebook, self(),
-                                             cnf.(:pro_panel))
-    :wxNotebook.addPage(notebook, proPanel, 'Processes', [])
-    portPanel = :observer_port_wx.start_link(notebook,
-                                               self(), cnf.(:port_panel))
-    :wxNotebook.addPage(notebook, portPanel, 'Ports', [])
-    sockPanel = :observer_sock_wx.start_link(notebook,
-                                               self(), cnf.(:sock_panel))
-    :wxNotebook.addPage(notebook, sockPanel, 'Sockets', [])
-    tVPanel = :observer_tv_wx.start_link(notebook, self(),
-                                           cnf.(:tv_panel))
-    :wxNotebook.addPage(notebook, tVPanel, 'Table Viewer', [])
-    tracePanel = :observer_trace_wx.start_link(notebook,
-                                                 self(), cnf.(:trace_panel))
-    :wxNotebook.addPage(notebook, tracePanel, 'Trace Overview', [])
+    perfPanel = :observer_perf_wx.start_link(notebook, self(), cnf.(:perf_panel))
+    :wxNotebook.addPage(notebook, perfPanel, ~c"Load Charts", [])
+    allcPanel = :observer_alloc_wx.start_link(notebook, self(), cnf.(:allc_panel))
+    :wxNotebook.addPage(notebook, allcPanel, ~c"Memory Allocators", [])
+    appPanel = :observer_app_wx.start_link(notebook, self(), cnf.(:app_panel))
+    :wxNotebook.addPage(notebook, appPanel, ~c"Applications", [])
+    proPanel = :observer_pro_wx.start_link(notebook, self(), cnf.(:pro_panel))
+    :wxNotebook.addPage(notebook, proPanel, ~c"Processes", [])
+    portPanel = :observer_port_wx.start_link(notebook, self(), cnf.(:port_panel))
+    :wxNotebook.addPage(notebook, portPanel, ~c"Ports", [])
+    sockPanel = :observer_sock_wx.start_link(notebook, self(), cnf.(:sock_panel))
+    :wxNotebook.addPage(notebook, sockPanel, ~c"Sockets", [])
+    tVPanel = :observer_tv_wx.start_link(notebook, self(), cnf.(:tv_panel))
+    :wxNotebook.addPage(notebook, tVPanel, ~c"Table Viewer", [])
+    tracePanel = :observer_trace_wx.start_link(notebook, self(), cnf.(:trace_panel))
+    :wxNotebook.addPage(notebook, tracePanel, ~c"Trace Overview", [])
     :wxWindow.refresh(panel)
     doFreeze and :wxWindow.thaw(panel)
     :wxFrame.raise(frame)
     :wxFrame.setFocus(frame)
     sysPid = :wx_object.get_pid(sysPanel)
     send(sysPid, {:active, node()})
-    panels = [{:sys_panel, sysPanel, 'System'}, {:perf_panel,
-                                            perfPanel, 'Load Charts'},
-                                             {:allc_panel, allcPanel, 'Memory Allocators'},
-                                                 {:app_panel, appPanel, 'Applications'},
-                                                     {:pro_panel, proPanel, 'Processes'},
-                                                         {:port_panel,
-                                                            portPanel, 'Ports'},
-                                                             {:sock_panel,
-                                                                sockPanel, 'Sockets'},
-                                                                 {:tv_panel,
-                                                                    tVPanel, 'Table Viewer'},
-                                                                     {:trace_panel,
-                                                                        tracePanel,
-                                                                        'Trace Overview'}]
-    updState = r_state(state, main_panel: panel, 
-                          notebook: notebook,  menubar: menuBar, 
-                          status_bar: statusBar,  active_tab: sysPid, 
-                          panels: panels,  node: node(),  nodes: nodes)
+
+    panels = [
+      {:sys_panel, sysPanel, ~c"System"},
+      {:perf_panel, perfPanel, ~c"Load Charts"},
+      {:allc_panel, allcPanel, ~c"Memory Allocators"},
+      {:app_panel, appPanel, ~c"Applications"},
+      {:pro_panel, proPanel, ~c"Processes"},
+      {:port_panel, portPanel, ~c"Ports"},
+      {:sock_panel, sockPanel, ~c"Sockets"},
+      {:tv_panel, tVPanel, ~c"Table Viewer"},
+      {:trace_panel, tracePanel, ~c"Trace Overview"}
+    ]
+
+    updState =
+      r_state(state,
+        main_panel: panel,
+        notebook: notebook,
+        menubar: menuBar,
+        status_bar: statusBar,
+        active_tab: sysPid,
+        panels: panels,
+        node: node(),
+        nodes: nodes
+      )
+
     sysFont = :wxSystemSettings.getFont(10)
-    fixed = (case (:wxFont.isFixedWidth(sysFont)) do
-               true ->
-                 sysFont
-               false ->
-                 sysFontSize = :wxFont.getPointSize(sysFont)
-                 :wxFont.new(sysFontSize, 75, 90,
-                               :wxe_util.get_const(:wxFONTWEIGHT_NORMAL))
-             end)
+
+    fixed =
+      case :wxFont.isFixedWidth(sysFont) do
+        true ->
+          sysFont
+
+        false ->
+          sysFontSize = :wxFont.getPointSize(sysFont)
+          :wxFont.new(sysFontSize, 75, 90, :wxe_util.get_const(:wxFONTWEIGHT_NORMAL))
+      end
+
     :erlang.put({:font, :fixed}, fixed)
     updState
   end
@@ -378,17 +585,22 @@ defmodule :m_observer_wx do
     {:noreply, state}
   end
 
-  def handle_call({:create_menus, tabMenus}, _From,
-           state = r_state(menubar: menuBar, menus: prevTabMenus)) do
+  def handle_call(
+        {:create_menus, tabMenus},
+        _From,
+        state = r_state(menubar: menuBar, menus: prevTabMenus)
+      ) do
     cond do
       tabMenus == prevTabMenus ->
         :ignore
+
       true ->
-        :wx.batch(fn () ->
-                       clean_menus(prevTabMenus, menuBar)
-                       :observer_lib.create_menus(tabMenus, menuBar, :plugin)
-                  end)
+        :wx.batch(fn ->
+          clean_menus(prevTabMenus, menuBar)
+          :observer_lib.create_menus(tabMenus, menuBar, :plugin)
+        end)
     end
+
     {:reply, :ok, r_state(state, menus: tabMenus)}
   end
 
@@ -401,8 +613,7 @@ defmodule :m_observer_wx do
     {:reply, traceP, state}
   end
 
-  def handle_call(:get_active_node, _From,
-           state = r_state(node: node)) do
+  def handle_call(:get_active_node, _From, state = r_state(node: node)) do
     {:reply, node, state}
   end
 
@@ -411,8 +622,7 @@ defmodule :m_observer_wx do
     {:reply, :ok, state2}
   end
 
-  def handle_call(:get_menubar, _From,
-           state = r_state(menubar: menuBar)) do
+  def handle_call(:get_menubar, _From, state = r_state(menubar: menuBar)) do
     {:reply, menuBar, state}
   end
 
@@ -435,65 +645,79 @@ defmodule :m_observer_wx do
   end
 
   def handle_info({:nodedown, node}, r_state(frame: frame) = state) do
-    state2 = (case (node === r_state(state, :node)) do
-                true ->
-                  change_node_view(node(), state)
-                false ->
-                  state
-              end)
+    state2 =
+      case node === r_state(state, :node) do
+        true ->
+          change_node_view(node(), state)
+
+        false ->
+          state
+      end
+
     state3 = update_node_list(state2)
-    msg = ['Node down: ' | :erlang.atom_to_list(node)]
-    create_txt_dialog(frame, msg, 'Node down', 256)
+    msg = [~c"Node down: " | :erlang.atom_to_list(node)]
+    create_txt_dialog(frame, msg, ~c"Node down", 256)
     filter_nodedown_messages(node)
     {:noreply, state3}
   end
 
-  def handle_info({:open_link, id0},
-           state = r_state(panels: panels, frame: frame)) do
-    id = (case (id0) do
-            [_ | _] ->
-              try do
-                :erlang.list_to_pid(id0)
-              catch
-                _, _ ->
-                  id0
-              end
-            _ ->
+  def handle_info(
+        {:open_link, id0},
+        state = r_state(panels: panels, frame: frame)
+      ) do
+    id =
+      case id0 do
+        [_ | _] ->
+          try do
+            :erlang.list_to_pid(id0)
+          catch
+            _, _ ->
               id0
-          end)
-    case (id) do
+          end
+
+        _ ->
+          id0
+      end
+
+    case id do
       pid when is_pid(pid) ->
-        {:pro_panel, procViewer, _} = :lists.keyfind(:pro_panel,
-                                                       1, panels)
-        send(:wx_object.get_pid(procViewer), {:procinfo_open,
-                                                pid})
-      '#Port' ++ _ = port ->
-        {:port_panel, portViewer,
-           _} = :lists.keyfind(:port_panel, 1, panels)
-        send(:wx_object.get_pid(portViewer), {:portinfo_open,
-                                                port})
+        {:pro_panel, procViewer, _} = :lists.keyfind(:pro_panel, 1, panels)
+        send(:wx_object.get_pid(procViewer), {:procinfo_open, pid})
+
+      ~c"#Port" ++ _ = port ->
+        {:port_panel, portViewer, _} = :lists.keyfind(:port_panel, 1, panels)
+        send(:wx_object.get_pid(portViewer), {:portinfo_open, port})
+
       _ ->
-        msg = :io_lib.format('Information about ~p is not available or implemented', [id])
+        msg = :io_lib.format(~c"Information about ~p is not available or implemented", [id])
         info = :wxMessageDialog.new(frame, msg)
         :wxMessageDialog.showModal(info)
         :wxMessageDialog.destroy(info)
     end
+
     {:noreply, state}
   end
 
-  def handle_info({:get_debug_info, from},
-           state = r_state(notebook: notebook, active_tab: pid)) do
-    send(from, {:observer_debug, :wx.get_env(), notebook,
-                  pid})
+  def handle_info(
+        {:get_debug_info, from},
+        state = r_state(notebook: notebook, active_tab: pid)
+      ) do
+    send(from, {:observer_debug, :wx.get_env(), notebook, pid})
     {:noreply, state}
   end
 
   def handle_info({:EXIT, pid, reason}, state) do
-    case (reason) do
+    case reason do
       :normal ->
         {:noreply, state}
+
       _ ->
-        :io.format('Observer: Child (~s) crashed exiting:  ~p ~tp~n', [pid2panel(pid, state), pid, reason])
+        :io.format(~c"Observer: Child (~s) crashed exiting:  ~p ~tp~n", [
+          pid2panel(pid, state),
+          pid,
+          reason
+        ])
+
         {:stop, :normal, state}
     end
   end
@@ -506,66 +730,81 @@ defmodule :m_observer_wx do
     {:noreply, state}
   end
 
-  defp stop_servers(r_state(node: node, log: logOn,
-              panels: panels) = _State) do
+  defp stop_servers(r_state(node: node, log: logOn, panels: panels) = _State) do
     me = self()
-    stop = fn () ->
-                logOn and :rpc.block_call(node, :rb, :stop, [])
-                save_config(panels)
-                try do
-                  _ = (for {_, panel, _} <- panels do
-                         :wx_object.stop(panel)
-                       end)
-                  :ok
-                catch
-                  _, _ ->
-                    :ok
-                end
-                send(me, {:stop, me})
-           end
+
+    stop = fn ->
+      logOn and :rpc.block_call(node, :rb, :stop, [])
+      save_config(panels)
+
+      try do
+        _ =
+          for {_, panel, _} <- panels do
+            :wx_object.stop(panel)
+          end
+
+        :ok
+      catch
+        _, _ ->
+          :ok
+      end
+
+      send(me, {:stop, me})
+    end
+
     spawn(stop)
   end
 
   def terminate(_Reason, r_state(frame: frame, reply_to: from)) do
     :wxFrame.destroy(frame)
     :wx.destroy()
-    case (from) do
+
+    case from do
       false ->
         :ignore
+
       _ ->
         :gen_server.reply(from, :ok)
     end
+
     :ok
   end
 
   defp load_config() do
-    case (:file.consult(config_file())) do
+    case :file.consult(config_file()) do
       {:ok, config} ->
         config
+
       _ ->
         []
     end
   end
 
   defp save_config(panels) do
-    configs = (for {name, panel, _} <- panels do
-                 {name, :wx_object.call(panel, :get_config)}
-               end)
+    configs =
+      for {name, panel, _} <- panels do
+        {name, :wx_object.call(panel, :get_config)}
+      end
+
     file = config_file()
-    case (:filelib.ensure_dir(file)) do
+
+    case :filelib.ensure_dir(file) do
       :ok ->
-        format = (for conf <- configs do
-                    :io_lib.format('~tp.~n', [conf])
-                  end)
+        format =
+          for conf <- configs do
+            :io_lib.format(~c"~tp.~n", [conf])
+          end
+
         _ = :file.write_file(file, format)
+
       _ ->
         :ignore
     end
   end
 
   defp config_file() do
-    dir = :filename.basedir(:user_config, 'erl_observer')
-    :filename.join(dir, 'config.txt')
+    dir = :filename.basedir(:user_config, ~c"erl_observer")
+    :filename.join(dir, ~c"config.txt")
   end
 
   def code_change(_, _, state) do
@@ -573,32 +812,35 @@ defmodule :m_observer_wx do
   end
 
   def try_rpc(node, mod, func, args) do
-    case (:rpc.call(node, mod, func, args)) do
+    case :rpc.call(node, mod, func, args) do
       {:badrpc, reason} ->
-        :error_logger.error_report([{:node, node}, {:call,
-                                                      {mod, func, args}},
-                                                       {:reason,
-                                                          {:badrpc, reason}}])
+        :error_logger.error_report([
+          {:node, node},
+          {:call, {mod, func, args}},
+          {:reason, {:badrpc, reason}}
+        ])
+
         send(:observer, {:nodedown, node})
         :erlang.error({:badrpc, reason})
+
       res ->
         res
     end
   end
 
   def return_to_localnode(frame, node) do
-    case (node() !== node) do
+    case node() !== node do
       true ->
-        create_txt_dialog(frame, 'Error occurred on remote node', 'Error', 512)
+        create_txt_dialog(frame, ~c"Error occurred on remote node", ~c"Error", 512)
         :erlang.disconnect_node(node)
+
       false ->
         :ok
     end
   end
 
   def create_txt_dialog(frame, msg, title, style) do
-    mD = :wxMessageDialog.new(frame, msg,
-                                [{:style, style}, {:caption, title}])
+    mD = :wxMessageDialog.new(frame, msg, [{:style, style}, {:caption, title}])
     :wxDialog.showModal(mD)
     :wxDialog.destroy(mD)
   end
@@ -612,22 +854,26 @@ defmodule :m_observer_wx do
   end
 
   defp connect2(nodeName, opts, cookie) do
-    case (:net_adm.names()) do
+    case :net_adm.names() do
       {:ok, _} ->
         :ok
+
       {:error, :address} ->
-        epmd = :os.find_executable('epmd')
+        epmd = :os.find_executable(~c"epmd")
         :os.cmd(epmd)
     end
-    case (:net_kernel.start([nodeName, opts])) do
+
+    case :net_kernel.start([nodeName, opts]) do
       {:ok, _} ->
-        case (:erlang.is_alive()) do
+        case :erlang.is_alive() do
           true ->
             :erlang.set_cookie(node(), cookie)
             {:ok, :set_cookie}
+
           false ->
             {:error, :set_cookie}
         end
+
       {:error, reason} ->
         {:error, :net_kernel, reason}
     end
@@ -636,10 +882,14 @@ defmodule :m_observer_wx do
   defp change_node_view(node, r_state(active_tab: tab) = state) do
     send(tab, :not_active)
     send(tab, {:active, node})
-    statusText = ['Observer - ' | :erlang.atom_to_list(node)]
+    statusText = [~c"Observer - " | :erlang.atom_to_list(node)]
     :wxFrame.setTitle(r_state(state, :frame), statusText)
-    :wxStatusBar.setStatusText(r_state(state, :status_bar),
-                                 statusText)
+
+    :wxStatusBar.setStatusText(
+      r_state(state, :status_bar),
+      statusText
+    )
+
     r_state(state, node: node)
   end
 
@@ -649,25 +899,29 @@ defmodule :m_observer_wx do
   end
 
   defp pid2panel(pid, r_state(panels: panels)) do
-    panelPids = (for {name, obj, _} <- panels do
-                   {name, :wx_object.get_pid(obj)}
-                 end)
-    case (:lists.keyfind(pid, 2, panelPids)) do
+    panelPids =
+      for {name, obj, _} <- panels do
+        {name, :wx_object.get_pid(obj)}
+      end
+
+    case :lists.keyfind(pid, 2, panelPids) do
       false ->
-        'unknown'
+        ~c"unknown"
+
       {name, _} ->
         name
     end
   end
 
   defp create_connect_dialog(:ping, r_state(frame: frame, prev_node: prev)) do
-    dialog = :wxTextEntryDialog.new(frame, 'Connect to node',
-                                      [{:value, prev}])
-    case (:wxDialog.showModal(dialog)) do
+    dialog = :wxTextEntryDialog.new(frame, ~c"Connect to node", [{:value, prev}])
+
+    case :wxDialog.showModal(dialog) do
       5100 ->
         value = :wxTextEntryDialog.getValue(dialog)
         :wxDialog.destroy(dialog)
         {:value, value}
+
       5101 ->
         :wxDialog.destroy(dialog)
         :cancel
@@ -675,60 +929,66 @@ defmodule :m_observer_wx do
   end
 
   defp create_connect_dialog(:connect, r_state(frame: frame)) do
-    dialog = :wxDialog.new(frame, - 1, 'Distribute node',
-                             [{:style,
-                                 2048 ||| 64 ||| 1024 ||| 512 ||| 4096 ||| 536870912 ||| 4194304 ||| 64}])
+    dialog =
+      :wxDialog.new(frame, -1, ~c"Distribute node", [
+        {:style, 2048 ||| 64 ||| 1024 ||| 512 ||| 4096 ||| 536_870_912 ||| 4_194_304 ||| 64}
+      ])
+
     vSizer = :wxBoxSizer.new(8)
-    choices = ['Short name', 'Long name']
-    radioBox = :wxRadioBox.new(dialog, 1, '', {- 1, - 1},
-                                 {- 1, - 1}, choices,
-                                 [{:majorDim, 2}, {:style, 4}])
-    nameText = :wxStaticText.new(dialog, - 1, 'Node name: ')
-    nameCtrl = :wxTextCtrl.new(dialog, - 1,
-                                 [{:size, {300, - 1}}])
-    :wxTextCtrl.setValue(nameCtrl, 'observer')
-    cookieText = :wxStaticText.new(dialog, - 1, 'Secret cookie: ')
-    cookieCtrl = :wxTextCtrl.new(dialog, - 1,
-                                   [{:style, 2048}])
+    choices = [~c"Short name", ~c"Long name"]
+
+    radioBox =
+      :wxRadioBox.new(dialog, 1, ~c"", {-1, -1}, {-1, -1}, choices, [{:majorDim, 2}, {:style, 4}])
+
+    nameText = :wxStaticText.new(dialog, -1, ~c"Node name: ")
+    nameCtrl = :wxTextCtrl.new(dialog, -1, [{:size, {300, -1}}])
+    :wxTextCtrl.setValue(nameCtrl, ~c"observer")
+    cookieText = :wxStaticText.new(dialog, -1, ~c"Secret cookie: ")
+    cookieCtrl = :wxTextCtrl.new(dialog, -1, [{:style, 2048}])
     btnSizer = :wxDialog.createButtonSizer(dialog, 4 ||| 16)
     dir = 16 ||| 32 ||| 128
     flags = [{:flag, 8192 ||| dir ||| 2048}, {:border, 5}]
     :wxSizer.add(vSizer, radioBox, flags)
     :wxSizer.addSpacer(vSizer, 10)
-    :wxSizer.add(vSizer, nameText,
-                   [{:flag, 16}, {:border, 5}])
+    :wxSizer.add(vSizer, nameText, [{:flag, 16}, {:border, 5}])
     :wxSizer.add(vSizer, nameCtrl, flags)
     :wxSizer.addSpacer(vSizer, 10)
-    :wxSizer.add(vSizer, cookieText,
-                   [{:flag, 16}, {:border, 5}])
+    :wxSizer.add(vSizer, cookieText, [{:flag, 16}, {:border, 5}])
     :wxSizer.add(vSizer, cookieCtrl, flags)
     :wxSizer.addSpacer(vSizer, 10)
-    :wxSizer.add(vSizer, btnSizer,
-                   [{:proportion, 1}, {:flag,
-                                         8192 ||| (64 ||| 128 ||| 32 ||| 16)},
-                                          {:border, 5}])
+
+    :wxSizer.add(vSizer, btnSizer, [
+      {:proportion, 1},
+      {:flag, 8192 ||| (64 ||| 128 ||| 32 ||| 16)},
+      {:border, 5}
+    ])
+
     :wxWindow.setSizerAndFit(dialog, vSizer)
     :wxSizer.setSizeHints(vSizer, dialog)
     {:ok, [[homeDir]]} = :init.get_argument(:home)
-    xDGHome = :filename.basedir(:user_config, 'erlang')
-    defaultCookie = (case (:file.path_open([homeDir,
-                                                xDGHome],
-                                             '.erlang.cookie', [:read])) do
-                       {:ok, file, _} ->
-                         {:ok, r_file_info(size: sz)} = :file.read_file_info(file)
-                         {:ok, data} = :file.read(file, sz)
-                         data
-                       _ ->
-                         ''
-                     end)
+    xDGHome = :filename.basedir(:user_config, ~c"erlang")
+
+    defaultCookie =
+      case :file.path_open([homeDir, xDGHome], ~c".erlang.cookie", [:read]) do
+        {:ok, file, _} ->
+          {:ok, r_file_info(size: sz)} = :file.read_file_info(file)
+          {:ok, data} = :file.read(file, sz)
+          data
+
+        _ ->
+          ~c""
+      end
+
     :wxTextCtrl.setValue(cookieCtrl, defaultCookie)
-    case (:wxDialog.showModal(dialog)) do
+
+    case :wxDialog.showModal(dialog) do
       5100 ->
         nameValue = :wxTextCtrl.getValue(nameCtrl)
         nameLngthValue = :wxRadioBox.getSelection(radioBox)
         cookieValue = :wxTextCtrl.getValue(cookieCtrl)
         :wxDialog.destroy(dialog)
         {:value, nameValue, nameLngthValue, cookieValue}
+
       5101 ->
         :wxDialog.destroy(dialog)
         :cancel
@@ -736,27 +996,32 @@ defmodule :m_observer_wx do
   end
 
   defp default_menus(nodesMenuItems) do
-    cDV = r_create_menu(id: 4, text: 'Examine Crashdump')
-    quit = r_create_menu(id: 5006, text: 'Quit')
-    about = r_create_menu(id: 5014, text: 'About')
+    cDV = r_create_menu(id: 4, text: ~c"Examine Crashdump")
+    quit = r_create_menu(id: 5006, text: ~c"Quit")
+    about = r_create_menu(id: 5014, text: ~c"About")
     help = r_create_menu(id: 5009)
-    fileMenu = {'File', [cDV, quit]}
-    nodeMenu = (case (:erlang.is_alive()) do
-                  true ->
-                    {'Nodes', nodesMenuItems ++ [r_create_menu(id: 1, text: 'Connect Node')]}
-                  false ->
-                    {'Nodes', nodesMenuItems ++ [r_create_menu(id: 2, text: 'Enable distribution')]}
-                end)
-    logMenu = {'Log', [r_create_menu(id: 5, text: 'Toggle log view')]}
-    case (:os.type() === {:unix, :darwin}) do
+    fileMenu = {~c"File", [cDV, quit]}
+
+    nodeMenu =
+      case :erlang.is_alive() do
+        true ->
+          {~c"Nodes", nodesMenuItems ++ [r_create_menu(id: 1, text: ~c"Connect Node")]}
+
+        false ->
+          {~c"Nodes", nodesMenuItems ++ [r_create_menu(id: 2, text: ~c"Enable distribution")]}
+      end
+
+    logMenu = {~c"Log", [r_create_menu(id: 5, text: ~c"Toggle log view")]}
+
+    case :os.type() === {:unix, :darwin} do
       false ->
-        ^fileMenu = {'File', [cDV, quit]}
-        helpMenu = {'Help', [about, help]}
+        ^fileMenu = {~c"File", [cDV, quit]}
+        helpMenu = {~c"Help", [about, help]}
         [fileMenu, nodeMenu, logMenu, helpMenu]
+
       true ->
         {tag, menus} = fileMenu
-        [{tag, menus ++ [quit, about]}, nodeMenu, logMenu, {'&Help',
-                                                              [help]}]
+        [{tag, menus ++ [quit, about]}, nodeMenu, logMenu, {~c"&Help", [help]}]
     end
   end
 
@@ -764,37 +1029,45 @@ defmodule :m_observer_wx do
     remove_menu_items(menus, menuBar)
   end
 
-  defp remove_menu_items([{menuStr = 'File', menus} | rest], menuBar) do
-    case (:wxMenuBar.findMenu(menuBar, menuStr)) do
+  defp remove_menu_items([{menuStr = ~c"File", menus} | rest], menuBar) do
+    case :wxMenuBar.findMenu(menuBar, menuStr) do
       -1 ->
         remove_menu_items(rest, menuBar)
+
       menuId ->
         menu = :wxMenuBar.getMenu(menuBar, menuId)
-        items = (for r_create_menu(text: tag) <- menus do
-                   :wxMenu.findItem(menu, tag)
-                 end)
+
+        items =
+          for r_create_menu(text: tag) <- menus do
+            :wxMenu.findItem(menu, tag)
+          end
+
         for mItem <- items do
           :wxMenu.delete(menu, mItem)
         end
+
         remove_menu_items(rest, menuBar)
     end
   end
 
-  defp remove_menu_items([{'Nodes', _} | _], _MB) do
+  defp remove_menu_items([{~c"Nodes", _} | _], _MB) do
     :ok
   end
 
   defp remove_menu_items([{tag, _Menus} | rest], menuBar) do
-    case (:wxMenuBar.findMenu(menuBar, tag)) do
+    case :wxMenuBar.findMenu(menuBar, tag) do
       -1 ->
         remove_menu_items(rest, menuBar)
+
       menuId ->
         menu = :wxMenuBar.getMenu(menuBar, menuId)
         :wxMenuBar.remove(menuBar, menuId)
         items = :wxMenu.getMenuItems(menu)
+
         for item <- items do
-          :wxMenu.'Destroy'(menu, item)
+          :wxMenu."Destroy"(menu, item)
         end
+
         :wxMenu.destroy(menu)
         remove_menu_items(rest, menuBar)
     end
@@ -805,36 +1078,49 @@ defmodule :m_observer_wx do
   end
 
   defp get_nodes() do
-    nodes0 = (case (:erlang.is_alive()) do
-                false ->
-                  []
-                true ->
-                  (case (:net_adm.names()) do
-                     {:error, _} ->
-                       []
-                     {:ok, names} ->
-                       epmd_nodes(names)
-                   end) ++ [node() | :erlang.nodes(:connected)]
-              end)
+    nodes0 =
+      case :erlang.is_alive() do
+        false ->
+          []
+
+        true ->
+          case :net_adm.names() do
+            {:error, _} ->
+              []
+
+            {:ok, names} ->
+              epmd_nodes(names)
+          end ++ [node() | :erlang.nodes(:connected)]
+      end
+
     nodes = :lists.usort(nodes0)
-    warningText = 'WARNING: connecting to non-erlang nodes may crash them'
-    {_, menues} = :lists.foldl(fn node, {id, acc}
-                                      when id < 2000 ->
-                                    {id + 1,
-                                       [r_create_menu(id: id + 1000,
-                                            text: :erlang.atom_to_list(node),
-                                            help: warningText) |
-                                            acc]}
-                               end,
-                                 {1, []}, nodes)
+    warningText = ~c"WARNING: connecting to non-erlang nodes may crash them"
+
+    {_, menues} =
+      :lists.foldl(
+        fn node, {id, acc}
+           when id < 2000 ->
+          {id + 1,
+           [
+             r_create_menu(
+               id: id + 1000,
+               text: :erlang.atom_to_list(node),
+               help: warningText
+             )
+             | acc
+           ]}
+        end,
+        {1, []},
+        nodes
+      )
+
     {nodes, :lists.reverse(menues)}
   end
 
   defp erl_dist_port() do
     try do
       :erl_epmd = :net_kernel.epmd_module()
-      {:ok,
-         [[stringPort]]} = :init.get_argument(:erl_epmd_port)
+      {:ok, [[stringPort]]} = :init.get_argument(:erl_epmd_port)
       :erlang.list_to_integer(stringPort)
     catch
       _, _ ->
@@ -843,16 +1129,19 @@ defmodule :m_observer_wx do
   end
 
   defp epmd_nodes(names0) do
-    names = (case (erl_dist_port()) do
-               :undefined ->
-                 names0
-               distPort ->
-                 for (nP = {_, port}) <- names0, port === distPort do
-                   nP
-                 end
-             end)
-    [_,
-         host] = :string.lexemes(:erlang.atom_to_list(node()), '@')
+    names =
+      case erl_dist_port() do
+        :undefined ->
+          names0
+
+        distPort ->
+          for nP = {_, port} <- names0, port === distPort do
+            nP
+          end
+      end
+
+    [_, host] = :string.lexemes(:erlang.atom_to_list(node()), ~c"@")
+
     for {name, _} <- names do
       :erlang.list_to_atom(name ++ [?@ | host])
     end
@@ -860,61 +1149,82 @@ defmodule :m_observer_wx do
 
   defp update_node_list(state = r_state(menubar: menuBar)) do
     {nodes, nodesMenuItems} = get_nodes()
-    nodeMenu = (case (:wxMenuBar.findMenu(menuBar, 'Nodes')) do
-                  -1 ->
-                    menu = :wxMenu.new()
-                    :wxMenuBar.append(menuBar, menu, 'Nodes')
-                    menu
-                  nodeMenuId ->
-                    menu = :wxMenuBar.getMenu(menuBar, nodeMenuId)
-                    :wx.foreach(fn item ->
-                                     :wxMenu.'Destroy'(menu, item)
-                                end,
-                                  :wxMenu.getMenuItems(menu))
-                    menu
-                end)
-    index = :wx.foldl(fn record, index ->
-                           :observer_lib.create_menu_item(record, nodeMenu,
-                                                            index)
-                      end,
-                        0, nodesMenuItems)
-    dist = (case (:erlang.is_alive()) do
-              true ->
-                r_create_menu(id: 1, text: 'Connect node')
-              false ->
-                r_create_menu(id: 2, text: 'Enable distribution')
-            end)
+
+    nodeMenu =
+      case :wxMenuBar.findMenu(menuBar, ~c"Nodes") do
+        -1 ->
+          menu = :wxMenu.new()
+          :wxMenuBar.append(menuBar, menu, ~c"Nodes")
+          menu
+
+        nodeMenuId ->
+          menu = :wxMenuBar.getMenu(menuBar, nodeMenuId)
+
+          :wx.foreach(
+            fn item ->
+              :wxMenu."Destroy"(menu, item)
+            end,
+            :wxMenu.getMenuItems(menu)
+          )
+
+          menu
+      end
+
+    index =
+      :wx.foldl(
+        fn record, index ->
+          :observer_lib.create_menu_item(record, nodeMenu, index)
+        end,
+        0,
+        nodesMenuItems
+      )
+
+    dist =
+      case :erlang.is_alive() do
+        true ->
+          r_create_menu(id: 1, text: ~c"Connect node")
+
+        false ->
+          r_create_menu(id: 2, text: ~c"Enable distribution")
+      end
+
     :observer_lib.create_menu_item(dist, nodeMenu, index)
     r_state(state, nodes: nodes)
   end
 
   defp ensure_sasl_started(node) do
-    apps = :rpc.block_call(node, :application,
-                             :which_applications, [])
-    case (:lists.keyfind(:sasl, 1, apps)) do
+    apps = :rpc.block_call(node, :application, :which_applications, [])
+
+    case :lists.keyfind(:sasl, 1, apps) do
       false ->
-        throw('Error: sasl application not started.')
+        throw(~c"Error: sasl application not started.")
         :error
+
       {:sasl, _, _} ->
         :ok
     end
   end
 
   defp ensure_mf_h_handler_used(node) do
-    handlers = (case (:rpc.block_call(node, :gen_event,
-                                        :which_handlers, [:error_logger])) do
-                  {:badrpc, {:EXIT, :noproc}} ->
-                    []
-                  hs ->
-                    hs
-                end)
-    case (:lists.any(fn l ->
-                          l == :log_mf_h
-                     end,
-                       handlers)) do
+    handlers =
+      case :rpc.block_call(node, :gen_event, :which_handlers, [:error_logger]) do
+        {:badrpc, {:EXIT, :noproc}} ->
+          []
+
+        hs ->
+          hs
+      end
+
+    case :lists.any(
+           fn l ->
+             l == :log_mf_h
+           end,
+           handlers
+         ) do
       false ->
-        throw('Error: log_mf_h handler not used in sasl.')
+        throw(~c"Error: log_mf_h handler not used in sasl.")
         :error
+
       true ->
         :ok
     end
@@ -928,34 +1238,36 @@ defmodule :m_observer_wx do
   end
 
   defp ensure_rb_module_loaded(node) do
-    case (:rpc.block_call(node, :code, :ensure_loaded,
-                            [:rb])) do
+    case :rpc.block_call(node, :code, :ensure_loaded, [:rb]) do
       {:badrpc, reason} ->
-        throw('Error: badrpc - ' ++ :io_lib.format('~tp', [reason]))
+        throw(~c"Error: badrpc - " ++ :io_lib.format(~c"~tp", [reason]))
+
       {:error, reason} ->
-        throw('Error: rb module load error - ' ++ :io_lib.format('~tp', [reason]))
+        throw(~c"Error: rb module load error - " ++ :io_lib.format(~c"~tp", [reason]))
+
       {:module, :rb} ->
         :ok
     end
   end
 
   defp is_rb_compatible(node) do
-    case (:rpc.block_call(node, :erlang, :function_exported,
-                            [:rb, :log_list, 0])) do
+    case :rpc.block_call(node, :erlang, :function_exported, [:rb, :log_list, 0]) do
       false ->
-        throw('Error: Node\'s Erlang release must be at least R16B02.')
+        throw(~c"Error: Node's Erlang release must be at least R16B02.")
+
       true ->
         :ok
     end
   end
 
   defp is_rb_server_running(node, logState) do
-    case (:rpc.block_call(node, :erlang, :whereis,
-                            [:rb_server])) do
-      pid when (is_pid(pid) and logState == false) ->
-        throw('Error: rb_server is already started and maybe used by someone.')
+    case :rpc.block_call(node, :erlang, :whereis, [:rb_server]) do
+      pid when is_pid(pid) and logState == false ->
+        throw(~c"Error: rb_server is already started and maybe used by someone.")
+
       pid when is_pid(pid) ->
         :ok
+
       :undefined ->
         :ok
     end
@@ -965,9 +1277,9 @@ defmodule :m_observer_wx do
     receive do
       {:nodedown, ^node} ->
         filter_nodedown_messages(node)
-    after 0 ->
-      :ok
+    after
+      0 ->
+        :ok
     end
   end
-
 end

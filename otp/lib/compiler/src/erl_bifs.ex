@@ -1,18 +1,19 @@
 defmodule :m_erl_bifs do
   use Bitwise
-  def is_pure(:erlang, :"*", 2) do
+
+  def is_pure(:erlang, :*, 2) do
     true
   end
 
-  def is_pure(:erlang, :"+", 1) do
+  def is_pure(:erlang, :+, 1) do
     true
   end
 
-  def is_pure(:erlang, :"+", 2) do
+  def is_pure(:erlang, :+, 2) do
     true
   end
 
-  def is_pure(:erlang, :"++", 2) do
+  def is_pure(:erlang, :++, 2) do
     true
   end
 
@@ -24,11 +25,11 @@ defmodule :m_erl_bifs do
     true
   end
 
-  def is_pure(:erlang, :"--", 2) do
+  def is_pure(:erlang, :--, 2) do
     true
   end
 
-  def is_pure(:erlang, :"/", 2) do
+  def is_pure(:erlang, :/, 2) do
     true
   end
 
@@ -36,7 +37,7 @@ defmodule :m_erl_bifs do
     true
   end
 
-  def is_pure(:erlang, :"<", 2) do
+  def is_pure(:erlang, :<, 2) do
     true
   end
 
@@ -52,15 +53,15 @@ defmodule :m_erl_bifs do
     true
   end
 
-  def is_pure(:erlang, :"==", 2) do
+  def is_pure(:erlang, :==, 2) do
     true
   end
 
-  def is_pure(:erlang, :">", 2) do
+  def is_pure(:erlang, :>, 2) do
     true
   end
 
-  def is_pure(:erlang, :">=", 2) do
+  def is_pure(:erlang, :>=, 2) do
     true
   end
 
@@ -492,7 +493,7 @@ defmodule :m_erl_bifs do
     true
   end
 
-  def is_safe(:erlang, :"<", 2) do
+  def is_safe(:erlang, :<, 2) do
     true
   end
 
@@ -508,15 +509,15 @@ defmodule :m_erl_bifs do
     true
   end
 
-  def is_safe(:erlang, :"==", 2) do
+  def is_safe(:erlang, :==, 2) do
     true
   end
 
-  def is_safe(:erlang, :">", 2) do
+  def is_safe(:erlang, :>, 2) do
     true
   end
 
-  def is_safe(:erlang, :">=", 2) do
+  def is_safe(:erlang, :>=, 2) do
     true
   end
 
@@ -675,5 +676,4 @@ defmodule :m_erl_bifs do
   def is_exit_bif(_, _, _) do
     false
   end
-
 end

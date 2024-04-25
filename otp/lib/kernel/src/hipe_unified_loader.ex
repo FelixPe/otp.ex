@@ -4,22 +4,22 @@ defmodule :m_hipe_unified_loader do
   def chunk_name(architecture) do
     case architecture do
       :amd64 ->
-        'HA64'
+        ~c"HA64"
 
       :arm ->
-        'HARM'
+        ~c"HARM"
 
       :powerpc ->
-        'HPPC'
+        ~c"HPPC"
 
       :ppc64 ->
-        'HP64'
+        ~c"HP64"
 
       :ultrasparc ->
-        'HS8P'
+        ~c"HS8P"
 
       :x86 ->
-        'HX86'
+        ~c"HX86"
     end
   end
 

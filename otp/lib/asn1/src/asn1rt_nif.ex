@@ -2,7 +2,7 @@ defmodule :m_asn1rt_nif do
   use Bitwise
   @on_load :load_nif
   defp load_nif() do
-    libBaseName = 'asn1rt_nif'
+    libBaseName = ~c"asn1rt_nif"
     privDir = :code.priv_dir(:asn1)
 
     libName =
@@ -11,15 +11,15 @@ defmodule :m_asn1rt_nif do
           libBaseName
 
         type ->
-          libTypeName = libBaseName ++ '.' ++ :erlang.atom_to_list(type)
+          libTypeName = libBaseName ++ ~c"." ++ :erlang.atom_to_list(type)
 
-          case :filelib.wildcard(:filename.join([privDir, 'lib', libTypeName ++ '*'])) != [] or
+          case :filelib.wildcard(:filename.join([privDir, ~c"lib", libTypeName ++ ~c"*"])) != [] or
                  :filelib.wildcard(
                    :filename.join([
                      privDir,
-                     'lib',
+                     ~c"lib",
                      :erlang.system_info(:system_architecture),
-                     libTypeName ++ '*'
+                     libTypeName ++ ~c"*"
                    ])
                  ) != [] do
             true ->
@@ -30,7 +30,7 @@ defmodule :m_asn1rt_nif do
           end
       end
 
-    lib = :filename.join([privDir, 'lib', libName])
+    lib = :filename.join([privDir, ~c"lib", libName])
 
     status =
       case :erlang.load_nif(lib, 1) do
@@ -38,8 +38,10 @@ defmodule :m_asn1rt_nif do
           :ok
 
         {:error, {:load_failed, _}} = error1 ->
-          archLibDir = :filename.join([privDir, 'lib', :erlang.system_info(:system_architecture)])
-          candidate = :filelib.wildcard(:filename.join([archLibDir, libName ++ '*']))
+          archLibDir =
+            :filename.join([privDir, ~c"lib", :erlang.system_info(:system_architecture)])
+
+          candidate = :filelib.wildcard(:filename.join([archLibDir, libName ++ ~c"*"]))
 
           case candidate do
             [] ->
@@ -60,7 +62,7 @@ defmodule :m_asn1rt_nif do
 
       {:error, {e, str}} ->
         :error_logger.error_msg(
-          'Unable to load asn1 nif library. Failed with error:~n"~p, ~s"~n',
+          ~c"Unable to load asn1 nif library. Failed with error:~n\"~p, ~s\"~n",
           [e, str]
         )
 

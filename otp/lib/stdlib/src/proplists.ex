@@ -1,5 +1,6 @@
 defmodule :m_proplists do
   use Bitwise
+
   def property({key, true}) when is_atom(key) do
     key
   end
@@ -20,6 +21,7 @@ defmodule :m_proplists do
     cond do
       is_atom(p) ->
         [{p, true} | unfold(ps)]
+
       true ->
         [p | unfold(ps)]
     end
@@ -37,11 +39,13 @@ defmodule :m_proplists do
 
   def lookup(key, [p | ps]) do
     cond do
-      (is_atom(p) and p === key) ->
+      is_atom(p) and p === key ->
         {key, true}
-      (tuple_size(p) >= 1 and
-         :erlang.element(1, p) === key) ->
+
+      tuple_size(p) >= 1 and
+          :erlang.element(1, p) === key ->
         p
+
       true ->
         lookup(key, ps)
     end
@@ -53,11 +57,13 @@ defmodule :m_proplists do
 
   def lookup_all(key, [p | ps]) do
     cond do
-      (is_atom(p) and p === key) ->
+      is_atom(p) and p === key ->
         [{key, true} | lookup_all(key, ps)]
-      (tuple_size(p) >= 1 and
-         :erlang.element(1, p) === key) ->
+
+      tuple_size(p) >= 1 and
+          :erlang.element(1, p) === key ->
         [p | lookup_all(key, ps)]
+
       true ->
         lookup_all(key, ps)
     end
@@ -69,11 +75,13 @@ defmodule :m_proplists do
 
   def is_defined(key, [p | ps]) do
     cond do
-      (is_atom(p) and p === key) ->
+      is_atom(p) and p === key ->
         true
-      (tuple_size(p) >= 1 and
-         :erlang.element(1, p) === key) ->
+
+      tuple_size(p) >= 1 and
+          :erlang.element(1, p) === key ->
         true
+
       true ->
         is_defined(key, ps)
     end
@@ -89,16 +97,19 @@ defmodule :m_proplists do
 
   def get_value(key, [p | ps], default) do
     cond do
-      (is_atom(p) and p === key) ->
+      is_atom(p) and p === key ->
         true
-      (tuple_size(p) >= 1 and
-         :erlang.element(1, p) === key) ->
-        case (p) do
+
+      tuple_size(p) >= 1 and
+          :erlang.element(1, p) === key ->
+        case p do
           {_, value} ->
             value
+
           _ ->
             default
         end
+
       true ->
         get_value(key, ps, default)
     end
@@ -110,16 +121,19 @@ defmodule :m_proplists do
 
   def get_all_values(key, [p | ps]) do
     cond do
-      (is_atom(p) and p === key) ->
+      is_atom(p) and p === key ->
         [true | get_all_values(key, ps)]
-      (tuple_size(p) >= 1 and
-         :erlang.element(1, p) === key) ->
-        case (p) do
+
+      tuple_size(p) >= 1 and
+          :erlang.element(1, p) === key ->
+        case p do
           {_, value} ->
             [value | get_all_values(key, ps)]
+
           _ ->
             get_all_values(key, ps)
         end
+
       true ->
         get_all_values(key, ps)
     end
@@ -131,18 +145,22 @@ defmodule :m_proplists do
 
   def append_values(key, [p | ps]) do
     cond do
-      (is_atom(p) and p === key) ->
+      is_atom(p) and p === key ->
         [true | append_values(key, ps)]
-      (tuple_size(p) >= 1 and
-         :erlang.element(1, p) === key) ->
-        case (p) do
+
+      tuple_size(p) >= 1 and
+          :erlang.element(1, p) === key ->
+        case p do
           {_, value} when is_list(value) ->
             value ++ append_values(key, ps)
+
           {_, value} ->
             [value | append_values(key, ps)]
+
           _ ->
             append_values(key, ps)
         end
+
       true ->
         append_values(key, ps)
     end
@@ -154,16 +172,19 @@ defmodule :m_proplists do
 
   def get_bool(key, [p | ps]) do
     cond do
-      (is_atom(p) and p === key) ->
+      is_atom(p) and p === key ->
         true
-      (tuple_size(p) >= 1 and
-         :erlang.element(1, p) === key) ->
-        case (p) do
+
+      tuple_size(p) >= 1 and
+          :erlang.element(1, p) === key ->
+        case p do
           {_, true} ->
             true
+
           _ ->
             false
         end
+
       true ->
         get_bool(key, ps)
     end
@@ -181,9 +202,13 @@ defmodule :m_proplists do
     cond do
       is_atom(p) ->
         get_keys(ps, :sets.add_element(p, keys))
+
       tuple_size(p) >= 1 ->
-        get_keys(ps,
-                   :sets.add_element(:erlang.element(1, p), keys))
+        get_keys(
+          ps,
+          :sets.add_element(:erlang.element(1, p), keys)
+        )
+
       true ->
         get_keys(ps, keys)
     end
@@ -195,11 +220,13 @@ defmodule :m_proplists do
 
   def delete(key, [p | ps]) do
     cond do
-      (is_atom(p) and p === key) ->
+      is_atom(p) and p === key ->
         delete(key, ps)
-      (tuple_size(p) >= 1 and
-         :erlang.element(1, p) === key) ->
+
+      tuple_size(p) >= 1 and
+          :erlang.element(1, p) === key ->
         delete(key, ps)
+
       true ->
         [p | delete(key, ps)]
     end
@@ -217,11 +244,13 @@ defmodule :m_proplists do
 
   defp substitute_aliases_1([{key, key1} | as], p) do
     cond do
-      (is_atom(p) and p === key) ->
+      is_atom(p) and p === key ->
         property(key1, true)
-      (tuple_size(p) >= 1 and
-         :erlang.element(1, p) === key) ->
+
+      tuple_size(p) >= 1 and
+          :erlang.element(1, p) === key ->
         property(:erlang.setelement(1, p, key1))
+
       true ->
         substitute_aliases_1(as, p)
     end
@@ -239,18 +268,22 @@ defmodule :m_proplists do
 
   defp substitute_negations_1([{key, key1} | as], p) do
     cond do
-      (is_atom(p) and p === key) ->
+      is_atom(p) and p === key ->
         property(key1, false)
-      (tuple_size(p) >= 1 and
-         :erlang.element(1, p) === key) ->
-        case (p) do
+
+      tuple_size(p) >= 1 and
+          :erlang.element(1, p) === key ->
+        case p do
           {_, true} ->
             property(key1, false)
+
           {_, false} ->
             property(key1, true)
+
           _ ->
             property(key1, true)
         end
+
       true ->
         substitute_negations_1(as, p)
     end
@@ -261,9 +294,11 @@ defmodule :m_proplists do
   end
 
   def expand(es, ps) when is_list(ps) do
-    es1 = (for {p, v} <- es do
-             {property(p), v}
-           end)
+    es1 =
+      for {p, v} <- es do
+        {property(p), v}
+      end
+
     flatten(expand_0(key_uniq(es1), ps))
   end
 
@@ -279,8 +314,10 @@ defmodule :m_proplists do
     cond do
       is_atom(p) ->
         expand_2(p, p, l, ps)
+
       tuple_size(p) >= 1 ->
         expand_2(:erlang.element(1, p), p, l, ps)
+
       true ->
         ps
     end
@@ -288,11 +325,13 @@ defmodule :m_proplists do
 
   defp expand_2(key, p1, l, [p | ps]) do
     cond do
-      (is_atom(p) and p === key) ->
+      is_atom(p) and p === key ->
         expand_3(key, p1, p, l, ps)
-      (tuple_size(p) >= 1 and
-         :erlang.element(1, p) === key) ->
+
+      tuple_size(p) >= 1 and
+          :erlang.element(1, p) === key ->
         expand_3(key, p1, property(p), l, ps)
+
       true ->
         [p | expand_2(key, p1, l, ps)]
     end
@@ -306,6 +345,7 @@ defmodule :m_proplists do
     cond do
       p1 === p ->
         [l | delete(key, ps)]
+
       true ->
         [p | ps]
     end
@@ -323,6 +363,7 @@ defmodule :m_proplists do
     cond do
       k === k1 ->
         key_uniq_1(k, ps)
+
       true ->
         [{k1, v} | key_uniq_1(k1, ps)]
     end
@@ -367,20 +408,25 @@ defmodule :m_proplists do
   defp split([p | ps], store, rest) do
     cond do
       is_atom(p) ->
-        case (:erlang.is_map_key(p, store)) do
+        case :erlang.is_map_key(p, store) do
           true ->
             split(ps, maps_prepend(p, p, store), rest)
+
           false ->
             split(ps, store, [p | rest])
         end
+
       tuple_size(p) >= 1 ->
         key = :erlang.element(1, p)
-        case (:erlang.is_map_key(key, store)) do
+
+        case :erlang.is_map_key(key, store) do
           true ->
             split(ps, maps_prepend(key, p, store), rest)
+
           false ->
             split(ps, store, [p | rest])
         end
+
       true ->
         split(ps, store, [p | rest])
     end
@@ -395,16 +441,23 @@ defmodule :m_proplists do
   end
 
   def to_map(list) do
-    :lists.foldr(fn {k, v}, m ->
-                      Map.put(m, k, v)
-                    t, m when 1 <= tuple_size(t) ->
-                      :maps.remove(:erlang.element(1, t), m)
-                    k, m when is_atom(k) ->
-                      Map.put(m, k, true)
-                    _, m ->
-                      m
-                 end,
-                   %{}, list)
+    :lists.foldr(
+      fn
+        {k, v}, m ->
+          Map.put(m, k, v)
+
+        t, m when 1 <= tuple_size(t) ->
+          :maps.remove(:erlang.element(1, t), m)
+
+        k, m when is_atom(k) ->
+          Map.put(m, k, true)
+
+        _, m ->
+          m
+      end,
+      %{},
+      list
+    )
   end
 
   def to_map(list, stages) do
@@ -414,5 +467,4 @@ defmodule :m_proplists do
   def from_map(map) do
     :maps.to_list(map)
   end
-
 end

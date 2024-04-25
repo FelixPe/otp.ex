@@ -1,130 +1,225 @@
 defmodule :m_beam_ssa_codegen do
   use Bitwise
-  import :lists, only: [append: 1, foldl: 3, keymember: 3,
-                          keysort: 2, map: 2, mapfoldl: 3, member: 2,
-                          reverse: 1, reverse: 2, sort: 1, splitwith: 2,
-                          takewhile: 2]
+
+  import :lists,
+    only: [
+      append: 1,
+      foldl: 3,
+      keymember: 3,
+      keysort: 2,
+      map: 2,
+      mapfoldl: 3,
+      member: 2,
+      reverse: 1,
+      reverse: 2,
+      sort: 1,
+      splitwith: 2,
+      takewhile: 2
+    ]
+
   require Record
-  Record.defrecord(:r_b_module, :b_module, anno: %{},
-                                    name: :undefined, exports: :undefined,
-                                    attributes: :undefined, body: :undefined)
-  Record.defrecord(:r_b_function, :b_function, anno: %{},
-                                      args: :undefined, bs: :undefined,
-                                      cnt: :undefined)
-  Record.defrecord(:r_b_blk, :b_blk, anno: %{}, is: :undefined,
-                                 last: :undefined)
-  Record.defrecord(:r_b_set, :b_set, anno: %{}, dst: :none,
-                                 op: :undefined, args: [])
+
+  Record.defrecord(:r_b_module, :b_module,
+    anno: %{},
+    name: :undefined,
+    exports: :undefined,
+    attributes: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_b_function, :b_function,
+    anno: %{},
+    args: :undefined,
+    bs: :undefined,
+    cnt: :undefined
+  )
+
+  Record.defrecord(:r_b_blk, :b_blk, anno: %{}, is: :undefined, last: :undefined)
+  Record.defrecord(:r_b_set, :b_set, anno: %{}, dst: :none, op: :undefined, args: [])
   Record.defrecord(:r_b_ret, :b_ret, anno: %{}, arg: :undefined)
-  Record.defrecord(:r_b_br, :b_br, anno: %{}, bool: :undefined,
-                                succ: :undefined, fail: :undefined)
-  Record.defrecord(:r_b_switch, :b_switch, anno: %{},
-                                    arg: :undefined, fail: :undefined,
-                                    list: :undefined)
+
+  Record.defrecord(:r_b_br, :b_br,
+    anno: %{},
+    bool: :undefined,
+    succ: :undefined,
+    fail: :undefined
+  )
+
+  Record.defrecord(:r_b_switch, :b_switch,
+    anno: %{},
+    arg: :undefined,
+    fail: :undefined,
+    list: :undefined
+  )
+
   Record.defrecord(:r_b_var, :b_var, name: :undefined)
   Record.defrecord(:r_b_literal, :b_literal, val: :undefined)
-  Record.defrecord(:r_b_remote, :b_remote, mod: :undefined,
-                                    name: :undefined, arity: :undefined)
-  Record.defrecord(:r_b_local, :b_local, name: :undefined,
-                                   arity: :undefined)
+  Record.defrecord(:r_b_remote, :b_remote, mod: :undefined, name: :undefined, arity: :undefined)
+
+  Record.defrecord(:r_b_local, :b_local,
+    name: :undefined,
+    arity: :undefined
+  )
+
   Record.defrecord(:r_t_atom, :t_atom, elements: :any)
-  Record.defrecord(:r_t_bitstring, :t_bitstring, size_unit: 1,
-                                       appendable: false)
+
+  Record.defrecord(:r_t_bitstring, :t_bitstring,
+    size_unit: 1,
+    appendable: false
+  )
+
   Record.defrecord(:r_t_bs_context, :t_bs_context, tail_unit: 1)
   Record.defrecord(:r_t_bs_matchable, :t_bs_matchable, tail_unit: 1)
   Record.defrecord(:r_t_float, :t_float, elements: :any)
-  Record.defrecord(:r_t_fun, :t_fun, arity: :any, target: :any,
-                                 type: :any)
+  Record.defrecord(:r_t_fun, :t_fun, arity: :any, target: :any, type: :any)
   Record.defrecord(:r_t_integer, :t_integer, elements: :any)
   Record.defrecord(:r_t_number, :t_number, elements: :any)
-  Record.defrecord(:r_t_map, :t_map, super_key: :any,
-                                 super_value: :any)
-  Record.defrecord(:r_t_cons, :t_cons, type: :any,
-                                  terminator: :any)
-  Record.defrecord(:r_t_list, :t_list, type: :any,
-                                  terminator: :any)
-  Record.defrecord(:r_t_tuple, :t_tuple, size: 0, exact: false,
-                                   elements: %{})
-  Record.defrecord(:r_t_union, :t_union, atom: :none, list: :none,
-                                   number: :none, tuple_set: :none,
-                                   other: :none)
+
+  Record.defrecord(:r_t_map, :t_map,
+    super_key: :any,
+    super_value: :any
+  )
+
+  Record.defrecord(:r_t_cons, :t_cons,
+    type: :any,
+    terminator: :any
+  )
+
+  Record.defrecord(:r_t_list, :t_list,
+    type: :any,
+    terminator: :any
+  )
+
+  Record.defrecord(:r_t_tuple, :t_tuple, size: 0, exact: false, elements: %{})
+
+  Record.defrecord(:r_t_union, :t_union,
+    atom: :none,
+    list: :none,
+    number: :none,
+    tuple_set: :none,
+    other: :none
+  )
+
   Record.defrecord(:r_tr, :tr, r: :undefined, t: :undefined)
-  Record.defrecord(:r_cg, :cg, lcount: 1, functable: %{},
-                              labels: %{}, used_labels: :gb_sets.empty(),
-                              regs: %{}, ultimate_fail: 1,
-                              catches: :gb_sets.empty(), fc_label: 1)
-  def module(r_b_module(name: mod, exports: es, attributes: attrs,
-             body: fs),
-           opts) do
+
+  Record.defrecord(:r_cg, :cg,
+    lcount: 1,
+    functable: %{},
+    labels: %{},
+    used_labels: :gb_sets.empty(),
+    regs: %{},
+    ultimate_fail: 1,
+    catches: :gb_sets.empty(),
+    fc_label: 1
+  )
+
+  def module(
+        r_b_module(name: mod, exports: es, attributes: attrs, body: fs),
+        opts
+      ) do
     noBsMatch = member(:no_bs_match, opts)
     {asm, st} = functions(fs, noBsMatch, {:atom, mod})
     {:ok, {mod, es, attrs, asm, r_cg(st, :lcount)}}
   end
 
   Record.defrecord(:r_need, :need, h: 0, l: 0, f: 0)
-  Record.defrecord(:r_cg_blk, :cg_blk, anno: %{}, is: [],
-                                  last: :undefined)
-  Record.defrecord(:r_cg_set, :cg_set, anno: %{},
-                                  dst: :undefined, op: :undefined,
-                                  args: :undefined)
-  Record.defrecord(:r_cg_alloc, :cg_alloc, anno: %{}, stack: :none,
-                                    words: :EFE_TODO_NESTED_RECORD,
-                                    live: :undefined, def_yregs: [])
-  Record.defrecord(:r_cg_br, :cg_br, bool: :undefined,
-                                 succ: :undefined, fail: :undefined)
-  Record.defrecord(:r_cg_ret, :cg_ret, arg: :undefined,
-                                  dealloc: :none)
-  Record.defrecord(:r_cg_switch, :cg_switch, anno: %{},
-                                     arg: :undefined, fail: :undefined,
-                                     list: :undefined)
+  Record.defrecord(:r_cg_blk, :cg_blk, anno: %{}, is: [], last: :undefined)
+
+  Record.defrecord(:r_cg_set, :cg_set,
+    anno: %{},
+    dst: :undefined,
+    op: :undefined,
+    args: :undefined
+  )
+
+  Record.defrecord(:r_cg_alloc, :cg_alloc,
+    anno: %{},
+    stack: :none,
+    words: :EFE_TODO_NESTED_RECORD,
+    live: :undefined,
+    def_yregs: []
+  )
+
+  Record.defrecord(:r_cg_br, :cg_br, bool: :undefined, succ: :undefined, fail: :undefined)
+
+  Record.defrecord(:r_cg_ret, :cg_ret,
+    arg: :undefined,
+    dealloc: :none
+  )
+
+  Record.defrecord(:r_cg_switch, :cg_switch,
+    anno: %{},
+    arg: :undefined,
+    fail: :undefined,
+    list: :undefined
+  )
+
   defp functions(forms, noBsMatch, atomMod) do
-    mapfoldl(fn f, st ->
-                  function(f, noBsMatch, atomMod, st)
-             end,
-               r_cg(lcount: 1), forms)
+    mapfoldl(
+      fn f, st ->
+        function(f, noBsMatch, atomMod, st)
+      end,
+      r_cg(lcount: 1),
+      forms
+    )
   end
 
-  defp function(r_b_function(anno: anno, bs: blocks), noBsMatch, atomMod,
-            st0) do
+  defp function(r_b_function(anno: anno, bs: blocks), noBsMatch, atomMod, st0) do
     %{func_info: {_, name, arity}} = anno
+
     try do
       assert_exception_block(blocks)
       regs = :maps.get(:registers, anno)
-      st1 = r_cg(st0, labels: %{}, 
-                     used_labels: :gb_sets.empty(),  regs: regs)
+      st1 = r_cg(st0, labels: %{}, used_labels: :gb_sets.empty(), regs: regs)
       {fi, st2} = new_label(st1)
       {entry, st3} = local_func_label(name, arity, st2)
       {ult, st4} = new_label(st3)
-      labels = Map.merge(r_cg(st4, :labels), %{0 => entry,
-                                              1 => 0})
-      st5 = r_cg(st4, labels: labels, 
-                     used_labels: :gb_sets.singleton(entry), 
-                     ultimate_fail: ult)
-      {body, st} = cg_fun(blocks, noBsMatch,
-                            r_cg(st5, fc_label: fi))
-      asm = [{:label, fi}, line(anno), {:func_info, atomMod,
-                                          {:atom, name},
-                                          arity}] ++ add_parameter_annos(body,
-                                                                           anno) ++ [{:label,
-                                                                                        ult},
-                                                                                         :if_end]
+      labels = Map.merge(r_cg(st4, :labels), %{0 => entry, 1 => 0})
+
+      st5 =
+        r_cg(st4,
+          labels: labels,
+          used_labels: :gb_sets.singleton(entry),
+          ultimate_fail: ult
+        )
+
+      {body, st} = cg_fun(blocks, noBsMatch, r_cg(st5, fc_label: fi))
+
+      asm =
+        [{:label, fi}, line(anno), {:func_info, atomMod, {:atom, name}, arity}] ++
+          add_parameter_annos(
+            body,
+            anno
+          ) ++ [{:label, ult}, :if_end]
+
       func = {:function, name, arity, entry, asm}
       {func, st}
     catch
       class, error ->
-        :io.fwrite('Function: ~w/~w\n', [name, arity])
+        :io.fwrite(~c"Function: ~w/~w\n", [name, arity])
         :erlang.raise(class, error, __STACKTRACE__)
     end
   end
 
   defp assert_exception_block(blocks) do
-    case (blocks) do
+    case blocks do
       %{1 => blk} ->
-        r_b_blk(is: [r_b_set(op: :call, dst: ret,
-                   args: [r_b_remote(mod: r_b_literal(val: :erlang), name: r_b_literal(val: :error)),
-                              r_b_literal(val: :badarg)])],
-            last: r_b_ret(arg: ret)) = blk
+        r_b_blk(
+          is: [
+            r_b_set(
+              op: :call,
+              dst: ret,
+              args: [
+                r_b_remote(mod: r_b_literal(val: :erlang), name: r_b_literal(val: :error)),
+                r_b_literal(val: :badarg)
+              ]
+            )
+          ],
+          last: r_b_ret(arg: ret)
+        ) = blk
+
         :ok
+
       %{} ->
         :ok
     end
@@ -140,9 +235,11 @@ defmodule :m_beam_ssa_codegen do
     linear5 = opt_allocate(linear4, st1)
     linear = fix_wait_timeout(linear5)
     {asm, st} = cg_linear(linear, st1)
-    case (noBsMatch) do
+
+    case noBsMatch do
       true ->
         {asm, st}
+
       false ->
         {bs_translate(asm), st}
     end
@@ -167,38 +264,52 @@ defmodule :m_beam_ssa_codegen do
 
   defp need_heap(bs0) do
     bs1 = need_heap_allocs(bs0, %{})
-    {bs, r_need(h: 0, l: 0, f: 0)} = need_heap_blks(reverse(bs1),
-                                                 r_need(), [])
+    {bs, r_need(h: 0, l: 0, f: 0)} = need_heap_blks(reverse(bs1), r_need(), [])
     bs
   end
 
-  defp need_heap_allocs([{l, r_cg_blk(is: is0, last: terminator) = blk0} | bs],
-            counts0) do
+  defp need_heap_allocs(
+         [{l, r_cg_blk(is: is0, last: terminator) = blk0} | bs],
+         counts0
+       ) do
     next = next_block(bs)
     successors = successors(terminator)
-    counts = foldl(fn s, cnts ->
-                        case (cnts) do
-                          %{^s => c} ->
-                            %{cnts | s => c + 1}
-                          %{} when s === next ->
-                            Map.put(cnts, s, 1)
-                          %{} ->
-                            Map.put(cnts, s, 42)
-                        end
-                   end,
-                     counts0, successors)
-    case (counts) do
+
+    counts =
+      foldl(
+        fn s, cnts ->
+          case cnts do
+            %{^s => c} ->
+              %{cnts | s => c + 1}
+
+            %{} when s === next ->
+              Map.put(cnts, s, 1)
+
+            %{} ->
+              Map.put(cnts, s, 42)
+          end
+        end,
+        counts0,
+        successors
+      )
+
+    case counts do
       %{^l => 1} ->
         [{l, blk0} | need_heap_allocs(bs, counts)]
+
       %{^l => _} ->
-        is = (case (need_heap_never(is0)) do
-                true ->
-                  is0
-                false ->
-                  [r_cg_alloc() | is0]
-              end)
+        is =
+          case need_heap_never(is0) do
+            true ->
+              is0
+
+            false ->
+              [r_cg_alloc() | is0]
+          end
+
         blk = r_cg_blk(blk0, is: is)
         [{l, blk} | need_heap_allocs(bs, counts)]
+
       %{} ->
         [{l, blk0} | need_heap_allocs(bs, counts)]
     end
@@ -216,9 +327,13 @@ defmodule :m_beam_ssa_codegen do
     true
   end
 
-  defp need_heap_never([r_cg_set(op: :wait_timeout,
-               args: [r_b_literal(val: :infinity)]) |
-               _]) do
+  defp need_heap_never([
+         r_cg_set(
+           op: :wait_timeout,
+           args: [r_b_literal(val: :infinity)]
+         )
+         | _
+       ]) do
     true
   end
 
@@ -243,28 +358,34 @@ defmodule :m_beam_ssa_codegen do
     need_heap_is(is, r_need(), [alloc | acc])
   end
 
-  defp need_heap_is([r_cg_set(anno: anno, op: :bs_create_bin) = i0 | is],
-            n, acc) do
-    alloc = (case (need_heap_need(n)) do
-               [r_cg_alloc(words: need)] ->
-                 alloc(need)
-               [] ->
-                 0
-             end)
+  defp need_heap_is([r_cg_set(anno: anno, op: :bs_create_bin) = i0 | is], n, acc) do
+    alloc =
+      case need_heap_need(n) do
+        [r_cg_alloc(words: need)] ->
+          alloc(need)
+
+        [] ->
+          0
+      end
+
     i = r_cg_set(i0, anno: Map.put(anno, :alloc, alloc))
     need_heap_is(is, r_need(), [i | acc])
   end
 
   defp need_heap_is([r_cg_set(op: op, args: args) = i | is], n, acc) do
-    case (classify_heap_need(op, args)) do
+    case classify_heap_need(op, args) do
       {:put, words} ->
         need_heap_is(is, add_heap_words(n, words), [i | acc])
+
       {:put_fun, nArgs} ->
         need_heap_is(is, add_heap_fun(n, nArgs), [i | acc])
+
       :put_float ->
         need_heap_is(is, add_heap_float(n), [i | acc])
+
       :neutral ->
         need_heap_is(is, n, [i | acc])
+
       :gc ->
         need_heap_is(is, r_need(), [i] ++ need_heap_need(n) ++ acc)
     end
@@ -274,19 +395,20 @@ defmodule :m_beam_ssa_codegen do
     {acc, n}
   end
 
-  defp need_heap_terminator([{_, r_cg_blk(last: r_cg_br(succ: l, fail: l))} | _], l,
-            n) do
+  defp need_heap_terminator([{_, r_cg_blk(last: r_cg_br(succ: l, fail: l))} | _], l, n) do
     {[], n}
   end
 
   defp need_heap_terminator([{_, r_cg_blk(is: is, last: r_cg_br(succ: l))} | _], l, n) do
-    case (need_heap_need(n)) do
+    case need_heap_need(n) do
       [] ->
         {[], r_need()}
+
       [_ | _] = alloc ->
-        case (reverse(is)) do
+        case reverse(is) do
           [r_cg_set(op: :succeeded), r_cg_set(op: :bs_create_bin) | _] ->
             {[], n}
+
           _ ->
             {alloc, r_need()}
         end
@@ -309,8 +431,10 @@ defmodule :m_beam_ssa_codegen do
     [r_cg_alloc(words: n)]
   end
 
-  defp add_heap_words(r_need(h: h1, l: l1, f: f1),
-            r_need(h: h2, l: l2, f: f2)) do
+  defp add_heap_words(
+         r_need(h: h1, l: l1, f: f1),
+         r_need(h: h2, l: l2, f: f2)
+       ) do
     r_need(h: h1 + h2, l: l1 + l2, f: f1 + f2)
   end
 
@@ -319,7 +443,7 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp add_heap_fun(r_need(h: heap, l: lambdas) = n, nArgs) do
-    r_need(n, h: heap + nArgs,  l: lambdas + 1)
+    r_need(n, h: heap + nArgs, l: lambdas + 1)
   end
 
   defp add_heap_float(r_need(f: f) = n) do
@@ -339,18 +463,20 @@ defmodule :m_beam_ssa_codegen do
   end
 
   def classify_heap_need({:bif, name}, args) do
-    case (is_gc_bif(name, args)) do
+    case is_gc_bif(name, args) do
       false ->
         :neutral
+
       true ->
         :gc
     end
   end
 
   def classify_heap_need({:float, op}, _Args) do
-    case (op) do
+    case op do
       :get ->
         :put_float
+
       _ ->
         :neutral
     end
@@ -544,12 +670,11 @@ defmodule :m_beam_ssa_codegen do
     prefer_xregs(linear, st, %{0 => %{}})
   end
 
-  defp prefer_xregs([{l, r_cg_blk(is: is0, last: last0) = blk0} | bs], st,
-            map0) do
+  defp prefer_xregs([{l, r_cg_blk(is: is0, last: last0) = blk0} | bs], st, map0) do
     copies0 = :maps.get(l, map0)
     {is, copies} = prefer_xregs_is(is0, st, copies0, [])
     last = prefer_xregs_terminator(last0, copies, st)
-    blk = r_cg_blk(blk0, is: is,  last: last)
+    blk = r_cg_blk(blk0, is: is, last: last)
     successors = successors(last)
     map = prefer_xregs_successors(successors, copies, map0)
     [{l, blk} | prefer_xregs(bs, st, map)]
@@ -560,11 +685,12 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp prefer_xregs_successors([l | ls], copies0, map0) do
-    case (map0) do
+    case map0 do
       %{^l => copies1} ->
         copies = merge_copies(copies0, copies1)
         map = %{map0 | l => copies}
         prefer_xregs_successors(ls, copies0, map)
+
       %{} ->
         map = Map.put(map0, l, copies0)
         prefer_xregs_successors(ls, copies0, map)
@@ -576,52 +702,58 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp prefer_xregs_is([r_cg_alloc() = i | is], st, copies0, acc) do
-    copies = (case (i) do
-                r_cg_alloc(stack: :none, words: r_need(h: 0, l: 0, f: 0)) ->
-                  copies0
-                r_cg_alloc() ->
-                  %{}
-              end)
+    copies =
+      case i do
+        r_cg_alloc(stack: :none, words: r_need(h: 0, l: 0, f: 0)) ->
+          copies0
+
+        r_cg_alloc() ->
+          %{}
+      end
+
     prefer_xregs_is(is, st, copies, [i | acc])
   end
 
-  defp prefer_xregs_is([r_cg_set(op: :copy, dst: dst, args: [src]) = i | is],
-            st, copies0, acc) do
+  defp prefer_xregs_is([r_cg_set(op: :copy, dst: dst, args: [src]) = i | is], st, copies0, acc) do
     copies1 = prefer_xregs_prune(i, copies0, st)
-    copies = (case (beam_args([src, dst], st)) do
-                [same, same] ->
-                  copies1
-                [_, _] ->
-                  Map.put(copies1, dst, src)
-              end)
+
+    copies =
+      case beam_args([src, dst], st) do
+        [same, same] ->
+          copies1
+
+        [_, _] ->
+          Map.put(copies1, dst, src)
+      end
+
     prefer_xregs_is(is, st, copies, [i | acc])
   end
 
-  defp prefer_xregs_is([r_cg_set(op: :call, dst: dst) = i0 | is], st, copies,
-            acc) do
+  defp prefer_xregs_is([r_cg_set(op: :call, dst: dst) = i0 | is], st, copies, acc) do
     i = prefer_xregs_call(i0, copies, st)
     prefer_xregs_is(is, st, %{dst => {:x, 0}}, [i | acc])
   end
 
-  defp prefer_xregs_is([r_cg_set(op: :old_make_fun, dst: dst) = i0 | is], st,
-            copies, acc) do
+  defp prefer_xregs_is([r_cg_set(op: :old_make_fun, dst: dst) = i0 | is], st, copies, acc) do
     i = prefer_xregs_call(i0, copies, st)
     prefer_xregs_is(is, st, %{dst => {:x, 0}}, [i | acc])
   end
 
   defp prefer_xregs_is([r_cg_set(op: op) = i | is], st, copies0, acc)
-      when op === :bs_checked_get or
-             op === :bs_checked_skip or
-             op === :bs_checked_get_tail or op === :bs_ensure or
-             op === :bs_match_string do
+       when op === :bs_checked_get or
+              op === :bs_checked_skip or
+              op === :bs_checked_get_tail or op === :bs_ensure or
+              op === :bs_match_string do
     copies = prefer_xregs_prune(i, copies0, st)
     prefer_xregs_is(is, st, copies, [i | acc])
   end
 
   defp prefer_xregs_is([r_cg_set(args: args0) = i0 | is], st, copies0, acc) do
-    args = (for a <- args0 do
-              do_prefer_xreg(a, copies0, st)
-            end)
+    args =
+      for a <- args0 do
+        do_prefer_xreg(a, copies0, st)
+      end
+
     i = r_cg_set(i0, args: args)
     copies = prefer_xregs_prune(i, copies0, st)
     prefer_xregs_is(is, st, copies, [i | acc])
@@ -647,25 +779,34 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp prefer_xregs_call(r_cg_set(args: [f0 | args0]) = i, copies, st) do
-    f = (case (f0) do
-           r_b_var() ->
-             do_prefer_xreg(f0, copies, st)
-           r_b_remote(mod: mod, name: name) ->
-             r_b_remote(f0, mod: do_prefer_xreg(mod, copies, st), 
-                     name: do_prefer_xreg(name, copies, st))
-           _ ->
-             f0
-         end)
-    args = (for a <- args0 do
-              do_prefer_xreg(a, copies, st)
-            end)
+    f =
+      case f0 do
+        r_b_var() ->
+          do_prefer_xreg(f0, copies, st)
+
+        r_b_remote(mod: mod, name: name) ->
+          r_b_remote(f0,
+            mod: do_prefer_xreg(mod, copies, st),
+            name: do_prefer_xreg(name, copies, st)
+          )
+
+        _ ->
+          f0
+      end
+
+    args =
+      for a <- args0 do
+        do_prefer_xreg(a, copies, st)
+      end
+
     r_cg_set(i, args: [f | args])
   end
 
   defp do_prefer_xreg(r_b_var() = a, copies, st) do
-    case ({beam_arg(a, st), copies}) do
+    case {beam_arg(a, st), copies} do
       {{:y, _}, %{^a => copy}} ->
         copy
+
       {_, _} ->
         a
     end
@@ -679,12 +820,16 @@ defmodule :m_beam_ssa_codegen do
     liveness(reverse(linear), %{}, regs, [])
   end
 
-  defp liveness([{l, r_cg_blk(is: is0, last: last0) = blk0} | bs],
-            liveMap0, regs, acc) do
+  defp liveness([{l, r_cg_blk(is: is0, last: last0) = blk0} | bs], liveMap0, regs, acc) do
     successors = liveness_successors(last0)
-    live0 = :ordsets.union(for s <- successors do
-                             liveness_get(s, liveMap0)
-                           end)
+
+    live0 =
+      :ordsets.union(
+        for s <- successors do
+          liveness_get(s, liveMap0)
+        end
+      )
+
     live1 = liveness_terminator(last0, live0)
     {is, live} = liveness_is(reverse(is0), regs, live1, [])
     liveMap = Map.put(liveMap0, l, live)
@@ -697,9 +842,10 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp liveness_get(s, liveMap) do
-    case (liveMap) do
+    case liveMap do
       %{^s => live} ->
         live
+
       %{} ->
         []
     end
@@ -714,8 +860,7 @@ defmodule :m_beam_ssa_codegen do
     liveness_is(is, regs, live, [i | acc])
   end
 
-  defp liveness_is([r_cg_set(dst: dst, args: args) = i0 | is], regs,
-            live0, acc) do
+  defp liveness_is([r_cg_set(dst: dst, args: args) = i0 | is], regs, live0, acc) do
     live1 = liveness_clobber(i0, live0, regs)
     i1 = liveness_yregs_anno(i0, live1, regs)
     live2 = liveness_args(args, live1)
@@ -762,9 +907,10 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp liveness_args([a | as], live) do
-    case (is_beam_register(a)) do
+    case is_beam_register(a) do
       true ->
         liveness_args(as, :ordsets.add_element(a, live))
+
       false ->
         liveness_args(as, live)
     end
@@ -775,54 +921,65 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp liveness_anno(r_cg_set(op: op) = i, live, regs) do
-    case (need_live_anno(op)) do
+    case need_live_anno(op) do
       true ->
         numLive = num_live(live, regs)
         anno = Map.put(r_cg_set(i, :anno), :live, numLive)
         r_cg_set(i, anno: anno)
+
       false ->
         i
     end
   end
 
   defp liveness_yregs_anno(r_cg_set(op: op, dst: dst) = i, live0, regs) do
-    case (need_live_anno(op)) do
+    case need_live_anno(op) do
       true ->
         live = :ordsets.del_element(dst, live0)
-        liveYregs = (for v <- live, is_yreg(v, regs) do
-                       v
-                     end)
+
+        liveYregs =
+          for v <- live, is_yreg(v, regs) do
+            v
+          end
+
         anno = Map.put(r_cg_set(i, :anno), :live_yregs, liveYregs)
         r_cg_set(i, anno: anno)
+
       false ->
         i
     end
   end
 
   defp liveness_clobber(r_cg_set(anno: anno), live, regs) do
-    case (anno) do
+    case anno do
       %{clobbers: true} ->
         for r <- live, is_yreg(r, regs) do
           r
         end
+
       _ ->
         live
     end
   end
 
   defp is_yreg(r, regs) do
-    case (regs) do
+    case regs do
       %{^r => {:y, _}} ->
         true
+
       %{} ->
         false
     end
   end
 
   defp num_live(live, regs) do
-    rs = :ordsets.from_list(for v <- live do
-                              get_register(v, regs)
-                            end)
+    rs =
+      :ordsets.from_list(
+        for v <- live do
+          get_register(v, regs)
+        end
+      )
+
     num_live_1(rs, 0)
   end
 
@@ -855,29 +1012,40 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp need_live_anno(op) do
-    case (op) do
+    case op do
       {:bif, _} ->
         true
+
       :bs_create_bin ->
         true
+
       :bs_checked_get ->
         true
+
       :bs_get ->
         true
+
       :bs_get_position ->
         true
+
       :bs_get_tail ->
         true
+
       :bs_start_match ->
         true
+
       :bs_skip ->
         true
+
       :call ->
         true
+
       :put_map ->
         true
+
       :update_record ->
         true
+
       _ ->
         false
     end
@@ -887,8 +1055,7 @@ defmodule :m_beam_ssa_codegen do
     __MODULE__.def(linear, %{}, regs)
   end
 
-  defp def([{l, r_cg_blk(is: is0, last: last) = blk0} | bs],
-            defMap0, regs) do
+  defp def([{l, r_cg_blk(is: is0, last: last) = blk0} | bs], defMap0, regs) do
     def0 = def_get(l, defMap0)
     {is, def__, maybeDef} = def_is(is0, regs, def0, [])
     defMap = def_successors(last, def__, maybeDef, defMap0)
@@ -901,9 +1068,10 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp def_get(l, defMap) do
-    case (defMap) do
+    case defMap do
       %{^l => def__} ->
         def__
+
       %{} ->
         []
     end
@@ -914,70 +1082,96 @@ defmodule :m_beam_ssa_codegen do
     def_is(is, regs, def__, [i | acc])
   end
 
-  defp def_is([r_cg_set(op: :succeeded, args: [var]) = i], regs,
-            def__, acc) do
+  defp def_is([r_cg_set(op: :succeeded, args: [var]) = i], regs, def__, acc) do
     maybeDef = def_add_yreg(var, [], regs)
     {reverse(acc, [i]), def__, maybeDef}
   end
 
-  defp def_is([r_cg_set(op: :kill_try_tag, args: [r_b_var() = tag]) = i |
-               is],
-            regs, def0, acc) do
+  defp def_is(
+         [
+           r_cg_set(op: :kill_try_tag, args: [r_b_var() = tag]) = i
+           | is
+         ],
+         regs,
+         def0,
+         acc
+       ) do
     def__ = :ordsets.del_element(tag, def0)
     def_is(is, regs, def__, [i | acc])
   end
 
-  defp def_is([r_cg_set(op: :catch_end, args: [r_b_var() = tag | _]) = i |
-               is],
-            regs, def0, acc) do
+  defp def_is(
+         [
+           r_cg_set(op: :catch_end, args: [r_b_var() = tag | _]) = i
+           | is
+         ],
+         regs,
+         def0,
+         acc
+       ) do
     def__ = :ordsets.del_element(tag, def0)
     def_is(is, regs, def__, [i | acc])
   end
 
-  defp def_is([r_cg_set(anno: anno0, op: :call, dst: dst) = i0 | is],
-            regs, def0, acc) do
+  defp def_is([r_cg_set(anno: anno0, op: :call, dst: dst) = i0 | is], regs, def0, acc) do
     %{live_yregs: liveYregVars} = anno0
-    liveRegs = :gb_sets.from_list(for v <- liveYregVars do
-                                    :maps.get(v, regs)
-                                  end)
+
+    liveRegs =
+      :gb_sets.from_list(
+        for v <- liveYregVars do
+          :maps.get(v, regs)
+        end
+      )
+
     kill0 = :ordsets.subtract(def0, liveYregVars)
-    kill = (for k <- kill0,
-                  not :gb_sets.is_element(:maps.get(k, regs), liveRegs) do
-              k
-            end)
-    anno = Map.merge(anno0, %{def_yregs: def0,
-                                kill_yregs: kill})
+
+    kill =
+      for k <- kill0,
+          not :gb_sets.is_element(:maps.get(k, regs), liveRegs) do
+        k
+      end
+
+    anno = Map.merge(anno0, %{def_yregs: def0, kill_yregs: kill})
     i = r_cg_set(i0, anno: anno)
     def1 = :ordsets.subtract(def0, kill)
     def__ = def_add_yreg(dst, def1, regs)
     def_is(is, regs, def__, [i | acc])
   end
 
-  defp def_is([r_cg_set(anno: anno0, op: {:bif, bif}, dst: dst,
-               args: args) = i0 |
-               is],
-            regs, def0, acc) do
+  defp def_is(
+         [
+           r_cg_set(anno: anno0, op: {:bif, bif}, dst: dst, args: args) = i0
+           | is
+         ],
+         regs,
+         def0,
+         acc
+       ) do
     arity = length(args)
-    i = (case (is_gc_bif(bif, args) or not
-                                       :erl_bifs.is_safe(:erlang, bif,
-                                                           arity)) do
-           true ->
-             r_cg_set(i0, anno: Map.put(anno0, :def_yregs, def0))
-           false ->
-             i0
-         end)
+
+    i =
+      case is_gc_bif(bif, args) or not :erl_bifs.is_safe(:erlang, bif, arity) do
+        true ->
+          r_cg_set(i0, anno: Map.put(anno0, :def_yregs, def0))
+
+        false ->
+          i0
+      end
+
     def__ = def_add_yreg(dst, def0, regs)
     def_is(is, regs, def__, [i | acc])
   end
 
-  defp def_is([r_cg_set(anno: anno0, dst: dst) = i0 | is], regs,
-            def0, acc) do
-    i = (case (need_y_init(i0)) do
-           true ->
-             r_cg_set(i0, anno: Map.put(anno0, :def_yregs, def0))
-           false ->
-             i0
-         end)
+  defp def_is([r_cg_set(anno: anno0, dst: dst) = i0 | is], regs, def0, acc) do
+    i =
+      case need_y_init(i0) do
+        true ->
+          r_cg_set(i0, anno: Map.put(anno0, :def_yregs, def0))
+
+        false ->
+          i0
+      end
+
     def__ = def_add_yreg(dst, def0, regs)
     def_is(is, regs, def__, [i | acc])
   end
@@ -987,18 +1181,17 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp def_add_yreg(dst, def__, regs) do
-    case (is_yreg(dst, regs)) do
+    case is_yreg(dst, regs) do
       true ->
         :ordsets.add_element(dst, def__)
+
       false ->
         def__
     end
   end
 
-  defp def_successors(r_cg_br(bool: r_b_var(), succ: succ, fail: fail), def__,
-            maybeDef, defMap0) do
-    defMap = def_successors([fail],
-                              :ordsets.subtract(def__, maybeDef), defMap0)
+  defp def_successors(r_cg_br(bool: r_b_var(), succ: succ, fail: fail), def__, maybeDef, defMap0) do
+    defMap = def_successors([fail], :ordsets.subtract(def__, maybeDef), defMap0)
     def_successors([succ], def__, defMap)
   end
 
@@ -1007,10 +1200,11 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp def_successors([s | ss], def0, defMap) do
-    case (defMap) do
+    case defMap do
       %{^s => def1} ->
         def__ = :ordsets.intersection(def0, def1)
         def_successors(ss, def0, %{defMap | s => def__})
+
       %{} ->
         def_successors(ss, def0, Map.put(defMap, s, def0))
     end
@@ -1041,13 +1235,16 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp need_y_init(r_cg_set(op: :bs_skip, args: [r_b_literal(val: type) | _])) do
-    case (type) do
+    case type do
       :utf8 ->
         true
+
       :utf16 ->
         true
+
       :utf32 ->
         true
+
       _ ->
         false
     end
@@ -1073,15 +1270,24 @@ defmodule :m_beam_ssa_codegen do
     opt_allocate_1(linear, regs)
   end
 
-  defp opt_allocate_1([{l, r_cg_blk(is: [r_cg_alloc(stack: stk) = i0 | is]) = blk0} |
-               bs] = bs0,
-            regs)
-      when is_integer(stk) do
-    case (:ordsets.from_list(opt_allocate_defs(is,
-                                                 regs))) do
+  defp opt_allocate_1(
+         [
+           {l, r_cg_blk(is: [r_cg_alloc(stack: stk) = i0 | is]) = blk0}
+           | bs
+         ] = bs0,
+         regs
+       )
+       when is_integer(stk) do
+    case :ordsets.from_list(
+           opt_allocate_defs(
+             is,
+             regs
+           )
+         ) do
       yregs when length(yregs) === stk ->
         i = r_cg_alloc(i0, def_yregs: yregs)
         [{l, r_cg_blk(blk0, is: [i | is])} | opt_allocate_1(bs, regs)]
+
       yregs0 ->
         yregs1 = opt_alloc_def(bs0, :gb_sets.singleton(l), [])
         yregs = :ordsets.union(yregs0, yregs1)
@@ -1099,28 +1305,34 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp opt_allocate_defs([r_cg_set(op: :copy, dst: dst) | is], regs) do
-    case (is_yreg(dst, regs)) do
+    case is_yreg(dst, regs) do
       true ->
         [dst | opt_allocate_defs(is, regs)]
+
       false ->
         []
     end
   end
 
-  defp opt_allocate_defs([r_cg_set(anno: anno, op: {:bif, bif}, args: args,
-               dst: dst) |
-               is],
-            regs) do
-    case (is_gc_bif(bif, args)) do
+  defp opt_allocate_defs(
+         [
+           r_cg_set(anno: anno, op: {:bif, bif}, args: args, dst: dst)
+           | is
+         ],
+         regs
+       ) do
+    case is_gc_bif(bif, args) do
       false ->
         argTypes = :maps.get(:arg_types, anno, %{})
-        case (is_yreg(dst, regs) and will_bif_succeed(bif, args,
-                                                        argTypes)) do
+
+        case is_yreg(dst, regs) and will_bif_succeed(bif, args, argTypes) do
           true ->
             [dst | opt_allocate_defs(is, regs)]
+
           false ->
             []
         end
+
       true ->
         []
     end
@@ -1132,10 +1344,11 @@ defmodule :m_beam_ssa_codegen do
 
   defp will_bif_succeed(bif, args, argTypes) do
     types = will_bif_succeed_types(args, argTypes, 0)
-    case (:beam_call_types.will_succeed(:erlang, bif,
-                                          types)) do
+
+    case :beam_call_types.will_succeed(:erlang, bif, types) do
       :yes ->
         true
+
       _ ->
         false
     end
@@ -1156,15 +1369,17 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp opt_alloc_def([{l, r_cg_blk(is: is, last: last)} | bs], ws0, def0) do
-    case (:gb_sets.is_member(l, ws0)) do
+    case :gb_sets.is_member(l, ws0) do
       false ->
         opt_alloc_def(bs, ws0, def0)
+
       true ->
-        case (opt_allocate_is(is)) do
+        case opt_allocate_is(is) do
           :none ->
             succ = successors(last)
             ws = :gb_sets.union(ws0, :gb_sets.from_list(succ))
             opt_alloc_def(bs, ws, def0)
+
           def1 when is_list(def1) ->
             def__ = [def1 | def0]
             opt_alloc_def(bs, ws0, def__)
@@ -1177,16 +1392,19 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp opt_allocate_is([r_cg_set(anno: anno) | is]) do
-    case (anno) do
+    case anno do
       %{def_yregs: yregs} ->
         yregs
+
       %{} ->
         opt_allocate_is(is)
     end
   end
 
-  defp opt_allocate_is([r_cg_alloc(anno: %{def_yregs: yregs}, stack: :none) |
-               _]) do
+  defp opt_allocate_is([
+         r_cg_alloc(anno: %{def_yregs: yregs}, stack: :none)
+         | _
+       ]) do
     yregs
   end
 
@@ -1198,15 +1416,19 @@ defmodule :m_beam_ssa_codegen do
     :none
   end
 
-  defp fix_wait_timeout([{l1,
-              r_cg_blk(is: is0, last: r_cg_br(bool: r_b_var(), succ: l2)) = blk1},
-               {l2, r_cg_blk(is: [], last: r_cg_br() = br) = blk2} | bs]) do
-    case (fix_wait_timeout_is(is0, [])) do
+  defp fix_wait_timeout([
+         {l1, r_cg_blk(is: is0, last: r_cg_br(bool: r_b_var(), succ: l2)) = blk1},
+         {l2, r_cg_blk(is: [], last: r_cg_br() = br) = blk2} | bs
+       ]) do
+    case fix_wait_timeout_is(is0, []) do
       :no ->
         [{l1, blk1}, {l2, blk2} | fix_wait_timeout(bs)]
+
       {:yes, is} ->
-        [{l1, r_cg_blk(blk1, is: is,  last: br)} |
-             fix_wait_timeout(bs)]
+        [
+          {l1, r_cg_blk(blk1, is: is, last: br)}
+          | fix_wait_timeout(bs)
+        ]
     end
   end
 
@@ -1218,9 +1440,13 @@ defmodule :m_beam_ssa_codegen do
     []
   end
 
-  defp fix_wait_timeout_is([r_cg_set(op: :wait_timeout, dst: waitBool) = wT,
-               r_cg_set(op: :succeeded, args: [waitBool])],
-            acc) do
+  defp fix_wait_timeout_is(
+         [
+           r_cg_set(op: :wait_timeout, dst: waitBool) = wT,
+           r_cg_set(op: :succeeded, args: [waitBool])
+         ],
+         acc
+       ) do
     {:yes, reverse(acc, [wT])}
   end
 
@@ -1232,17 +1458,27 @@ defmodule :m_beam_ssa_codegen do
     :no
   end
 
-  defp cg_linear([{l,
-              r_cg_blk(is: [r_cg_set(op: :peek_message, args: [marker]) = peek |
-                         is0]) = b0} |
-               bs],
-            st0) do
+  defp cg_linear(
+         [
+           {l,
+            r_cg_blk(
+              is: [
+                r_cg_set(op: :peek_message, args: [marker]) = peek
+                | is0
+              ]
+            ) = b0}
+           | bs
+         ],
+         st0
+       ) do
     b = r_cg_blk(b0, is: [r_cg_set(peek, args: []) | is0])
     {is, st} = cg_linear([{l, b} | bs], st0)
-    case (marker) do
+
+    case marker do
       r_b_literal(val: val) ->
         :none = val
         {is, st}
+
       _ ->
         reg = beam_arg(marker, st0)
         {[{:recv_marker_use, reg} | is], st}
@@ -1261,72 +1497,108 @@ defmodule :m_beam_ssa_codegen do
     {[], st}
   end
 
-  defp cg_block([r_cg_set(op: :recv_next)], r_cg_br(succ: lr0), _Next,
-            st0) do
+  defp cg_block([r_cg_set(op: :recv_next)], r_cg_br(succ: lr0), _Next, st0) do
     {lr, st} = use_block_label(lr0, st0)
     {[{:loop_rec_end, lr}], st}
   end
 
-  defp cg_block([r_cg_set(op: :wait_timeout,
-               args: [r_b_literal(val: :infinity)])],
-            last, _Next, st0) do
+  defp cg_block(
+         [
+           r_cg_set(
+             op: :wait_timeout,
+             args: [r_b_literal(val: :infinity)]
+           )
+         ],
+         last,
+         _Next,
+         st0
+       ) do
     r_cg_br(fail: lr0) = last
     {lr, st} = use_block_label(lr0, st0)
     {[{:wait, lr}], st}
   end
 
   defp cg_block(is0, last, next, st0) do
-    case (last) do
+    case last do
       r_cg_br(succ: ^next, fail: ^next) ->
         cg_block(is0, :none, st0)
+
       r_cg_br(succ: same, fail: same) when same === 1 ->
         {is, st} = cg_block(is0, :none, st0)
         {is ++ [:if_end], st}
+
       r_cg_br(succ: same, fail: same) ->
         {fail, st1} = use_block_label(same, st0)
         {is, st} = cg_block(is0, :none, st1)
         {is ++ [jump(fail)], st}
+
       r_cg_br(bool: bool, succ: ^next, fail: fail0) ->
         {fail, st1} = use_block_label(fail0, st0)
         {is, st} = cg_block(is0, {bool, fail}, st1)
         {is, st}
+
       r_cg_br(bool: bool, succ: succ0, fail: fail0) ->
-        {[succ, fail], st1} = use_block_labels([succ0, fail0],
-                                                 st0)
+        {[succ, fail], st1} =
+          use_block_labels(
+            [succ0, fail0],
+            st0
+          )
+
         {is, st} = cg_block(is0, {bool, fail}, st1)
         {is ++ [jump(succ)], st}
+
       r_cg_ret(arg: src0, dealloc: n) ->
         src = beam_arg(src0, st0)
         cg_block(is0, {:return, src, n}, st0)
+
       r_cg_switch() ->
         cg_switch(is0, last, st0)
     end
   end
 
   defp cg_switch(is0, last, st0) do
-    r_cg_switch(anno: anno, arg: src0, fail: fail0,
-        list: list0) = last
+    r_cg_switch(anno: anno, arg: src0, fail: fail0, list: list0) = last
     src1 = beam_arg(src0, st0)
     {fail1, st1} = use_block_label(fail0, st0)
     fail = ensure_label(fail1, st1)
-    {list1, st2} = flatmapfoldl(fn {v, l}, s0 ->
-                                     {lbl, s} = use_block_label(l, s0)
-                                     {[beam_arg(v, s), lbl], s}
-                                end,
-                                  st1, list0)
+
+    {list1, st2} =
+      flatmapfoldl(
+        fn {v, l}, s0 ->
+          {lbl, s} = use_block_label(l, s0)
+          {[beam_arg(v, s), lbl], s}
+        end,
+        st1,
+        list0
+      )
+
     {is1, st} = cg_block(is0, :none, st2)
-    case (reverse(is1)) do
-      [{:bif, :tuple_size, _, [tuple], {:z, _} = ^src1} |
-           more] ->
-        list = map(fn {:integer, arity} ->
-                        arity
-                      {:f, _} = f ->
-                        f
-                   end,
-                     list1)
-        is = reverse(more,
-                       [{:select_tuple_arity, tuple, fail, {:list, list}}])
+
+    case reverse(is1) do
+      [
+        {:bif, :tuple_size, _, [tuple], {:z, _} = ^src1}
+        | more
+      ] ->
+        list =
+          map(
+            fn
+              {:integer, arity} ->
+                arity
+
+              {:f, _} = f ->
+                f
+            end,
+            list1
+          )
+
+        is =
+          reverse(
+            more,
+            [{:select_tuple_arity, tuple, fail, {:list, list}}]
+          )
+
         {is, st}
+
       _ ->
         [src] = typed_args([src0], anno, st)
         selectVal = {:select_val, src, fail, {:list, list1}}
@@ -1359,59 +1631,69 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp ensure_label(fail0, r_cg(ultimate_fail: lbl)) do
-    case (bif_fail(fail0)) do
+    case bif_fail(fail0) do
       {:f, 0} ->
         {:f, lbl}
+
       {:f, _} = fail ->
         fail
     end
   end
 
-  defp cg_block([r_cg_set(op: :new_try_tag, dst: tag, args: args)],
-            {tag, fail0}, st) do
+  defp cg_block([r_cg_set(op: :new_try_tag, dst: tag, args: args)], {tag, fail0}, st) do
     {:catch_tag, fail} = fail0
     [reg, {:atom, kind}] = beam_args([tag | args], st)
     {[{kind, reg, fail}], st}
   end
 
-  defp cg_block([r_cg_set(anno: anno, op: {:bif, name}, dst: dst0,
-               args: args0) = i,
-               r_cg_set(op: :succeeded, dst: bool)],
-            {bool, fail0}, st) do
+  defp cg_block(
+         [
+           r_cg_set(anno: anno, op: {:bif, name}, dst: dst0, args: args0) = i,
+           r_cg_set(op: :succeeded, dst: bool)
+         ],
+         {bool, fail0},
+         st
+       ) do
     args = typed_args(args0, anno, st)
     dst = beam_arg(dst0, st)
-    line0 = call_line(:body,
-                        {:extfunc, :erlang, name, length(args)}, anno)
+    line0 = call_line(:body, {:extfunc, :erlang, name, length(args)}, anno)
     fail = bif_fail(fail0)
-    line = (case (fail) do
-              {:f, 0} ->
-                line0
-              {:f, _} ->
-                []
-            end)
-    case (is_gc_bif(name, args)) do
+
+    line =
+      case fail do
+        {:f, 0} ->
+          line0
+
+        {:f, _} ->
+          []
+      end
+
+    case is_gc_bif(name, args) do
       true ->
         live = get_live(i)
         kill = kill_yregs(anno, st)
-        {kill ++ line ++ [{:gc_bif, name, fail, live, args,
-                             dst}],
-           st}
+        {kill ++ line ++ [{:gc_bif, name, fail, live, args, dst}], st}
+
       false ->
         {line ++ [{:bif, name, fail, args, dst}], st}
     end
   end
 
-  defp cg_block([r_cg_set(op: {:bif, :tuple_size}, dst: arity0,
-               args: [tuple0]),
-               r_cg_set(op: {:bif, :"=:="}, dst: bool,
-                   args: [arity0, r_b_literal(val: ar)]) = eq],
-            {bool, fail} = context, st0) do
+  defp cg_block(
+         [
+           r_cg_set(op: {:bif, :tuple_size}, dst: arity0, args: [tuple0]),
+           r_cg_set(op: {:bif, :"=:="}, dst: bool, args: [arity0, r_b_literal(val: ar)]) = eq
+         ],
+         {bool, fail} = context,
+         st0
+       ) do
     tuple = beam_arg(tuple0, st0)
-    case (beam_arg(arity0, st0)) do
+
+    case beam_arg(arity0, st0) do
       {:z, _} ->
-        test = {:test, :test_arity, ensure_label(fail, st0),
-                  [tuple, ar]}
+        test = {:test, :test_arity, ensure_label(fail, st0), [tuple, ar]}
         {[test], st0}
+
       arity ->
         tupleSize = {:bif, :tuple_size, {:f, 0}, [tuple], arity}
         {is, st} = cg_block([eq], context, st0)
@@ -1419,15 +1701,18 @@ defmodule :m_beam_ssa_codegen do
     end
   end
 
-  defp cg_block([r_cg_set(anno: anno, op: {:bif, name}, dst: dst0,
-               args: args0)] = is0,
-            {dst0, fail}, st0) do
+  defp cg_block(
+         [r_cg_set(anno: anno, op: {:bif, name}, dst: dst0, args: args0)] = is0,
+         {dst0, fail},
+         st0
+       ) do
     args = typed_args(args0, anno, st0)
-    case (beam_arg(dst0, st0)) do
+
+    case beam_arg(dst0, st0) do
       {:z, _} ->
-        {test, st1} = bif_to_test(name, args,
-                                    ensure_label(fail, st0), st0)
+        {test, st1} = bif_to_test(name, args, ensure_label(fail, st0), st0)
         {test, st1}
+
       _ ->
         {is1, st1} = cg_block(is0, :none, st0)
         {is2, st} = cg_block([], {dst0, fail}, st1)
@@ -1435,39 +1720,57 @@ defmodule :m_beam_ssa_codegen do
     end
   end
 
-  defp cg_block([r_cg_set(anno: anno, op: {:bif, name}, dst: dst0,
-               args: args0) = i |
-               t],
-            context, st0) do
+  defp cg_block(
+         [
+           r_cg_set(anno: anno, op: {:bif, name}, dst: dst0, args: args0) = i
+           | t
+         ],
+         context,
+         st0
+       ) do
     args = typed_args(args0, anno, st0)
     dst = beam_arg(dst0, st0)
     {is0, st} = cg_block(t, context, st0)
-    case (is_gc_bif(name, args)) do
+
+    case is_gc_bif(name, args) do
       true ->
-        line = call_line(:body,
-                           {:extfunc, :erlang, name, length(args)}, anno)
+        line = call_line(:body, {:extfunc, :erlang, name, length(args)}, anno)
         live = get_live(i)
         kill = kill_yregs(anno, st)
-        is = kill ++ line ++ [{:gc_bif, name, {:f, 0}, live,
-                                 args, dst} |
-                                  is0]
+
+        is =
+          kill ++
+            line ++
+            [
+              {:gc_bif, name, {:f, 0}, live, args, dst}
+              | is0
+            ]
+
         {is, st}
+
       false ->
-        bif = (case ({name, args}) do
-                 {:not, [{:tr, _, r_t_atom(elements: [false, true])} = arg]} ->
-                   {:bif, :"=:=", {:f, 0}, [arg, {:atom, false}], dst}
-                 {_, _} ->
-                   {:bif, name, {:f, 0}, args, dst}
-               end)
+        bif =
+          case {name, args} do
+            {:not, [{:tr, _, r_t_atom(elements: [false, true])} = arg]} ->
+              {:bif, :"=:=", {:f, 0}, [arg, {:atom, false}], dst}
+
+            {_, _} ->
+              {:bif, name, {:f, 0}, args, dst}
+          end
+
         is = [bif | is0]
         {is, st}
     end
   end
 
-  defp cg_block([r_cg_set(op: :bs_create_bin, dst: dst0, args: args0,
-               anno: anno) = i,
-               r_cg_set(op: :succeeded, dst: bool)],
-            {bool, fail0}, st) do
+  defp cg_block(
+         [
+           r_cg_set(op: :bs_create_bin, dst: dst0, args: args0, anno: anno) = i,
+           r_cg_set(op: :succeeded, dst: bool)
+         ],
+         {bool, fail0},
+         st
+       ) do
     args1 = typed_args(args0, anno, st)
     fail = bif_fail(fail0)
     line = line(anno)
@@ -1476,221 +1779,300 @@ defmodule :m_beam_ssa_codegen do
     dst = beam_arg(dst0, st)
     args = bs_args(args1)
     unit0 = :maps.get(:unit, anno, 1)
-    unit = (case (args) do
-              [{:atom, :append}, _Seg, u | _] ->
-                max(u, unit0)
-              [{:atom, :private_append}, _Seg, u | _] ->
-                max(u, unit0)
-              _ ->
-                unit0
-            end)
-    typeInfo = (case (anno) do
-                  %{result_type: r_t_bitstring(appendable: true) = type} ->
-                    [{:"%", {:var_info, dst, [{:type, type}]}}]
-                  _ ->
-                    []
-                end)
-    is = [line, {:bs_create_bin, fail, alloc, live, unit,
-                   dst, {:list, args}}]
+
+    unit =
+      case args do
+        [{:atom, :append}, _Seg, u | _] ->
+          max(u, unit0)
+
+        [{:atom, :private_append}, _Seg, u | _] ->
+          max(u, unit0)
+
+        _ ->
+          unit0
+      end
+
+    typeInfo =
+      case anno do
+        %{result_type: r_t_bitstring(appendable: true) = type} ->
+          [{:%, {:var_info, dst, [{:type, type}]}}]
+
+        _ ->
+          []
+      end
+
+    is = [line, {:bs_create_bin, fail, alloc, live, unit, dst, {:list, args}}]
     {is ++ typeInfo, st}
   end
 
-  defp cg_block([r_cg_set(op: :bs_start_match, dst: ctx0,
-               args: [r_b_literal(val: :new), bin0]) = i,
-               r_cg_set(op: :succeeded, dst: bool)],
-            {bool, fail}, st) do
+  defp cg_block(
+         [
+           r_cg_set(op: :bs_start_match, dst: ctx0, args: [r_b_literal(val: :new), bin0]) = i,
+           r_cg_set(op: :succeeded, dst: bool)
+         ],
+         {bool, fail},
+         st
+       ) do
     [dst, bin1] = beam_args([ctx0, bin0], st)
     {bin, pre} = force_reg(bin1, dst)
     live = get_live(i)
-    is = pre ++ [{:test, :bs_start_match3, fail, live,
-                    [bin], dst}]
+    is = pre ++ [{:test, :bs_start_match3, fail, live, [bin], dst}]
     {is, st}
   end
 
-  defp cg_block([r_cg_set(op: :bs_ensure, args: ss0), r_cg_set(op: :succeeded,
-                                             dst: bool)],
-            {bool, fail}, st) do
-    [ctx, {:integer, size}, {:integer,
-                               unit}] = beam_args(ss0, st)
+  defp cg_block(
+         [
+           r_cg_set(op: :bs_ensure, args: ss0),
+           r_cg_set(
+             op: :succeeded,
+             dst: bool
+           )
+         ],
+         {bool, fail},
+         st
+       ) do
+    [ctx, {:integer, size}, {:integer, unit}] = beam_args(ss0, st)
     is = [{:test, :bs_ensure, fail, [ctx, size, unit]}]
     {is, st}
   end
 
-  defp cg_block([r_cg_set(op: :bs_get) = set, r_cg_set(op: :succeeded,
-                                     dst: bool)],
-            {bool, fail}, st) do
+  defp cg_block(
+         [
+           r_cg_set(op: :bs_get) = set,
+           r_cg_set(
+             op: :succeeded,
+             dst: bool
+           )
+         ],
+         {bool, fail},
+         st
+       ) do
     {cg_bs_get(fail, set, st), st}
   end
 
-  defp cg_block([r_cg_set(op: :bs_match_string,
-               args: [ctxVar, r_b_literal(val: string0)]),
-               r_cg_set(op: :succeeded, dst: bool)],
-            {bool, fail}, st) do
+  defp cg_block(
+         [
+           r_cg_set(
+             op: :bs_match_string,
+             args: [ctxVar, r_b_literal(val: string0)]
+           ),
+           r_cg_set(op: :succeeded, dst: bool)
+         ],
+         {bool, fail},
+         st
+       ) do
     ctxReg = beam_arg(ctxVar, st)
     bits = bit_size(string0)
-    string = (case (rem(bits, 8)) do
-                0 ->
-                  string0
-                rem ->
-                  <<string0 :: bitstring, 0 :: size(8 - rem)>>
-              end)
-    is = [{:test, :bs_match_string, fail,
-             [ctxReg, bits, {:string, string}]}]
+
+    string =
+      case rem(bits, 8) do
+        0 ->
+          string0
+
+        rem ->
+          <<string0::bitstring, 0::size(8 - rem)>>
+      end
+
+    is = [{:test, :bs_match_string, fail, [ctxReg, bits, {:string, string}]}]
     {is, st}
   end
 
-  defp cg_block([r_cg_set(dst: dst0, op: :landingpad, args: args0) |
-               t],
-            context, st0) do
-    [dst, {:atom, kind}, tag] = beam_args([dst0 | args0],
-                                            st0)
-    case (kind) do
+  defp cg_block(
+         [
+           r_cg_set(dst: dst0, op: :landingpad, args: args0)
+           | t
+         ],
+         context,
+         st0
+       ) do
+    [dst, {:atom, kind}, tag] =
+      beam_args(
+        [dst0 | args0],
+        st0
+      )
+
+    case kind do
       :catch ->
         cg_catch(dst, t, context, st0)
+
       :try ->
         cg_try(dst, tag, t, context, st0)
     end
   end
 
-  defp cg_block([r_cg_set(op: :kill_try_tag, args: args0) | is],
-            context, st0) do
+  defp cg_block([r_cg_set(op: :kill_try_tag, args: args0) | is], context, st0) do
     [reg] = beam_args(args0, st0)
     {is0, st} = cg_block(is, context, st0)
     {[{:try_end, reg} | is0], st}
   end
 
-  defp cg_block([r_cg_set(op: :catch_end, dst: dst0, args: args0) |
-               is],
-            context, st0) do
+  defp cg_block(
+         [
+           r_cg_set(op: :catch_end, dst: dst0, args: args0)
+           | is
+         ],
+         context,
+         st0
+       ) do
     [dst, reg, {:x, 0}] = beam_args([dst0 | args0], st0)
     {is0, st} = cg_block(is, context, st0)
     {[{:catch_end, reg} | copy({:x, 0}, dst) ++ is0], st}
   end
 
-  defp cg_block([r_cg_set(op: :call) = i, r_cg_set(op: :succeeded,
-                                 dst: bool)],
-            {bool, _Fail}, st) do
+  defp cg_block(
+         [
+           r_cg_set(op: :call) = i,
+           r_cg_set(
+             op: :succeeded,
+             dst: bool
+           )
+         ],
+         {bool, _Fail},
+         st
+       ) do
     cg_block([i], :none, st)
   end
 
-  defp cg_block([r_cg_set(op: :match_fail) = i, r_cg_set(op: :succeeded,
-                                       dst: bool)],
-            {bool, _Fail}, st) do
+  defp cg_block(
+         [
+           r_cg_set(op: :match_fail) = i,
+           r_cg_set(
+             op: :succeeded,
+             dst: bool
+           )
+         ],
+         {bool, _Fail},
+         st
+       ) do
     cg_block([i], :none, st)
   end
 
-  defp cg_block([r_cg_set(op: :get_map_element, dst: dst0, args: args0,
-               anno: anno),
-               r_cg_set(op: :succeeded, dst: bool)],
-            {bool, fail0}, st) do
+  defp cg_block(
+         [
+           r_cg_set(op: :get_map_element, dst: dst0, args: args0, anno: anno),
+           r_cg_set(op: :succeeded, dst: bool)
+         ],
+         {bool, fail0},
+         st
+       ) do
     [map, key] = typed_args(args0, anno, st)
     dst = beam_arg(dst0, st)
     fail = ensure_label(fail0, st)
-    {[{:get_map_elements, fail, map, {:list, [key, dst]}}],
-       st}
+    {[{:get_map_elements, fail, map, {:list, [key, dst]}}], st}
   end
 
-  defp cg_block([r_cg_set(op: {:float, :convert}, dst: dst0,
-               args: args0, anno: anno),
-               r_cg_set(op: :succeeded, dst: bool)],
-            {bool, fail}, st) do
+  defp cg_block(
+         [
+           r_cg_set(op: {:float, :convert}, dst: dst0, args: args0, anno: anno),
+           r_cg_set(op: :succeeded, dst: bool)
+         ],
+         {bool, fail},
+         st
+       ) do
     {:f, 0} = bif_fail(fail)
     [src] = typed_args(args0, anno, st)
     dst = beam_arg(dst0, st)
     {[line(anno), {:fconv, src, dst}], st}
   end
 
-  defp cg_block([r_cg_set(op: :bs_skip, args: args0, anno: anno) = i,
-               r_cg_set(op: :succeeded, dst: bool)],
-            {bool, fail}, st) do
+  defp cg_block(
+         [
+           r_cg_set(op: :bs_skip, args: args0, anno: anno) = i,
+           r_cg_set(op: :succeeded, dst: bool)
+         ],
+         {bool, fail},
+         st
+       ) do
     args = typed_args(args0, anno, st)
     {cg_bs_skip(bif_fail(fail), args, i), st}
   end
 
-  defp cg_block([r_cg_set(op: op, dst: dst0, args: args0) = i,
-               r_cg_set(op: :succeeded, dst: bool)],
-            {bool, fail}, st) do
+  defp cg_block(
+         [r_cg_set(op: op, dst: dst0, args: args0) = i, r_cg_set(op: :succeeded, dst: bool)],
+         {bool, fail},
+         st
+       ) do
     [dst | args] = beam_args([dst0 | args0], st)
     {cg_test(op, bif_fail(fail), args, dst, i), st}
   end
 
-  defp cg_block([r_cg_set(op: :bs_test_tail, dst: bool, args: args0)],
-            {bool, fail}, st) do
+  defp cg_block([r_cg_set(op: :bs_test_tail, dst: bool, args: args0)], {bool, fail}, st) do
     [ctx, {:integer, bits}] = beam_args(args0, st)
-    {[{:test, :bs_test_tail2, bif_fail(fail), [ctx, bits]}],
-       st}
+    {[{:test, :bs_test_tail2, bif_fail(fail), [ctx, bits]}], st}
   end
 
-  defp cg_block([r_cg_set(op: :is_tagged_tuple, anno: anno, dst: bool,
-               args: args0)],
-            {bool, fail}, st) do
-    case (anno) do
+  defp cg_block(
+         [r_cg_set(op: :is_tagged_tuple, anno: anno, dst: bool, args: args0)],
+         {bool, fail},
+         st
+       ) do
+    case anno do
       %{constraints: :arity} ->
         [src, {:integer, arity}, _Tag] = beam_args(args0, st)
-        {[{:test, :test_arity, ensure_label(fail, st),
-             [src, arity]}],
-           st}
+        {[{:test, :test_arity, ensure_label(fail, st), [src, arity]}], st}
+
       %{constraints: :tuple_arity} ->
         [src, {:integer, arity}, _Tag] = beam_args(args0, st)
-        {[{:test, :is_tuple, ensure_label(fail, st), [src]},
-              {:test, :test_arity, ensure_label(fail, st),
-                 [src, arity]}],
-           st}
+
+        {[
+           {:test, :is_tuple, ensure_label(fail, st), [src]},
+           {:test, :test_arity, ensure_label(fail, st), [src, arity]}
+         ], st}
+
       %{} ->
-        [src, {:integer, arity}, tag] = typed_args(args0, anno,
-                                                     st)
-        {[{:test, :is_tagged_tuple, ensure_label(fail, st),
-             [src, arity, tag]}],
-           st}
+        [src, {:integer, arity}, tag] = typed_args(args0, anno, st)
+        {[{:test, :is_tagged_tuple, ensure_label(fail, st), [src, arity, tag]}], st}
     end
   end
 
-  defp cg_block([r_cg_set(op: :is_nonempty_list, dst: bool0,
-               args: args0) = set],
-            {bool0, fail0}, st) do
+  defp cg_block(
+         [r_cg_set(op: :is_nonempty_list, dst: bool0, args: args0) = set],
+         {bool0, fail0},
+         st
+       ) do
     fail = ensure_label(fail0, st)
     args = beam_args(args0, st)
-    case (beam_args([bool0 | args0], st)) do
+
+    case beam_args([bool0 | args0], st) do
       [{:z, 0} | ^args] ->
         {[{:test, :is_nonempty_list, fail, args}], st}
+
       [dst | ^args] ->
         r_cg_set(anno: %{was_bif_is_list: true}) = set
-        {[{:bif, :is_list, fail0, args, dst}, {:test,
-                                                 :is_eq_exact, fail,
-                                                 [dst, {:atom, true}]}],
-           st}
+
+        {[{:bif, :is_list, fail0, args, dst}, {:test, :is_eq_exact, fail, [dst, {:atom, true}]}],
+         st}
     end
   end
 
-  defp cg_block([r_cg_set(op: :has_map_field, dst: dst0, args: args0)],
-            {dst0, fail0}, st) do
+  defp cg_block([r_cg_set(op: :has_map_field, dst: dst0, args: args0)], {dst0, fail0}, st) do
     fail = ensure_label(fail0, st)
-    case (beam_args([dst0 | args0], st)) do
+
+    case beam_args([dst0 | args0], st) do
       [{:z, 0}, src, key] ->
-        {[{:test, :has_map_fields, fail, src, {:list, [key]}}],
-           st}
+        {[{:test, :has_map_fields, fail, src, {:list, [key]}}], st}
+
       [dst, src, key] ->
-        {[{:bif, :is_map_key, fail0, [key, src], dst}, {:test,
-                                                          :is_eq_exact, fail,
-                                                          [dst, {:atom,
-                                                                   true}]}],
-           st}
+        {[
+           {:bif, :is_map_key, fail0, [key, src], dst},
+           {:test, :is_eq_exact, fail, [dst, {:atom, true}]}
+         ], st}
     end
   end
 
-  defp cg_block([r_cg_set(op: :call) = call], {_Bool, _Fail} = context,
-            st0) do
+  defp cg_block([r_cg_set(op: :call) = call], {_Bool, _Fail} = context, st0) do
     {is0, st1} = cg_call(call, :body, :none, st0)
     {is1, st} = cg_block([], context, st1)
     {is0 ++ is1, st}
   end
 
-  defp cg_block([r_cg_set(op: :call, dst: dst0) = call], context,
-            st) do
+  defp cg_block([r_cg_set(op: :call, dst: dst0) = call], context, st) do
     dst = beam_arg(dst0, st)
-    case (context) do
+
+    case context do
       {:return, ^dst, _} ->
         cg_call(call, :tail, context, st)
+
       _ ->
         cg_call(call, :body, context, st)
     end
@@ -1702,30 +2084,43 @@ defmodule :m_beam_ssa_codegen do
     {is0 ++ is1, st}
   end
 
-  defp cg_block([r_cg_set(anno: anno, op: makeFun, dst: dst0,
-               args: [local | args0]) |
-               t],
-            context, st0)
-      when makeFun === :make_fun or
-             makeFun === :old_make_fun do
+  defp cg_block(
+         [
+           r_cg_set(anno: anno, op: makeFun, dst: dst0, args: [local | args0])
+           | t
+         ],
+         context,
+         st0
+       )
+       when makeFun === :make_fun or
+              makeFun === :old_make_fun do
     r_b_local(name: r_b_literal(val: func), arity: arity) = local
     [dst | args] = beam_args([dst0 | args0], st0)
     {funcLbl, st1} = local_func_label(func, arity, st0)
-    is0 = (case (makeFun) do
-             :make_fun ->
-               [{:make_fun3, {:f, funcLbl}, 0, 0, dst, {:list, args}}]
-             :old_make_fun ->
-               setup_args(args) ++ [{:make_fun2, {:f, funcLbl}, 0, 0,
-                                       length(args)} |
-                                        copy({:x, 0}, dst)]
-           end)
-    is1 = (case (anno) do
-             %{result_type: type} ->
-               info = {:var_info, dst, [{:fun_type, type}]}
-               is0 ++ [{:"%", info}]
-             %{} ->
-               is0
-           end)
+
+    is0 =
+      case makeFun do
+        :make_fun ->
+          [{:make_fun3, {:f, funcLbl}, 0, 0, dst, {:list, args}}]
+
+        :old_make_fun ->
+          setup_args(args) ++
+            [
+              {:make_fun2, {:f, funcLbl}, 0, 0, length(args)}
+              | copy({:x, 0}, dst)
+            ]
+      end
+
+    is1 =
+      case anno do
+        %{result_type: type} ->
+          info = {:var_info, dst, [{:fun_type, type}]}
+          is0 ++ [{:%, info}]
+
+        %{} ->
+          is0
+      end
+
     {is2, st} = cg_block(t, context, st1)
     {is1 ++ is2, st}
   end
@@ -1734,52 +2129,67 @@ defmodule :m_beam_ssa_codegen do
     {is0, t} = cg_copy(t0, st0)
     {is1, st} = cg_block(t, context, st0)
     is = is0 ++ is1
-    case (is_call(t)) do
+
+    case is_call(t) do
       {:yes, arity} ->
         {opt_call_moves(is, arity), st}
+
       :no ->
         {is, st}
     end
   end
 
-  defp cg_block([r_cg_set(op: :match_fail, args: args0, anno: anno)],
-            :none, st) do
+  defp cg_block([r_cg_set(op: :match_fail, args: args0, anno: anno)], :none, st) do
     args = beam_args(args0, st)
     is = cg_match_fail(args, line(anno), :none)
     {is, st}
   end
 
-  defp cg_block([r_cg_set(op: :match_fail, args: args0, anno: anno) |
-               t],
-            context, st0) do
-    fcLabel = (case (context) do
-                 {:return, _, :none} ->
-                   r_cg(st0, :fc_label)
-                 _ ->
-                   :none
-               end)
+  defp cg_block(
+         [
+           r_cg_set(op: :match_fail, args: args0, anno: anno)
+           | t
+         ],
+         context,
+         st0
+       ) do
+    fcLabel =
+      case context do
+        {:return, _, :none} ->
+          r_cg(st0, :fc_label)
+
+        _ ->
+          :none
+      end
+
     args = beam_args(args0, st0)
     is0 = cg_match_fail(args, line(anno), fcLabel)
     {is1, st} = cg_block(t, context, st0)
     {is0 ++ is1, st}
   end
 
-  defp cg_block([r_cg_set(op: :wait_timeout, dst: bool, args: args0)],
-            {bool, fail}, st) do
-    is = (case (beam_args(args0, st)) do
-            [{:integer, 0}] ->
-              [:timeout]
-            [timeout] ->
-              true = timeout !== {:atom, :infinity}
-              [{:wait_timeout, fail, timeout}, :timeout]
-          end)
+  defp cg_block([r_cg_set(op: :wait_timeout, dst: bool, args: args0)], {bool, fail}, st) do
+    is =
+      case beam_args(args0, st) do
+        [{:integer, 0}] ->
+          [:timeout]
+
+        [timeout] ->
+          true = timeout !== {:atom, :infinity}
+          [{:wait_timeout, fail, timeout}, :timeout]
+      end
+
     {is, st}
   end
 
-  defp cg_block([r_cg_set(op: :has_map_field, dst: dst0, args: args0,
-               anno: anno) |
-               t],
-            context, st0) do
+  defp cg_block(
+         [
+           r_cg_set(op: :has_map_field, dst: dst0, args: args0, anno: anno)
+           | t
+         ],
+         context,
+         st0
+       ) do
     [map, key] = typed_args(args0, anno, st0)
     dst = beam_arg(dst0, st0)
     i = {:bif, :is_map_key, {:f, 0}, [key, map], dst}
@@ -1788,15 +2198,13 @@ defmodule :m_beam_ssa_codegen do
     {is, st}
   end
 
-  defp cg_block([r_cg_set(op: op, dst: dst0, args: args0) = set],
-            :none, st) do
+  defp cg_block([r_cg_set(op: op, dst: dst0, args: args0) = set], :none, st) do
     [dst | args] = beam_args([dst0 | args0], st)
     is = cg_instr(op, args, dst, set)
     {is, st}
   end
 
-  defp cg_block([r_cg_set(op: op, dst: dst0, args: args0) = set | t],
-            context, st0) do
+  defp cg_block([r_cg_set(op: op, dst: dst0, args: args0) = set | t], context, st0) do
     [dst | args] = beam_args([dst0 | args0], st0)
     is0 = cg_instr(op, args, dst, set)
     {is1, st} = cg_block(t, context, st0)
@@ -1825,50 +2233,74 @@ defmodule :m_beam_ssa_codegen do
 
   defp cg_block([], {bool0, fail}, st) do
     [bool] = beam_args([bool0], st)
-    {[{:test, :is_eq_exact, fail, [bool, {:atom, true}]}],
-       st}
+    {[{:test, :is_eq_exact, fail, [bool, {:atom, true}]}], st}
   end
 
-  defp bs_args([{:atom, :binary}, {:literal, [1 | _]},
-                                 {:literal, bs}, {:atom, :all} | args])
-      when bit_size(bs) === 0 do
+  defp bs_args([{:atom, :binary}, {:literal, [1 | _]}, {:literal, bs}, {:atom, :all} | args])
+       when bit_size(bs) === 0 do
     bs_args(args)
   end
 
-  defp bs_args([{:atom, :binary}, {:literal, [1 | _]} = uFs,
-                                 {:literal, bs}, {:atom, :all} | args0])
-      when is_bitstring(bs) do
+  defp bs_args([
+         {:atom, :binary},
+         {:literal, [1 | _]} = uFs,
+         {:literal, bs},
+         {:atom, :all} | args0
+       ])
+       when is_bitstring(bs) do
     bits = bit_size(bs)
     bytes = div(bits, 8)
-    case (rem(bits, 8)) do
+
+    case rem(bits, 8) do
       0 ->
-        [{:atom, :string}, 0, 8, nil, {:string, bs}, {:integer,
-                                                        byte_size(bs)} |
-                                                         bs_args(args0)]
+        [
+          {:atom, :string},
+          0,
+          8,
+          nil,
+          {:string, bs},
+          {:integer, byte_size(bs)}
+          | bs_args(args0)
+        ]
+
       rem ->
-        <<binary :: size(bytes) - bytes, int :: size(rem)>> = bs
-        args = [{:atom, :binary}, uFs, {:literal, binary},
-                                           {:atom, :all}, {:atom, :integer},
-                                                              {:literal, [1]},
-                                                                  {:integer,
-                                                                     int},
-                                                                      {:integer,
-                                                                         rem} |
-                                                                          args0]
+        <<binary::size(bytes)-bytes, int::size(rem)>> = bs
+
+        args = [
+          {:atom, :binary},
+          uFs,
+          {:literal, binary},
+          {:atom, :all},
+          {:atom, :integer},
+          {:literal, [1]},
+          {:integer, int},
+          {:integer, rem}
+          | args0
+        ]
+
         bs_args(args)
     end
   end
 
-  defp bs_args([type, {:literal, [unit | fs0]}, val, size |
-                                                    args]) do
+  defp bs_args([
+         type,
+         {:literal, [unit | fs0]},
+         val,
+         size
+         | args
+       ]) do
     segment = :proplists.get_value(:segment, fs0, 0)
     fs1 = :proplists.delete(:segment, fs0)
-    fs = (case (fs1) do
-            [] ->
-              nil
-            [_ | _] ->
-              {:literal, fs1}
-          end)
+
+    fs =
+      case fs1 do
+        [] ->
+          nil
+
+        [_ | _] ->
+          {:literal, fs1}
+      end
+
     [type, segment, unit, fs, val, size | bs_args(args)]
   end
 
@@ -1877,17 +2309,26 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp cg_copy(t0, st) do
-    {copies, t} = splitwith(fn r_cg_set(op: :copy) ->
-                                 true
-                               _ ->
-                                 false
-                            end,
-                              t0)
+    {copies, t} =
+      splitwith(
+        fn
+          r_cg_set(op: :copy) ->
+            true
+
+          _ ->
+            false
+        end,
+        t0
+      )
+
     moves0 = cg_copy_1(copies, st)
-    moves1 = (for ({:move, src, dst} = move) <- moves0,
-                    src !== dst do
-                move
-              end)
+
+    moves1 =
+      for {:move, src, dst} = move <- moves0,
+          src !== dst do
+        move
+      end
+
     moves = order_moves(moves1)
     {moves, t}
   end
@@ -1895,9 +2336,11 @@ defmodule :m_beam_ssa_codegen do
   defp cg_copy_1([r_cg_set(dst: dst0, args: args) | t], st) do
     [dst, src] = beam_args([dst0 | args], st)
     copies = cg_copy_1(t, st)
-    case (keymember(dst, 3, copies)) do
+
+    case keymember(dst, 3, copies) do
       true ->
         copies
+
       false ->
         [{:move, src, dst} | copies]
     end
@@ -1916,13 +2359,14 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp bif_to_test(:or, [v1, v2], {:f, lbl} = fail, st0)
-      when lbl !== 0 do
+       when lbl !== 0 do
     {succLabel, st} = new_label(st0)
-    {[{:test, :is_eq_exact, {:f, succLabel},
-         [v1, {:atom, false}]},
-          {:test, :is_eq_exact, fail, [v2, {:atom, true}]},
-              {:label, succLabel}],
-       st}
+
+    {[
+       {:test, :is_eq_exact, {:f, succLabel}, [v1, {:atom, false}]},
+       {:test, :is_eq_exact, fail, [v2, {:atom, true}]},
+       {:label, succLabel}
+     ], st}
   end
 
   defp bif_to_test(op, args, fail, st) do
@@ -1930,8 +2374,10 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp bif_to_test(:and, [v1, v2], fail) do
-    [{:test, :is_eq_exact, fail, [v1, {:atom, true}]},
-         {:test, :is_eq_exact, fail, [v2, {:atom, true}]}]
+    [
+      {:test, :is_eq_exact, fail, [v1, {:atom, true}]},
+      {:test, :is_eq_exact, fail, [v2, {:atom, true}]}
+    ]
   end
 
   defp bif_to_test(:not, [var], fail) do
@@ -2006,37 +2452,61 @@ defmodule :m_beam_ssa_codegen do
     {:test, :is_ge, fail, [b, a]}
   end
 
-  defp bif_to_test_1(:">", [a, b], fail) do
+  defp bif_to_test_1(:>, [a, b], fail) do
     {:test, :is_lt, fail, [b, a]}
   end
 
-  defp bif_to_test_1(:"<", [_, _] = ops, fail) do
+  defp bif_to_test_1(:<, [_, _] = ops, fail) do
     {:test, :is_lt, fail, ops}
   end
 
-  defp bif_to_test_1(:">=", [_, _] = ops, fail) do
+  defp bif_to_test_1(:>=, [_, _] = ops, fail) do
     {:test, :is_ge, fail, ops}
   end
 
-  defp bif_to_test_1(:"==", [c, a], fail)
-      when c === nil or :erlang.element(1,
-                                          c) === :integer or :erlang.element(1,
-                                                                               c) === :float or :erlang.element(1,
-                                                                                                                  c) === :atom or :erlang.element(1,
-                                                                                                                                                    c) === :literal do
+  defp bif_to_test_1(:==, [c, a], fail)
+       when c === nil or
+              :erlang.element(
+                1,
+                c
+              ) === :integer or
+              :erlang.element(
+                1,
+                c
+              ) === :float or
+              :erlang.element(
+                1,
+                c
+              ) === :atom or
+              :erlang.element(
+                1,
+                c
+              ) === :literal do
     {:test, :is_eq, fail, [a, c]}
   end
 
-  defp bif_to_test_1(:"==", [_, _] = ops, fail) do
+  defp bif_to_test_1(:==, [_, _] = ops, fail) do
     {:test, :is_eq, fail, ops}
   end
 
   defp bif_to_test_1(:"/=", [c, a], fail)
-      when c === nil or :erlang.element(1,
-                                          c) === :integer or :erlang.element(1,
-                                                                               c) === :float or :erlang.element(1,
-                                                                                                                  c) === :atom or :erlang.element(1,
-                                                                                                                                                    c) === :literal do
+       when c === nil or
+              :erlang.element(
+                1,
+                c
+              ) === :integer or
+              :erlang.element(
+                1,
+                c
+              ) === :float or
+              :erlang.element(
+                1,
+                c
+              ) === :atom or
+              :erlang.element(
+                1,
+                c
+              ) === :literal do
     {:test, :is_ne, fail, [a, c]}
   end
 
@@ -2045,11 +2515,23 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp bif_to_test_1(:"=:=", [c, a], fail)
-      when c === nil or :erlang.element(1,
-                                          c) === :integer or :erlang.element(1,
-                                                                               c) === :float or :erlang.element(1,
-                                                                                                                  c) === :atom or :erlang.element(1,
-                                                                                                                                                    c) === :literal do
+       when c === nil or
+              :erlang.element(
+                1,
+                c
+              ) === :integer or
+              :erlang.element(
+                1,
+                c
+              ) === :float or
+              :erlang.element(
+                1,
+                c
+              ) === :atom or
+              :erlang.element(
+                1,
+                c
+              ) === :literal do
     {:test, :is_eq_exact, fail, [a, c]}
   end
 
@@ -2058,11 +2540,23 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp bif_to_test_1(:"=/=", [c, a], fail)
-      when c === nil or :erlang.element(1,
-                                          c) === :integer or :erlang.element(1,
-                                                                               c) === :float or :erlang.element(1,
-                                                                                                                  c) === :atom or :erlang.element(1,
-                                                                                                                                                    c) === :literal do
+       when c === nil or
+              :erlang.element(
+                1,
+                c
+              ) === :integer or
+              :erlang.element(
+                1,
+                c
+              ) === :float or
+              :erlang.element(
+                1,
+                c
+              ) === :atom or
+              :erlang.element(
+                1,
+                c
+              ) === :literal do
     {:test, :is_ne_exact, fail, [a, c]}
   end
 
@@ -2071,42 +2565,60 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp opt_call_moves(is0, arity) do
-    {moves0, is} = splitwith(fn {:move, _, _} ->
-                                  true
-                                {:init_yregs, _} ->
-                                  true
-                                _ ->
-                                  false
-                             end,
-                               is0)
+    {moves0, is} =
+      splitwith(
+        fn
+          {:move, _, _} ->
+            true
+
+          {:init_yregs, _} ->
+            true
+
+          _ ->
+            false
+        end,
+        is0
+      )
+
     moves = opt_call_moves_1(moves0, arity)
     moves ++ is
   end
 
-  defp opt_call_moves_1([{:move, src, {:x, _} = tmp} = m1, {:init_yregs,
-                                                {:list, yregs}} = init |
-                                                 is],
-            arity) do
-    case (is) do
+  defp opt_call_moves_1(
+         [
+           {:move, src, {:x, _} = tmp} = m1,
+           {:init_yregs, {:list, yregs}} = init
+           | is
+         ],
+         arity
+       ) do
+    case is do
       [{:move, {:x, _} = ^tmp, {:x, 0}} = m2] ->
-        case (member(src, yregs)) do
+        case member(src, yregs) do
           true ->
             opt_call_moves_1([m1, m2, init], arity)
+
           false ->
             opt_call_moves_1([init, m1, m2], arity)
         end
+
       _ ->
         [m1, init | is]
     end
   end
 
-  defp opt_call_moves_1([{:move, src, {:x, _} = tmp} = m1, {:move, tmp,
-                                                dst} = m2 |
-                                                 is],
-            arity) do
-    case (is_killed(tmp, is, arity)) do
+  defp opt_call_moves_1(
+         [
+           {:move, src, {:x, _} = tmp} = m1,
+           {:move, tmp, dst} = m2
+           | is
+         ],
+         arity
+       ) do
+    case is_killed(tmp, is, arity) do
       true ->
         [{:move, src, dst} | opt_call_moves_1(is, arity)]
+
       false ->
         [m1 | opt_call_moves_1([m2 | is], arity)]
     end
@@ -2140,34 +2652,50 @@ defmodule :m_beam_ssa_codegen do
     x >= arity
   end
 
-  defp cg_alloc(r_cg_alloc(stack: :none, words: r_need(h: 0, l: 0, f: 0)),
-            _St) do
+  defp cg_alloc(
+         r_cg_alloc(stack: :none, words: r_need(h: 0, l: 0, f: 0)),
+         _St
+       ) do
     []
   end
 
-  defp cg_alloc(r_cg_alloc(stack: :none, words: need, live: live),
-            _St) do
+  defp cg_alloc(
+         r_cg_alloc(stack: :none, words: need, live: live),
+         _St
+       ) do
     [{:test_heap, alloc(need), live}]
   end
 
-  defp cg_alloc(r_cg_alloc(stack: stk, words: need, live: live,
-              def_yregs: defYregs),
-            r_cg(regs: regs))
-      when is_integer(stk) do
+  defp cg_alloc(
+         r_cg_alloc(stack: stk, words: need, live: live, def_yregs: defYregs),
+         r_cg(regs: regs)
+       )
+       when is_integer(stk) do
     alloc = alloc(need)
-    all = (for y <- :lists.seq(0, stk - 1) do
-             {:y, y}
-           end)
-    def__ = :ordsets.from_list(for v <- defYregs do
-                                 :maps.get(v, regs)
-                               end)
+
+    all =
+      for y <- :lists.seq(0, stk - 1) do
+        {:y, y}
+      end
+
+    def__ =
+      :ordsets.from_list(
+        for v <- defYregs do
+          :maps.get(v, regs)
+        end
+      )
+
     needInit = :ordsets.subtract(all, def__)
-    i = (case (alloc) do
-           0 ->
-             {:allocate, stk, live}
-           _ ->
-             {:allocate_heap, stk, alloc, live}
-         end)
+
+    i =
+      case alloc do
+        0 ->
+          {:allocate, stk, live}
+
+        _ ->
+          {:allocate_heap, stk, alloc, live}
+      end
+
     [i | init_yregs(needInit)]
   end
 
@@ -2184,8 +2712,7 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp alloc(r_need(h: words, l: lambdas, f: floats)) do
-    {:alloc,
-       [{:words, words}, {:floats, floats}, {:funs, lambdas}]}
+    {:alloc, [{:words, words}, {:floats, floats}, {:funs, lambdas}]}
   end
 
   defp is_call([r_cg_set(op: :call, args: [r_b_var() | args]) | _]) do
@@ -2204,77 +2731,93 @@ defmodule :m_beam_ssa_codegen do
     :no
   end
 
-  defp cg_call(r_cg_set(anno: anno, op: :call, dst: dst0,
-              args: [r_b_local() = func0 | args0]),
-            where, context, st0) do
+  defp cg_call(
+         r_cg_set(anno: anno, op: :call, dst: dst0, args: [r_b_local() = func0 | args0]),
+         where,
+         context,
+         st0
+       ) do
     [dst | args] = beam_args([dst0 | args0], st0)
     r_b_local(name: name0, arity: arity) = func0
     {:atom, name} = beam_arg(name0, st0)
     {funcLbl, st} = local_func_label(name, arity, st0)
     line = call_line(where, :local, anno)
-    call = build_call(:call, arity, {:f, funcLbl}, context,
-                        dst)
+    call = build_call(:call, arity, {:f, funcLbl}, context, dst)
     is = setup_args(args, anno, context, st) ++ line ++ call
-    case (anno) do
+
+    case anno do
       %{result_type: type} ->
         info = {:var_info, dst, [{:type, type}]}
-        {is ++ [{:"%", info}], st}
+        {is ++ [{:%, info}], st}
+
       %{} ->
         {is, st}
     end
   end
 
-  defp cg_call(r_cg_set(anno: anno0, op: :call, dst: dst0,
-              args: [r_b_remote() = func0 | args0]),
-            where, context, st) do
+  defp cg_call(
+         r_cg_set(anno: anno0, op: :call, dst: dst0, args: [r_b_remote() = func0 | args0]),
+         where,
+         context,
+         st
+       ) do
     [dst | args] = beam_args([dst0 | args0], st)
     r_b_remote(mod: mod0, name: name0, arity: arity) = func0
-    case ({beam_arg(mod0, st), beam_arg(name0, st)}) do
+
+    case {beam_arg(mod0, st), beam_arg(name0, st)} do
       {{:atom, mod}, {:atom, name}} ->
         func = {:extfunc, mod, name, arity}
         line = call_line(where, func, anno0)
         call = build_call(:call_ext, arity, func, context, dst)
-        anno = (case (:erl_bifs.is_exit_bif(mod, name,
-                                              arity)) do
-                  true ->
-                    :maps.remove(:kill_yregs, anno0)
-                  false ->
-                    anno0
-                end)
+
+        anno =
+          case :erl_bifs.is_exit_bif(mod, name, arity) do
+            true ->
+              :maps.remove(:kill_yregs, anno0)
+
+            false ->
+              anno0
+          end
+
         is = setup_args(args, anno, context, st) ++ line ++ call
         {is, st}
+
       {mod, name} ->
         apply = build_apply(arity, context, dst)
-        is = setup_args((args ++ [mod, name]), anno0, context,
-                          st) ++ [line(anno0)] ++ apply
+        is = setup_args(args ++ [mod, name], anno0, context, st) ++ [line(anno0)] ++ apply
         {is, st}
     end
   end
 
-  defp cg_call(r_cg_set(anno: anno, op: :call, dst: dst0,
-              args: [func | args0]),
-            where, context, st0) do
+  defp cg_call(
+         r_cg_set(anno: anno, op: :call, dst: dst0, args: [func | args0]),
+         where,
+         context,
+         st0
+       ) do
     line = call_line(where, func, anno)
     args = beam_args(args0 ++ [func], st0)
     arity = length(args0)
     dst = beam_arg(dst0, st0)
     [typedFunc] = typed_args([func], anno, st0)
-    {call, st} = build_fun_call(arity, typedFunc, context,
-                                  dst, st0)
+    {call, st} = build_fun_call(arity, typedFunc, context, dst, st0)
     is = setup_args(args, anno, context, st) ++ line ++ call
-    case (anno) do
+
+    case anno do
       %{result_type: type} ->
         info = {:var_info, dst, [{:type, type}]}
-        {is ++ [{:"%", info}], st}
+        {is ++ [{:%, info}], st}
+
       %{} ->
         {is, st}
     end
   end
 
   defp cg_match_fail([{:atom, :function_clause} | args], line, fc) do
-    case (fc) do
+    case fc do
       :none ->
         make_fc(args, line)
+
       _ ->
         setup_args(args) ++ [{:jump, {:f, fc}}]
     end
@@ -2289,18 +2832,31 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp make_fc(args, line) do
-    live = foldl(fn {:x, x}, a ->
-                      max(x + 1, a)
-                    _, a ->
-                      a
-                 end,
-                   0, args)
+    live =
+      foldl(
+        fn
+          {:x, x}, a ->
+            max(x + 1, a)
+
+          _, a ->
+            a
+        end,
+        0,
+        args
+      )
+
     tmpReg = {:x, live}
     stkMoves = build_stk(reverse(args), tmpReg, nil)
-    [{:test_heap, 2 * length(args), live} |
-         stkMoves] ++ [{:move, {:atom, :function_clause},
-                          {:x, 0}},
-                           line, {:call_ext, 2, {:extfunc, :erlang, :error, 2}}]
+
+    [
+      {:test_heap, 2 * length(args), live}
+      | stkMoves
+    ] ++
+      [
+        {:move, {:atom, :function_clause}, {:x, 0}},
+        line,
+        {:call_ext, 2, {:extfunc, :erlang, :error, 2}}
+      ]
   end
 
   defp build_stk([v], _TmpReg, tail) do
@@ -2316,51 +2872,56 @@ defmodule :m_beam_ssa_codegen do
     [{:move, nil, {:x, 1}}]
   end
 
-  defp build_call(:call_ext, 2, {:extfunc, :erlang, :"!", 2}, :none,
-            dst) do
+  defp build_call(:call_ext, 2, {:extfunc, :erlang, :!, 2}, :none, dst) do
     [:send | copy({:x, 0}, dst)]
   end
 
-  defp build_call(:call_ext, 2, {:extfunc, :erlang, :"!", 2},
-            {:return, dst, n}, dst)
-      when is_integer(n) do
+  defp build_call(:call_ext, 2, {:extfunc, :erlang, :!, 2}, {:return, dst, n}, dst)
+       when is_integer(n) do
     [:send, {:deallocate, n}, :return]
   end
 
-  defp build_call(prefix, arity, func, {:return, dst, :none},
-            dst) do
-    i = (case (prefix) do
-           :call ->
-             :call_only
-           :call_ext ->
-             :call_ext_only
-         end)
+  defp build_call(prefix, arity, func, {:return, dst, :none}, dst) do
+    i =
+      case prefix do
+        :call ->
+          :call_only
+
+        :call_ext ->
+          :call_ext_only
+      end
+
     [{i, arity, func}]
   end
 
-  defp build_call(:call_ext, arity,
-            {:extfunc, mod, name, arity} = func,
-            {:return, _, :none}, _Dst) do
+  defp build_call(
+         :call_ext,
+         arity,
+         {:extfunc, mod, name, arity} = func,
+         {:return, _, :none},
+         _Dst
+       ) do
     true = :erl_bifs.is_exit_bif(mod, name, arity)
     [{:call_ext_only, arity, func}]
   end
 
   defp build_call(prefix, arity, func, {:return, dst, n}, dst)
-      when is_integer(n) do
-    i = (case (prefix) do
-           :call ->
-             :call_last
-           :call_ext ->
-             :call_ext_last
-         end)
+       when is_integer(n) do
+    i =
+      case prefix do
+        :call ->
+          :call_last
+
+        :call_ext ->
+          :call_ext_last
+      end
+
     [{i, arity, func, n}]
   end
 
   defp build_call(i, arity, func, {:return, val, n}, _Dst)
-      when is_integer(n) do
-    [{i, arity, func} | copy(val, {:x, 0}) ++ [{:deallocate,
-                                                  n},
-                                                   :return]]
+       when is_integer(n) do
+    [{i, arity, func} | copy(val, {:x, 0}) ++ [{:deallocate, n}, :return]]
   end
 
   defp build_call(i, arity, func, :none, dst) do
@@ -2370,28 +2931,31 @@ defmodule :m_beam_ssa_codegen do
   defp build_fun_call(arity, r_tr() = func0, :none, dst, st0) do
     func = r_tr(func0, r: {:x, arity})
     {tag, st} = fun_call_tag(arity, func, st0)
-    is = [{:call_fun2, tag, arity, func} | copy({:x, 0},
-                                                  dst)]
+
+    is = [
+      {:call_fun2, tag, arity, func}
+      | copy(
+          {:x, 0},
+          dst
+        )
+    ]
+
     {is, st}
   end
 
   defp build_fun_call(arity, r_tr() = func0, {:return, dst, n}, dst, st0)
-      when is_integer(n) do
+       when is_integer(n) do
     func = r_tr(func0, r: {:x, arity})
     {tag, st} = fun_call_tag(arity, func, st0)
-    is = [{:call_fun2, tag, arity, func}, {:deallocate, n},
-                                              :return]
+    is = [{:call_fun2, tag, arity, func}, {:deallocate, n}, :return]
     {is, st}
   end
 
-  defp build_fun_call(arity, r_tr() = func0, {:return, val, n}, _Dst,
-            st0)
-      when is_integer(n) do
+  defp build_fun_call(arity, r_tr() = func0, {:return, val, n}, _Dst, st0)
+       when is_integer(n) do
     func = r_tr(func0, r: {:x, arity})
     {tag, st} = fun_call_tag(arity, func, st0)
-    is = [{:call_fun2, tag, arity, func}, {:move, val,
-                                             {:x, 0}},
-                                              {:deallocate, n}, :return]
+    is = [{:call_fun2, tag, arity, func}, {:move, val, {:x, 0}}, {:deallocate, n}, :return]
     {is, st}
   end
 
@@ -2400,20 +2964,20 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp build_fun_call(arity, _Func, {:return, dst, n}, dst, st)
-      when is_integer(n) do
+       when is_integer(n) do
     {[{:call_fun, arity}, {:deallocate, n}, :return], st}
   end
 
   defp build_fun_call(arity, _Func, {:return, val, n}, _Dst, st)
-      when is_integer(n) do
-    {[{:call_fun, arity}, {:move, val, {:x, 0}},
-                              {:deallocate, n}, :return],
-       st}
+       when is_integer(n) do
+    {[{:call_fun, arity}, {:move, val, {:x, 0}}, {:deallocate, n}, :return], st}
   end
 
-  defp fun_call_tag(arity,
-            r_tr(t: r_t_fun(arity: arity, target: {name, totalArity})),
-            st0) do
+  defp fun_call_tag(
+         arity,
+         r_tr(t: r_t_fun(arity: arity, target: {name, totalArity})),
+         st0
+       ) do
     {funcLbl, st} = local_func_label(name, totalArity, st0)
     {{:f, funcLbl}, st}
   end
@@ -2427,49 +2991,46 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp build_apply(arity, {:return, dst, n}, dst)
-      when is_integer(n) do
+       when is_integer(n) do
     [{:apply_last, arity, n}]
   end
 
   defp build_apply(arity, {:return, val, n}, _Dst)
-      when is_integer(n) do
-    [{:apply, arity} | copy(val, {:x, 0}) ++ [{:deallocate,
-                                                 n},
-                                                  :return]]
+       when is_integer(n) do
+    [{:apply, arity} | copy(val, {:x, 0}) ++ [{:deallocate, n}, :return]]
   end
 
   defp build_apply(arity, :none, dst) do
     [{:apply, arity} | copy({:x, 0}, dst)]
   end
 
-  defp cg_instr(:bs_start_match, [{:atom, :resume}, src], dst,
-            set) do
+  defp cg_instr(:bs_start_match, [{:atom, :resume}, src], dst, set) do
     live = get_live(set)
     [{:bs_start_match4, {:atom, :resume}, live, src, dst}]
   end
 
-  defp cg_instr(:bs_start_match, [{:atom, :new}, src0], dst,
-            set) do
+  defp cg_instr(:bs_start_match, [{:atom, :new}, src0], dst, set) do
     {src, pre} = force_reg(src0, dst)
     live = get_live(set)
-    pre ++ [{:bs_start_match4, {:atom, :no_fail}, live, src,
-               dst}]
+    pre ++ [{:bs_start_match4, {:atom, :no_fail}, live, src, dst}]
   end
 
-  defp cg_instr(:bs_checked_get,
-            [kind, ctx, {:literal, flags}, {:integer, size},
-                                               {:integer, unit}],
-            dst, set) do
+  defp cg_instr(
+         :bs_checked_get,
+         [kind, ctx, {:literal, flags}, {:integer, size}, {:integer, unit}],
+         dst,
+         set
+       ) do
     live = get_live(set)
-    [{:bs_checked_get, live, kind, ctx,
-        field_flags(flags, set), size, unit, dst}]
+    [{:bs_checked_get, live, kind, ctx, field_flags(flags, set), size, unit, dst}]
   end
 
-  defp cg_instr(:bs_checked_get,
-            [{:atom, :binary}, ctx, {:literal, _Flags}, {:atom,
-                                                           :all},
-                                                            {:integer, unit}],
-            dst, set) do
+  defp cg_instr(
+         :bs_checked_get,
+         [{:atom, :binary}, ctx, {:literal, _Flags}, {:atom, :all}, {:integer, unit}],
+         dst,
+         set
+       ) do
     live = get_live(set)
     [{:bs_checked_get_tail, live, ctx, unit, dst}]
   end
@@ -2484,11 +3045,9 @@ defmodule :m_beam_ssa_codegen do
     [{:bs_get_position, ctx, dst, live}]
   end
 
-  defp cg_instr(:put_map, [{:atom, :assoc}, srcMap | ss], dst,
-            set) do
+  defp cg_instr(:put_map, [{:atom, :assoc}, srcMap | ss], dst, set) do
     live = get_live(set)
-    [{:put_map_assoc, {:f, 0}, srcMap, dst, live,
-        {:list, ss}}]
+    [{:put_map_assoc, {:f, 0}, srcMap, dst, live, {:list, ss}}]
   end
 
   defp cg_instr(:is_nonempty_list, ss, dst, set) do
@@ -2500,22 +3059,32 @@ defmodule :m_beam_ssa_codegen do
     cg_instr(op, args, dst)
   end
 
-  defp cg_instr(:bs_checked_skip,
-            [_Type, ctx, _Flags, {:integer, sz}, {:integer, u}],
-            {:z, _})
-      when is_integer(sz) do
+  defp cg_instr(
+         :bs_checked_skip,
+         [_Type, ctx, _Flags, {:integer, sz}, {:integer, u}],
+         {:z, _}
+       )
+       when is_integer(sz) do
     [{:bs_checked_skip, ctx, sz * u}]
   end
 
-  defp cg_instr(:bs_checked_skip,
-            [_Type, _Ctx, _Flags, {:atom, :all}, {:integer, _U}],
-            {:z, _}) do
+  defp cg_instr(
+         :bs_checked_skip,
+         [_Type, _Ctx, _Flags, {:atom, :all}, {:integer, _U}],
+         {:z, _}
+       ) do
     []
   end
 
   defp cg_instr(:bs_init_writable, args, dst) do
-    setup_args(args) ++ [:bs_init_writable | copy({:x, 0},
-                                                    dst)]
+    setup_args(args) ++
+      [
+        :bs_init_writable
+        | copy(
+            {:x, 0},
+            dst
+          )
+      ]
   end
 
   defp cg_instr(:bs_set_position, [ctx, pos], _Dst) do
@@ -2523,12 +3092,17 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp cg_instr(:build_stacktrace, args, dst) do
-    setup_args(args) ++ [:build_stacktrace | copy({:x, 0},
-                                                    dst)]
+    setup_args(args) ++
+      [
+        :build_stacktrace
+        | copy(
+            {:x, 0},
+            dst
+          )
+      ]
   end
 
-  defp cg_instr(:set_tuple_element = op,
-            [new, tuple, {:integer, index}], _Dst) do
+  defp cg_instr(:set_tuple_element = op, [new, tuple, {:integer, index}], _Dst) do
     [{op, new, tuple, index}]
   end
 
@@ -2548,8 +3122,7 @@ defmodule :m_beam_ssa_codegen do
     [{op, src, dst}]
   end
 
-  defp cg_instr(:get_tuple_element = op, [src, {:integer, n}],
-            dst) do
+  defp cg_instr(:get_tuple_element = op, [src, {:integer, n}], dst) do
     [{op, src, n, dst}]
   end
 
@@ -2593,26 +3166,30 @@ defmodule :m_beam_ssa_codegen do
     [{:bif, :raise, {:f, 0}, [a, b], {:x, 0}}]
   end
 
-  defp cg_instr(:update_record,
-            [hint, {:integer, size}, src | ss0], dst) do
+  defp cg_instr(:update_record, [hint, {:integer, size}, src | ss0], dst) do
     ss = cg_update_record_list(ss0, [])
     [{:update_record, hint, size, src, dst, {:list, ss}}]
   end
 
-  defp cg_test({:float, op0}, fail, args, dst,
-            r_cg_set(anno: anno)) do
-    op = (case (op0) do
-            :"+" ->
-              :fadd
-            :- when length(args) === 2 ->
-              :fsub
-            :- ->
-              :fnegate
-            :"*" ->
-              :fmul
-            :"/" ->
-              :fdiv
-          end)
+  defp cg_test({:float, op0}, fail, args, dst, r_cg_set(anno: anno)) do
+    op =
+      case op0 do
+        :+ ->
+          :fadd
+
+        :- when length(args) === 2 ->
+          :fsub
+
+        :- ->
+          :fnegate
+
+        :* ->
+          :fmul
+
+        :/ ->
+          :fdiv
+      end
+
     [line(anno), {:bif, op, fail, args, dst}]
   end
 
@@ -2620,15 +3197,12 @@ defmodule :m_beam_ssa_codegen do
     [{:loop_rec, fail, {:x, 0}} | copy({:x, 0}, dst)]
   end
 
-  defp cg_test(:put_map, fail, [{:atom, :exact}, srcMap | ss],
-            dst, r_cg_set(anno: anno) = set) do
+  defp cg_test(:put_map, fail, [{:atom, :exact}, srcMap | ss], dst, r_cg_set(anno: anno) = set) do
     live = get_live(set)
-    [line(anno), {:put_map_exact, fail, srcMap, dst, live,
-                    {:list, ss}}]
+    [line(anno), {:put_map_exact, fail, srcMap, dst, live, {:list, ss}}]
   end
 
-  defp cg_test(:set_tuple_element = op, fail, args, dst,
-            set) do
+  defp cg_test(:set_tuple_element = op, fail, args, dst, set) do
     {:f, 0} = fail
     cg_instr(op, args, dst, set)
   end
@@ -2650,62 +3224,85 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp cg_update_record_list([], acc) do
-    append(for {index, value} <- sort(acc) do
-             [index, value]
-           end)
+    append(
+      for {index, value} <- sort(acc) do
+        [index, value]
+      end
+    )
   end
 
-  defp cg_bs_get(fail,
-            r_cg_set(dst: dst0, args: args, anno: anno) = set, st) do
+  defp cg_bs_get(fail, r_cg_set(dst: dst0, args: args, anno: anno) = set, st) do
     [{:atom, type} | ss0] = typed_args(args, anno, st)
     dst = beam_arg(dst0, st)
-    op = (case (type) do
-            :integer ->
-              :bs_get_integer2
-            :float ->
-              :bs_get_float2
-            :binary ->
-              :bs_get_binary2
-            :utf8 ->
-              :bs_get_utf8
-            :utf16 ->
-              :bs_get_utf16
-            :utf32 ->
-              :bs_get_utf32
-          end)
-    ss = (case (ss0) do
-            [ctx, {:literal, flags}, size, {:integer, unit}] ->
-              [ctx, size, unit, field_flags(flags, set)]
-            [ctx, {:literal, flags}] ->
-              [ctx, field_flags(flags, set)]
-          end)
+
+    op =
+      case type do
+        :integer ->
+          :bs_get_integer2
+
+        :float ->
+          :bs_get_float2
+
+        :binary ->
+          :bs_get_binary2
+
+        :utf8 ->
+          :bs_get_utf8
+
+        :utf16 ->
+          :bs_get_utf16
+
+        :utf32 ->
+          :bs_get_utf32
+      end
+
+    ss =
+      case ss0 do
+        [ctx, {:literal, flags}, size, {:integer, unit}] ->
+          [ctx, size, unit, field_flags(flags, set)]
+
+        [ctx, {:literal, flags}] ->
+          [ctx, field_flags(flags, set)]
+      end
+
     live = get_live(set)
     [{:test, op, fail, live, ss, dst}]
   end
 
   defp cg_bs_skip(fail, [{:atom, type} | ss0], set) do
-    op = (case (type) do
-            :utf8 ->
-              :bs_skip_utf8
-            :utf16 ->
-              :bs_skip_utf16
-            :utf32 ->
-              :bs_skip_utf32
-            _ ->
-              :bs_skip_bits2
-          end)
+    op =
+      case type do
+        :utf8 ->
+          :bs_skip_utf8
+
+        :utf16 ->
+          :bs_skip_utf16
+
+        :utf32 ->
+          :bs_skip_utf32
+
+        _ ->
+          :bs_skip_bits2
+      end
+
     live = get_live(set)
-    ss = (case (ss0) do
-            [ctx, {:literal, flags}, size, {:integer, unit}] ->
-              [ctx, size, unit, field_flags(flags, set)]
-            [ctx, {:literal, flags}] ->
-              [ctx, live, field_flags(flags, set)]
-          end)
-    case ({type, ss}) do
+
+    ss =
+      case ss0 do
+        [ctx, {:literal, flags}, size, {:integer, unit}] ->
+          [ctx, size, unit, field_flags(flags, set)]
+
+        [ctx, {:literal, flags}] ->
+          [ctx, live, field_flags(flags, set)]
+      end
+
+    case {type, ss} do
       {:binary, [_, {:atom, :all}, 1, _]} ->
         []
+
       {:binary, [r, {:atom, :all}, u, _]} ->
         [{:test, :bs_test_unit, fail, [r, u]}]
+
       {_, _} ->
         [{:test, op, fail, ss}]
     end
@@ -2733,14 +3330,19 @@ defmodule :m_beam_ssa_codegen do
     {[{:try_case, tag} | moves ++ t], st}
   end
 
-  defp cg_extract([r_cg_set(op: :extract, dst: dst0, args: args0) | is0],
-            agg, st) do
-    [dst, ^agg, {:integer, x}] = beam_args([dst0 | args0],
-                                             st)
+  defp cg_extract([r_cg_set(op: :extract, dst: dst0, args: args0) | is0], agg, st) do
+    [dst, ^agg, {:integer, x}] =
+      beam_args(
+        [dst0 | args0],
+        st
+      )
+
     {ds, is} = cg_extract(is0, agg, st)
-    case (keymember(dst, 3, ds)) do
+
+    case keymember(dst, 3, ds) do
       true ->
         {ds, is}
+
       false ->
         {copy({:x, x}, dst) ++ ds, is}
     end
@@ -2778,8 +3380,9 @@ defmodule :m_beam_ssa_codegen do
     {reg, [{:move, lit, reg}]}
   end
 
-  defp force_reg({kind, _} = r, _) when kind === :x or
-                                   kind === :y do
+  defp force_reg({kind, _} = r, _)
+       when kind === :x or
+              kind === :y do
     {r, []}
   end
 
@@ -2788,9 +3391,12 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp successors(r_cg_switch(fail: fail, list: list)) do
-    :ordsets.from_list([fail | for {_, lbl} <- list do
-                                 lbl
-                               end])
+    :ordsets.from_list([
+      fail
+      | for {_, lbl} <- list do
+          lbl
+        end
+    ])
   end
 
   defp successors(r_cg_ret()) do
@@ -2815,18 +3421,21 @@ defmodule :m_beam_ssa_codegen do
     []
   end
 
-  defp translate_block(l, r_b_blk(anno: anno, is: is0, last: last0),
-            blocks) do
+  defp translate_block(l, r_b_blk(anno: anno, is: is0, last: last0), blocks) do
     last = translate_terminator(last0)
     phiCopies = translate_phis(l, last, blocks)
     is1 = translate_is(is0, phiCopies)
-    is = (case (anno) do
-            %{frame_size: size} ->
-              alloc = r_cg_alloc(stack: size)
-              [alloc | is1]
-            %{} ->
-              is1
-          end)
+
+    is =
+      case anno do
+        %{frame_size: size} ->
+          alloc = r_cg_alloc(stack: size)
+          [alloc | is1]
+
+        %{} ->
+          is1
+      end
+
     r_cg_blk(anno: anno, is: is, last: last)
   end
 
@@ -2834,19 +3443,28 @@ defmodule :m_beam_ssa_codegen do
     translate_is(is, tail)
   end
 
-  defp translate_is([r_b_set(anno: anno0, op: op, dst: dst,
-               args: args) = i |
-               is],
-            tail) do
-    anno1 = (case (:beam_ssa.clobbers_xregs(i)) do
-               true ->
-                 Map.put(anno0, :clobbers, true)
-               false ->
-                 anno0
-             end)
+  defp translate_is(
+         [
+           r_b_set(anno: anno0, op: op, dst: dst, args: args) = i
+           | is
+         ],
+         tail
+       ) do
+    anno1 =
+      case :beam_ssa.clobbers_xregs(i) do
+        true ->
+          Map.put(anno0, :clobbers, true)
+
+        false ->
+          anno0
+      end
+
     anno = prune_arg_types(anno1, args)
-    [r_cg_set(anno: anno, op: op, dst: dst, args: args) |
-         translate_is(is, tail)]
+
+    [
+      r_cg_set(anno: anno, op: op, dst: dst, args: args)
+      | translate_is(is, tail)
+    ]
   end
 
   defp translate_is([], tail) do
@@ -2855,9 +3473,11 @@ defmodule :m_beam_ssa_codegen do
 
   defp prune_arg_types(%{arg_types: argTypes0} = anno, args) do
     argTypes = prune_arg_types_1(args, 0, argTypes0)
+
     cond do
       argTypes === %{} ->
         :maps.remove(:arg_types, anno)
+
       true ->
         %{anno | arg_types: argTypes}
     end
@@ -2880,12 +3500,15 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp translate_terminator(r_b_ret(anno: anno, arg: arg)) do
-    dealloc = (case (anno) do
-                 %{deallocate: n} ->
-                   n
-                 %{} ->
-                   :none
-               end)
+    dealloc =
+      case anno do
+        %{deallocate: n} ->
+          n
+
+        %{} ->
+          :none
+      end
+
     r_cg_ret(arg: arg, dealloc: dealloc)
   end
 
@@ -2897,22 +3520,29 @@ defmodule :m_beam_ssa_codegen do
     r_cg_br(bool: bool, succ: succ, fail: fail)
   end
 
-  defp translate_terminator(r_b_switch(anno: anno, arg: bool, fail: fail,
-              list: list)) do
+  defp translate_terminator(r_b_switch(anno: anno, arg: bool, fail: fail, list: list)) do
     r_cg_switch(anno: anno, arg: bool, fail: fail, list: list)
   end
 
   defp translate_phis(l, r_cg_br(succ: target, fail: target), blocks) do
     r_b_blk(is: is) = :maps.get(target, blocks)
-    phis = takewhile(fn r_b_set(op: :phi) ->
-                          true
-                        r_b_set() ->
-                          false
-                     end,
-                       is)
-    case (phis) do
+
+    phis =
+      takewhile(
+        fn
+          r_b_set(op: :phi) ->
+            true
+
+          r_b_set() ->
+            false
+        end,
+        is
+      )
+
+    case phis do
       [] ->
         []
+
       [r_b_set(op: :phi, dst: nopDst) | _] = ^phis ->
         nop = r_cg_set(op: :nop, dst: nopDst, args: [])
         [nop | phi_copies(phis, l)]
@@ -2924,11 +3554,15 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp phi_copies([r_b_set(dst: dst, args: phiArgs) | sets], l) do
-    copyArgs = (for {v, target} <- phiArgs, target === l do
-                  v
-                end)
-    [r_cg_set(op: :copy, dst: dst, args: copyArgs) |
-         phi_copies(sets, l)]
+    copyArgs =
+      for {v, target} <- phiArgs, target === l do
+        v
+      end
+
+    [
+      r_cg_set(op: :copy, dst: dst, args: copyArgs)
+      | phi_copies(sets, l)
+    ]
   end
 
   defp phi_copies([], _) do
@@ -2940,9 +3574,10 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp opt_move_to_x0([{:move, _, {:x, 0}} = i | is0], acc0) do
-    case (move_past_kill(is0, i, acc0)) do
+    case move_past_kill(is0, i, acc0) do
       :impossible ->
         opt_move_to_x0(is0, [i | acc0])
+
       {is, acc} ->
         opt_move_to_x0(is, acc)
     end
@@ -2956,11 +3591,11 @@ defmodule :m_beam_ssa_codegen do
     reverse(acc)
   end
 
-  defp move_past_kill([{:init_yregs, {:list, yregs}} = i | is],
-            {:move, src, _} = move, acc) do
-    case (member(src, yregs)) do
+  defp move_past_kill([{:init_yregs, {:list, yregs}} = i | is], {:move, src, _} = move, acc) do
+    case member(src, yregs) do
       true ->
         :impossible
+
       false ->
         move_past_kill(is, move, [i | acc])
     end
@@ -2971,9 +3606,10 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp setup_args(args, anno, :none, st) do
-    case ({setup_args(args), kill_yregs(anno, st)}) do
+    case {setup_args(args), kill_yregs(anno, st)} do
       {moves, []} ->
         moves
+
       {moves, kills} ->
         opt_move_to_x0(moves ++ kills)
     end
@@ -2993,11 +3629,14 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp kill_yregs(%{kill_yregs: kill}, r_cg(regs: regs)) do
-    case (:ordsets.from_list(for v <- kill do
-                               :erlang.map_get(v, regs)
-                             end)) do
+    case :ordsets.from_list(
+           for v <- kill do
+             :erlang.map_get(v, regs)
+           end
+         ) do
       [] ->
         []
+
       [_ | _] = list ->
         [{:init_yregs, {:list, list}}]
     end
@@ -3033,11 +3672,11 @@ defmodule :m_beam_ssa_codegen do
     collect_chain(ms, path, [])
   end
 
-  defp collect_chain([{:move, src, same} = m | ms0],
-            [{:move, same, _} | _] = path, others) do
-    case (keymember(src, 3, path)) do
+  defp collect_chain([{:move, src, same} = m | ms0], [{:move, same, _} | _] = path, others) do
+    case keymember(src, 3, path) do
       false ->
         collect_chain(reverse(others, ms0), [m | path], [])
+
       true ->
         {break_up_cycle(m, path), reverse(others, ms0)}
     end
@@ -3068,16 +3707,19 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp bs_translate([i | is0]) do
-    case (bs_translate_instr(i)) do
+    case bs_translate_instr(i) do
       :none ->
         [i | bs_translate(is0)]
+
       {ctx, fail0, first} ->
-        {instrs0, fail, is} = bs_translate_collect(is0, ctx,
-                                                     fail0, [first])
+        {instrs0, fail, is} = bs_translate_collect(is0, ctx, fail0, [first])
         instrs1 = bs_seq_match_fixup(instrs0)
         instrs = bs_eq_fixup(instrs1)
-        [{:bs_match, fail, ctx, {:commands, instrs}} |
-             bs_translate(is)]
+
+        [
+          {:bs_match, fail, ctx, {:commands, instrs}}
+          | bs_translate(is)
+        ]
     end
   end
 
@@ -3086,22 +3728,29 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp bs_translate_collect([i | is] = is0, ctx, fail, acc) do
-    case (bs_translate_instr(i)) do
+    case bs_translate_instr(i) do
       {^ctx, _, {:ensure_at_least, _, _}} ->
         {bs_translate_fixup(acc), fail, is0}
+
       {^ctx, ^fail, instr} ->
         bs_translate_collect(is, ctx, fail, [instr | acc])
+
       {^ctx, {:f, 0}, instr} ->
         bs_translate_collect(is, ctx, fail, [instr | acc])
+
       {_, _, _} ->
         {bs_translate_fixup(acc), fail, is0}
+
       :none ->
         {bs_translate_fixup(acc), fail, is0}
     end
   end
 
-  defp bs_translate_fixup([{:get_tail, _, _, _} = gT, {:test_tail, bits} |
-                                          is0]) do
+  defp bs_translate_fixup([
+         {:get_tail, _, _, _} = gT,
+         {:test_tail, bits}
+         | is0
+       ]) do
     is = reverse(is0)
     bs_translate_fixup_tail(is, bits) ++ [gT]
   end
@@ -3115,15 +3764,20 @@ defmodule :m_beam_ssa_codegen do
     reverse(is)
   end
 
-  defp bs_seq_match_fixup([{:test_tail, bits}, {:ensure_exactly, bits} |
-                                   is]) do
+  defp bs_seq_match_fixup([
+         {:test_tail, bits},
+         {:ensure_exactly, bits}
+         | is
+       ]) do
     [{:ensure_exactly, bits} | bs_seq_match_fixup(is)]
   end
 
-  defp bs_seq_match_fixup([{:test_tail, bits0}, {:ensure_at_least, bits1,
-                                   unit} |
-                                    is])
-      when (bits0 >= bits1 and rem(bits0, unit) === 0) do
+  defp bs_seq_match_fixup([
+         {:test_tail, bits0},
+         {:ensure_at_least, bits1, unit}
+         | is
+       ])
+       when bits0 >= bits1 and rem(bits0, unit) === 0 do
     [{:ensure_exactly, bits0} | bs_seq_match_fixup(is)]
   end
 
@@ -3140,8 +3794,12 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp bs_eq_fixup([{:"=:=", nil, bits, value} | is]) do
-    eqInstrs = bs_eq_fixup_split(bits,
-                                   <<value :: size(bits)>>)
+    eqInstrs =
+      bs_eq_fixup_split(
+        bits,
+        <<value::size(bits)>>
+      )
+
     eqInstrs ++ bs_eq_fixup(is)
   end
 
@@ -3154,12 +3812,12 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp bs_eq_fixup_split(bits, value) when bits <= 31 do
-    <<i :: size(bits)>> = value
+    <<i::size(bits)>> = value
     [{:"=:=", nil, bits, i}]
   end
 
   defp bs_eq_fixup_split(bits, value0) do
-    <<i :: size(31), value :: bits>> = value0
+    <<i::size(31), value::bits>> = value0
     [{:"=:=", nil, 31, i} | bs_eq_fixup_split(bits - 31, value)]
   end
 
@@ -3179,27 +3837,34 @@ defmodule :m_beam_ssa_codegen do
     {ctx, fail, {:ensure_at_least, size, unit}}
   end
 
-  defp bs_translate_instr({:bs_checked_get, live, {:atom, type}, ctx,
-             {:field_flags, flags0}, size, unit, dst}) do
-    flags = (for flag <- flags0,
-                   (case (flag) do
-                      :little ->
-                        true
-                      :native ->
-                        true
-                      :big ->
-                        false
-                      :signed ->
-                        true
-                      :unsigned ->
-                        false
-                      {:anno, _} ->
-                        false
-                    end) do
-               flag
-             end)
-    {ctx, {:f, 0},
-       {type, live, {:literal, flags}, size, unit, dst}}
+  defp bs_translate_instr(
+         {:bs_checked_get, live, {:atom, type}, ctx, {:field_flags, flags0}, size, unit, dst}
+       ) do
+    flags =
+      for flag <- flags0,
+          (case flag do
+             :little ->
+               true
+
+             :native ->
+               true
+
+             :big ->
+               false
+
+             :signed ->
+               true
+
+             :unsigned ->
+               false
+
+             {:anno, _} ->
+               false
+           end) do
+        flag
+      end
+
+    {ctx, {:f, 0}, {type, live, {:literal, flags}, size, unit, dst}}
   end
 
   defp bs_translate_instr({:bs_checked_skip, ctx, stride}) do
@@ -3218,10 +3883,9 @@ defmodule :m_beam_ssa_codegen do
     {ctx, fail, {:test_tail, bits}}
   end
 
-  defp bs_translate_instr({:test, :bs_match_string, fail,
-             [ctx, bits, {:string, string}]})
-      when bit_size(string) <= 64 do
-    <<value :: size(bits), _ :: bitstring>> = string
+  defp bs_translate_instr({:test, :bs_match_string, fail, [ctx, bits, {:string, string}]})
+       when bit_size(string) <= 64 do
+    <<value::size(bits), _::bitstring>> = string
     live = nil
     {ctx, fail, {:"=:=", live, bits, value}}
   end
@@ -3243,9 +3907,10 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp get_register(v, regs) do
-    case (is_beam_register(v)) do
+    case is_beam_register(v) do
       true ->
         v
+
       false ->
         :maps.get(v, regs)
     end
@@ -3256,13 +3921,13 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp typed_args_1([arg | args], anno, st, index) do
-    case (anno) do
+    case anno do
       %{arg_types: %{^index => type}} ->
         typed = r_tr(r: beam_arg(arg, st), t: type)
         [typed | typed_args_1(args, anno, st, index + 1)]
+
       %{} ->
-        [beam_arg(arg, st) | typed_args_1(args, anno, st,
-                                            index + 1)]
+        [beam_arg(arg, st) | typed_args_1(args, anno, st, index + 1)]
     end
   end
 
@@ -3284,12 +3949,16 @@ defmodule :m_beam_ssa_codegen do
     cond do
       is_atom(val) ->
         {:atom, val}
+
       is_float(val) ->
         {:float, val}
+
       is_integer(val) ->
         {:integer, val}
+
       val === [] ->
         nil
+
       true ->
         {:literal, val}
     end
@@ -3306,9 +3975,11 @@ defmodule :m_beam_ssa_codegen do
 
   defp def_block_label(l, r_cg(labels: labels, used_labels: used)) do
     lbl = :maps.get(l, labels)
-    case (:gb_sets.is_member(lbl, used)) do
+
+    case :gb_sets.is_member(lbl, used) do
       false ->
         []
+
       true ->
         [{:label, lbl}]
     end
@@ -3318,22 +3989,26 @@ defmodule :m_beam_ssa_codegen do
     mapfoldl(&use_block_label/2, st, ls)
   end
 
-  defp use_block_label(l,
-            r_cg(used_labels: used, catches: catches) = st0) do
+  defp use_block_label(
+         l,
+         r_cg(used_labels: used, catches: catches) = st0
+       ) do
     {lbl, st} = label_for_block(l, st0)
-    case (:gb_sets.is_member(l, catches)) do
+
+    case :gb_sets.is_member(l, catches) do
       true ->
-        {{:catch_tag, {:f, lbl}},
-           r_cg(st, used_labels: :gb_sets.add(lbl, used))}
+        {{:catch_tag, {:f, lbl}}, r_cg(st, used_labels: :gb_sets.add(lbl, used))}
+
       false ->
         {{:f, lbl}, r_cg(st, used_labels: :gb_sets.add(lbl, used))}
     end
   end
 
   defp label_for_block(l, r_cg(labels: labels0) = st0) do
-    case (labels0) do
+    case labels0 do
       %{^l => lbl} ->
         {lbl, st0}
+
       %{} ->
         {lbl, st} = new_label(st0)
         labels = Map.put(labels0, l, lbl)
@@ -3346,9 +4021,10 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp local_func_label(key, r_cg(functable: map) = st0) do
-    case (map) do
+    case map do
       %{^key => label} ->
         {label, st0}
+
       _ ->
         {label, st} = new_label(st0)
         {label, r_cg(st, functable: Map.put(map, key, label))}
@@ -3405,11 +4081,19 @@ defmodule :m_beam_ssa_codegen do
 
   defp is_gc_bif(bif, args) do
     arity = length(args)
-    not
-    (:erl_internal.bool_op(bif,
-                             arity) or :erl_internal.new_type_test(bif,
-                                                                     arity) or :erl_internal.comp_op(bif,
-                                                                                                       arity))
+
+    not (:erl_internal.bool_op(
+           bif,
+           arity
+         ) or
+           :erl_internal.new_type_test(
+             bif,
+             arity
+           ) or
+           :erl_internal.comp_op(
+             bif,
+             arity
+           ))
   end
 
   defp new_label(r_cg(lcount: next) = st) do
@@ -3417,9 +4101,10 @@ defmodule :m_beam_ssa_codegen do
   end
 
   defp call_line(_Context, {:extfunc, mod, name, arity}, anno) do
-    case (:erl_bifs.is_safe(mod, name, arity)) do
+    case :erl_bifs.is_safe(mod, name, arity) do
       false ->
         [line(anno)]
+
       true ->
         []
     end
@@ -3454,5 +4139,4 @@ defmodule :m_beam_ssa_codegen do
   defp flatmapfoldl(_, accu, []) do
     {[], accu}
   end
-
 end

@@ -1,12 +1,12 @@
 defmodule :m_pool do
   use Bitwise
+
   def start(name) do
     start(name, [])
   end
 
   def start(name, args) when is_atom(name) do
-    _ = :gen_server.start({:global, :pool_master}, :pool,
-                            [], [])
+    _ = :gen_server.start({:global, :pool_master}, :pool, [], [])
     hosts = :net_adm.host_file()
     nodes = start_nodes(hosts, name, args)
     :lists.foreach(&attach/1, nodes)
@@ -18,8 +18,10 @@ defmodule :m_pool do
   end
 
   def attach(node) do
-    :gen_server.call({:global, :pool_master},
-                       {:attach, node})
+    :gen_server.call(
+      {:global, :pool_master},
+      {:attach, node}
+    )
   end
 
   def get_nodes_and_load() do
@@ -31,8 +33,10 @@ defmodule :m_pool do
   end
 
   def pspawn(m, f, a) do
-    :gen_server.call({:global, :pool_master},
-                       {:spawn, :erlang.group_leader(), m, f, a})
+    :gen_server.call(
+      {:global, :pool_master},
+      {:spawn, :erlang.group_leader(), m, f, a}
+    )
   end
 
   def pspawn_link(m, f, a) do
@@ -44,13 +48,15 @@ defmodule :m_pool do
   end
 
   defp start_nodes([host | tail], name, args) do
-    case (:slave.start(host, name, args)) do
+    case :slave.start(host, name, args) do
       {:error, {:already_running, node}} ->
-        :io.format('Can\'t start node on host ~w due to ~w~n', [host, {:already_running, node}])
+        :io.format(~c"Can't start node on host ~w due to ~w~n", [host, {:already_running, node}])
         [node | start_nodes(tail, name, args)]
+
       {:error, r} ->
-        :io.format('Can\'t start node on host ~w due to ~w~n', [host, r])
+        :io.format(~c"Can't start node on host ~w due to ~w~n", [host, r])
         start_nodes(tail, name, args)
+
       {:ok, node} ->
         [node | start_nodes(tail, name, args)]
     end
@@ -92,20 +98,19 @@ defmodule :m_pool do
   end
 
   def handle_call({:attach, node}, _From, nodes) do
-    case (:lists.keymember(node, 2, nodes)) do
+    case :lists.keymember(node, 2, nodes) do
       true ->
         {:reply, :already_attached, nodes}
+
       false ->
         :erlang.monitor_node(node, true)
-        :erlang.spawn_link(node, :pool, :statistic_collector,
-                             [])
-        {:reply, :attached, nodes ++ [{999999, node}]}
+        :erlang.spawn_link(node, :pool, :statistic_collector, [])
+        {:reply, :attached, nodes ++ [{999_999, node}]}
     end
   end
 
   def handle_call({:spawn, gl, m, f, a}, _From, nodes) do
-    {:reply, n, newNodes} = handle_call(:get_node, _From,
-                                          nodes)
+    {:reply, n, newNodes} = handle_call(:get_node, _From, nodes)
     pid = :erlang.spawn(n, :pool, :do_spawn, [gl, m, f, a])
     {:reply, pid, newNodes}
   end
@@ -143,7 +148,7 @@ defmodule :m_pool do
   end
 
   defp insert_node({load, node}, [{l, node} | tail])
-      when load > l do
+       when load > l do
     pure_insert({load, node}, tail)
   end
 
@@ -157,7 +162,7 @@ defmodule :m_pool do
   end
 
   defp insert_node(x, []) do
-    :error_logger.error_msg('Pool_master: Bad node list X=~w\n', [x])
+    :error_logger.error_msg(~c"Pool_master: Bad node list X=~w\n", [x])
     exit(:crash)
   end
 
@@ -183,23 +188,26 @@ defmodule :m_pool do
 
   defp statistic_collector(i) do
     :timer.sleep(300)
-    case (:global.whereis_name(:pool_master)) do
+
+    case :global.whereis_name(:pool_master) do
       :undefined ->
         statistic_collector(i - 1)
+
       m ->
-        stat_loop(m, 999999)
+        stat_loop(m, 999_999)
     end
   end
 
   defp stat_loop(m, old) do
     :timer.sleep(2000)
-    case (:erlang.statistics(:run_queue)) do
+
+    case :erlang.statistics(:run_queue) do
       ^old ->
         stat_loop(m, old)
+
       newLoad ->
         send(m, {node(), :load, newLoad})
         stat_loop(m, newLoad)
     end
   end
-
 end

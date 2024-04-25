@@ -2,21 +2,37 @@ defmodule :m_inet_tcp do
   use Bitwise
   import Kernel, except: [send: 2]
   require Record
-  Record.defrecord(:r_connect_opts, :connect_opts, ifaddr: :undefined,
-                                        port: 0, fd: - 1, opts: [])
-  Record.defrecord(:r_listen_opts, :listen_opts, ifaddr: :undefined,
-                                       port: 0, backlog: 5, fd: - 1, opts: [])
-  Record.defrecord(:r_udp_opts, :udp_opts, ifaddr: :undefined,
-                                    port: 0, fd: - 1, opts: [{:active, true}])
-  Record.defrecord(:r_sctp_opts, :sctp_opts, ifaddr: :undefined,
-                                     port: 0, fd: - 1, type: :seqpacket,
-                                     opts: [{:mode, :binary}, {:buffer, 65536},
-                                                                  {:sndbuf,
-                                                                     65536},
-                                                                      {:recbuf,
-                                                                         1024},
-                                                                          {:sctp_events,
-                                                                             :undefined}])
+  Record.defrecord(:r_connect_opts, :connect_opts, ifaddr: :undefined, port: 0, fd: -1, opts: [])
+
+  Record.defrecord(:r_listen_opts, :listen_opts,
+    ifaddr: :undefined,
+    port: 0,
+    backlog: 5,
+    fd: -1,
+    opts: []
+  )
+
+  Record.defrecord(:r_udp_opts, :udp_opts,
+    ifaddr: :undefined,
+    port: 0,
+    fd: -1,
+    opts: [{:active, true}]
+  )
+
+  Record.defrecord(:r_sctp_opts, :sctp_opts,
+    ifaddr: :undefined,
+    port: 0,
+    fd: -1,
+    type: :seqpacket,
+    opts: [
+      {:mode, :binary},
+      {:buffer, 65536},
+      {:sndbuf, 65536},
+      {:recbuf, 1024},
+      {:sctp_events, :undefined}
+    ]
+  )
+
   def family() do
     :inet
   end
@@ -104,134 +120,170 @@ defmodule :m_inet_tcp do
   end
 
   def connect(address, port, opts, timeout)
-      when (is_integer(timeout) and timeout >= 0) do
+      when is_integer(timeout) and timeout >= 0 do
     do_connect(address, port, opts, timeout)
   end
 
-  defp do_connect(%{addr: {a, b, c, d}, port: port} = sockAddr,
-            opts, time)
-      when (a ||| b ||| c ||| d) &&& ~~~
-                                     255 === 0 and port &&& ~~~ 65535 === 0 do
-    case (:inet.connect_options(opts, :inet_tcp)) do
+  defp do_connect(%{addr: {a, b, c, d}, port: port} = sockAddr, opts, time)
+       when (a ||| b ||| c ||| d) &&& ~~~255 === 0 and port &&& ~~~65535 === 0 do
+    case :inet.connect_options(opts, :inet_tcp) do
       {:error, reason} ->
         exit(reason)
-      {:ok,
-         r_connect_opts(fd: fd, ifaddr: bAddr, port: bPort, opts: sockOpts)}
-          when is_map(bAddr) or
-                 (bPort &&& ~~~ 65535 === 0 and
-                    tuple_size(bAddr) === 4 and (:erlang.element(1,
-                                                                   bAddr) ||| :erlang.element(2,
-                                                                                                bAddr) ||| :erlang.element(3,
-                                                                                                                             bAddr) ||| :erlang.element(4,
-                                                                                                                                                          bAddr)) &&& ~~~
-                                                                                                                                                                      255 === 0) or
-                 (bPort &&& ~~~ 65535 === 0 and bAddr === :undefined)
-               ->
-        case (:inet.open(fd, bAddr, bPort, sockOpts, :tcp,
-                           :inet, :stream, :inet_tcp)) do
+
+      {:ok, r_connect_opts(fd: fd, ifaddr: bAddr, port: bPort, opts: sockOpts)}
+      when is_map(bAddr) or
+             (bPort &&& ~~~65535 === 0 and
+                tuple_size(bAddr) === 4 and
+                (:erlang.element(
+                   1,
+                   bAddr
+                 ) |||
+                   :erlang.element(
+                     2,
+                     bAddr
+                   ) |||
+                   :erlang.element(
+                     3,
+                     bAddr
+                   ) |||
+                   :erlang.element(
+                     4,
+                     bAddr
+                   )) &&& ~~~255 === 0) or
+             (bPort &&& ~~~65535 === 0 and bAddr === :undefined) ->
+        case :inet.open(fd, bAddr, bPort, sockOpts, :tcp, :inet, :stream, :inet_tcp) do
           {:ok, s} ->
-            case (:prim_inet.connect(s, sockAddr, time)) do
+            case :prim_inet.connect(s, sockAddr, time) do
               :ok ->
                 {:ok, s}
+
               error ->
                 :prim_inet.close(s)
                 error
             end
+
           error ->
             error
         end
+
       {:ok, _} ->
         exit(:badarg)
     end
   end
 
   defp do_connect(addr = {a, b, c, d}, port, opts, time)
-      when ((a ||| b ||| c ||| d) &&& ~~~ 255 === 0 and
-              port &&& ~~~ 65535 === 0) do
-    case (:inet.connect_options(opts, :inet_tcp)) do
+       when (a ||| b ||| c ||| d) &&& ~~~255 === 0 and
+              port &&& ~~~65535 === 0 do
+    case :inet.connect_options(opts, :inet_tcp) do
       {:error, reason} ->
         exit(reason)
-      {:ok,
-         r_connect_opts(fd: fd, ifaddr: bAddr, port: bPort, opts: sockOpts)}
-          when (bPort &&& ~~~ 65535 === 0 and
-                  tuple_size(bAddr) === 4 and (:erlang.element(1,
-                                                                 bAddr) ||| :erlang.element(2,
-                                                                                              bAddr) ||| :erlang.element(3,
-                                                                                                                           bAddr) ||| :erlang.element(4,
-                                                                                                                                                        bAddr)) &&& ~~~
-                                                                                                                                                                    255 === 0) or
-                 (bPort &&& ~~~ 65535 === 0 and bAddr === :undefined)
-               ->
-        case (:inet.open(fd, bAddr, bPort, sockOpts, :tcp,
-                           :inet, :stream, :inet_tcp)) do
+
+      {:ok, r_connect_opts(fd: fd, ifaddr: bAddr, port: bPort, opts: sockOpts)}
+      when (bPort &&& ~~~65535 === 0 and
+              tuple_size(bAddr) === 4 and
+              (:erlang.element(
+                 1,
+                 bAddr
+               ) |||
+                 :erlang.element(
+                   2,
+                   bAddr
+                 ) |||
+                 :erlang.element(
+                   3,
+                   bAddr
+                 ) |||
+                 :erlang.element(
+                   4,
+                   bAddr
+                 )) &&& ~~~255 === 0) or
+             (bPort &&& ~~~65535 === 0 and bAddr === :undefined) ->
+        case :inet.open(fd, bAddr, bPort, sockOpts, :tcp, :inet, :stream, :inet_tcp) do
           {:ok, s} ->
-            case (:prim_inet.connect(s, addr, port, time)) do
+            case :prim_inet.connect(s, addr, port, time) do
               :ok ->
                 {:ok, s}
+
               error ->
                 :prim_inet.close(s)
                 error
             end
+
           error ->
             error
         end
+
       {:ok, _} ->
         exit(:badarg)
     end
   end
 
   def listen(port, opts) do
-    case (:inet.listen_options([{:port, port} | opts],
-                                 :inet_tcp)) do
+    case :inet.listen_options(
+           [{:port, port} | opts],
+           :inet_tcp
+         ) do
       {:error, reason} ->
         exit(reason)
-      {:ok,
-         r_listen_opts(fd: fd, ifaddr: bAddr, port: bPort,
-             opts: sockOpts) = r}
-          when is_map(bAddr) or
-                 (bPort &&& ~~~ 65535 === 0 and
-                    tuple_size(bAddr) === 4 and (:erlang.element(1,
-                                                                   bAddr) ||| :erlang.element(2,
-                                                                                                bAddr) ||| :erlang.element(3,
-                                                                                                                             bAddr) ||| :erlang.element(4,
-                                                                                                                                                          bAddr)) &&& ~~~
-                                                                                                                                                                      255 === 0) or
-                 (bPort &&& ~~~ 65535 === 0 and bAddr === :undefined)
-               ->
-        case (:inet.open_bind(fd, bAddr, bPort, sockOpts, :tcp,
-                                :inet, :stream, :inet_tcp)) do
+
+      {:ok, r_listen_opts(fd: fd, ifaddr: bAddr, port: bPort, opts: sockOpts) = r}
+      when is_map(bAddr) or
+             (bPort &&& ~~~65535 === 0 and
+                tuple_size(bAddr) === 4 and
+                (:erlang.element(
+                   1,
+                   bAddr
+                 ) |||
+                   :erlang.element(
+                     2,
+                     bAddr
+                   ) |||
+                   :erlang.element(
+                     3,
+                     bAddr
+                   ) |||
+                   :erlang.element(
+                     4,
+                     bAddr
+                   )) &&& ~~~255 === 0) or
+             (bPort &&& ~~~65535 === 0 and bAddr === :undefined) ->
+        case :inet.open_bind(fd, bAddr, bPort, sockOpts, :tcp, :inet, :stream, :inet_tcp) do
           {:ok, s} ->
-            case (:prim_inet.listen(s, r_listen_opts(r, :backlog))) do
+            case :prim_inet.listen(s, r_listen_opts(r, :backlog)) do
               :ok ->
                 {:ok, s}
+
               error ->
                 :prim_inet.close(s)
                 error
             end
+
           error ->
             error
         end
+
       {:ok, _} ->
         exit(:badarg)
     end
   end
 
   def accept(l) do
-    case (:prim_inet.accept(l, accept_family_opts())) do
+    case :prim_inet.accept(l, accept_family_opts()) do
       {:ok, s} ->
         :inet_db.register_socket(s, :inet_tcp)
         {:ok, s}
+
       error ->
         error
     end
   end
 
   def accept(l, timeout) do
-    case (:prim_inet.accept(l, timeout,
-                              accept_family_opts())) do
+    case :prim_inet.accept(l, timeout, accept_family_opts()) do
       {:ok, s} ->
         :inet_db.register_socket(s, :inet_tcp)
         {:ok, s}
+
       error ->
         error
     end
@@ -244,5 +296,4 @@ defmodule :m_inet_tcp do
   def fdopen(fd, opts) do
     :inet.fdopen(fd, opts, :tcp, :inet, :stream, :inet_tcp)
   end
-
 end

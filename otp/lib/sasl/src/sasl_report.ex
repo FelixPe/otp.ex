@@ -1,5 +1,6 @@
 defmodule :m_sasl_report do
   use Bitwise
+
   def format_report(fd, what, report) do
     io_report(:io_lib, fd, what, report)
   end
@@ -8,23 +9,23 @@ defmodule :m_sasl_report do
     io_report(:io, fd, what, report)
   end
 
-  defp io_report(iO, fd, what,
-            {time, {:error_report, _GL, {pid, type, report}}}) do
-    case (is_my_error_report(what, type)) do
+  defp io_report(iO, fd, what, {time, {:error_report, _GL, {pid, type, report}}}) do
+    case is_my_error_report(what, type) do
       true ->
         head = write_head(type, time, pid)
         write_report2(iO, fd, head, type, report)
+
       _ ->
         true
     end
   end
 
-  defp io_report(iO, fd, what,
-            {time, {:info_report, _GL, {pid, type, report}}}) do
-    case (is_my_info_report(what, type)) do
+  defp io_report(iO, fd, what, {time, {:info_report, _GL, {pid, type, report}}}) do
+    case is_my_info_report(what, type) do
       true ->
         head = write_head(type, time, pid)
         write_report2(iO, fd, head, type, report)
+
       _ ->
         true
     end
@@ -84,9 +85,13 @@ defmodule :m_sasl_report do
     reason = sup_get(:reason, report)
     offender = sup_get(:offender, report)
     enc = encoding(fd)
-    {fmtString, args} = supervisor_format([name, context,
-                                                     reason, offender],
-                                            enc)
+
+    {fmtString, args} =
+      supervisor_format(
+        [name, context, reason, offender],
+        enc
+      )
+
     string = :io_lib.format(fmtString, args)
     write_report_action(iO, fd, head, string)
   end
@@ -109,14 +114,21 @@ defmodule :m_sasl_report do
     {p, tl} = p(encoding, :error_logger.get_format_depth())
     [a, b, c, d] = args0
     args = [a | tl] ++ [b | tl] ++ [c | tl] ++ [d | tl]
-    {'     Supervisor: ~' ++ p ++ '\n     Context:    ~' ++ p ++ '\n     Reason:     ~80.18' ++ p ++ '\n     Offender:   ~80.18' ++ p ++ '\n~n', args}
+
+    {~c"     Supervisor: ~" ++
+       p ++
+       ~c"\n     Context:    ~" ++
+       p ++ ~c"\n     Reason:     ~80.18" ++ p ++ ~c"\n     Offender:   ~80.18" ++ p ++ ~c"\n~n",
+     args}
   end
 
   defp write_report_action(iO, fd, head, string) do
     s = [head | string]
-    case (iO) do
+
+    case iO do
       :io ->
         :io.put_chars(fd, s)
+
       :io_lib ->
         s
     end
@@ -128,8 +140,10 @@ defmodule :m_sasl_report do
   end
 
   defp format_key_val1([{tag, data} | rep], p, tl) do
-    :io_lib.format(('    ~16w: ~' ++ p ++ '\n'),
-                     [tag, data | tl]) ++ format_key_val1(rep, p, tl)
+    :io_lib.format(
+      ~c"    ~16w: ~" ++ p ++ ~c"\n",
+      [tag, data | tl]
+    ) ++ format_key_val1(rep, p, tl)
   end
 
   defp format_key_val1(_, _, _) do
@@ -137,90 +151,106 @@ defmodule :m_sasl_report do
   end
 
   defp p(encoding, depth) do
-    {letter, tl} = (case (depth) do
-                      :unlimited ->
-                        {'p', []}
-                      _ ->
-                        {'P', [depth]}
-                    end)
+    {letter, tl} =
+      case depth do
+        :unlimited ->
+          {~c"p", []}
+
+        _ ->
+          {~c"P", [depth]}
+      end
+
     p = modifier(encoding) ++ letter
     {p, tl}
   end
 
   defp encoding(iO) do
-    case (:lists.keyfind(:encoding, 1, :io.getopts(iO))) do
+    case :lists.keyfind(:encoding, 1, :io.getopts(iO)) do
       false ->
         :latin1
+
       {:encoding, enc} ->
         enc
     end
   end
 
   defp modifier(:latin1) do
-    ''
+    ~c""
   end
 
   defp modifier(_) do
-    't'
+    ~c"t"
   end
 
   defp sup_get(tag, report) do
-    case (:lists.keysearch(tag, 1, report)) do
+    case :lists.keysearch(tag, 1, report) do
       {:value, {_, value}} ->
         value
+
       _ ->
-        ''
+        ~c""
     end
   end
 
   defp maybe_utc(time) do
-    case (:application.get_env(:sasl, :utc_log)) do
+    case :application.get_env(:sasl, :utc_log) do
       {:ok, true} ->
-        case (:calendar.local_time_to_universal_time_dst(time)) do
+        case :calendar.local_time_to_universal_time_dst(time) do
           [uTC] ->
             {:utc, uTC}
+
           [uTC1, _UTC2] ->
             {:utc, uTC1}
+
           [] ->
             time
         end
+
       _ ->
         time
     end
   end
 
   defp write_head(:supervisor_report, time, pid) do
-    write_head1('SUPERVISOR REPORT', maybe_utc(time), pid)
+    write_head1(~c"SUPERVISOR REPORT", maybe_utc(time), pid)
   end
 
   defp write_head(:crash_report, time, pid) do
-    write_head1('CRASH REPORT', maybe_utc(time), pid)
+    write_head1(~c"CRASH REPORT", maybe_utc(time), pid)
   end
 
   defp write_head(:progress, time, pid) do
-    write_head1('PROGRESS REPORT', maybe_utc(time), pid)
+    write_head1(~c"PROGRESS REPORT", maybe_utc(time), pid)
   end
 
   defp write_head1(type, {:utc, {{y, mo, d}, {h, mi, s}}}, pid)
-      when node(pid) != node() do
-    :io_lib.format('~n=~s==== ~p-~s-~p::~s:~s:~s UTC (~p) ===~n',
-                     [type, d, month(mo), y, t(h), t(mi), t(s), node(pid)])
+       when node(pid) != node() do
+    :io_lib.format(
+      ~c"~n=~s==== ~p-~s-~p::~s:~s:~s UTC (~p) ===~n",
+      [type, d, month(mo), y, t(h), t(mi), t(s), node(pid)]
+    )
   end
 
   defp write_head1(type, {:utc, {{y, mo, d}, {h, mi, s}}}, _) do
-    :io_lib.format('~n=~s==== ~p-~s-~p::~s:~s:~s UTC ===~n',
-                     [type, d, month(mo), y, t(h), t(mi), t(s)])
+    :io_lib.format(
+      ~c"~n=~s==== ~p-~s-~p::~s:~s:~s UTC ===~n",
+      [type, d, month(mo), y, t(h), t(mi), t(s)]
+    )
   end
 
   defp write_head1(type, {{y, mo, d}, {h, mi, s}}, pid)
-      when node(pid) != node() do
-    :io_lib.format('~n=~s==== ~p-~s-~p::~s:~s:~s (~p) ===~n',
-                     [type, d, month(mo), y, t(h), t(mi), t(s), node(pid)])
+       when node(pid) != node() do
+    :io_lib.format(
+      ~c"~n=~s==== ~p-~s-~p::~s:~s:~s (~p) ===~n",
+      [type, d, month(mo), y, t(h), t(mi), t(s), node(pid)]
+    )
   end
 
   defp write_head1(type, {{y, mo, d}, {h, mi, s}}, _) do
-    :io_lib.format('~n=~s==== ~p-~s-~p::~s:~s:~s ===~n',
-                     [type, d, month(mo), y, t(h), t(mi), t(s)])
+    :io_lib.format(
+      ~c"~n=~s==== ~p-~s-~p::~s:~s:~s ===~n",
+      [type, d, month(mo), y, t(h), t(mi), t(s)]
+    )
   end
 
   defp t(x) when is_integer(x) do
@@ -228,7 +258,7 @@ defmodule :m_sasl_report do
   end
 
   defp t(_) do
-    ''
+    ~c""
   end
 
   defp t1([x]) do
@@ -240,51 +270,50 @@ defmodule :m_sasl_report do
   end
 
   defp month(1) do
-    'Jan'
+    ~c"Jan"
   end
 
   defp month(2) do
-    'Feb'
+    ~c"Feb"
   end
 
   defp month(3) do
-    'Mar'
+    ~c"Mar"
   end
 
   defp month(4) do
-    'Apr'
+    ~c"Apr"
   end
 
   defp month(5) do
-    'May'
+    ~c"May"
   end
 
   defp month(6) do
-    'Jun'
+    ~c"Jun"
   end
 
   defp month(7) do
-    'Jul'
+    ~c"Jul"
   end
 
   defp month(8) do
-    'Aug'
+    ~c"Aug"
   end
 
   defp month(9) do
-    'Sep'
+    ~c"Sep"
   end
 
   defp month(10) do
-    'Oct'
+    ~c"Oct"
   end
 
   defp month(11) do
-    'Nov'
+    ~c"Nov"
   end
 
   defp month(12) do
-    'Dec'
+    ~c"Dec"
   end
-
 end

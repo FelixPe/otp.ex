@@ -2,13 +2,19 @@ defmodule :m_eprof do
   use Bitwise
   @behaviour :gen_server
   require Record
-  Record.defrecord(:r_bpd, :bpd, n: 0, us: 0,
-                               p: :gb_trees.empty(), mfa: [])
-  Record.defrecord(:r_state, :state, profiling: false,
-                                 pattern: {:_, :_, :_}, rootset: [],
-                                 trace_opts: [], fd: :undefined,
-                                 start_ts: :undefined, reply: :undefined,
-                                 bpd: :EFE_TODO_NESTED_RECORD)
+  Record.defrecord(:r_bpd, :bpd, n: 0, us: 0, p: :gb_trees.empty(), mfa: [])
+
+  Record.defrecord(:r_state, :state,
+    profiling: false,
+    pattern: {:_, :_, :_},
+    rootset: [],
+    trace_opts: [],
+    fd: :undefined,
+    start_ts: :undefined,
+    reply: :undefined,
+    bpd: :EFE_TODO_NESTED_RECORD
+  )
+
   def start() do
     :gen_server.start({:local, :eprof}, :eprof, [], [])
   end
@@ -30,8 +36,7 @@ defmodule :m_eprof do
   end
 
   def analyze(type, opts) when is_list(opts) do
-    :gen_server.call(:eprof, {:analyze, type, opts},
-                       :infinity)
+    :gen_server.call(:eprof, {:analyze, type, opts}, :infinity)
   end
 
   def profile(rootset) when is_list(rootset) do
@@ -42,46 +47,50 @@ defmodule :m_eprof do
     profile([], fun)
   end
 
-  def profile(fun, opts) when (is_function(fun) and
-                            is_list(opts)) do
-    profile([], :erlang, :apply, [fun, []], {:_, :_, :_},
-              opts)
+  def profile(fun, opts)
+      when is_function(fun) and
+             is_list(opts) do
+    profile([], :erlang, :apply, [fun, []], {:_, :_, :_}, opts)
   end
 
-  def profile(rootset, fun) when (is_list(rootset) and
-                               is_function(fun)) do
+  def profile(rootset, fun)
+      when is_list(rootset) and
+             is_function(fun) do
     profile(rootset, fun, {:_, :_, :_})
   end
 
-  def profile(rootset, fun, pattern) when (is_list(rootset) and
-                                        is_function(fun)) do
+  def profile(rootset, fun, pattern)
+      when is_list(rootset) and
+             is_function(fun) do
     profile(rootset, fun, pattern, [{:set_on_spawn, true}])
   end
 
   def profile(rootset, fun, pattern, options)
-      when (is_list(rootset) and is_function(fun) and
-              is_list(options)) do
-    profile(rootset, :erlang, :apply, [fun, []], pattern,
-              options)
+      when is_list(rootset) and is_function(fun) and
+             is_list(options) do
+    profile(rootset, :erlang, :apply, [fun, []], pattern, options)
   end
 
-  def profile(rootset, m, f, a) when (is_list(rootset) and
-                                   is_atom(m) and is_atom(f) and is_list(a)) do
+  def profile(rootset, m, f, a)
+      when is_list(rootset) and
+             is_atom(m) and is_atom(f) and is_list(a) do
     profile(rootset, m, f, a, {:_, :_, :_})
   end
 
   def profile(rootset, m, f, a, pattern)
-      when (is_list(rootset) and is_atom(m) and is_atom(f) and
-              is_list(a)) do
-    profile(rootset, m, f, a, pattern,
-              [{:set_on_spawn, true}])
+      when is_list(rootset) and is_atom(m) and is_atom(f) and
+             is_list(a) do
+    profile(rootset, m, f, a, pattern, [{:set_on_spawn, true}])
   end
 
   def profile(rootset, m, f, a, pattern, options) do
     :ok = start_internal()
-    :gen_server.call(:eprof,
-                       {:profile_start, rootset, pattern, {m, f, a}, options},
-                       :infinity)
+
+    :gen_server.call(
+      :eprof,
+      {:profile_start, rootset, pattern, {m, f, a}, options},
+      :infinity
+    )
   end
 
   def dump() do
@@ -101,15 +110,17 @@ defmodule :m_eprof do
   end
 
   def start_profiling(rootset, pattern) do
-    start_profiling(rootset, pattern,
-                      [{:set_on_spawn, true}])
+    start_profiling(rootset, pattern, [{:set_on_spawn, true}])
   end
 
   def start_profiling(rootset, pattern, options) do
     :ok = start_internal()
-    :gen_server.call(:eprof,
-                       {:profile_start, rootset, pattern, :undefined, options},
-                       :infinity)
+
+    :gen_server.call(
+      :eprof,
+      {:profile_start, rootset, pattern, :undefined, options},
+      :infinity
+    )
   end
 
   def stop_profiling() do
@@ -121,19 +132,16 @@ defmodule :m_eprof do
     {:ok, r_state()}
   end
 
-  def handle_call({:analyze, _, _}, _,
-           r_state(bpd: r_bpd(p: {0, nil}, us: 0, n: 0)) = s) do
+  def handle_call({:analyze, _, _}, _, r_state(bpd: r_bpd(p: {0, nil}, us: 0, n: 0)) = s) do
     {:reply, :nothing_to_analyze, s}
   end
 
-  def handle_call({:analyze, :procs, opts}, _,
-           r_state(bpd: bpd, fd: fd) = s)
+  def handle_call({:analyze, :procs, opts}, _, r_state(bpd: bpd, fd: fd) = s)
       when elem(bpd, 0) === :bpd do
     {:reply, analyze(fd, :procs, opts, bpd), s}
   end
 
-  def handle_call({:analyze, :total, opts}, _,
-           r_state(bpd: bpd, fd: fd) = s)
+  def handle_call({:analyze, :total, opts}, _, r_state(bpd: bpd, fd: fd) = s)
       when elem(bpd, 0) === :bpd do
     {:reply, analyze(fd, :total, opts, bpd), s}
   end
@@ -142,51 +150,64 @@ defmodule :m_eprof do
     {:reply, {:error, {:undefined, type}}, s}
   end
 
-  def handle_call({:profile_start, _Rootset, _Pattern, _MFA,
-            _Opts},
-           _From, r_state(profiling: true) = s) do
+  def handle_call(
+        {:profile_start, _Rootset, _Pattern, _MFA, _Opts},
+        _From,
+        r_state(profiling: true) = s
+      ) do
     {:reply, {:error, :already_profiling}, s}
   end
 
-  def handle_call({:profile_start, rootset, pattern, {m, f, a},
-            opts},
-           from, r_state(fd: fd) = s) do
+  def handle_call({:profile_start, rootset, pattern, {m, f, a}, opts}, from, r_state(fd: fd) = s) do
     :ok = set_pattern_trace(false, r_state(s, :pattern))
-    _ = set_process_trace(false, r_state(s, :rootset),
-                            r_state(s, :trace_opts))
+    _ = set_process_trace(false, r_state(s, :rootset), r_state(s, :trace_opts))
     topts = get_trace_options(opts)
     pid = setup_profiling(m, f, a)
-    case (set_process_trace(true, [pid | rootset],
-                              topts)) do
+
+    case set_process_trace(true, [pid | rootset], topts) do
       true ->
         :ok = set_pattern_trace(true, pattern)
         t0 = :erlang.timestamp()
         :ok = execute_profiling(pid)
+
         {:noreply,
-           r_state(profiling: true, rootset: [pid | rootset],
-               start_ts: t0, reply: from, fd: fd, trace_opts: topts,
-               pattern: pattern)}
+         r_state(
+           profiling: true,
+           rootset: [pid | rootset],
+           start_ts: t0,
+           reply: from,
+           fd: fd,
+           trace_opts: topts,
+           pattern: pattern
+         )}
+
       false ->
         :erlang.exit(pid, :eprof_kill)
         {:reply, :error, r_state(fd: fd)}
     end
   end
 
-  def handle_call({:profile_start, rootset, pattern, :undefined,
-            opts},
-           from, r_state(fd: fd) = s) do
+  def handle_call({:profile_start, rootset, pattern, :undefined, opts}, from, r_state(fd: fd) = s) do
     :ok = set_pattern_trace(false, r_state(s, :pattern))
-    true = set_process_trace(false, r_state(s, :rootset),
-                               r_state(s, :trace_opts))
+    true = set_process_trace(false, r_state(s, :rootset), r_state(s, :trace_opts))
     topts = get_trace_options(opts)
-    case (set_process_trace(true, rootset, topts)) do
+
+    case set_process_trace(true, rootset, topts) do
       true ->
         t0 = :erlang.timestamp()
         :ok = set_pattern_trace(true, pattern)
+
         {:reply, :profiling,
-           r_state(profiling: true, rootset: rootset, start_ts: t0,
-               reply: from, fd: fd, trace_opts: topts,
-               pattern: pattern)}
+         r_state(
+           profiling: true,
+           rootset: rootset,
+           start_ts: t0,
+           reply: from,
+           fd: fd,
+           trace_opts: topts,
+           pattern: pattern
+         )}
+
       false ->
         {:reply, :error, r_state(fd: fd)}
     end
@@ -199,24 +220,26 @@ defmodule :m_eprof do
   def handle_call(:profile_stop, _From, r_state(profiling: true) = s) do
     :ok = set_pattern_trace(:pause, r_state(s, :pattern))
     bpd = collect_bpd()
-    _ = set_process_trace(false, r_state(s, :rootset),
-                            r_state(s, :trace_opts))
+    _ = set_process_trace(false, r_state(s, :rootset), r_state(s, :trace_opts))
     :ok = set_pattern_trace(false, r_state(s, :pattern))
+
     {:reply, :profiling_stopped,
-       r_state(s, profiling: false,  rootset: [],  trace_opts: [], 
-              pattern: {:_, :_, :_},  bpd: bpd)}
+     r_state(s, profiling: false, rootset: [], trace_opts: [], pattern: {:_, :_, :_}, bpd: bpd)}
   end
 
   def handle_call({:logfile, file}, _From, r_state(fd: oldFd) = s) do
-    case (:file.open(file, [:write, {:encoding, :utf8}])) do
+    case :file.open(file, [:write, {:encoding, :utf8}]) do
       {:ok, fd} ->
-        case (oldFd) do
+        case oldFd do
           :undefined ->
             :ok
+
           ^oldFd ->
             :ok = :file.close(oldFd)
         end
+
         {:reply, :ok, r_state(s, fd: fd)}
+
       error ->
         {:reply, error, s}
     end
@@ -249,33 +272,33 @@ defmodule :m_eprof do
   end
 
   def handle_info({:EXIT, _, reason}, r_state(reply: fromTag) = s) do
-    _ = set_process_trace(false, r_state(s, :rootset),
-                            r_state(s, :trace_opts))
+    _ = set_process_trace(false, r_state(s, :rootset), r_state(s, :trace_opts))
     :ok = set_pattern_trace(false, r_state(s, :pattern))
     :gen_server.reply(fromTag, {:error, reason})
-    {:noreply,
-       r_state(s, profiling: false,  rootset: [],  trace_opts: [], 
-              pattern: {:_, :_, :_})}
+    {:noreply, r_state(s, profiling: false, rootset: [], trace_opts: [], pattern: {:_, :_, :_})}
   end
 
-  def handle_info({_Pid, {:answer, result}},
-           r_state(reply: {from, _} = fromTag) = s) do
+  def handle_info(
+        {_Pid, {:answer, result}},
+        r_state(reply: {from, _} = fromTag) = s
+      ) do
     :ok = set_pattern_trace(:pause, r_state(s, :pattern))
     bpd = collect_bpd()
-    _ = set_process_trace(false, r_state(s, :rootset),
-                            r_state(s, :trace_opts))
+    _ = set_process_trace(false, r_state(s, :rootset), r_state(s, :trace_opts))
     :ok = set_pattern_trace(false, r_state(s, :pattern))
-    (try do
+
+    try do
       :erlang.unlink(from)
     catch
       :error, e -> {:EXIT, {e, __STACKTRACE__}}
       :exit, e -> {:EXIT, e}
       e -> e
-    end)
+    end
+
     :gen_server.reply(fromTag, {:ok, result})
+
     {:noreply,
-       r_state(s, profiling: false,  rootset: [],  trace_opts: [], 
-              pattern: {:_, :_, :_},  bpd: bpd)}
+     r_state(s, profiling: false, rootset: [], trace_opts: [], pattern: {:_, :_, :_}, bpd: bpd)}
   end
 
   def terminate(_Reason, r_state(fd: :undefined)) do
@@ -294,9 +317,9 @@ defmodule :m_eprof do
   end
 
   defp setup_profiling(m, f, a) do
-    spawn_link(fn () ->
-                    spin_profile(m, f, a)
-               end)
+    spawn_link(fn ->
+      spin_profile(m, f, a)
+    end)
   end
 
   defp spin_profile(m, f, a) do
@@ -350,22 +373,26 @@ defmodule :m_eprof do
   end
 
   defp set_process_trace(flag, [name | pids], options)
-      when is_atom(name) do
-    case (:erlang.whereis(name)) do
+       when is_atom(name) do
+    case :erlang.whereis(name) do
       :undefined ->
         set_process_trace(flag, pids, options)
+
       pid ->
         set_process_trace(flag, [pid | pids], options)
     end
   end
 
   defp collect_bpd() do
-    collect_bpd(for m <- (for mi <- :code.all_loaded() do
-                            :erlang.element(1, mi)
-                          end),
-                      m !== :eprof do
-                  m
-                end)
+    collect_bpd(
+      for m <-
+            (for mi <- :code.all_loaded() do
+               :erlang.element(1, mi)
+             end),
+          m !== :eprof do
+        m
+      end
+    )
   end
 
   defp collect_bpd(ms) when is_list(ms) do
@@ -373,12 +400,16 @@ defmodule :m_eprof do
   end
 
   defp collect_mfas(ms) do
-    :lists.foldl(fn m, mfas ->
-                      mfas ++ (for {f, a} <- m.module_info(:functions) do
-                                 {m, f, a}
-                               end)
-                 end,
-                   [], ms)
+    :lists.foldl(
+      fn m, mfas ->
+        mfas ++
+          for {f, a} <- m.module_info(:functions) do
+            {m, f, a}
+          end
+      end,
+      [],
+      ms
+    )
   end
 
   defp collect_bpdf(mfas) do
@@ -389,79 +420,113 @@ defmodule :m_eprof do
     bpd
   end
 
-  defp collect_bpdf([mfa | mfas],
-            r_bpd(n: n, us: us, p: tree, mfa: code) = bpd) do
-    case (:erlang.trace_info(mfa, :call_time)) do
+  defp collect_bpdf(
+         [mfa | mfas],
+         r_bpd(n: n, us: us, p: tree, mfa: code) = bpd
+       ) do
+    case :erlang.trace_info(mfa, :call_time) do
       {:call_time, []} ->
         collect_bpdf(mfas, bpd)
+
       {:call_time, data} when is_list(data) ->
         {cTn, cTus, cTree} = collect_bpdfp(mfa, tree, data)
-        collect_bpdf(mfas,
-                       r_bpd(bpd, n: cTn + n,  us: cTus + us,  p: cTree, 
-                                mfa: [{mfa, {cTn, cTus}} | code]))
+
+        collect_bpdf(
+          mfas,
+          r_bpd(bpd, n: cTn + n, us: cTus + us, p: cTree, mfa: [{mfa, {cTn, cTus}} | code])
+        )
+
       {:call_time, false} ->
         collect_bpdf(mfas, bpd)
+
       {:call_time, _Other} ->
         collect_bpdf(mfas, bpd)
     end
   end
 
   defp collect_bpdfp(mfa, tree, data) do
-    :lists.foldl(fn {pid, ni, si, usi}, {pTno, pTuso, to} ->
-                      time = si * 1000000 + usi
-                      ti1 = (case (:gb_trees.lookup(pid, to)) do
-                               :none ->
-                                 :gb_trees.enter(pid, [{mfa, {ni, time}}], to)
-                               {:value, pmfas} ->
-                                 :gb_trees.enter(pid,
-                                                   [{mfa, {ni, time}} | pmfas],
-                                                   to)
-                             end)
-                      {pTno + ni, pTuso + time, ti1}
-                 end,
-                   {0, 0, tree}, data)
+    :lists.foldl(
+      fn {pid, ni, si, usi}, {pTno, pTuso, to} ->
+        time = si * 1_000_000 + usi
+
+        ti1 =
+          case :gb_trees.lookup(pid, to) do
+            :none ->
+              :gb_trees.enter(pid, [{mfa, {ni, time}}], to)
+
+            {:value, pmfas} ->
+              :gb_trees.enter(
+                pid,
+                [{mfa, {ni, time}} | pmfas],
+                to
+              )
+          end
+
+        {pTno + ni, pTuso + time, ti1}
+      end,
+      {0, 0, tree},
+      data
+    )
   end
 
   def analyze(fd, :procs, opts, r_bpd(p: ps, us: tus)) do
-    :lists.foreach(fn {pid, mfas} ->
-                        {pn, pus} = sum_bp_total_n_us(mfas)
-                        format(fd, '~n****** Process ~w    -- ~s % of profiled time *** ~n', [pid, s('~.2f', [100.0 * divide(pus, tus)])])
-                        print_bp_mfa(mfas, {pn, pus}, fd, opts)
-                        :ok
-                   end,
-                     :gb_trees.to_list(ps))
+    :lists.foreach(
+      fn {pid, mfas} ->
+        {pn, pus} = sum_bp_total_n_us(mfas)
+
+        format(fd, ~c"~n****** Process ~w    -- ~s % of profiled time *** ~n", [
+          pid,
+          s(~c"~.2f", [100.0 * divide(pus, tus)])
+        ])
+
+        print_bp_mfa(mfas, {pn, pus}, fd, opts)
+        :ok
+      end,
+      :gb_trees.to_list(ps)
+    )
   end
 
-  def analyze(fd, :total, opts,
-           r_bpd(mfa: mfas, n: tn, us: tus)) do
+  def analyze(fd, :total, opts, r_bpd(mfa: mfas, n: tn, us: tus)) do
     print_bp_mfa(mfas, {tn, tus}, fd, opts)
   end
 
   defp sort_mfa(bpfs, :mfa) when is_list(bpfs) do
-    :lists.sort(fn {a, _}, {b, _} when a < b ->
-                     true
-                   _, _ ->
-                     false
-                end,
-                  bpfs)
+    :lists.sort(
+      fn
+        {a, _}, {b, _} when a < b ->
+          true
+
+        _, _ ->
+          false
+      end,
+      bpfs
+    )
   end
 
   defp sort_mfa(bpfs, :time) when is_list(bpfs) do
-    :lists.sort(fn {_, {_, a}}, {_, {_, b}} when a < b ->
-                     true
-                   _, _ ->
-                     false
-                end,
-                  bpfs)
+    :lists.sort(
+      fn
+        {_, {_, a}}, {_, {_, b}} when a < b ->
+          true
+
+        _, _ ->
+          false
+      end,
+      bpfs
+    )
   end
 
   defp sort_mfa(bpfs, :calls) when is_list(bpfs) do
-    :lists.sort(fn {_, {a, _}}, {_, {b, _}} when a < b ->
-                     true
-                   _, _ ->
-                     false
-                end,
-                  bpfs)
+    :lists.sort(
+      fn
+        {_, {a, _}}, {_, {b, _}} when a < b ->
+          true
+
+        _, _ ->
+          false
+      end,
+      bpfs
+    )
   end
 
   defp sort_mfa(bpfs, _) when is_list(bpfs) do
@@ -469,9 +534,7 @@ defmodule :m_eprof do
   end
 
   defp filter_mfa(bpfs, ts) when is_list(ts) do
-    filter_mfa(bpfs, [],
-                 :proplists.get_value(:calls, ts, 0),
-                 :proplists.get_value(:time, ts, 0))
+    filter_mfa(bpfs, [], :proplists.get_value(:calls, ts, 0), :proplists.get_value(:time, ts, 0))
   end
 
   defp filter_mfa(bpfs, _) do
@@ -483,7 +546,7 @@ defmodule :m_eprof do
   end
 
   defp filter_mfa([{_, {c, t}} = bpf | bpfs], out, ct, tt)
-      when (c >= ct and t >= tt) do
+       when c >= ct and t >= tt do
     filter_mfa(bpfs, [bpf | out], ct, tt)
   end
 
@@ -492,10 +555,13 @@ defmodule :m_eprof do
   end
 
   defp sum_bp_total_n_us(mfas) do
-    :lists.foldl(fn {_, {ci, usi}}, {co, uso} ->
-                      {co + ci, uso + usi}
-                 end,
-                   {0, 0}, mfas)
+    :lists.foldl(
+      fn {_, {ci, usi}}, {co, uso} ->
+        {co + ci, uso + usi}
+      end,
+      {0, 0},
+      mfas
+    )
   end
 
   defp string_bp_mfa(mfas, tus) do
@@ -506,69 +572,90 @@ defmodule :m_eprof do
     {ws, :lists.reverse(strings)}
   end
 
-  defp string_bp_mfa([{mfa, {count, time}} | mfas], tus,
-            {mfaW, countW, percW, timeW, tpCW}, strings) do
+  defp string_bp_mfa(
+         [{mfa, {count, time}} | mfas],
+         tus,
+         {mfaW, countW, percW, timeW, tpCW},
+         strings
+       ) do
     smfa = s(mfa)
     scount = s(count)
     stime = s(time)
-    sperc = s('~.2f', [100 * divide(time, tus)])
-    stpc = s('~.2f', [divide(time, count)])
-    string_bp_mfa(mfas, tus,
-                    {:erlang.max(mfaW, :string.length(smfa)),
-                       :erlang.max(countW, :string.length(scount)),
-                       :erlang.max(percW, :string.length(sperc)),
-                       :erlang.max(timeW, :string.length(stime)),
-                       :erlang.max(tpCW, :string.length(stpc))},
-                    [[smfa, scount, sperc, stime, stpc] | strings])
+    sperc = s(~c"~.2f", [100 * divide(time, tus)])
+    stpc = s(~c"~.2f", [divide(time, count)])
+
+    string_bp_mfa(
+      mfas,
+      tus,
+      {:erlang.max(mfaW, :string.length(smfa)), :erlang.max(countW, :string.length(scount)),
+       :erlang.max(percW, :string.length(sperc)), :erlang.max(timeW, :string.length(stime)),
+       :erlang.max(tpCW, :string.length(stpc))},
+      [[smfa, scount, sperc, stime, stpc] | strings]
+    )
   end
 
   defp print_bp_mfa(mfas, {tn, tus}, fd, opts) do
-    fmfas = filter_mfa(sort_mfa(mfas,
-                                  :proplists.get_value(:sort, opts)),
-                         :proplists.get_value(:filter, opts))
-    {{mfaW, countW, percW, timeW, tpCW},
-       strs} = string_bp_mfa(fmfas, tus)
+    fmfas =
+      filter_mfa(
+        sort_mfa(
+          mfas,
+          :proplists.get_value(:sort, opts)
+        ),
+        :proplists.get_value(:filter, opts)
+      )
+
+    {{mfaW, countW, percW, timeW, tpCW}, strs} = string_bp_mfa(fmfas, tus)
     tnStr = s(tn)
     tusStr = s(tus)
-    tuspcStr = s('~.2f', [divide(tus, tn)])
-    ws = {:erlang.max(:string.length('FUNCTION'), mfaW),
-            :lists.max([:string.length('CALLS'), countW,
-                                               :string.length(tnStr)]),
-            :erlang.max(:string.length('      %'), percW),
-            :lists.max([:string.length('TIME'), timeW,
-                                               :string.length(tusStr)]),
-            :lists.max([:string.length('uS / CALLS'), tpCW,
-                                               :string.length(tuspcStr)])}
-    format(fd, ws, ['FUNCTION', 'CALLS', '      %', 'TIME', 'uS / CALLS'])
-    format(fd, ws, ['--------', '-----', '-------', '----', '----------'])
-    :lists.foreach(fn string ->
-                        format(fd, ws, string)
-                   end,
-                     strs)
-    format(fd, ws,
-             for n <- :erlang.tuple_to_list(ws) do
-               :lists.duplicate(n, ?-)
-             end)
-    format(fd, ws, ['Total:', tnStr, '100.00%', tusStr, tuspcStr])
+    tuspcStr = s(~c"~.2f", [divide(tus, tn)])
+
+    ws =
+      {:erlang.max(:string.length(~c"FUNCTION"), mfaW),
+       :lists.max([:string.length(~c"CALLS"), countW, :string.length(tnStr)]),
+       :erlang.max(:string.length(~c"      %"), percW),
+       :lists.max([:string.length(~c"TIME"), timeW, :string.length(tusStr)]),
+       :lists.max([:string.length(~c"uS / CALLS"), tpCW, :string.length(tuspcStr)])}
+
+    format(fd, ws, [~c"FUNCTION", ~c"CALLS", ~c"      %", ~c"TIME", ~c"uS / CALLS"])
+    format(fd, ws, [~c"--------", ~c"-----", ~c"-------", ~c"----", ~c"----------"])
+
+    :lists.foreach(
+      fn string ->
+        format(fd, ws, string)
+      end,
+      strs
+    )
+
+    format(
+      fd,
+      ws,
+      for n <- :erlang.tuple_to_list(ws) do
+        :lists.duplicate(n, ?-)
+      end
+    )
+
+    format(fd, ws, [~c"Total:", tnStr, ~c"100.00%", tusStr, tuspcStr])
     :ok
   end
 
   defp s({m, f, a}) do
-    s('~w:~tw/~w', [m, f, a])
+    s(~c"~w:~tw/~w", [m, f, a])
   end
 
   defp s(term) do
-    s('~tp', [term])
+    s(~c"~tp", [term])
   end
 
   defp s(format, terms) do
     :lists.flatten(:io_lib.format(format, terms))
   end
 
-  defp format(fd, {mfaW, countW, percW, timeW, tpCW},
-            strings) do
-    format(fd, s('~~.~wts  ~~~ws  ~~~ws  ~~~ws  [~~~ws]~~n', [mfaW, countW, percW, timeW, tpCW]),
-             strings)
+  defp format(fd, {mfaW, countW, percW, timeW, tpCW}, strings) do
+    format(
+      fd,
+      s(~c"~~.~wts  ~~~ws  ~~~ws  ~~~ws  [~~~ws]~~n", [mfaW, countW, percW, timeW, tpCW]),
+      strings
+    )
   end
 
   defp format(:undefined, format, strings) do
@@ -591,14 +678,15 @@ defmodule :m_eprof do
   end
 
   defp start_internal() do
-    case (start()) do
+    case start() do
       {:ok, _} ->
         :ok
+
       {:error, {:already_started, _}} ->
         :ok
+
       error ->
         error
     end
   end
-
 end

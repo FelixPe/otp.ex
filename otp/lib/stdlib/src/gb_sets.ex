@@ -1,5 +1,6 @@
 defmodule :m_gb_sets do
   use Bitwise
+
   def empty() do
     {0, nil}
   end
@@ -48,46 +49,52 @@ defmodule :m_gb_sets do
     false
   end
 
-  def insert(key, {s, t}) when (is_integer(s) and s >= 0) do
+  def insert(key, {s, t}) when is_integer(s) and s >= 0 do
     s1 = s + 1
     {s1, insert_1(key, t, s1 * s1)}
   end
 
   defp insert_1(key, {key1, smaller, bigger}, s)
-      when key < key1 do
-    case (insert_1(key, smaller, s >>> 1)) do
-      {t1, h1, s1} when (is_integer(h1) and is_integer(s1)) ->
+       when key < key1 do
+    case insert_1(key, smaller, s >>> 1) do
+      {t1, h1, s1} when is_integer(h1) and is_integer(s1) ->
         t = {key1, t1, bigger}
         {h2, s2} = count(bigger)
         h = :erlang.max(h1, h2) <<< 1
         sS = s1 + s2 + 1
         p = sS * sS
+
         cond do
           h > p ->
             balance(t, sS)
+
           true ->
             {t, h, sS}
         end
+
       t1 ->
         {key1, t1, bigger}
     end
   end
 
   defp insert_1(key, {key1, smaller, bigger}, s)
-      when key > key1 do
-    case (insert_1(key, bigger, s >>> 1)) do
-      {t1, h1, s1} when (is_integer(h1) and is_integer(s1)) ->
+       when key > key1 do
+    case insert_1(key, bigger, s >>> 1) do
+      {t1, h1, s1} when is_integer(h1) and is_integer(s1) ->
         t = {key1, smaller, t1}
         {h2, s2} = count(smaller)
         h = :erlang.max(h1, h2) <<< 1
         sS = s1 + s2 + 1
         p = sS * sS
+
         cond do
           h > p ->
             balance(t, sS)
+
           true ->
             {t, h, sS}
         end
+
       t1 ->
         {key1, smaller, t1}
     end
@@ -119,7 +126,7 @@ defmodule :m_gb_sets do
     {1, 0}
   end
 
-  def balance({s, t}) when (is_integer(s) and s >= 0) do
+  def balance({s, t}) when is_integer(s) and s >= 0 do
     {s, balance(t, s)}
   end
 
@@ -155,9 +162,10 @@ defmodule :m_gb_sets do
   end
 
   def add(x, s) do
-    case (is_member(x, s)) do
+    case is_member(x, s) do
       true ->
         s
+
       false ->
         insert(x, s)
     end
@@ -177,9 +185,10 @@ defmodule :m_gb_sets do
   end
 
   def delete_any(key, s) do
-    case (is_member(key, s)) do
+    case is_member(key, s) do
       true ->
         delete(key, s)
+
       false ->
         s
     end
@@ -328,13 +337,15 @@ defmodule :m_gb_sets do
     :none
   end
 
-  def union({n1, t1}, {n2, t2}) when (is_integer(n1) and
-                                     is_integer(n2) and n2 < n1) do
+  def union({n1, t1}, {n2, t2})
+      when is_integer(n1) and
+             is_integer(n2) and n2 < n1 do
     union(to_list_1(t2), n2, t1, n1)
   end
 
-  def union({n1, t1}, {n2, t2}) when (is_integer(n1) and
-                                     is_integer(n2)) do
+  def union({n1, t1}, {n2, t2})
+      when is_integer(n1) and
+             is_integer(n2) do
     union(to_list_1(t1), n1, t2, n2)
   end
 
@@ -343,10 +354,12 @@ defmodule :m_gb_sets do
   end
 
   defp union(l, n1, t2, n2) do
-    x = n1 * round((1.46 * :math.log(n2)))
+    x = n1 * round(1.46 * :math.log(n2))
+
     cond do
       n2 < x ->
         union_2(l, to_list_1(t2), n1 + n2)
+
       true ->
         union_1(l, mk_set(n2, t2))
     end
@@ -435,13 +448,15 @@ defmodule :m_gb_sets do
     s
   end
 
-  def intersection({n1, t1}, {n2, t2}) when (is_integer(n1) and
-                                     is_integer(n2) and n2 < n1) do
+  def intersection({n1, t1}, {n2, t2})
+      when is_integer(n1) and
+             is_integer(n2) and n2 < n1 do
     intersection(to_list_1(t2), n2, t1, n1)
   end
 
-  def intersection({n1, t1}, {n2, t2}) when (is_integer(n1) and
-                                     is_integer(n2)) do
+  def intersection({n1, t1}, {n2, t2})
+      when is_integer(n1) and
+             is_integer(n2) do
     intersection(to_list_1(t1), n1, t2, n2)
   end
 
@@ -450,10 +465,12 @@ defmodule :m_gb_sets do
   end
 
   defp intersection(l, n1, t2, n2) do
-    x = n1 * round((1.46 * :math.log(n2)))
+    x = n1 * round(1.46 * :math.log(n2))
+
     cond do
       n2 < x ->
         intersection_2(l, to_list_1(t2))
+
       true ->
         intersection_1(l, t2)
     end
@@ -464,9 +481,10 @@ defmodule :m_gb_sets do
   end
 
   defp intersection_1([x | xs], t, as, n) do
-    case (is_member_1(x, t)) do
+    case is_member_1(x, t) do
       true ->
         intersection_1(xs, t, [x | as], n + 1)
+
       false ->
         intersection_1(xs, t, as, n)
     end
@@ -520,20 +538,33 @@ defmodule :m_gb_sets do
     is_disjoint_1(t2, t1)
   end
 
-  defp is_disjoint_1({k1, smaller1, bigger},
-            {k2, smaller2, _} = tree)
-      when k1 < k2 do
-    not
-    is_member_1(k1, smaller2) and is_disjoint_1(smaller1,
-                                                  smaller2) and is_disjoint_1(bigger,
-                                                                                tree)
+  defp is_disjoint_1(
+         {k1, smaller1, bigger},
+         {k2, smaller2, _} = tree
+       )
+       when k1 < k2 do
+    not is_member_1(k1, smaller2) and
+      is_disjoint_1(
+        smaller1,
+        smaller2
+      ) and
+      is_disjoint_1(
+        bigger,
+        tree
+      )
   end
 
   defp is_disjoint_1({k1, smaller, bigger1}, {k2, _, bigger2} = tree)
-      when k1 > k2 do
-    not is_member_1(k1, bigger2) and is_disjoint_1(bigger1,
-                                                     bigger2) and is_disjoint_1(smaller,
-                                                                                  tree)
+       when k1 > k2 do
+    not is_member_1(k1, bigger2) and
+      is_disjoint_1(
+        bigger1,
+        bigger2
+      ) and
+      is_disjoint_1(
+        smaller,
+        tree
+      )
   end
 
   defp is_disjoint_1({_K1, _, _}, {_K2, _, _}) do
@@ -552,8 +583,9 @@ defmodule :m_gb_sets do
     difference(s1, s2)
   end
 
-  def difference({n1, t1}, {n2, t2}) when (is_integer(n1) and
-                                     n1 >= 0 and is_integer(n2) and n2 >= 0) do
+  def difference({n1, t1}, {n2, t2})
+      when is_integer(n1) and
+             n1 >= 0 and is_integer(n2) and n2 >= 0 do
     difference(to_list_1(t1), n1, t2, n2)
   end
 
@@ -562,10 +594,12 @@ defmodule :m_gb_sets do
   end
 
   defp difference(l, n1, t2, n2) do
-    x = n1 * round((1.46 * :math.log(n2)))
+    x = n1 * round(1.46 * :math.log(n2))
+
     cond do
       n2 < x ->
         difference_2(l, to_list_1(t2), n1)
+
       true ->
         difference_1(l, t2)
     end
@@ -576,9 +610,10 @@ defmodule :m_gb_sets do
   end
 
   defp difference_1([x | xs], t, as, n) do
-    case (is_member_1(x, t)) do
+    case is_member_1(x, t) do
       true ->
         difference_1(xs, t, as, n)
+
       false ->
         difference_1(xs, t, [x | as], n + 1)
     end
@@ -612,8 +647,9 @@ defmodule :m_gb_sets do
     {s, balance_revlist(push(xs, as), s)}
   end
 
-  def is_subset({n1, t1}, {n2, t2}) when (is_integer(n1) and
-                                     n1 >= 0 and is_integer(n2) and n2 >= 0) do
+  def is_subset({n1, t1}, {n2, t2})
+      when is_integer(n1) and
+             n1 >= 0 and is_integer(n2) and n2 >= 0 do
     is_subset(to_list_1(t1), n1, t2, n2)
   end
 
@@ -622,19 +658,22 @@ defmodule :m_gb_sets do
   end
 
   defp is_subset(l, n1, t2, n2) do
-    x = n1 * round((1.46 * :math.log(n2)))
+    x = n1 * round(1.46 * :math.log(n2))
+
     cond do
       n2 < x ->
         is_subset_2(l, to_list_1(t2))
+
       true ->
         is_subset_1(l, t2)
     end
   end
 
   defp is_subset_1([x | xs], t) do
-    case (is_member_1(x, t)) do
+    case is_member_1(x, t) do
       true ->
         is_subset_1(xs, t)
+
       false ->
         false
     end
@@ -668,8 +707,9 @@ defmodule :m_gb_sets do
     true
   end
 
-  def is_set({n, {_, _, _}}) when (is_integer(n) and
-                                 n >= 0) do
+  def is_set({n, {_, _, _}})
+      when is_integer(n) and
+             n >= 0 do
     true
   end
 
@@ -678,9 +718,11 @@ defmodule :m_gb_sets do
   end
 
   def filter(f, s) when is_function(f, 1) do
-    from_ordset(for x <- to_list(s), f.(x) do
-                  x
-                end)
+    from_ordset(
+      for x <- to_list(s), f.(x) do
+        x
+      end
+    )
   end
 
   def fold(f, a, {_, t}) when is_function(f, 2) do
@@ -696,5 +738,4 @@ defmodule :m_gb_sets do
   defp fold_1(_, acc, _) do
     acc
   end
-
 end

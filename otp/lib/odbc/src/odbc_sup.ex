@@ -10,9 +10,7 @@ defmodule :m_odbc_sup do
     shutdown = 7000
     modules = [:odbc]
     type = :worker
-    childSpec = {name, startFunc, restart, shutdown, type,
-                   modules}
+    childSpec = {name, startFunc, restart, shutdown, type, modules}
     {:ok, {{restartStrategy, maxR, maxT}, [childSpec]}}
   end
-
 end

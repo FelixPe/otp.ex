@@ -1,52 +1,68 @@
 defmodule :m_pubkey_pem do
   use Bitwise
   require Record
-  Record.defrecord(:r_SubjectPublicKeyInfoAlgorithm, :SubjectPublicKeyInfoAlgorithm, algorithm: :undefined,
-                                                         parameters: :asn1_NOVALUE)
-  Record.defrecord(:r_path_validation_state, :path_validation_state, valid_policy_tree: :undefined,
-                                                 user_initial_policy_set: :undefined,
-                                                 explicit_policy: :undefined,
-                                                 inhibit_any_policy: :undefined,
-                                                 inhibit_policy_mapping: :undefined,
-                                                 policy_mapping_ext: :undefined,
-                                                 policy_constraint_ext: :undefined,
-                                                 policy_inhibitany_ext: :undefined,
-                                                 policy_ext_present: :undefined,
-                                                 policy_ext_any: :undefined,
-                                                 current_any_policy_qualifiers: :undefined,
-                                                 cert_num: :undefined,
-                                                 last_cert: false,
-                                                 permitted_subtrees: :no_constraints,
-                                                 excluded_subtrees: [],
-                                                 working_public_key_algorithm: :undefined,
-                                                 working_public_key: :undefined,
-                                                 working_public_key_parameters: :undefined,
-                                                 working_issuer_name: :undefined,
-                                                 max_path_length: :undefined,
-                                                 verify_fun: :undefined,
-                                                 user_state: :undefined)
-  Record.defrecord(:r_revoke_state, :revoke_state, reasons_mask: :undefined,
-                                        cert_status: :undefined,
-                                        interim_reasons_mask: :undefined,
-                                        valid_ext: :undefined,
-                                        details: :undefined)
+
+  Record.defrecord(:r_SubjectPublicKeyInfoAlgorithm, :SubjectPublicKeyInfoAlgorithm,
+    algorithm: :undefined,
+    parameters: :asn1_NOVALUE
+  )
+
+  Record.defrecord(:r_path_validation_state, :path_validation_state,
+    valid_policy_tree: :undefined,
+    user_initial_policy_set: :undefined,
+    explicit_policy: :undefined,
+    inhibit_any_policy: :undefined,
+    inhibit_policy_mapping: :undefined,
+    policy_mapping_ext: :undefined,
+    policy_constraint_ext: :undefined,
+    policy_inhibitany_ext: :undefined,
+    policy_ext_present: :undefined,
+    policy_ext_any: :undefined,
+    current_any_policy_qualifiers: :undefined,
+    cert_num: :undefined,
+    last_cert: false,
+    permitted_subtrees: :no_constraints,
+    excluded_subtrees: [],
+    working_public_key_algorithm: :undefined,
+    working_public_key: :undefined,
+    working_public_key_parameters: :undefined,
+    working_issuer_name: :undefined,
+    max_path_length: :undefined,
+    verify_fun: :undefined,
+    user_state: :undefined
+  )
+
+  Record.defrecord(:r_revoke_state, :revoke_state,
+    reasons_mask: :undefined,
+    cert_status: :undefined,
+    interim_reasons_mask: :undefined,
+    valid_ext: :undefined,
+    details: :undefined
+  )
+
   Record.defrecord(:r_ECPoint, :ECPoint, point: :undefined)
-  Record.defrecord(:r_cert, :cert, der: :undefined,
-                                otp: :undefined)
+
+  Record.defrecord(:r_cert, :cert,
+    der: :undefined,
+    otp: :undefined
+  )
+
   def decode(bin) do
-    decode_pem_entries(:binary.split(bin, ["\r\n", "\r", "\n"],
-                                       [:global]),
-                         [])
+    decode_pem_entries(
+      :binary.split(bin, ["\r\n", "\r", "\n"], [:global]),
+      []
+    )
   end
 
   def encode(pemEntries) do
     encode_pem_entries(pemEntries)
   end
 
-  def decipher({_, decryptDer, {cipher, keyDevParams}},
-           password) do
-    :pubkey_pbe.decode(decryptDer, password, cipher,
-                         keyDevParams)
+  def decipher(
+        {_, decryptDer, {cipher, keyDevParams}},
+        password
+      ) do
+    :pubkey_pbe.decode(decryptDer, password, cipher, keyDevParams)
   end
 
   def cipher(der, {cipher, keyDevParams}, password) do
@@ -61,25 +77,38 @@ defmodule :m_pubkey_pem do
 
   defp encode_pem_entry({type, der, :not_encrypted}) do
     startStr = pem_start(type)
-    [startStr, '\n', b64encode_and_split(der), '\n',
-                                                pem_end(startStr), '\n\n']
+    [startStr, ~c"\n", b64encode_and_split(der), ~c"\n", pem_end(startStr), ~c"\n\n"]
   end
 
   defp encode_pem_entry({:PrivateKeyInfo, der, encParams}) do
-    encDer = encode_encrypted_private_keyinfo(der,
-                                                encParams)
+    encDer =
+      encode_encrypted_private_keyinfo(
+        der,
+        encParams
+      )
+
     startStr = pem_start(:EncryptedPrivateKeyInfo)
-    [startStr, '\n', b64encode_and_split(encDer), '\n',
-                                                   pem_end(startStr), '\n\n']
+    [startStr, ~c"\n", b64encode_and_split(encDer), ~c"\n", pem_end(startStr), ~c"\n\n"]
   end
 
   defp encode_pem_entry({type, decrypted, {cipher, salt}}) do
     startStr = pem_start(type)
-    [startStr, '\n', pem_decrypt(), '\n', pem_decrypt_info(cipher,
-                                                       salt),
-                                        '\n\n', b64encode_and_split(decrypted), '\n',
-                                                                               pem_end(startStr),
-                                                                                   '\n\n']
+
+    [
+      startStr,
+      ~c"\n",
+      pem_decrypt(),
+      ~c"\n",
+      pem_decrypt_info(
+        cipher,
+        salt
+      ),
+      ~c"\n\n",
+      b64encode_and_split(decrypted),
+      ~c"\n",
+      pem_end(startStr),
+      ~c"\n\n"
+    ]
   end
 
   defp decode_pem_entries([], entries) do
@@ -96,13 +125,18 @@ defmodule :m_pubkey_pem do
 
   defp decode_pem_entries([startLine | lines], entries) do
     start = strip_tail_whitespace(startLine)
-    case (pem_end(start)) do
+
+    case pem_end(start) do
       :undefined ->
         decode_pem_entries(lines, entries)
+
       _End ->
         {entry, restLines} = join_entry(lines, [])
-        decode_pem_entries(restLines,
-                             [decode_pem_entry(start, entry) | entries])
+
+        decode_pem_entries(
+          restLines,
+          [decode_pem_entry(start, entry) | entries]
+        )
     end
   end
 
@@ -110,9 +144,10 @@ defmodule :m_pubkey_pem do
     strip_tail_whitespace(:lists.reverse(:binary.bin_to_list(bin)))
   end
 
-  defp strip_tail_whitespace([char | rest]) when char == ?\s or
-                                char == ?\t or char == ?\v or char == ?\f or
-                                char == ?\r or char == ?\n do
+  defp strip_tail_whitespace([char | rest])
+       when char == ?\s or
+              char == ?\t or char == ?\v or char == ?\f or
+              char == ?\r or char == ?\n do
     strip_tail_whitespace(rest)
   end
 
@@ -120,14 +155,18 @@ defmodule :m_pubkey_pem do
     :binary.list_to_bin(:lists.reverse(list))
   end
 
-  defp decode_pem_entry(start, [<<"Proc-Type: 4,ENCRYPTED", _ :: binary>>, line | lines]) do
+  defp decode_pem_entry(start, [<<"Proc-Type: 4,ENCRYPTED", _::binary>>, line | lines]) do
     type = asn1_type(start)
     cs = :erlang.iolist_to_binary(lines)
     decoded = :base64.mime_decode(cs)
-    [_,
-         dekInfo0] = :string.tokens(:erlang.binary_to_list(line),
-                                      ': ')
-    [cipher, salt] = :string.tokens(dekInfo0, ',')
+
+    [_, dekInfo0] =
+      :string.tokens(
+        :erlang.binary_to_list(line),
+        ~c": "
+      )
+
+    [cipher, salt] = :string.tokens(dekInfo0, ~c",")
     {type, decoded, {cipher, unhex(salt)}}
   end
 
@@ -135,39 +174,51 @@ defmodule :m_pubkey_pem do
     type = asn1_type(start)
     cs = :erlang.iolist_to_binary(lines)
     decoded = :base64.mime_decode(cs)
-    case (type) do
+
+    case type do
       :EncryptedPrivateKeyInfo ->
         decode_encrypted_private_keyinfo(decoded)
+
       _ ->
         {type, decoded, :not_encrypted}
     end
   end
 
   defp decode_encrypted_private_keyinfo(der) do
-    r_EncryptedPrivateKeyInfo(encryptionAlgorithm: algorithmInfo,
-        encryptedData: data) = :public_key.der_decode(:EncryptedPrivateKeyInfo,
-                                                        der)
+    r_EncryptedPrivateKeyInfo(
+      encryptionAlgorithm: algorithmInfo,
+      encryptedData: data
+    ) =
+      :public_key.der_decode(
+        :EncryptedPrivateKeyInfo,
+        der
+      )
+
     decryptParams = :pubkey_pbe.decrypt_parameters(algorithmInfo)
     {:PrivateKeyInfo, data, decryptParams}
   end
 
   defp encode_encrypted_private_keyinfo(encData, encryptParmams) do
     algorithmInfo = :pubkey_pbe.encrypt_parameters(encryptParmams)
-    :public_key.der_encode(:EncryptedPrivateKeyInfo,
-                             r_EncryptedPrivateKeyInfo(encryptionAlgorithm: algorithmInfo,
-                                 encryptedData: encData))
+
+    :public_key.der_encode(
+      :EncryptedPrivateKeyInfo,
+      r_EncryptedPrivateKeyInfo(
+        encryptionAlgorithm: algorithmInfo,
+        encryptedData: encData
+      )
+    )
   end
 
   defp b64encode_and_split(bin) do
     split_lines(:base64.encode(bin))
   end
 
-  defp split_lines(<<text :: size(64) - binary>>) do
+  defp split_lines(<<text::size(64)-binary>>) do
     [text]
   end
 
-  defp split_lines(<<text :: size(64) - binary,
-              rest :: binary>>) do
+  defp split_lines(<<text::size(64)-binary, rest::binary>>) do
     [text, ?\n | split_lines(rest)]
   end
 
@@ -175,11 +226,11 @@ defmodule :m_pubkey_pem do
     [bin]
   end
 
-  defp join_entry([<<"-----END ", _ :: binary>> | lines], entry) do
+  defp join_entry([<<"-----END ", _::binary>> | lines], entry) do
     {:lists.reverse(entry), lines}
   end
 
-  defp join_entry([<<"-----END X509 CRL-----", _ :: binary>> | lines], entry) do
+  defp join_entry([<<"-----END X509 CRL-----", _::binary>> | lines], entry) do
     {:lists.reverse(entry), lines}
   end
 
@@ -191,13 +242,15 @@ defmodule :m_pubkey_pem do
     unhex(s, [])
   end
 
-  defp unhex('', acc) do
+  defp unhex(~c"", acc) do
     :erlang.list_to_binary(:lists.reverse(acc))
   end
 
   defp unhex([d1, d2 | rest], acc) do
-    unhex(rest,
-            [:erlang.list_to_integer([d1, d2], 16) | acc])
+    unhex(
+      rest,
+      [:erlang.list_to_integer([d1, d2], 16) | acc]
+    )
   end
 
   defp hexify(l) do
@@ -207,7 +260,7 @@ defmodule :m_pubkey_pem do
   end
 
   defp hex_byte(b) when b < 16 do
-    ['0', :erlang.integer_to_list(b, 16)]
+    [~c"0", :erlang.integer_to_list(b, 16)]
   end
 
   defp hex_byte(b) do
@@ -395,8 +448,9 @@ defmodule :m_pubkey_pem do
   end
 
   defp pem_decrypt_info(cipher, salt) do
-    :io_lib.format('DEK-Info: ~s,~s',
-                     [cipher, :lists.flatten(hexify(salt))])
+    :io_lib.format(
+      ~c"DEK-Info: ~s,~s",
+      [cipher, :lists.flatten(hexify(salt))]
+    )
   end
-
 end

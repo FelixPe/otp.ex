@@ -2,16 +2,18 @@ defmodule :m_nteventlog do
   use Bitwise
   @behaviour :gen_server
   require Record
-  Record.defrecord(:r_state, :state, port: :undefined,
-                                 mfa: :undefined)
+
+  Record.defrecord(:r_state, :state,
+    port: :undefined,
+    mfa: :undefined
+  )
+
   def start_link(ident, mFA) do
-    :gen_server.start_link({:local, :nteventlog},
-                             :nteventlog, [ident, mFA], [])
+    :gen_server.start_link({:local, :nteventlog}, :nteventlog, [ident, mFA], [])
   end
 
   def start(ident, mFA) do
-    :gen_server.start({:local, :nteventlog}, :nteventlog,
-                        [ident, mFA], [])
+    :gen_server.start({:local, :nteventlog}, :nteventlog, [ident, mFA], [])
   end
 
   def stop() do
@@ -21,19 +23,26 @@ defmodule :m_nteventlog do
   def init([identifier, mFA0]) do
     :erlang.process_flag(:trap_exit, true)
     :erlang.process_flag(:priority, :low)
-    port = (case (:os.type()) do
-              {:win32, _OSname} ->
-                start_portprogram(identifier)
-              oS ->
-                exit({:unsupported_os, oS})
-            end)
-    mFA = (case (mFA0) do
-             {:os_sup, :error_report, [_Tag]} ->
-               tag = :os_mon.get_env(:os_sup, :os_sup_errortag)
-               {:os_sup, :error_report, [tag]}
-             _ ->
-               mFA0
-           end)
+
+    port =
+      case :os.type() do
+        {:win32, _OSname} ->
+          start_portprogram(identifier)
+
+        oS ->
+          exit({:unsupported_os, oS})
+      end
+
+    mFA =
+      case mFA0 do
+        {:os_sup, :error_report, [_Tag]} ->
+          tag = :os_mon.get_env(:os_sup, :os_sup_errortag)
+          {:os_sup, :error_report, [tag]}
+
+        _ ->
+          mFA0
+      end
+
     {:ok, r_state(port: port, mfa: mFA)}
   end
 
@@ -45,11 +54,13 @@ defmodule :m_nteventlog do
     {:noreply, state}
   end
 
-  def handle_info({_Port, {:data, data}},
-           r_state(mfa: {m, f, a}) = state) do
+  def handle_info(
+        {_Port, {:data, data}},
+        r_state(mfa: {m, f, a}) = state
+      ) do
     t = parse_log(data)
     apply(m, f, [t | a])
-    send(r_state(state, :port), {self(), {:command, 'A'}})
+    send(r_state(state, :port), {self(), {:command, ~c"A"}})
     {:noreply, state}
   end
 
@@ -62,18 +73,23 @@ defmodule :m_nteventlog do
   end
 
   def terminate(_Reason, state) do
-    case (r_state(state, :port)) do
+    case r_state(state, :port) do
       :not_used ->
         :ignore
+
       port ->
         :erlang.port_close(port)
     end
+
     :ok
   end
 
   defp start_portprogram(identifier) do
-    command = '"' ++ :filename.join([:code.priv_dir(:os_mon),
-                                       'bin', 'nteventlog.exe']) ++ '" ' ++ make_list(identifier)
+    command =
+      ~c"\"" ++
+        :filename.join([:code.priv_dir(:os_mon), ~c"bin", ~c"nteventlog.exe"]) ++
+        ~c"\" " ++ make_list(identifier)
+
     :erlang.open_port({:spawn, command}, [{:packet, 2}])
   end
 
@@ -110,10 +126,27 @@ defmodule :m_nteventlog do
   defp holl_time(str) do
     {holl, rest} = hollerith(str)
     rev = :lists.reverse(holl)
-    b = :erlang.list_to_integer(:lists.reverse(:lists.sublist(rev,
-                                                                6)))
-    a = :erlang.list_to_integer(:lists.reverse(:lists.nthtail(6,
-                                                                rev)))
+
+    b =
+      :erlang.list_to_integer(
+        :lists.reverse(
+          :lists.sublist(
+            rev,
+            6
+          )
+        )
+      )
+
+    a =
+      :erlang.list_to_integer(
+        :lists.reverse(
+          :lists.nthtail(
+            6,
+            rev
+          )
+        )
+      )
+
     {{a, b, 0}, rest}
   end
 
@@ -125,5 +158,4 @@ defmodule :m_nteventlog do
     {message, _} = hollerith(rest4)
     {time, category, facility, severity, message}
   end
-
 end

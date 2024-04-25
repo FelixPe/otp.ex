@@ -1,5 +1,6 @@
 defmodule :m_debugger do
   use Bitwise
+
   def start() do
     start(:global, :default, :default)
   end
@@ -12,8 +13,9 @@ defmodule :m_debugger do
     start(:global, :default, gui)
   end
 
-  def start(sFile) when (is_list(sFile) and
-                        is_integer(hd(sFile))) do
+  def start(sFile)
+      when is_list(sFile) and
+             is_integer(hd(sFile)) do
     start(:global, sFile, :default)
   end
 
@@ -41,7 +43,7 @@ defmodule :m_debugger do
   end
 
   def auto_attach(flags) do
-    case (which_gui()) do
+    case which_gui() do
       :wx ->
         :int.auto_attach(flags, {:dbg_wx_trace, :start, []})
     end
@@ -50,5 +52,4 @@ defmodule :m_debugger do
   defp which_gui() do
     :wx
   end
-
 end

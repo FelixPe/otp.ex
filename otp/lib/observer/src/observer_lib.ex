@@ -1,182 +1,350 @@
 defmodule :m_observer_lib do
   use Bitwise
   require Record
-  Record.defrecord(:r_wx, :wx, id: :undefined,
-                              obj: :undefined, userData: :undefined,
-                              event: :undefined)
-  Record.defrecord(:r_wxActivate, :wxActivate, type: :undefined,
-                                      active: :undefined)
-  Record.defrecord(:r_wxAuiManager, :wxAuiManager, type: :undefined,
-                                        manager: :undefined, pane: :undefined,
-                                        button: :undefined,
-                                        veto_flag: :undefined,
-                                        canveto_flag: :undefined,
-                                        dc: :undefined)
-  Record.defrecord(:r_wxAuiNotebook, :wxAuiNotebook, type: :undefined,
-                                         old_selection: :undefined,
-                                         selection: :undefined,
-                                         drag_source: :undefined)
-  Record.defrecord(:r_wxBookCtrl, :wxBookCtrl, type: :undefined,
-                                      nSel: :undefined, nOldSel: :undefined)
-  Record.defrecord(:r_wxCalendar, :wxCalendar, type: :undefined,
-                                      wday: :undefined, date: :undefined)
+
+  Record.defrecord(:r_wx, :wx,
+    id: :undefined,
+    obj: :undefined,
+    userData: :undefined,
+    event: :undefined
+  )
+
+  Record.defrecord(:r_wxActivate, :wxActivate,
+    type: :undefined,
+    active: :undefined
+  )
+
+  Record.defrecord(:r_wxAuiManager, :wxAuiManager,
+    type: :undefined,
+    manager: :undefined,
+    pane: :undefined,
+    button: :undefined,
+    veto_flag: :undefined,
+    canveto_flag: :undefined,
+    dc: :undefined
+  )
+
+  Record.defrecord(:r_wxAuiNotebook, :wxAuiNotebook,
+    type: :undefined,
+    old_selection: :undefined,
+    selection: :undefined,
+    drag_source: :undefined
+  )
+
+  Record.defrecord(:r_wxBookCtrl, :wxBookCtrl,
+    type: :undefined,
+    nSel: :undefined,
+    nOldSel: :undefined
+  )
+
+  Record.defrecord(:r_wxCalendar, :wxCalendar,
+    type: :undefined,
+    wday: :undefined,
+    date: :undefined
+  )
+
   Record.defrecord(:r_wxChildFocus, :wxChildFocus, type: :undefined)
   Record.defrecord(:r_wxClipboardText, :wxClipboardText, type: :undefined)
   Record.defrecord(:r_wxClose, :wxClose, type: :undefined)
-  Record.defrecord(:r_wxColourPicker, :wxColourPicker, type: :undefined,
-                                          colour: :undefined)
-  Record.defrecord(:r_wxCommand, :wxCommand, type: :undefined,
-                                     cmdString: :undefined,
-                                     commandInt: :undefined,
-                                     extraLong: :undefined)
-  Record.defrecord(:r_wxContextMenu, :wxContextMenu, type: :undefined,
-                                         pos: :undefined)
-  Record.defrecord(:r_wxDate, :wxDate, type: :undefined,
-                                  date: :undefined)
+
+  Record.defrecord(:r_wxColourPicker, :wxColourPicker,
+    type: :undefined,
+    colour: :undefined
+  )
+
+  Record.defrecord(:r_wxCommand, :wxCommand,
+    type: :undefined,
+    cmdString: :undefined,
+    commandInt: :undefined,
+    extraLong: :undefined
+  )
+
+  Record.defrecord(:r_wxContextMenu, :wxContextMenu,
+    type: :undefined,
+    pos: :undefined
+  )
+
+  Record.defrecord(:r_wxDate, :wxDate,
+    type: :undefined,
+    date: :undefined
+  )
+
   Record.defrecord(:r_wxDisplayChanged, :wxDisplayChanged, type: :undefined)
-  Record.defrecord(:r_wxDropFiles, :wxDropFiles, type: :undefined,
-                                       pos: :undefined, files: :undefined)
-  Record.defrecord(:r_wxErase, :wxErase, type: :undefined,
-                                   dc: :undefined)
-  Record.defrecord(:r_wxFileDirPicker, :wxFileDirPicker, type: :undefined,
-                                           path: :undefined)
-  Record.defrecord(:r_wxFocus, :wxFocus, type: :undefined,
-                                   win: :undefined)
-  Record.defrecord(:r_wxFontPicker, :wxFontPicker, type: :undefined,
-                                        font: :undefined)
-  Record.defrecord(:r_wxGrid, :wxGrid, type: :undefined,
-                                  row: :undefined, col: :undefined,
-                                  pos: :undefined, selecting: :undefined,
-                                  control: :undefined, meta: :undefined,
-                                  shift: :undefined, alt: :undefined)
+
+  Record.defrecord(:r_wxDropFiles, :wxDropFiles,
+    type: :undefined,
+    pos: :undefined,
+    files: :undefined
+  )
+
+  Record.defrecord(:r_wxErase, :wxErase,
+    type: :undefined,
+    dc: :undefined
+  )
+
+  Record.defrecord(:r_wxFileDirPicker, :wxFileDirPicker,
+    type: :undefined,
+    path: :undefined
+  )
+
+  Record.defrecord(:r_wxFocus, :wxFocus,
+    type: :undefined,
+    win: :undefined
+  )
+
+  Record.defrecord(:r_wxFontPicker, :wxFontPicker,
+    type: :undefined,
+    font: :undefined
+  )
+
+  Record.defrecord(:r_wxGrid, :wxGrid,
+    type: :undefined,
+    row: :undefined,
+    col: :undefined,
+    pos: :undefined,
+    selecting: :undefined,
+    control: :undefined,
+    meta: :undefined,
+    shift: :undefined,
+    alt: :undefined
+  )
+
   Record.defrecord(:r_wxHelp, :wxHelp, type: :undefined)
-  Record.defrecord(:r_wxHtmlLink, :wxHtmlLink, type: :undefined,
-                                      linkInfo: :undefined)
-  Record.defrecord(:r_wxIconize, :wxIconize, type: :undefined,
-                                     iconized: :undefined)
+
+  Record.defrecord(:r_wxHtmlLink, :wxHtmlLink,
+    type: :undefined,
+    linkInfo: :undefined
+  )
+
+  Record.defrecord(:r_wxIconize, :wxIconize,
+    type: :undefined,
+    iconized: :undefined
+  )
+
   Record.defrecord(:r_wxIdle, :wxIdle, type: :undefined)
   Record.defrecord(:r_wxInitDialog, :wxInitDialog, type: :undefined)
-  Record.defrecord(:r_wxJoystick, :wxJoystick, type: :undefined,
-                                      pos: :undefined, zPosition: :undefined,
-                                      buttonChange: :undefined,
-                                      buttonState: :undefined,
-                                      joyStick: :undefined)
-  Record.defrecord(:r_wxKey, :wxKey, type: :undefined,
-                                 x: :undefined, y: :undefined,
-                                 keyCode: :undefined, controlDown: :undefined,
-                                 shiftDown: :undefined, altDown: :undefined,
-                                 metaDown: :undefined, uniChar: :undefined,
-                                 rawCode: :undefined, rawFlags: :undefined)
-  Record.defrecord(:r_wxList, :wxList, type: :undefined,
-                                  code: :undefined, oldItemIndex: :undefined,
-                                  itemIndex: :undefined, col: :undefined,
-                                  pointDrag: :undefined)
+
+  Record.defrecord(:r_wxJoystick, :wxJoystick,
+    type: :undefined,
+    pos: :undefined,
+    zPosition: :undefined,
+    buttonChange: :undefined,
+    buttonState: :undefined,
+    joyStick: :undefined
+  )
+
+  Record.defrecord(:r_wxKey, :wxKey,
+    type: :undefined,
+    x: :undefined,
+    y: :undefined,
+    keyCode: :undefined,
+    controlDown: :undefined,
+    shiftDown: :undefined,
+    altDown: :undefined,
+    metaDown: :undefined,
+    uniChar: :undefined,
+    rawCode: :undefined,
+    rawFlags: :undefined
+  )
+
+  Record.defrecord(:r_wxList, :wxList,
+    type: :undefined,
+    code: :undefined,
+    oldItemIndex: :undefined,
+    itemIndex: :undefined,
+    col: :undefined,
+    pointDrag: :undefined
+  )
+
   Record.defrecord(:r_wxMaximize, :wxMaximize, type: :undefined)
-  Record.defrecord(:r_wxMenu, :wxMenu, type: :undefined,
-                                  menuId: :undefined, menu: :undefined)
+  Record.defrecord(:r_wxMenu, :wxMenu, type: :undefined, menuId: :undefined, menu: :undefined)
   Record.defrecord(:r_wxMouseCaptureChanged, :wxMouseCaptureChanged, type: :undefined)
   Record.defrecord(:r_wxMouseCaptureLost, :wxMouseCaptureLost, type: :undefined)
-  Record.defrecord(:r_wxMouse, :wxMouse, type: :undefined,
-                                   x: :undefined, y: :undefined,
-                                   leftDown: :undefined, middleDown: :undefined,
-                                   rightDown: :undefined,
-                                   controlDown: :undefined,
-                                   shiftDown: :undefined, altDown: :undefined,
-                                   metaDown: :undefined,
-                                   wheelRotation: :undefined,
-                                   wheelDelta: :undefined,
-                                   linesPerAction: :undefined)
-  Record.defrecord(:r_wxMove, :wxMove, type: :undefined,
-                                  pos: :undefined, rect: :undefined)
-  Record.defrecord(:r_wxNavigationKey, :wxNavigationKey, type: :undefined,
-                                           dir: :undefined, focus: :undefined)
+
+  Record.defrecord(:r_wxMouse, :wxMouse,
+    type: :undefined,
+    x: :undefined,
+    y: :undefined,
+    leftDown: :undefined,
+    middleDown: :undefined,
+    rightDown: :undefined,
+    controlDown: :undefined,
+    shiftDown: :undefined,
+    altDown: :undefined,
+    metaDown: :undefined,
+    wheelRotation: :undefined,
+    wheelDelta: :undefined,
+    linesPerAction: :undefined
+  )
+
+  Record.defrecord(:r_wxMove, :wxMove, type: :undefined, pos: :undefined, rect: :undefined)
+
+  Record.defrecord(:r_wxNavigationKey, :wxNavigationKey,
+    type: :undefined,
+    dir: :undefined,
+    focus: :undefined
+  )
+
   Record.defrecord(:r_wxPaint, :wxPaint, type: :undefined)
   Record.defrecord(:r_wxPaletteChanged, :wxPaletteChanged, type: :undefined)
   Record.defrecord(:r_wxQueryNewPalette, :wxQueryNewPalette, type: :undefined)
-  Record.defrecord(:r_wxSash, :wxSash, type: :undefined,
-                                  edge: :undefined, dragRect: :undefined,
-                                  dragStatus: :undefined)
-  Record.defrecord(:r_wxScroll, :wxScroll, type: :undefined,
-                                    commandInt: :undefined,
-                                    extraLong: :undefined)
-  Record.defrecord(:r_wxScrollWin, :wxScrollWin, type: :undefined,
-                                       commandInt: :undefined,
-                                       extraLong: :undefined)
-  Record.defrecord(:r_wxSetCursor, :wxSetCursor, type: :undefined,
-                                       x: :undefined, y: :undefined,
-                                       cursor: :undefined)
-  Record.defrecord(:r_wxShow, :wxShow, type: :undefined,
-                                  show: :undefined)
-  Record.defrecord(:r_wxSize, :wxSize, type: :undefined,
-                                  size: :undefined, rect: :undefined)
-  Record.defrecord(:r_wxSpin, :wxSpin, type: :undefined,
-                                  commandInt: :undefined)
+
+  Record.defrecord(:r_wxSash, :wxSash,
+    type: :undefined,
+    edge: :undefined,
+    dragRect: :undefined,
+    dragStatus: :undefined
+  )
+
+  Record.defrecord(:r_wxScroll, :wxScroll,
+    type: :undefined,
+    commandInt: :undefined,
+    extraLong: :undefined
+  )
+
+  Record.defrecord(:r_wxScrollWin, :wxScrollWin,
+    type: :undefined,
+    commandInt: :undefined,
+    extraLong: :undefined
+  )
+
+  Record.defrecord(:r_wxSetCursor, :wxSetCursor,
+    type: :undefined,
+    x: :undefined,
+    y: :undefined,
+    cursor: :undefined
+  )
+
+  Record.defrecord(:r_wxShow, :wxShow,
+    type: :undefined,
+    show: :undefined
+  )
+
+  Record.defrecord(:r_wxSize, :wxSize, type: :undefined, size: :undefined, rect: :undefined)
+
+  Record.defrecord(:r_wxSpin, :wxSpin,
+    type: :undefined,
+    commandInt: :undefined
+  )
+
   Record.defrecord(:r_wxSplitter, :wxSplitter, type: :undefined)
-  Record.defrecord(:r_wxStyledText, :wxStyledText, type: :undefined,
-                                        position: :undefined, key: :undefined,
-                                        modifiers: :undefined,
-                                        modificationType: :undefined,
-                                        text: :undefined, length: :undefined,
-                                        linesAdded: :undefined,
-                                        line: :undefined,
-                                        foldLevelNow: :undefined,
-                                        foldLevelPrev: :undefined,
-                                        margin: :undefined, message: :undefined,
-                                        wParam: :undefined, lParam: :undefined,
-                                        listType: :undefined, x: :undefined,
-                                        y: :undefined, dragText: :undefined,
-                                        dragAllowMove: :undefined,
-                                        dragResult: :undefined)
+
+  Record.defrecord(:r_wxStyledText, :wxStyledText,
+    type: :undefined,
+    position: :undefined,
+    key: :undefined,
+    modifiers: :undefined,
+    modificationType: :undefined,
+    text: :undefined,
+    length: :undefined,
+    linesAdded: :undefined,
+    line: :undefined,
+    foldLevelNow: :undefined,
+    foldLevelPrev: :undefined,
+    margin: :undefined,
+    message: :undefined,
+    wParam: :undefined,
+    lParam: :undefined,
+    listType: :undefined,
+    x: :undefined,
+    y: :undefined,
+    dragText: :undefined,
+    dragAllowMove: :undefined,
+    dragResult: :undefined
+  )
+
   Record.defrecord(:r_wxSysColourChanged, :wxSysColourChanged, type: :undefined)
   Record.defrecord(:r_wxTaskBarIcon, :wxTaskBarIcon, type: :undefined)
-  Record.defrecord(:r_wxTree, :wxTree, type: :undefined,
-                                  item: :undefined, itemOld: :undefined,
-                                  pointDrag: :undefined)
+
+  Record.defrecord(:r_wxTree, :wxTree,
+    type: :undefined,
+    item: :undefined,
+    itemOld: :undefined,
+    pointDrag: :undefined
+  )
+
   Record.defrecord(:r_wxUpdateUI, :wxUpdateUI, type: :undefined)
-  Record.defrecord(:r_wxWebView, :wxWebView, type: :undefined,
-                                     string: :undefined, int: :undefined,
-                                     target: :undefined, url: :undefined)
+
+  Record.defrecord(:r_wxWebView, :wxWebView,
+    type: :undefined,
+    string: :undefined,
+    int: :undefined,
+    target: :undefined,
+    url: :undefined
+  )
+
   Record.defrecord(:r_wxWindowCreate, :wxWindowCreate, type: :undefined)
   Record.defrecord(:r_wxWindowDestroy, :wxWindowDestroy, type: :undefined)
-  Record.defrecord(:r_wxMouseState, :wxMouseState, x: :undefined,
-                                        y: :undefined, leftDown: :undefined,
-                                        middleDown: :undefined,
-                                        rightDown: :undefined,
-                                        controlDown: :undefined,
-                                        shiftDown: :undefined,
-                                        altDown: :undefined,
-                                        metaDown: :undefined,
-                                        cmdDown: :undefined)
-  Record.defrecord(:r_wxHtmlLinkInfo, :wxHtmlLinkInfo, href: :undefined,
-                                          target: :undefined)
-  Record.defrecord(:r_match_spec, :match_spec, name: '', term: [],
-                                      str: [], func: '')
-  Record.defrecord(:r_tpattern, :tpattern, m: :undefined,
-                                    fa: :undefined, ms: :undefined)
-  Record.defrecord(:r_traced_func, :traced_func, func_name: :undefined,
-                                       arity: :undefined,
-                                       match_spec: :EFE_TODO_NESTED_RECORD)
-  Record.defrecord(:r_create_menu, :create_menu, id: :undefined,
-                                       text: :undefined, help: [],
-                                       type: :append, check: false)
-  Record.defrecord(:r_colors, :colors, fg: :undefined,
-                                  even: :undefined, odd: :undefined)
-  Record.defrecord(:r_attrs, :attrs, even: :undefined,
-                                 odd: :undefined, searched: :undefined,
-                                 deleted: :undefined, changed_odd: :undefined,
-                                 changed_even: :undefined, new_odd: :undefined,
-                                 new_even: :undefined)
-  Record.defrecord(:r_ti, :ti, tick: 0, disp: 10 / 2,
-                              fetch: 2, secs: 60)
-  Record.defrecord(:r_win, :win, name: :undefined,
-                               panel: :undefined, size: :undefined,
-                               geom: :undefined, graphs: [], no_samples: 0,
-                               max: :undefined, state: :undefined, info: [])
+
+  Record.defrecord(:r_wxMouseState, :wxMouseState,
+    x: :undefined,
+    y: :undefined,
+    leftDown: :undefined,
+    middleDown: :undefined,
+    rightDown: :undefined,
+    controlDown: :undefined,
+    shiftDown: :undefined,
+    altDown: :undefined,
+    metaDown: :undefined,
+    cmdDown: :undefined
+  )
+
+  Record.defrecord(:r_wxHtmlLinkInfo, :wxHtmlLinkInfo,
+    href: :undefined,
+    target: :undefined
+  )
+
+  Record.defrecord(:r_match_spec, :match_spec, name: ~c"", term: [], str: [], func: ~c"")
+  Record.defrecord(:r_tpattern, :tpattern, m: :undefined, fa: :undefined, ms: :undefined)
+
+  Record.defrecord(:r_traced_func, :traced_func,
+    func_name: :undefined,
+    arity: :undefined,
+    match_spec: :EFE_TODO_NESTED_RECORD
+  )
+
+  Record.defrecord(:r_create_menu, :create_menu,
+    id: :undefined,
+    text: :undefined,
+    help: [],
+    type: :append,
+    check: false
+  )
+
+  Record.defrecord(:r_colors, :colors, fg: :undefined, even: :undefined, odd: :undefined)
+
+  Record.defrecord(:r_attrs, :attrs,
+    even: :undefined,
+    odd: :undefined,
+    searched: :undefined,
+    deleted: :undefined,
+    changed_odd: :undefined,
+    changed_even: :undefined,
+    new_odd: :undefined,
+    new_even: :undefined
+  )
+
+  Record.defrecord(:r_ti, :ti, tick: 0, disp: 10 / 2, fetch: 2, secs: 60)
+
+  Record.defrecord(:r_win, :win,
+    name: :undefined,
+    panel: :undefined,
+    size: :undefined,
+    geom: :undefined,
+    graphs: [],
+    no_samples: 0,
+    max: :undefined,
+    state: :undefined,
+    info: []
+  )
+
   def get_wx_parent(window) do
     parent = :wxWindow.getParent(window)
-    case (:wx.is_null(parent)) do
+
+    case :wx.is_null(parent) do
       true ->
         window
+
       false ->
         get_wx_parent(parent)
     end
@@ -184,43 +352,52 @@ defmodule :m_observer_lib do
 
   def interval_dialog(parent0, {timer, value}, min, max) do
     parent = get_wx_parent(parent0)
-    dialog = :wxDialog.new(parent, - 1, 'Update Interval',
-                             [{:style, 536870912 ||| 2048 ||| 4096 ||| 64}])
+
+    dialog =
+      :wxDialog.new(parent, -1, ~c"Update Interval", [
+        {:style, 536_870_912 ||| 2048 ||| 4096 ||| 64}
+      ])
+
     panel = :wxPanel.new(dialog)
-    check = :wxCheckBox.new(panel, - 1, 'Periodical refresh')
+    check = :wxCheckBox.new(panel, -1, ~c"Periodical refresh")
     :wxCheckBox.setValue(check, timer != false)
     style = 4 ||| 16 ||| :wxe_util.get_const(:wxSL_LABELS)
-    slider = :wxSlider.new(panel, - 1, value, min, max,
-                             [{:style, style}, {:size, {200, - 1}}])
+    slider = :wxSlider.new(panel, -1, value, min, max, [{:style, style}, {:size, {200, -1}}])
     :wxWindow.enable(slider, [{:enable, timer != false}])
     innerSizer = :wxBoxSizer.new(8)
     buttons = :wxDialog.createButtonSizer(dialog, 4 ||| 16)
-    flags = [{:flag, 8192 ||| (64 ||| 128 ||| 32 ||| 16)},
-                 {:border, 2}]
+    flags = [{:flag, 8192 ||| (64 ||| 128 ||| 32 ||| 16)}, {:border, 2}]
     :wxSizer.add(innerSizer, check, flags)
     :wxSizer.add(innerSizer, slider, flags)
     :wxPanel.setSizer(panel, innerSizer)
     topSizer = :wxBoxSizer.new(8)
-    :wxSizer.add(topSizer, panel,
-                   [{:flag, 8192 ||| (64 ||| 128 ||| 32 ||| 16)}, {:border,
-                                                                     5}])
+    :wxSizer.add(topSizer, panel, [{:flag, 8192 ||| (64 ||| 128 ||| 32 ||| 16)}, {:border, 5}])
     :wxSizer.add(topSizer, buttons, [{:flag, 8192}])
     :wxWindow.setSizerAndFit(dialog, topSizer)
     :wxSizer.setSizeHints(topSizer, dialog)
-    :wxCheckBox.connect(check, :command_checkbox_clicked,
-                          [{:callback,
-                              fn r_wx(event: r_wxCommand(commandInt: enable0)), _ ->
-                                   enable = enable0 > 0
-                                   :wxWindow.enable(slider, [{:enable, enable}])
-                              end}])
-    res = (case (:wxDialog.showModal(dialog)) do
-             5100 ->
-               enabled = :wxCheckBox.isChecked(check)
-               setup_timer(enabled,
-                             {timer, :wxSlider.getValue(slider)})
-             5101 ->
-               {timer, value}
-           end)
+
+    :wxCheckBox.connect(check, :command_checkbox_clicked, [
+      {:callback,
+       fn r_wx(event: r_wxCommand(commandInt: enable0)), _ ->
+         enable = enable0 > 0
+         :wxWindow.enable(slider, [{:enable, enable}])
+       end}
+    ])
+
+    res =
+      case :wxDialog.showModal(dialog) do
+        5100 ->
+          enabled = :wxCheckBox.isChecked(check)
+
+          setup_timer(
+            enabled,
+            {timer, :wxSlider.getValue(slider)}
+          )
+
+        5101 ->
+          {timer, value}
+      end
+
     :wxDialog.destroy(dialog)
     res
   end
@@ -259,8 +436,12 @@ defmodule :m_observer_lib do
   end
 
   defp setup_timer(true, {false, value}) do
-    {:ok, timer} = :timer.send_interval(value * 1000,
-                                          :refresh_interval)
+    {:ok, timer} =
+      :timer.send_interval(
+        value * 1000,
+        :refresh_interval
+      )
+
     {timer, value}
   end
 
@@ -278,20 +459,18 @@ defmodule :m_observer_lib do
   end
 
   def display_info_dialog(parent, str) do
-    display_info_dialog(parent, '', str)
+    display_info_dialog(parent, ~c"", str)
   end
 
   defp display_info_dialog(parent, title, str) do
-    dlg = :wxMessageDialog.new(parent, str,
-                                 [{:caption, title}])
+    dlg = :wxMessageDialog.new(parent, str, [{:caption, title}])
     :wxMessageDialog.showModal(dlg)
     :wxMessageDialog.destroy(dlg)
     :ok
   end
 
   def display_yes_no_dialog(str) do
-    dlg = :wxMessageDialog.new(:wx.null(), str,
-                                 [{:style, 2 ||| 8}])
+    dlg = :wxMessageDialog.new(:wx.null(), str, [{:style, 2 ||| 8}])
     r = :wxMessageDialog.showModal(dlg)
     :wxMessageDialog.destroy(dlg)
     r
@@ -299,8 +478,12 @@ defmodule :m_observer_lib do
 
   def display_info(frame, info) do
     panel = :wxPanel.new(frame)
-    :wxWindow.setBackgroundStyle(panel,
-                                   :wxe_util.get_const(:wxBG_STYLE_SYSTEM))
+
+    :wxWindow.setBackgroundStyle(
+      panel,
+      :wxe_util.get_const(:wxBG_STYLE_SYSTEM)
+    )
+
     sizer = :wxBoxSizer.new(8)
     infoFs = display_info(panel, sizer, info)
     :wxWindow.setSizerAndFit(panel, sizer)
@@ -309,18 +492,19 @@ defmodule :m_observer_lib do
 
   def display_info(panel, sizer, info) do
     :wxSizer.addSpacer(sizer, 5)
+
     add = fn boxInfo ->
-               case (create_box(panel, boxInfo)) do
-                 {box, infoFs} ->
-                   :wxSizer.add(sizer, box,
-                                  [{:flag, 8192 ||| (64 ||| 128 ||| 32 ||| 16)},
-                                       {:border, 5}])
-                   :wxSizer.addSpacer(sizer, 5)
-                   infoFs
-                 :undefined ->
-                   []
-               end
-          end
+      case create_box(panel, boxInfo) do
+        {box, infoFs} ->
+          :wxSizer.add(sizer, box, [{:flag, 8192 ||| (64 ||| 128 ||| 32 ||| 16)}, {:border, 5}])
+          :wxSizer.addSpacer(sizer, 5)
+          infoFs
+
+        :undefined ->
+          []
+      end
+    end
+
     for i <- info do
       add.(i)
     end
@@ -332,21 +516,23 @@ defmodule :m_observer_lib do
 
   def fill_info([{:dynamic, key} | rest], data, default)
       when is_atom(key) or is_function(key) do
-    case (get_value(key, data, default)) do
+    case get_value(key, data, default) do
       :undefined ->
         [:undefined | fill_info(rest, data, default)]
+
       {str, value} ->
         [{str, value} | fill_info(rest, data, default)]
     end
   end
 
-  def fill_info([{:socket, str, {level, opt} = key} | rest],
-           data, default)
+  def fill_info([{:socket, str, {level, opt} = key} | rest], data, default)
       when is_list(str) and is_atom(level) and is_atom(opt) do
     ^key = {level, opt}
-    case (get_value(key, data, default)) do
+
+    case get_value(key, data, default) do
       :undefined ->
         [:undefined | fill_info(rest, data, default)]
+
       value ->
         [{str, value} | fill_info(rest, data, default)]
     end
@@ -354,9 +540,10 @@ defmodule :m_observer_lib do
 
   def fill_info([{str, key} | rest], data, default)
       when is_atom(key) or is_function(key) do
-    case (get_value(key, data, default)) do
+    case get_value(key, data, default) do
       :undefined ->
         [:undefined | fill_info(rest, data, default)]
+
       value ->
         [{str, value} | fill_info(rest, data, default)]
     end
@@ -364,9 +551,10 @@ defmodule :m_observer_lib do
 
   def fill_info([{str, attrib, key} | rest], data, default)
       when is_atom(key) or is_function(key) do
-    case (get_value(key, data, default)) do
+    case get_value(key, data, default) do
       :undefined ->
         [:undefined | fill_info(rest, data, default)]
+
       value ->
         [{str, attrib, value} | fill_info(rest, data, default)]
     end
@@ -374,44 +562,47 @@ defmodule :m_observer_lib do
 
   def fill_info([{str, {format, key}} | rest], data, default)
       when is_atom(key) or is_function(key) do
-    case (get_value(key, data, default)) do
+    case get_value(key, data, default) do
       :undefined ->
         [:undefined | fill_info(rest, data, default)]
+
       value ->
-        [{str, {format, value}} | fill_info(rest, data,
-                                              default)]
+        [{str, {format, value}} | fill_info(rest, data, default)]
     end
   end
 
-  def fill_info([{str, attrib, {format, key}} | rest], data,
-           default)
+  def fill_info([{str, attrib, {format, key}} | rest], data, default)
       when is_atom(key) or is_function(key) do
-    case (get_value(key, data, default)) do
+    case get_value(key, data, default) do
       :undefined ->
         [:undefined | fill_info(rest, data, default)]
+
       value ->
-        [{str, attrib, {format, value}} | fill_info(rest, data,
-                                                      default)]
+        [{str, attrib, {format, value}} | fill_info(rest, data, default)]
     end
   end
 
   def fill_info([{str, subStructure} | rest], data, default)
       when is_list(subStructure) do
-    [{str, fill_info(subStructure, data, default)} |
-         fill_info(rest, data, default)]
+    [
+      {str, fill_info(subStructure, data, default)}
+      | fill_info(rest, data, default)
+    ]
   end
 
-  def fill_info([{str, attrib, subStructure} | rest], data,
-           default) do
-    [{str, attrib, fill_info(subStructure, data, default)} |
-         fill_info(rest, data, default)]
+  def fill_info([{str, attrib, subStructure} | rest], data, default) do
+    [
+      {str, attrib, fill_info(subStructure, data, default)}
+      | fill_info(rest, data, default)
+    ]
   end
 
   def fill_info([{str, key = {k, n}} | rest], data, default)
-      when (is_atom(k) and is_integer(n)) do
-    case (get_value(key, data, default)) do
+      when is_atom(k) and is_integer(n) do
+    case get_value(key, data, default) do
       :undefined ->
         [:undefined | fill_info(rest, data, default)]
+
       value ->
         [{str, value} | fill_info(rest, data, default)]
     end
@@ -429,14 +620,18 @@ defmodule :m_observer_lib do
     :proplists.get_value(key, data, default)
   end
 
-  def update_info([fields | fs],
-           [{_Header, subStructure} | rest]) do
+  def update_info(
+        [fields | fs],
+        [{_Header, subStructure} | rest]
+      ) do
     update_info2(fields, subStructure)
     update_info(fs, rest)
   end
 
-  def update_info([fields | fs],
-           [{_Header, _Attrib, subStructure} | rest]) do
+  def update_info(
+        [fields | fs],
+        [{_Header, _Attrib, subStructure} | rest]
+      ) do
     update_info2(fields, subStructure)
     update_info(fs, rest)
   end
@@ -449,14 +644,18 @@ defmodule :m_observer_lib do
     update_info2(fs, rest)
   end
 
-  defp update_info2([scroll = {_, _, _} | fs],
-            [{_, newInfo} | rest]) do
+  defp update_info2(
+         [scroll = {_, _, _} | fs],
+         [{_, newInfo} | rest]
+       ) do
     update_scroll_boxes(scroll, newInfo)
     update_info2(fs, rest)
   end
 
-  defp update_info2([field | fs],
-            [{_Str, {:click, value}} | rest]) do
+  defp update_info2(
+         [field | fs],
+         [{_Str, {:click, value}} | rest]
+       ) do
     :wxStaticText.setLabel(field, to_str(value))
     update_info2(fs, rest)
   end
@@ -467,7 +666,7 @@ defmodule :m_observer_lib do
   end
 
   defp update_info2([field | fs], [:undefined | rest]) do
-    :wxStaticText.setLabel(field, '')
+    :wxStaticText.setLabel(field, ~c"")
     update_info2(fs, rest)
   end
 
@@ -483,6 +682,7 @@ defmodule :m_observer_lib do
     for child <- :wxSizer.getChildren(sizer) do
       :wxSizerItem.deleteWindows(child)
     end
+
     cursor = :wxCursor.new(6)
     add_entries(type, list, win, sizer, cursor)
     :wxCursor.destroy(cursor)
@@ -512,15 +712,19 @@ defmodule :m_observer_lib do
     kiB = div(b, 1024)
     miB = div(kiB, 1024)
     giB = div(miB, 1024)
+
     cond do
       giB > 10 ->
-        :erlang.integer_to_list(giB) ++ ' GiB'
+        :erlang.integer_to_list(giB) ++ ~c" GiB"
+
       miB > 10 ->
-        :erlang.integer_to_list(miB) ++ ' MiB'
+        :erlang.integer_to_list(miB) ++ ~c" MiB"
+
       kiB > 0 ->
-        :erlang.integer_to_list(kiB) ++ ' KiB'
+        :erlang.integer_to_list(kiB) ++ ~c" KiB"
+
       true ->
-        :erlang.integer_to_list(b) ++ ' B'
+        :erlang.integer_to_list(b) ++ ~c" B"
     end
   end
 
@@ -533,21 +737,26 @@ defmodule :m_observer_lib do
     min = div(s, 60)
     hours = div(min, 60)
     days = div(hours, 24)
+
     cond do
       days > 0 ->
-        :erlang.integer_to_list(days) ++ ' Days'
+        :erlang.integer_to_list(days) ++ ~c" Days"
+
       hours > 0 ->
-        :erlang.integer_to_list(hours) ++ ' Hours'
+        :erlang.integer_to_list(hours) ++ ~c" Hours"
+
       min > 0 ->
-        :erlang.integer_to_list(min) ++ ' Mins'
+        :erlang.integer_to_list(min) ++ ~c" Mins"
+
       true ->
-        :erlang.integer_to_list(s) ++ ' Secs'
+        :erlang.integer_to_list(s) ++ ~c" Secs"
     end
   end
 
-  def to_str({:func, {f, a}}) when (is_atom(f) and
-                                  is_integer(a)) do
-    :lists.concat([f, '/', a])
+  def to_str({:func, {f, a}})
+      when is_atom(f) and
+             is_integer(a) do
+    :lists.concat([f, ~c"/", a])
   end
 
   def to_str({:func, {f, :_}}) when is_atom(f) do
@@ -555,9 +764,10 @@ defmodule :m_observer_lib do
   end
 
   def to_str({:inet, addr}) do
-    case (:inet.ntoa(addr)) do
+    case :inet.ntoa(addr) do
       {:error, :einval} ->
         to_str(addr)
+
       addrStr ->
         addrStr
     end
@@ -567,27 +777,34 @@ defmodule :m_observer_lib do
     fun.(value)
   end
 
-  def to_str({a, b}) when (is_atom(a) and is_atom(b)) do
-    :lists.concat([a, ':', b])
+  def to_str({a, b}) when is_atom(a) and is_atom(b) do
+    :lists.concat([a, ~c":", b])
   end
 
-  def to_str({m, f, a}) when (is_atom(m) and is_atom(f) and
-                            is_integer(a)) do
-    :lists.concat([m, ':', f, '/', a])
+  def to_str({m, f, a})
+      when is_atom(m) and is_atom(f) and
+             is_integer(a) do
+    :lists.concat([m, ~c":", f, ~c"/", a])
   end
 
   def to_str(value) when is_list(value) do
-    case (:lists.all(fn x ->
-                          is_integer(x)
-                     end,
-                       value)) do
+    case :lists.all(
+           fn x ->
+             is_integer(x)
+           end,
+           value
+         ) do
       true ->
         value
+
       false ->
-        :lists.foldl(fn x, acc ->
-                          to_str(x) ++ ' ' ++ acc
-                     end,
-                       '', value)
+        :lists.foldl(
+          fn x, acc ->
+            to_str(x) ++ ~c" " ++ acc
+          end,
+          ~c"",
+          value
+        )
     end
   end
 
@@ -604,7 +821,7 @@ defmodule :m_observer_lib do
   end
 
   def to_str(float) when is_float(float) do
-    :io_lib.format('~.3f', [float])
+    :io_lib.format(~c"~.3f", [float])
   end
 
   def to_str({:trunc, float}) when is_float(float) do
@@ -612,7 +829,7 @@ defmodule :m_observer_lib do
   end
 
   def to_str(term) do
-    :io_lib.format('~tw', [term])
+    :io_lib.format(~c"~tw", [term])
   end
 
   def create_menus([], _MenuBar, _Type) do
@@ -621,48 +838,70 @@ defmodule :m_observer_lib do
 
   def create_menus(menus, menuBar, type) do
     add = fn {tag, ms}, index ->
-               create_menu(tag, ms, index, menuBar, type)
-          end
+      create_menu(tag, ms, index, menuBar, type)
+    end
+
     [{first, _} | _] = menus
-    index = (cond do
-               type === :default ->
-                 0
-               first === 'File' ->
-                 0
-               true ->
-                 1
-             end)
+
+    index =
+      cond do
+        type === :default ->
+          0
+
+        first === ~c"File" ->
+          0
+
+        true ->
+          1
+      end
+
     :wx.foldl(add, index, menus)
     :ok
   end
 
-  defp create_menu('File', menuItems, index, menuBar, type) do
+  defp create_menu(~c"File", menuItems, index, menuBar, type) do
     cond do
       type === :plugin ->
-        menuId = :wxMenuBar.findMenu(menuBar, 'File')
+        menuId = :wxMenuBar.findMenu(menuBar, ~c"File")
         menu = :wxMenuBar.getMenu(menuBar, menuId)
-        :lists.foldl(fn record, n ->
-                          create_menu_item(record, menu, n)
-                     end,
-                       0, menuItems)
+
+        :lists.foldl(
+          fn record, n ->
+            create_menu_item(record, menu, n)
+          end,
+          0,
+          menuItems
+        )
+
         index + 1
+
       true ->
         menu = :wxMenu.new()
-        :lists.foldl(fn record, n ->
-                          create_menu_item(record, menu, n)
-                     end,
-                       0, menuItems)
-        :wxMenuBar.insert(menuBar, index, menu, 'File')
+
+        :lists.foldl(
+          fn record, n ->
+            create_menu_item(record, menu, n)
+          end,
+          0,
+          menuItems
+        )
+
+        :wxMenuBar.insert(menuBar, index, menu, ~c"File")
         index + 1
     end
   end
 
   defp create_menu(name, menuItems, index, menuBar, _Type) do
     menu = :wxMenu.new()
-    :lists.foldl(fn record, n ->
-                      create_menu_item(record, menu, n)
-                 end,
-                   0, menuItems)
+
+    :lists.foldl(
+      fn record, n ->
+        create_menu_item(record, menu, n)
+      end,
+      0,
+      menuItems
+    )
+
     :wxMenuBar.insert(menuBar, index, menu, name)
     index + 1
   end
@@ -672,27 +911,36 @@ defmodule :m_observer_lib do
     index + 1
   end
 
-  def create_menu_item(r_create_menu(id: id, text: text, help: help, type: type,
-             check: check),
-           menu, index) do
-    opts = (case (help) do
-              [] ->
-                []
-              _ ->
-                [{:help, help}]
-            end)
-    case (type) do
+  def create_menu_item(
+        r_create_menu(id: id, text: text, help: help, type: type, check: check),
+        menu,
+        index
+      ) do
+    opts =
+      case help do
+        [] ->
+          []
+
+        _ ->
+          [{:help, help}]
+      end
+
+    case type do
       :append ->
         :wxMenu.insert(menu, index, id, [{:text, text} | opts])
+
       :check ->
         :wxMenu.insertCheckItem(menu, index, id, text, opts)
         :wxMenu.check(menu, id, check)
+
       :radio ->
         :wxMenu.insertRadioItem(menu, index, id, text, opts)
         :wxMenu.check(menu, id, check)
+
       :separator ->
         :wxMenu.insertSeparator(menu, index)
     end
+
     index + 1
   end
 
@@ -703,12 +951,16 @@ defmodule :m_observer_lib do
 
   def colors(window) do
     darkMode = is_darkmode(:wxWindow.getBackgroundColour(window))
-    text = (case (:wxSystemSettings.getColour(31)) do
-              {255, 255, 255, _} when not darkMode ->
-                {10, 10, 10}
-              color ->
-                color
-            end)
+
+    text =
+      case :wxSystemSettings.getColour(31) do
+        {255, 255, 255, _} when not darkMode ->
+          {10, 10, 10}
+
+        color ->
+          color
+      end
+
     even = :wxSystemSettings.getColour(25)
     odd = mix(even, :wxSystemSettings.getColour(13), 0.8)
     r_colors(fg: rgb(text), even: rgb(even), odd: rgb(odd))
@@ -717,28 +969,37 @@ defmodule :m_observer_lib do
   def create_attrs(window) do
     font = :wxSystemSettings.getFont(14 + 3)
     r_colors(fg: text, even: even, odd: odd) = colors(window)
-    r_attrs(even: :wxListItemAttr.new(text, even, font),
-        odd: :wxListItemAttr.new(text, odd, font),
-        deleted: :wxListItemAttr.new({230, 230, 230},
-                                       {100, 100, 100}, font),
-        changed_even: :wxListItemAttr.new(text,
-                                            mix({184, 207, 184},
-                                                  {230, 230, 250}, 0.9),
-                                            font),
-        changed_odd: :wxListItemAttr.new(text,
-                                           mix({184, 207, 184}, {255, 255, 255},
-                                                 0.9),
-                                           font),
-        new_even: :wxListItemAttr.new(text,
-                                        mix({123, 168, 123}, {230, 230, 250},
-                                              0.9),
-                                        font),
-        new_odd: :wxListItemAttr.new(text,
-                                       mix({123, 168, 123}, {255, 255, 255},
-                                             0.9),
-                                       font),
-        searched: :wxListItemAttr.new(text, {235, 215, 90},
-                                        font))
+
+    r_attrs(
+      even: :wxListItemAttr.new(text, even, font),
+      odd: :wxListItemAttr.new(text, odd, font),
+      deleted: :wxListItemAttr.new({230, 230, 230}, {100, 100, 100}, font),
+      changed_even:
+        :wxListItemAttr.new(
+          text,
+          mix({184, 207, 184}, {230, 230, 250}, 0.9),
+          font
+        ),
+      changed_odd:
+        :wxListItemAttr.new(
+          text,
+          mix({184, 207, 184}, {255, 255, 255}, 0.9),
+          font
+        ),
+      new_even:
+        :wxListItemAttr.new(
+          text,
+          mix({123, 168, 123}, {230, 230, 250}, 0.9),
+          font
+        ),
+      new_odd:
+        :wxListItemAttr.new(
+          text,
+          mix({123, 168, 123}, {255, 255, 255}, 0.9),
+          font
+        ),
+      searched: :wxListItemAttr.new(text, {235, 215, 90}, font)
+    )
   end
 
   defp rgb({r, g, b, _}) do
@@ -758,9 +1019,8 @@ defmodule :m_observer_lib do
   end
 
   def mix({r, g, b}, {mR, mG, mB}, v) when v <= 1.0 do
-    {min(255, round(r * v + mR * (1.0 - v))),
-       min(255, round(g * v + mG * (1.0 - v))),
-       min(255, round(b * v + mB * (1.0 - v)))}
+    {min(255, round(r * v + mR * (1.0 - v))), min(255, round(g * v + mG * (1.0 - v))),
+     min(255, round(b * v + mB * (1.0 - v)))}
   end
 
   def is_darkmode({r, g, b, _}) do
@@ -779,48 +1039,65 @@ defmodule :m_observer_lib do
     {title, 512, list}
   end
 
-  defp add_box(panel, outerBox, cursor, title, proportion,
-            {format, list}) do
-    numStr = ' (' ++ :erlang.integer_to_list(length(list)) ++ ')'
-    box = :wxStaticBoxSizer.new(8, panel,
-                                  [{:label, title ++ numStr}])
+  defp add_box(panel, outerBox, cursor, title, proportion, {format, list}) do
+    numStr = ~c" (" ++ :erlang.integer_to_list(length(list)) ++ ~c")"
+    box = :wxStaticBoxSizer.new(8, panel, [{:label, title ++ numStr}])
     scroll = :wxScrolledWindow.new(panel)
     :wxScrolledWindow.enableScrolling(scroll, true, true)
     :wxScrolledWindow.setScrollbars(scroll, 1, 1, 0, 0)
     scrollSizer = :wxBoxSizer.new(8)
     :wxScrolledWindow.setSizer(scroll, scrollSizer)
-    :wxWindow.setBackgroundStyle(scroll,
-                                   :wxe_util.get_const(:wxBG_STYLE_SYSTEM))
-    entries = add_entries(format, list, scroll, scrollSizer,
-                            cursor)
-    :wxSizer.add(box, scroll,
-                   [{:proportion, 1}, {:flag, 8192}])
-    :wxSizer.add(outerBox, box,
-                   [{:proportion, proportion}, {:flag, 8192}])
+
+    :wxWindow.setBackgroundStyle(
+      scroll,
+      :wxe_util.get_const(:wxBG_STYLE_SYSTEM)
+    )
+
+    entries = add_entries(format, list, scroll, scrollSizer, cursor)
+    :wxSizer.add(box, scroll, [{:proportion, 1}, {:flag, 8192}])
+    :wxSizer.add(outerBox, box, [{:proportion, proportion}, {:flag, 8192}])
     {scroll, scrollSizer, length(entries)}
   end
 
   defp add_entries(:click, list, scroll, scrollSizer, cursor) do
     add = fn link ->
-               tC = link_entry(scroll, link, cursor)
-               :wxWindow.setBackgroundStyle(tC,
-                                              :wxe_util.get_const(:wxBG_STYLE_SYSTEM))
-               :wxSizer.add(scrollSizer, tC, [{:flag, 8192}])
-          end
+      tC = link_entry(scroll, link, cursor)
+
+      :wxWindow.setBackgroundStyle(
+        tC,
+        :wxe_util.get_const(:wxBG_STYLE_SYSTEM)
+      )
+
+      :wxSizer.add(scrollSizer, tC, [{:flag, 8192}])
+    end
+
     cond do
       length(list) > 8 ->
         {list1, rest} = :lists.split(8, list)
-        linkEntries = (for link <- list1 do
-                         add.(link)
-                       end)
+
+        linkEntries =
+          for link <- list1 do
+            add.(link)
+          end
+
         nStr = :erlang.integer_to_list(length(rest))
-        tC = link_entry2(scroll,
-                           {{:more, {rest, scroll, scrollSizer}}, 'more...'}, cursor,
-                           'Click to see ' ++ nStr ++ ' more entries')
-        :wxWindow.setBackgroundStyle(tC,
-                                       :wxe_util.get_const(:wxBG_STYLE_SYSTEM))
+
+        tC =
+          link_entry2(
+            scroll,
+            {{:more, {rest, scroll, scrollSizer}}, ~c"more..."},
+            cursor,
+            ~c"Click to see " ++ nStr ++ ~c" more entries"
+          )
+
+        :wxWindow.setBackgroundStyle(
+          tC,
+          :wxe_util.get_const(:wxBG_STYLE_SYSTEM)
+        )
+
         e = :wxSizer.add(scrollSizer, tC, [{:flag, 8192}])
         linkEntries ++ [e]
+
       true ->
         for link <- list do
           add.(link)
@@ -830,33 +1107,42 @@ defmodule :m_observer_lib do
 
   defp add_entries(:plain, list, scroll, scrollSizer, _) do
     add = fn string ->
-               tC = :wxStaticText.new(scroll, - 1, string)
-               :wxSizer.add(scrollSizer, tC, [{:flag, 8192}])
-          end
+      tC = :wxStaticText.new(scroll, -1, string)
+      :wxSizer.add(scrollSizer, tC, [{:flag, 8192}])
+    end
+
     for string <- list do
       add.(string)
     end
   end
 
   def add_scroll_entries(moreEntry, {list, scroll, scrollSizer}) do
-    :wx.batch(fn () ->
-                   :wxSizer.remove(scrollSizer, 8)
-                   :wxStaticText.destroy(moreEntry)
-                   cursor = :wxCursor.new(6)
-                   add = fn link ->
-                              tC = link_entry(scroll, link, cursor)
-                              :wxWindow.setBackgroundStyle(tC,
-                                                             :wxe_util.get_const(:wxBG_STYLE_SYSTEM))
-                              :wxSizer.add(scrollSizer, tC, [{:flag, 8192}])
-                         end
-                   entries = (for link <- list do
-                                add.(link)
-                              end)
-                   :wxCursor.destroy(cursor)
-                   :wxSizer.layout(scrollSizer)
-                   :wxSizer.setVirtualSizeHints(scrollSizer, scroll)
-                   entries
-              end)
+    :wx.batch(fn ->
+      :wxSizer.remove(scrollSizer, 8)
+      :wxStaticText.destroy(moreEntry)
+      cursor = :wxCursor.new(6)
+
+      add = fn link ->
+        tC = link_entry(scroll, link, cursor)
+
+        :wxWindow.setBackgroundStyle(
+          tC,
+          :wxe_util.get_const(:wxBG_STYLE_SYSTEM)
+        )
+
+        :wxSizer.add(scrollSizer, tC, [{:flag, 8192}])
+      end
+
+      entries =
+        for link <- list do
+          add.(link)
+        end
+
+      :wxCursor.destroy(cursor)
+      :wxSizer.layout(scrollSizer)
+      :wxSizer.setVirtualSizeHints(scrollSizer, scroll)
+      entries
+    end)
   end
 
   defp create_box(_Panel, {:scroll_boxes, []}) do
@@ -866,89 +1152,126 @@ defmodule :m_observer_lib do
   defp create_box(panel, {:scroll_boxes, data}) do
     outerBox = :wxBoxSizer.new(4)
     cursor = :wxCursor.new(6)
-    addBox = fn {title, proportion, format = {_, _}} ->
-                  add_box(panel, outerBox, cursor, title, proportion,
-                            format)
-                {title, format = {_, _}} ->
-                  add_box(panel, outerBox, cursor, title, 1, format)
-                :undefined ->
-                  :undefined
-             end
-    boxes = (for entry <- data do
-               addBox.(entry)
-             end)
+
+    addBox = fn
+      {title, proportion, format = {_, _}} ->
+        add_box(panel, outerBox, cursor, title, proportion, format)
+
+      {title, format = {_, _}} ->
+        add_box(panel, outerBox, cursor, title, 1, format)
+
+      :undefined ->
+        :undefined
+    end
+
+    boxes =
+      for entry <- data do
+        addBox.(entry)
+      end
+
     :wxCursor.destroy(cursor)
-    maxL = :lists.foldl(fn {_, _, l}, max when l > max ->
-                             l
-                           _, max ->
-                             max
-                        end,
-                          0, boxes)
-    dummy = :wxTextCtrl.new(panel, - 1,
-                              [{:style, 2097152 ||| 16 ||| 32768}])
+
+    maxL =
+      :lists.foldl(
+        fn
+          {_, _, l}, max when l > max ->
+            l
+
+          _, max ->
+            max
+        end,
+        0,
+        boxes
+      )
+
+    dummy = :wxTextCtrl.new(panel, -1, [{:style, 2_097_152 ||| 16 ||| 32768}])
     {_, h} = :wxWindow.getSize(dummy)
     :wxTextCtrl.destroy(dummy)
-    maxH = (cond do
-              maxL > 8 ->
-                8 * h
-              true ->
-                maxL * h
-            end)
+
+    maxH =
+      cond do
+        maxL > 8 ->
+          8 * h
+
+        true ->
+          maxL * h
+      end
+
     for {b, _, _} <- boxes do
       :wxWindow.setMinSize(b, {0, maxH})
     end
+
     :wxSizer.layout(outerBox)
     {outerBox, boxes}
   end
 
   defp create_box(parent, data) do
     {title, _Align, info} = get_box_info(data)
-    top = :wxStaticBoxSizer.new(8, parent,
-                                  [{:label, title}])
+    top = :wxStaticBoxSizer.new(8, parent, [{:label, title}])
     panel = :wxPanel.new(parent)
     box = :wxBoxSizer.new(8)
     leftSize = 30 + get_max_width(panel, info)
     rightProportion = [{:flag, 8192}]
-    addRow = fn {desc0, value0} ->
-                  desc = desc0 ++ ':'
-                  line = :wxBoxSizer.new(4)
-                  label = :wxStaticText.new(panel, - 1, desc)
-                  :wxSizer.add(line, 5, 0)
-                  :wxSizer.add(line, label)
-                  :wxSizer.setItemMinSize(line, label, leftSize, - 1)
-                  field = (case (value0) do
-                             {:click, 'unknown'} ->
-                               :wxStaticText.new(panel, - 1, 'unknown')
-                             {:click, value} ->
-                               link_entry(panel, value)
-                             _ ->
-                               value = to_str(value0)
-                               case (:string.nth_lexeme(:lists.sublist(value,
-                                                                         80),
-                                                          1, [?\n])) do
-                                 ^value ->
-                                   :wxStaticText.new(panel, - 1, value)
-                                 shown ->
-                                   tCtrl = :wxStaticText.new(panel, - 1,
-                                                               [shown, '...'])
-                                   :wxWindow.setToolTip(tCtrl,
-                                                          :wxToolTip.new(value))
-                                   tCtrl
-                               end
-                           end)
-                  :wxSizer.add(line, 10, 0)
-                  :wxSizer.add(line, field, rightProportion)
-                  :wxSizer.add(box, line, [{:proportion, 1}])
-                  field
-                :undefined ->
-                  :undefined
-             end
-    infoFields = (for entry <- info do
-                    addRow.(entry)
-                  end)
+
+    addRow = fn
+      {desc0, value0} ->
+        desc = desc0 ++ ~c":"
+        line = :wxBoxSizer.new(4)
+        label = :wxStaticText.new(panel, -1, desc)
+        :wxSizer.add(line, 5, 0)
+        :wxSizer.add(line, label)
+        :wxSizer.setItemMinSize(line, label, leftSize, -1)
+
+        field =
+          case value0 do
+            {:click, ~c"unknown"} ->
+              :wxStaticText.new(panel, -1, ~c"unknown")
+
+            {:click, value} ->
+              link_entry(panel, value)
+
+            _ ->
+              value = to_str(value0)
+
+              case :string.nth_lexeme(
+                     :lists.sublist(
+                       value,
+                       80
+                     ),
+                     1,
+                     [?\n]
+                   ) do
+                ^value ->
+                  :wxStaticText.new(panel, -1, value)
+
+                shown ->
+                  tCtrl = :wxStaticText.new(panel, -1, [shown, ~c"..."])
+
+                  :wxWindow.setToolTip(
+                    tCtrl,
+                    :wxToolTip.new(value)
+                  )
+
+                  tCtrl
+              end
+          end
+
+        :wxSizer.add(line, 10, 0)
+        :wxSizer.add(line, field, rightProportion)
+        :wxSizer.add(box, line, [{:proportion, 1}])
+        field
+
+      :undefined ->
+        :undefined
+    end
+
+    infoFields =
+      for entry <- info do
+        addRow.(entry)
+      end
+
     :wxWindow.setSizer(panel, box)
-    :wxSizer.add(top, panel,
-                   [{:proportion, 1}, {:flag, 8192}])
+    :wxSizer.add(top, panel, [{:proportion, 1}, {:flag, 8192}])
     {top, infoFields}
   end
 
@@ -964,13 +1287,17 @@ defmodule :m_observer_lib do
   end
 
   defp link_entry2(panel, {target, str}, cursor) do
-    link_entry2(panel, {target, str}, cursor, 'Click to see properties for ' ++ str)
+    link_entry2(panel, {target, str}, cursor, ~c"Click to see properties for " ++ str)
   end
 
   defp link_entry2(panel, {target, str}, cursor, toolTipText) do
-    tC = :wxStaticText.new(panel, - 1, str)
-    :wxWindow.setForegroundColour(tC,
-                                    :wxe_util.get_const(:wxBLUE))
+    tC = :wxStaticText.new(panel, -1, str)
+
+    :wxWindow.setForegroundColour(
+      tC,
+      :wxe_util.get_const(:wxBLUE)
+    )
+
     :wxWindow.setCursor(tC, cursor)
     :wxWindow.connect(tC, :left_down, [{:userData, target}])
     :wxWindow.connect(tC, :enter_window)
@@ -980,9 +1307,10 @@ defmodule :m_observer_lib do
     tC
   end
 
-  defp to_link(regName = {name, node}) when (is_atom(name) and
-                                          is_atom(node)) do
-    str = :io_lib.format('{~tp,~p}', [name, node])
+  defp to_link(regName = {name, node})
+       when is_atom(name) and
+              is_atom(node) do
+    str = :io_lib.format(~c"{~tp,~p}", [name, node])
     {regName, str}
   end
 
@@ -1008,43 +1336,57 @@ defmodule :m_observer_lib do
   end
 
   defp get_max_width(parent, info) do
-    :lists.foldl(fn {desc, _}, max ->
-                      {w, _, _, _} = :wxWindow.getTextExtent(parent, desc)
-                      max(w, max)
-                    _, max ->
-                      max
-                 end,
-                   0, info)
+    :lists.foldl(
+      fn
+        {desc, _}, max ->
+          {w, _, _, _} = :wxWindow.getTextExtent(parent, desc)
+          max(w, max)
+
+        _, max ->
+          max
+      end,
+      0,
+      info
+    )
   end
 
   def set_listctrl_col_size(lCtrl, total) do
-    :wx.batch(fn () ->
-                   calc_last(lCtrl, total)
-              end)
+    :wx.batch(fn ->
+      calc_last(lCtrl, total)
+    end)
   end
 
   defp calc_last(lCtrl, _Total) do
     cols = :wxListCtrl.getColumnCount(lCtrl)
     {total, _} = :wxWindow.getClientSize(lCtrl)
     sBSize = scroll_size(lCtrl)
-    last = :lists.foldl(fn i, last ->
-                             last - :wxListCtrl.getColumnWidth(lCtrl, i)
-                        end,
-                          total - sBSize, :lists.seq(0, cols - 2))
+
+    last =
+      :lists.foldl(
+        fn i, last ->
+          last - :wxListCtrl.getColumnWidth(lCtrl, i)
+        end,
+        total - sBSize,
+        :lists.seq(0, cols - 2)
+      )
+
     size = max(150, last)
     :wxListCtrl.setColumnWidth(lCtrl, cols - 1, size)
   end
 
   defp scroll_size(lCtrl) do
-    case (:os.type()) do
+    case :os.type() do
       {:win32, :nt} ->
         0
+
       {:unix, :darwin} ->
         0
+
       _ ->
-        case (:wxWindow.hasScrollbar(lCtrl, 8)) do
+        case :wxWindow.hasScrollbar(lCtrl, 8) do
           true ->
             :wxSystemSettings.getMetric(28)
+
           false ->
             0
         end
@@ -1052,13 +1394,14 @@ defmodule :m_observer_lib do
   end
 
   def user_term(parent, title, default) do
-    dialog = :wxTextEntryDialog.new(parent, title,
-                                      [{:value, default}])
-    case (:wxTextEntryDialog.showModal(dialog)) do
+    dialog = :wxTextEntryDialog.new(parent, title, [{:value, default}])
+
+    case :wxTextEntryDialog.showModal(dialog) do
       5100 ->
         str = :wxTextEntryDialog.getValue(dialog)
         :wxTextEntryDialog.destroy(dialog)
         parse_string(ensure_last_is_dot(str))
+
       5101 ->
         :wxTextEntryDialog.destroy(dialog)
         :cancel
@@ -1066,42 +1409,47 @@ defmodule :m_observer_lib do
   end
 
   def user_term_multiline(parent, title, default) do
-    dialog = :wxDialog.new(parent, - 1, title,
-                             [{:style, 536870912 ||| 2048 ||| 4096 ||| 64}])
+    dialog = :wxDialog.new(parent, -1, title, [{:style, 536_870_912 ||| 2048 ||| 4096 ||| 64}])
     panel = :wxPanel.new(dialog)
-    textCtrl = :wxTextCtrl.new(panel, - 1,
-                                 [{:value, default}, {:style, 70 ||| 32}])
+    textCtrl = :wxTextCtrl.new(panel, -1, [{:value, default}, {:style, 70 ||| 32}])
     line = :wxStaticLine.new(panel, [{:style, 4}])
     buttons = :wxDialog.createButtonSizer(dialog, 4 ||| 16)
     innerSizer = :wxBoxSizer.new(8)
-    :wxSizer.add(innerSizer, textCtrl,
-                   [{:flag, 8192 ||| (64 ||| 128 ||| 32 ||| 16)},
-                        {:proportion, 1}, {:border, 5}])
-    :wxSizer.add(innerSizer, line,
-                   [{:flag, 8192}, {:proportion, 0}, {:border, 5}])
+
+    :wxSizer.add(innerSizer, textCtrl, [
+      {:flag, 8192 ||| (64 ||| 128 ||| 32 ||| 16)},
+      {:proportion, 1},
+      {:border, 5}
+    ])
+
+    :wxSizer.add(innerSizer, line, [{:flag, 8192}, {:proportion, 0}, {:border, 5}])
     :wxPanel.setSizer(panel, innerSizer)
     topSizer = :wxBoxSizer.new(8)
-    :wxSizer.add(topSizer, panel,
-                   [{:flag, 8192 ||| (64 ||| 128 ||| 32 ||| 16)},
-                        {:proportion, 1}, {:border, 5}])
-    :wxSizer.add(topSizer, buttons,
-                   [{:flag, 8192 ||| 128 ||| 32}, {:border, 10}])
+
+    :wxSizer.add(topSizer, panel, [
+      {:flag, 8192 ||| (64 ||| 128 ||| 32 ||| 16)},
+      {:proportion, 1},
+      {:border, 5}
+    ])
+
+    :wxSizer.add(topSizer, buttons, [{:flag, 8192 ||| 128 ||| 32}, {:border, 10}])
     dC = :wxClientDC.new(panel)
     w = :wxDC.getCharWidth(dC)
     h = :wxDC.getCharHeight(dC)
     {eW, eH} = :wxDC.getMultiLineTextExtent(dC, default)
-    :wxSizer.setItemMinSize(innerSizer, 0, eW + 2 * w,
-                              eH + h)
+    :wxSizer.setItemMinSize(innerSizer, 0, eW + 2 * w, eH + h)
     topSize = :wxSizer.getMinSize(topSizer)
     :wxSizer.setItemMinSize(innerSizer, 0, 40 * w, 4 * h)
     :wxWindow.setSizerAndFit(dialog, topSizer)
     :wxSizer.setSizeHints(topSizer, dialog)
     :wxWindow.setClientSize(dialog, topSize)
-    case (:wxDialog.showModal(dialog)) do
+
+    case :wxDialog.showModal(dialog) do
       5100 ->
         str = :wxTextCtrl.getValue(textCtrl)
         :wxDialog.destroy(dialog)
         parse_string(ensure_last_is_dot(str))
+
       5101 ->
         :wxDialog.destroy(dialog)
         :cancel
@@ -1110,48 +1458,52 @@ defmodule :m_observer_lib do
 
   defp parse_string(str) do
     try do
-      tokens = (case (:erl_scan.string(str, 1, [:text])) do
-                  {:ok, ts, _} ->
-                    ts
-                  {:error, {_SLine, sMod, sError}, _} ->
-                    throw(:io_lib.format('~ts', [sMod.format_error(sError)]))
-                end)
-      case (:erl_eval.extended_parse_term(tokens)) do
+      tokens =
+        case :erl_scan.string(str, 1, [:text]) do
+          {:ok, ts, _} ->
+            ts
+
+          {:error, {_SLine, sMod, sError}, _} ->
+            throw(:io_lib.format(~c"~ts", [sMod.format_error(sError)]))
+        end
+
+      case :erl_eval.extended_parse_term(tokens) do
         {:error, {_PLine, pMod, pError}} ->
-          throw(:io_lib.format('~ts', [pMod.format_error(pError)]))
+          throw(:io_lib.format(~c"~ts", [pMod.format_error(pError)]))
+
         res ->
           res
       end
     catch
       errStr ->
         {:error, errStr}
+
       _, _Err ->
-        {:error, ['Syntax error in: ', str]}
+        {:error, [~c"Syntax error in: ", str]}
     end
   end
 
   defp ensure_last_is_dot([]) do
-    '.'
+    ~c"."
   end
 
   defp ensure_last_is_dot(string) do
-    case (:lists.last(string) === ?.) do
+    case :lists.last(string) === ?. do
       true ->
         string
+
       false ->
-        string ++ '.'
+        string ++ ~c"."
     end
   end
 
   def create_status_bar(panel) do
     statusStyle = 32 ||| 16 ||| 32768
     red = :wxTextAttr.new(:wxe_util.get_const(:wxRED))
-    dummy = :wxTextCtrl.new(panel, - 1,
-                              [{:style, statusStyle}])
-    {x, y, _, _} = :wxTextCtrl.getTextExtent(dummy, 'WARNING')
+    dummy = :wxTextCtrl.new(panel, -1, [{:style, statusStyle}])
+    {x, y, _, _} = :wxTextCtrl.getTextExtent(dummy, ~c"WARNING")
     :wxTextCtrl.destroy(dummy)
-    statusBar = :wxTextCtrl.new(panel, - 1,
-                                  [{:style, statusStyle}, {:size, {x, y + 2}}])
+    statusBar = :wxTextCtrl.new(panel, -1, [{:style, statusStyle}, {:size, {x, y + 2}}])
     :wxTextCtrl.setDefaultStyle(statusBar, red)
     :wxTextAttr.destroy(red)
     statusBar
@@ -1160,9 +1512,11 @@ defmodule :m_observer_lib do
   def display_progress_dialog(parent, title, str) do
     caller = self()
     env = :wx.get_env()
-    spawn_link(fn () ->
-                    progress_handler(caller, env, parent, title, str)
-               end)
+
+    spawn_link(fn ->
+      progress_handler(caller, env, parent, title, str)
+    end)
+
     :ok
   end
 
@@ -1170,6 +1524,7 @@ defmodule :m_observer_lib do
     receive do
       :continue ->
         :ok
+
       error ->
         error
     end
@@ -1182,6 +1537,7 @@ defmodule :m_observer_lib do
   def sync_destroy_progress_dialog() do
     ref = :erlang.monitor(:process, :cdv_progress_handler)
     destroy_progress_dialog()
+
     receive do
       {:DOWN, ^ref, :process, _, _} ->
         :ok
@@ -1189,10 +1545,11 @@ defmodule :m_observer_lib do
   end
 
   def report_progress(progress) do
-    case (:erlang.whereis(:cdv_progress_handler)) do
+    case :erlang.whereis(:cdv_progress_handler) do
       pid when is_pid(pid) ->
         send(pid, {:progress, progress})
         :ok
+
       _ ->
         :ok
     end
@@ -1202,6 +1559,7 @@ defmodule :m_observer_lib do
     :erlang.register(:cdv_progress_handler, self())
     :wx.set_env(env)
     pD = progress_dialog(env, parent, title, str)
+
     try do
       progress_loop(title, pD, caller, :infinity)
     catch
@@ -1215,38 +1573,49 @@ defmodule :m_observer_lib do
       {:progress, {:ok, :done}} ->
         send(caller, :continue)
         progress_loop(title, pD, caller, pulse)
+
       {:progress, {:ok, :start_pulse}} ->
         update_progress_pulse(pD)
         progress_loop(title, pD, caller, 50)
+
       {:progress, {:ok, :stop_pulse}} ->
         progress_loop(title, pD, caller, :infinity)
+
       {:progress, {:ok, percent}} when is_integer(percent) ->
         update_progress(pD, percent)
         progress_loop(title, pD, caller, pulse)
+
       {:progress, {:ok, msg}} ->
         update_progress_text(pD, msg)
         progress_loop(title, pD, caller, pulse)
+
       {:progress, {:error, reason}} ->
         {dialog, _, _} = pD
         parent = :wxWindow.getParent(dialog)
         finish_progress(pD)
-        failMsg = (cond do
-                     is_list(reason) ->
-                       reason
-                     true ->
-                       :file.format_error(reason)
-                   end)
-        display_info_dialog(parent, 'Crashdump Viewer Error', failMsg)
+
+        failMsg =
+          cond do
+            is_list(reason) ->
+              reason
+
+            true ->
+              :file.format_error(reason)
+          end
+
+        display_info_dialog(parent, ~c"Crashdump Viewer Error", failMsg)
         send(caller, :error)
         :erlang.unregister(:cdv_progress_handler)
         :erlang.unlink(caller)
+
       {:progress, :finish} ->
         finish_progress(pD)
         :erlang.unregister(:cdv_progress_handler)
         :erlang.unlink(caller)
-    after pulse ->
-      update_progress_pulse(pD)
-      progress_loop(title, pD, caller, 50)
+    after
+      pulse ->
+        update_progress_pulse(pD)
+        progress_loop(title, pD, caller, 50)
     end
   end
 
@@ -1293,18 +1662,14 @@ defmodule :m_observer_lib do
   end
 
   defp progress_dialog_new(parent, title, str) do
-    dialog = :wxDialog.new(parent, - 1, title,
-                             [{:style, 536870912 ||| 2048 ||| 4096}])
+    dialog = :wxDialog.new(parent, -1, title, [{:style, 536_870_912 ||| 2048 ||| 4096}])
     panel = :wxPanel.new(dialog)
     sizer = :wxBoxSizer.new(8)
-    message = :wxStaticText.new(panel, 1, str,
-                                  [{:size, {220, - 1}}])
+    message = :wxStaticText.new(panel, 1, str, [{:size, {220, -1}}])
     gauge = :wxGauge.new(panel, 2, 100, [{:style, 4}])
     sizerFlags = 8192 ||| 16 ||| 32 ||| 64
-    :wxSizer.add(sizer, message,
-                   [{:flag, sizerFlags}, {:border, 15}])
-    :wxSizer.add(sizer, gauge,
-                   [{:flag, sizerFlags ||| 128}, {:border, 15}])
+    :wxSizer.add(sizer, message, [{:flag, sizerFlags}, {:border, 15}])
+    :wxSizer.add(sizer, gauge, [{:flag, sizerFlags ||| 128}, {:border, 15}])
     :wxPanel.setSizer(panel, sizer)
     :wxSizer.setSizeHints(sizer, dialog)
     :wxDialog.show(dialog)
@@ -1330,22 +1695,24 @@ defmodule :m_observer_lib do
 
   def make_obsbin(bin, tab) do
     size = byte_size(bin)
-    {preview, previewBitSize} = (try do
-                                   pL1 = min(:string.length(bin), 10)
-                                   pB1 = :string.slice(bin, 0, pL1)
-                                   pS1 = byte_size(pB1) * 8
-                                   <<p1 :: size(pS1)>> = pB1
-                                   {p1, pS1}
-                                 catch
-                                   _, _ ->
-                                     pS2 = min(size, 10) * 8
-                                     <<p2 :: size(pS2), _ :: binary>> = bin
-                                     {p2, pS2}
-                                 end)
+
+    {preview, previewBitSize} =
+      try do
+        pL1 = min(:string.length(bin), 10)
+        pB1 = :string.slice(bin, 0, pL1)
+        pS1 = byte_size(pB1) * 8
+        <<p1::size(pS1)>> = pB1
+        {p1, pS1}
+      catch
+        _, _ ->
+          pS2 = min(size, 10) * 8
+          <<p2::size(pS2), _::binary>> = bin
+          {p2, pS2}
+      end
+
     hash = :erlang.phash2(bin)
     key = {preview, size, hash}
     :ets.insert(tab, {key, bin})
     [:"#OBSBin", preview, previewBitSize, size, hash]
   end
-
 end

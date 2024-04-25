@@ -1,5 +1,6 @@
 defmodule :m_io_lib_format do
   use Bitwise
+
   def fwrite(format, args) do
     build(scan(format, args))
   end
@@ -13,12 +14,14 @@ defmodule :m_io_lib_format do
   end
 
   def build(cs, options) do
-    charsLimit = get_option(:chars_limit, options, - 1)
+    charsLimit = get_option(:chars_limit, options, -1)
     res1 = build_small(cs)
     {p, s, w, other} = count_small(res1)
-    case (p + s + w) do
+
+    case p + s + w do
       0 ->
         res1
+
       numOfLimited ->
         remainingChars = sub(charsLimit, other)
         build_limited(res1, p, numOfLimited, remainingChars, 0)
@@ -42,7 +45,7 @@ defmodule :m_io_lib_format do
   end
 
   defp args([%{args: as, maps_order: o} | cs])
-      when is_function(o, 2) or o === :reversed do
+       when is_function(o, 2) or o === :reversed do
     [o | as] ++ args(cs)
   end
 
@@ -58,13 +61,20 @@ defmodule :m_io_lib_format do
     []
   end
 
-  defp print([%{control_char: c, width: f, adjust: ad,
-               precision: p, pad_char: pad, encoding: encoding,
-               strings: strings} = map |
-               cs]) do
+  defp print([
+         %{
+           control_char: c,
+           width: f,
+           adjust: ad,
+           precision: p,
+           pad_char: pad,
+           encoding: encoding,
+           strings: strings
+         } = map
+         | cs
+       ]) do
     mapsOrder = :maps.get(:maps_order, map, :undefined)
-    print(c, f, ad, p, pad, encoding, strings,
-            mapsOrder) ++ print(cs)
+    print(c, f, ad, p, pad, encoding, strings, mapsOrder) ++ print(cs)
   end
 
   defp print([c | cs]) when is_integer(c) do
@@ -75,18 +85,23 @@ defmodule :m_io_lib_format do
     []
   end
 
-  defp print(c, f, ad, p, pad, encoding, strings,
-            mapsOrder) do
-    [?~] ++ print_field_width(f, ad) ++ print_precision(p,
-                                                          pad) ++ print_pad_char(pad) ++ print_encoding(encoding) ++ print_strings(strings) ++ print_maps_order(mapsOrder) ++ [c]
+  defp print(c, f, ad, p, pad, encoding, strings, mapsOrder) do
+    [?~] ++
+      print_field_width(f, ad) ++
+      print_precision(
+        p,
+        pad
+      ) ++
+      print_pad_char(pad) ++
+      print_encoding(encoding) ++ print_strings(strings) ++ print_maps_order(mapsOrder) ++ [c]
   end
 
   defp print_field_width(:none, _Ad) do
-    ''
+    ~c""
   end
 
   defp print_field_width(f, :left) do
-    :erlang.integer_to_list(- f)
+    :erlang.integer_to_list(-f)
   end
 
   defp print_field_width(f, :right) do
@@ -94,11 +109,11 @@ defmodule :m_io_lib_format do
   end
 
   defp print_precision(:none, ?\s) do
-    ''
+    ~c""
   end
 
   defp print_precision(:none, _Pad) do
-    '.'
+    ~c"."
   end
 
   defp print_precision(p, _Pad) do
@@ -106,7 +121,7 @@ defmodule :m_io_lib_format do
   end
 
   defp print_pad_char(?\s) do
-    ''
+    ~c""
   end
 
   defp print_pad_char(pad) do
@@ -114,35 +129,35 @@ defmodule :m_io_lib_format do
   end
 
   defp print_encoding(:unicode) do
-    't'
+    ~c"t"
   end
 
   defp print_encoding(:latin1) do
-    ''
+    ~c""
   end
 
   defp print_strings(false) do
-    'l'
+    ~c"l"
   end
 
   defp print_strings(true) do
-    ''
+    ~c""
   end
 
   defp print_maps_order(:undefined) do
-    ''
+    ~c""
   end
 
   defp print_maps_order(:ordered) do
-    'k'
+    ~c"k"
   end
 
   defp print_maps_order(:reversed) do
-    'K'
+    ~c"K"
   end
 
   defp print_maps_order(cmpFun) when is_function(cmpFun, 2) do
-    'K'
+    ~c"K"
   end
 
   defp collect([?~ | fmt0], args0) do
@@ -162,9 +177,17 @@ defmodule :m_io_lib_format do
     {f, ad, fmt1, args1} = field_width(fmt0, args0)
     {p, fmt2, args2} = precision(fmt1, args1)
     {pad, fmt3, args3} = pad_char(fmt2, args2)
-    spec0 = %{width: f, adjust: ad, precision: p,
-                pad_char: pad, encoding: :latin1, strings: true,
-                maps_order: :undefined}
+
+    spec0 = %{
+      width: f,
+      adjust: ad,
+      precision: p,
+      pad_char: pad,
+      encoding: :latin1,
+      strings: true,
+      maps_order: :undefined
+    }
+
     {spec1, fmt4, args4} = modifiers(fmt3, args3, spec0)
     {c, as, fmt5, args5} = collect_cc(fmt4, args4)
     spec2 = Map.merge(spec1, %{control_char: c, args: as})
@@ -180,13 +203,11 @@ defmodule :m_io_lib_format do
   end
 
   defp modifiers([?k | fmt], args, spec) do
-    modifiers(fmt, args,
-                Map.put(spec, :maps_order, :ordered))
+    modifiers(fmt, args, Map.put(spec, :maps_order, :ordered))
   end
 
   defp modifiers([?K | fmt], [mapsOrder | args], spec) do
-    modifiers(fmt, args,
-                Map.put(spec, :maps_order, mapsOrder))
+    modifiers(fmt, args, Map.put(spec, :maps_order, mapsOrder))
   end
 
   defp modifiers(fmt, args, spec) do
@@ -195,7 +216,7 @@ defmodule :m_io_lib_format do
 
   defp field_width([?- | fmt0], args0) do
     {f, fmt, args} = field_value(fmt0, args0)
-    field_width(- f, fmt, args)
+    field_width(-f, fmt, args)
   end
 
   defp field_width(fmt0, args0) do
@@ -204,7 +225,7 @@ defmodule :m_io_lib_format do
   end
 
   defp field_width(f, fmt, args) when f < 0 do
-    {- f, :left, fmt, args}
+    {-f, :left, fmt, args}
   end
 
   defp field_width(f, fmt, args) when f >= 0 do
@@ -223,8 +244,9 @@ defmodule :m_io_lib_format do
     {a, fmt, args}
   end
 
-  defp field_value([c | fmt], args) when (is_integer(c) and
-                                   c >= ?0 and c <= ?9) do
+  defp field_value([c | fmt], args)
+       when is_integer(c) and
+              c >= ?0 and c <= ?9 do
     field_value([c | fmt], args, 0)
   end
 
@@ -232,8 +254,9 @@ defmodule :m_io_lib_format do
     {:none, fmt, args}
   end
 
-  defp field_value([c | fmt], args, f) when (is_integer(c) and
-                                      c >= ?0 and c <= ?9) do
+  defp field_value([c | fmt], args, f)
+       when is_integer(c) and
+              c >= ?0 and c <= ?9 do
     field_value(fmt, args, 10 * f + (c - ?0))
   end
 
@@ -350,13 +373,15 @@ defmodule :m_io_lib_format do
   end
 
   defp count_small([s | cs], %{other: other} = cnts)
-      when is_list(s) or is_binary(s) do
-    count_small(cs,
-                  %{cnts | other: other + :io_lib.chars_length(s)})
+       when is_list(s) or is_binary(s) do
+    count_small(
+      cs,
+      %{cnts | other: other + :io_lib.chars_length(s)}
+    )
   end
 
   defp count_small([c | cs], %{other: other} = cnts)
-      when is_integer(c) do
+       when is_integer(c) do
     count_small(cs, %{cnts | other: other + 1})
   end
 
@@ -364,13 +389,22 @@ defmodule :m_io_lib_format do
     {p, s, w, other}
   end
 
-  defp build_small([%{control_char: c, args: as, width: f,
-               adjust: ad, precision: p, pad_char: pad,
-               encoding: enc} = cC |
-               cs]) do
-    case (control_small(c, as, f, ad, p, pad, enc)) do
+  defp build_small([
+         %{
+           control_char: c,
+           args: as,
+           width: f,
+           adjust: ad,
+           precision: p,
+           pad_char: pad,
+           encoding: enc
+         } = cC
+         | cs
+       ]) do
+    case control_small(c, as, f, ad, p, pad, enc) do
       :not_small ->
         [cC | build_small(cs)]
+
       s ->
         :lists.flatten(s) ++ build_small(cs)
     end
@@ -384,33 +418,54 @@ defmodule :m_io_lib_format do
     []
   end
 
-  defp build_limited([%{control_char: c, args: as, width: f,
-               adjust: ad, precision: p, pad_char: pad, encoding: enc,
-               strings: str} = map |
-               cs],
-            numOfPs0, count0, maxLen0, i) do
+  defp build_limited(
+         [
+           %{
+             control_char: c,
+             args: as,
+             width: f,
+             adjust: ad,
+             precision: p,
+             pad_char: pad,
+             encoding: enc,
+             strings: str
+           } = map
+           | cs
+         ],
+         numOfPs0,
+         count0,
+         maxLen0,
+         i
+       ) do
     ord = :maps.get(:maps_order, map, :undefined)
-    maxChars = (cond do
-                  maxLen0 < 0 ->
-                    maxLen0
-                  true ->
-                    div(maxLen0, count0)
-                end)
-    s = control_limited(c, as, f, ad, p, pad, enc, str, ord,
-                          maxChars, i)
+
+    maxChars =
+      cond do
+        maxLen0 < 0 ->
+          maxLen0
+
+        true ->
+          div(maxLen0, count0)
+      end
+
+    s = control_limited(c, as, f, ad, p, pad, enc, str, ord, maxChars, i)
     numOfPs = decr_pc(c, numOfPs0)
     count = count0 - 1
-    maxLen = (cond do
-                maxLen0 < 0 ->
-                  maxLen0
-                true ->
-                  len = :io_lib.chars_length(s)
-                  sub(maxLen0, len)
-              end)
+
+    maxLen =
+      cond do
+        maxLen0 < 0 ->
+          maxLen0
+
+        true ->
+          len = :io_lib.chars_length(s)
+          sub(maxLen0, len)
+      end
+
     cond do
       numOfPs > 0 ->
-        [s | build_limited(cs, numOfPs, count, maxLen,
-                             indentation(s, i))]
+        [s | build_limited(cs, numOfPs, count, maxLen, indentation(s, i))]
+
       true ->
         [s | build_limited(cs, numOfPs, count, maxLen, i)]
     end
@@ -421,8 +476,7 @@ defmodule :m_io_lib_format do
   end
 
   defp build_limited([?\t | cs], numOfPs, count, maxLen, i) do
-    [?\t | build_limited(cs, numOfPs, count, maxLen,
-                           div((i + 8), 8) * 8)]
+    [?\t | build_limited(cs, numOfPs, count, maxLen, div(i + 8, 8) * 8)]
   end
 
   defp build_limited([c | cs], numOfPs, count, maxLen, i) do
@@ -450,7 +504,7 @@ defmodule :m_io_lib_format do
   end
 
   def indentation([?\t | cs], i) do
-    indentation(cs, div((i + 8), 8) * 8)
+    indentation(cs, div(i + 8, 8) * 8)
   end
 
   def indentation([c | cs], i) when is_integer(c) do
@@ -466,86 +520,84 @@ defmodule :m_io_lib_format do
   end
 
   defp control_small(?s, [a], f, adj, p, pad, :latin1 = enc)
-      when is_atom(a) do
+       when is_atom(a) do
     l = iolist_to_chars(:erlang.atom_to_list(a))
     string(l, f, adj, p, pad, enc)
   end
 
   defp control_small(?s, [a], f, adj, p, pad, :unicode = enc)
-      when is_atom(a) do
+       when is_atom(a) do
     string(:erlang.atom_to_list(a), f, adj, p, pad, enc)
   end
 
   defp control_small(?e, [a], f, adj, p, pad, _Enc)
-      when is_float(a) do
+       when is_float(a) do
     fwrite_e(a, f, adj, p, pad)
   end
 
   defp control_small(?f, [a], f, adj, p, pad, _Enc)
-      when is_float(a) do
+       when is_float(a) do
     fwrite_f(a, f, adj, p, pad)
   end
 
   defp control_small(?g, [a], f, adj, p, pad, _Enc)
-      when is_float(a) do
+       when is_float(a) do
     fwrite_g(a, f, adj, p, pad)
   end
 
   defp control_small(?b, [a], f, adj, p, pad, _Enc)
-      when is_integer(a) do
+       when is_integer(a) do
     unprefixed_integer(a, f, adj, base(p), pad, true)
   end
 
   defp control_small(?B, [a], f, adj, p, pad, _Enc)
-      when is_integer(a) do
+       when is_integer(a) do
     unprefixed_integer(a, f, adj, base(p), pad, false)
   end
 
   defp control_small(?x, [a, prefix], f, adj, p, pad, _Enc)
-      when (is_integer(a) and is_atom(prefix)) do
-    prefixed_integer(a, f, adj, base(p), pad,
-                       :erlang.atom_to_list(prefix), true)
+       when is_integer(a) and is_atom(prefix) do
+    prefixed_integer(a, f, adj, base(p), pad, :erlang.atom_to_list(prefix), true)
   end
 
   defp control_small(?x, [a, prefix], f, adj, p, pad, _Enc)
-      when is_integer(a) do
+       when is_integer(a) do
     true = :io_lib.deep_char_list(prefix)
     prefixed_integer(a, f, adj, base(p), pad, prefix, true)
   end
 
   defp control_small(?X, [a, prefix], f, adj, p, pad, _Enc)
-      when (is_integer(a) and is_atom(prefix)) do
-    prefixed_integer(a, f, adj, base(p), pad,
-                       :erlang.atom_to_list(prefix), false)
+       when is_integer(a) and is_atom(prefix) do
+    prefixed_integer(a, f, adj, base(p), pad, :erlang.atom_to_list(prefix), false)
   end
 
   defp control_small(?X, [a, prefix], f, adj, p, pad, _Enc)
-      when is_integer(a) do
+       when is_integer(a) do
     true = :io_lib.deep_char_list(prefix)
     prefixed_integer(a, f, adj, base(p), pad, prefix, false)
   end
 
   defp control_small(?+, [a], f, adj, p, pad, _Enc)
-      when is_integer(a) do
+       when is_integer(a) do
     base = base(p)
     prefix = [:erlang.integer_to_list(base), ?#]
     prefixed_integer(a, f, adj, base, pad, prefix, true)
   end
 
   defp control_small(?#, [a], f, adj, p, pad, _Enc)
-      when is_integer(a) do
+       when is_integer(a) do
     base = base(p)
     prefix = [:erlang.integer_to_list(base), ?#]
     prefixed_integer(a, f, adj, base, pad, prefix, false)
   end
 
   defp control_small(?c, [a], f, adj, p, pad, :unicode)
-      when is_integer(a) do
+       when is_integer(a) do
     char(a, f, adj, p, pad)
   end
 
   defp control_small(?c, [a], f, adj, p, pad, _Enc)
-      when is_integer(a) do
+       when is_integer(a) do
     char(a &&& 255, f, adj, p, pad)
   end
 
@@ -565,47 +617,43 @@ defmodule :m_io_lib_format do
     :not_small
   end
 
-  defp control_limited(?s, [l0], f, adj, p, pad, :latin1 = enc, _Str,
-            _Ord, cL, _I) do
+  defp control_limited(?s, [l0], f, adj, p, pad, :latin1 = enc, _Str, _Ord, cL, _I) do
     l = iolist_to_chars(l0, f, cL)
     string(l, limit_field(f, cL), adj, p, pad, enc)
   end
 
-  defp control_limited(?s, [l0], f, adj, p, pad, :unicode = enc, _Str,
-            _Ord, cL, _I) do
+  defp control_limited(?s, [l0], f, adj, p, pad, :unicode = enc, _Str, _Ord, cL, _I) do
     l = cdata_to_chars(l0, f, cL)
     uniconv(string(l, limit_field(f, cL), adj, p, pad, enc))
   end
 
-  defp control_limited(?w, [a], f, adj, p, pad, enc, _Str, ord, cL,
-            _I) do
-    chars = :io_lib.write(a,
-                            [{:depth, - 1}, {:encoding, enc}, {:chars_limit,
-                                                                 cL},
-                                                                  {:maps_order,
-                                                                     ord}])
+  defp control_limited(?w, [a], f, adj, p, pad, enc, _Str, ord, cL, _I) do
+    chars =
+      :io_lib.write(
+        a,
+        [{:depth, -1}, {:encoding, enc}, {:chars_limit, cL}, {:maps_order, ord}]
+      )
+
     term(chars, f, adj, p, pad)
   end
 
-  defp control_limited(?p, [a], f, adj, p, pad, enc, str, ord, cL,
-            i) do
-    print(a, - 1, f, adj, p, pad, enc, str, ord, cL, i)
+  defp control_limited(?p, [a], f, adj, p, pad, enc, str, ord, cL, i) do
+    print(a, -1, f, adj, p, pad, enc, str, ord, cL, i)
   end
 
-  defp control_limited(?W, [a, depth], f, adj, p, pad, enc, _Str, ord,
-            cL, _I)
-      when is_integer(depth) do
-    chars = :io_lib.write(a,
-                            [{:depth, depth}, {:encoding, enc}, {:chars_limit,
-                                                                   cL},
-                                                                    {:maps_order,
-                                                                       ord}])
+  defp control_limited(?W, [a, depth], f, adj, p, pad, enc, _Str, ord, cL, _I)
+       when is_integer(depth) do
+    chars =
+      :io_lib.write(
+        a,
+        [{:depth, depth}, {:encoding, enc}, {:chars_limit, cL}, {:maps_order, ord}]
+      )
+
     term(chars, f, adj, p, pad)
   end
 
-  defp control_limited(?P, [a, depth], f, adj, p, pad, enc, str, ord,
-            cL, i)
-      when is_integer(depth) do
+  defp control_limited(?P, [a, depth], f, adj, p, pad, enc, str, ord, cL, i)
+       when is_integer(depth) do
     print(a, depth, f, adj, p, pad, enc, str, ord, cL, i)
   end
 
@@ -631,41 +679,47 @@ defmodule :m_io_lib_format do
 
   defp term(t, f, adj, p0, pad) do
     l = :io_lib.chars_length(t)
-    p = :erlang.min(l,
-                      case (p0) do
-                        :none ->
-                          f
-                        _ ->
-                          min(p0, f)
-                      end)
+
+    p =
+      :erlang.min(
+        l,
+        case p0 do
+          :none ->
+            f
+
+          _ ->
+            min(p0, f)
+        end
+      )
+
     cond do
       l > p ->
         adjust(chars(?*, p), chars(pad, f - p), adj)
+
       f >= p ->
         adjust(t, chars(pad, f - l), adj)
     end
   end
 
-  defp print(t, d, :none, adj, p, pad, e, str, ord, chLim,
-            i) do
+  defp print(t, d, :none, adj, p, pad, e, str, ord, chLim, i) do
     print(t, d, 80, adj, p, pad, e, str, ord, chLim, i)
   end
 
-  defp print(t, d, f, adj, :none, pad, e, str, ord, chLim,
-            i) do
+  defp print(t, d, f, adj, :none, pad, e, str, ord, chLim, i) do
     print(t, d, f, adj, i + 1, pad, e, str, ord, chLim, i)
   end
 
-  defp print(t, d, f, :right, p, _Pad, enc, str, ord, chLim,
-            _I) do
-    options = [{:chars_limit, chLim}, {:column, p},
-                                          {:line_length, f}, {:depth, d},
-                                                                 {:encoding,
-                                                                    enc},
-                                                                     {:strings,
-                                                                        str},
-                                                                         {:maps_order,
-                                                                            ord}]
+  defp print(t, d, f, :right, p, _Pad, enc, str, ord, chLim, _I) do
+    options = [
+      {:chars_limit, chLim},
+      {:column, p},
+      {:line_length, f},
+      {:depth, d},
+      {:encoding, enc},
+      {:strings, str},
+      {:maps_order, ord}
+    ]
+
     :io_lib_pretty.print(t, options)
   end
 
@@ -690,9 +744,10 @@ defmodule :m_io_lib_format do
   end
 
   defp abs_float_e(_Fl, {ds, e}, p) do
-    case (float_man(ds, 1, p - 1)) do
+    case float_man(ds, 1, p - 1) do
       {[?0 | fs], true} ->
         [[?1 | fs] | float_exp(e)]
+
       {fs, false} ->
         [fs | float_exp(e - 1)]
     end
@@ -704,20 +759,27 @@ defmodule :m_io_lib_format do
   end
 
   defp float_man([d | ds], i, dc) do
-    case (float_man(ds, i - 1, dc)) do
+    case float_man(ds, i - 1, dc) do
       {cs, true} when d === ?9 ->
         {[?0 | cs], true}
+
       {cs, true} ->
         {[d + 1 | cs], false}
+
       {cs, false} ->
         {[d | cs], false}
     end
   end
 
   defp float_man([], i, dc) do
-    {:lists.duplicate(i, ?0) ++ [?. | :lists.duplicate(dc,
-                                                         ?0)],
-       false}
+    {:lists.duplicate(i, ?0) ++
+       [
+         ?.
+         | :lists.duplicate(
+             dc,
+             ?0
+           )
+       ], false}
   end
 
   defp float_man([d | _], 0) when d >= ?5 do
@@ -729,11 +791,13 @@ defmodule :m_io_lib_format do
   end
 
   defp float_man([d | ds], dc) do
-    case (float_man(ds, dc - 1)) do
+    case float_man(ds, dc - 1) do
       {cs, true} when d === ?9 ->
         {[?0 | cs], true}
+
       {cs, true} ->
         {[d + 1 | cs], false}
+
       {cs, false} ->
         {[d | cs], false}
     end
@@ -772,14 +836,14 @@ defmodule :m_io_lib_format do
   end
 
   defp abs_float_f(fl, {ds, e}, p) when e <= 0 do
-    abs_float_f(fl,
-                  {:lists.duplicate(- e + 1, ?0) ++ ds, 1}, p)
+    abs_float_f(fl, {:lists.duplicate(-e + 1, ?0) ++ ds, 1}, p)
   end
 
   defp abs_float_f(_Fl, {ds, e}, p) do
-    case (float_man(ds, e, p)) do
+    case float_man(ds, e, p) do
       {fs, true} ->
-        '1' ++ fs
+        ~c"1" ++ fs
+
       {fs, false} ->
         fs
     end
@@ -794,9 +858,10 @@ defmodule :m_io_lib_format do
   end
 
   defp signbit(fl) do
-    case (<<fl :: float>>) do
-      <<1 :: size(1), _ :: size(63)>> ->
+    case <<fl::float>> do
+      <<1::size(1), _::size(63)>> ->
         [?-]
+
       _ ->
         []
     end
@@ -810,7 +875,7 @@ defmodule :m_io_lib_format do
     {:lists.reverse(ds), :erlang.list_to_integer(e) + 1}
   end
 
-  defp float_data([d | cs], ds) when (d >= ?0 and d <= ?9) do
+  defp float_data([d | cs], ds) when d >= ?0 and d <= ?9 do
     float_data(cs, [d | ds])
   end
 
@@ -828,44 +893,56 @@ defmodule :m_io_lib_format do
 
   defp fwrite_g(fl, f, adj, p, pad) when p >= 1 do
     a = abs(fl)
-    e = (cond do
-           a < 0.1 ->
-             - 2
-           a < 1.0 ->
-             - 1
-           a < 10.0 ->
-             0
-           a < 100.0 ->
-             1
-           a < 1.0e3 ->
-             2
-           a < 1.0e4 ->
-             3
-           true ->
-             :fwrite_f
-         end)
+
+    e =
+      cond do
+        a < 0.1 ->
+          -2
+
+        a < 1.0 ->
+          -1
+
+        a < 10.0 ->
+          0
+
+        a < 100.0 ->
+          1
+
+        a < 1.0e3 ->
+          2
+
+        a < 1.0e4 ->
+          3
+
+        true ->
+          :fwrite_f
+      end
+
     cond do
-      (p <= 1 and e === - 1) or (p - 1 > e and e >= - 1) ->
+      (p <= 1 and e === -1) or (p - 1 > e and e >= -1) ->
         fwrite_f(fl, f, adj, p - 1 - e, pad)
+
       p <= 1 ->
         fwrite_e(fl, f, adj, 2, pad)
+
       true ->
         fwrite_e(fl, f, adj, p, pad)
     end
   end
 
-  defp iolist_to_chars(cs, f, charsLimit) when charsLimit < 0 or
-                                    charsLimit >= f do
+  defp iolist_to_chars(cs, f, charsLimit)
+       when charsLimit < 0 or
+              charsLimit >= f do
     iolist_to_chars(cs)
   end
 
   defp iolist_to_chars(cs, _, charsLimit) do
-    limit_iolist_to_chars(cs, sub(charsLimit, 3), [],
-                            :normal)
+    limit_iolist_to_chars(cs, sub(charsLimit, 3), [], :normal)
   end
 
-  defp iolist_to_chars([c | cs]) when (is_integer(c) and c >= ?\0 and
-                            c <= 255) do
+  defp iolist_to_chars([c | cs])
+       when is_integer(c) and c >= ?\0 and
+              c <= 255 do
     [c | iolist_to_chars(cs)]
   end
 
@@ -883,11 +960,13 @@ defmodule :m_io_lib_format do
 
   defp limit_iolist_to_chars(cs, 0, s, :normal) do
     l = limit_iolist_to_chars(cs, 4, s, :final)
-    case (:erlang.iolist_size(l)) do
+
+    case :erlang.iolist_size(l) do
       n when n < 4 ->
         l
+
       4 ->
-        '...'
+        ~c"..."
     end
   end
 
@@ -895,8 +974,9 @@ defmodule :m_io_lib_format do
     []
   end
 
-  defp limit_iolist_to_chars([c | cs], limit, s, mode) when (c >= ?\0 and
-                                            c <= 255) do
+  defp limit_iolist_to_chars([c | cs], limit, s, mode)
+       when c >= ?\0 and
+              c <= 255 do
     [c | limit_iolist_to_chars(cs, limit - 1, s, mode)]
   end
 
@@ -913,20 +993,19 @@ defmodule :m_io_lib_format do
   end
 
   defp limit_iolist_to_chars(b, limit, s, mode) when is_binary(b) do
-    case (byte_size(b)) do
+    case byte_size(b) do
       sz when sz > limit ->
         {b1, b2} = :erlang.split_binary(b, limit)
-        [:erlang.binary_to_list(b1) | limit_iolist_to_chars(b2,
-                                                              0, s, mode)]
+        [:erlang.binary_to_list(b1) | limit_iolist_to_chars(b2, 0, s, mode)]
+
       sz ->
-        [:erlang.binary_to_list(b) | limit_iolist_to_chars([],
-                                                             limit - sz, s,
-                                                             mode)]
+        [:erlang.binary_to_list(b) | limit_iolist_to_chars([], limit - sz, s, mode)]
     end
   end
 
-  defp cdata_to_chars(cs, f, charsLimit) when charsLimit < 0 or
-                                    charsLimit >= f do
+  defp cdata_to_chars(cs, f, charsLimit)
+       when charsLimit < 0 or
+              charsLimit >= f do
     cdata_to_chars(cs)
   end
 
@@ -934,7 +1013,7 @@ defmodule :m_io_lib_format do
     limit_cdata_to_chars(cs, sub(charsLimit, 3), :normal)
   end
 
-  defp cdata_to_chars([c | cs]) when (is_integer(c) and c >= ?\0) do
+  defp cdata_to_chars([c | cs]) when is_integer(c) and c >= ?\0 do
     [c | cdata_to_chars(cs)]
   end
 
@@ -947,15 +1026,16 @@ defmodule :m_io_lib_format do
   end
 
   defp cdata_to_chars(b) when is_binary(b) do
-    case ((try do
+    case (try do
             :unicode.characters_to_list(b)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       l when is_list(l) ->
         l
+
       _ ->
         :erlang.binary_to_list(b)
     end
@@ -963,11 +1043,13 @@ defmodule :m_io_lib_format do
 
   defp limit_cdata_to_chars(cs, 0, :normal) do
     l = limit_cdata_to_chars(cs, 4, :final)
-    case (:string.length(l)) do
+
+    case :string.length(l) do
       n when n < 4 ->
         l
+
       4 ->
-        '...'
+        ~c"..."
     end
   end
 
@@ -976,20 +1058,24 @@ defmodule :m_io_lib_format do
   end
 
   defp limit_cdata_to_chars(cs, limit, mode) do
-    case (:string.next_grapheme(cs)) do
-      {:error, <<c, cs1 :: binary>>} ->
+    case :string.next_grapheme(cs) do
+      {:error, <<c, cs1::binary>>} ->
         [c | limit_cdata_to_chars(cs1, limit - 1, mode)]
+
       {:error, [c | cs1]} ->
         [c | limit_cdata_to_chars(cs1, limit - 1, mode)]
+
       [] ->
         []
+
       [gC | cs1] ->
         [gC | limit_cdata_to_chars(cs1, limit - 1, mode)]
     end
   end
 
-  defp limit_field(f, charsLimit) when charsLimit < 0 or
-                                f === :none do
+  defp limit_field(f, charsLimit)
+       when charsLimit < 0 or
+              f === :none do
     f
   end
 
@@ -1002,27 +1088,29 @@ defmodule :m_io_lib_format do
   end
 
   defp string(s, f, adj, :none, pad, enc) do
-    string_field(s, f, adj, :io_lib.chars_length(s), pad,
-                   enc)
+    string_field(s, f, adj, :io_lib.chars_length(s), pad, enc)
   end
 
   defp string(s, :none, _Adj, p, pad, enc) do
-    string_field(s, p, :left, :io_lib.chars_length(s), pad,
-                   enc)
+    string_field(s, p, :left, :io_lib.chars_length(s), pad, enc)
   end
 
   defp string(s, f, adj, p, pad, enc) when f >= p do
     n = :io_lib.chars_length(s)
+
     cond do
       f > p ->
         cond do
           n > p ->
             adjust(flat_trunc(s, p, enc), chars(pad, f - p), adj)
+
           n < p ->
             adjust([s | chars(pad, p - n)], chars(pad, f - p), adj)
+
           true ->
             adjust(s, chars(pad, f - p), adj)
         end
+
       true ->
         string_field(s, f, adj, n, pad, enc)
     end
@@ -1041,29 +1129,47 @@ defmodule :m_io_lib_format do
   end
 
   defp unprefixed_integer(int, f, adj, base, pad, lowercase)
-      when (base >= 2 and base <= 1 + ?Z - ?A + 10) do
+       when base >= 2 and base <= 1 + ?Z - ?A + 10 do
     cond do
       int < 0 ->
-        s = cond_lowercase(:erlang.integer_to_list(- int, base),
-                             lowercase)
+        s =
+          cond_lowercase(
+            :erlang.integer_to_list(-int, base),
+            lowercase
+          )
+
         term([?- | s], f, adj, :none, pad)
+
       true ->
-        s = cond_lowercase(:erlang.integer_to_list(int, base),
-                             lowercase)
+        s =
+          cond_lowercase(
+            :erlang.integer_to_list(int, base),
+            lowercase
+          )
+
         term(s, f, adj, :none, pad)
     end
   end
 
   defp prefixed_integer(int, f, adj, base, pad, prefix, lowercase)
-      when (base >= 2 and base <= 1 + ?Z - ?A + 10) do
+       when base >= 2 and base <= 1 + ?Z - ?A + 10 do
     cond do
       int < 0 ->
-        s = cond_lowercase(:erlang.integer_to_list(- int, base),
-                             lowercase)
+        s =
+          cond_lowercase(
+            :erlang.integer_to_list(-int, base),
+            lowercase
+          )
+
         term([?-, prefix | s], f, adj, :none, pad)
+
       true ->
-        s = cond_lowercase(:erlang.integer_to_list(int, base),
-                             lowercase)
+        s =
+          cond_lowercase(
+            :erlang.integer_to_list(int, base),
+            lowercase
+          )
+
         term([prefix | s], f, adj, :none, pad)
     end
   end
@@ -1085,7 +1191,7 @@ defmodule :m_io_lib_format do
   end
 
   defp newline(:none, _Adj, _P, _Pad) do
-    '\n'
+    ~c"\n"
   end
 
   defp newline(f, :right, _P, _Pad) do
@@ -1104,14 +1210,16 @@ defmodule :m_io_lib_format do
     [pad | data]
   end
 
-  defp flat_trunc(list, n, :latin1) when (is_integer(n) and
-                                    n >= 0) do
+  defp flat_trunc(list, n, :latin1)
+       when is_integer(n) and
+              n >= 0 do
     {s, _} = :lists.split(n, :lists.flatten(list))
     s
   end
 
-  defp flat_trunc(list, n, :unicode) when (is_integer(n) and
-                                     n >= 0) do
+  defp flat_trunc(list, n, :unicode)
+       when is_integer(n) and
+              n >= 0 do
     :string.slice(list, 0, n)
   end
 
@@ -1131,7 +1239,7 @@ defmodule :m_io_lib_format do
     [c, c, c]
   end
 
-  defp chars(c, n) when (is_integer(n) and n &&& 1 === 0) do
+  defp chars(c, n) when is_integer(n) and n &&& 1 === 0 do
     s = chars(c, n >>> 1)
     [s | s]
   end
@@ -1149,8 +1257,9 @@ defmodule :m_io_lib_format do
     string
   end
 
-  defp lowercase([h | t]) when (is_integer(h) and h >= ?A and
-                           h <= ?Z) do
+  defp lowercase([h | t])
+       when is_integer(h) and h >= ?A and
+              h <= ?Z do
     [h - ?A + ?a | lowercase(t)]
   end
 
@@ -1175,14 +1284,15 @@ defmodule :m_io_lib_format do
   end
 
   defp get_option(key, tupleList, default) do
-    case (:lists.keyfind(key, 1, tupleList)) do
+    case :lists.keyfind(key, 1, tupleList) do
       false ->
         default
+
       {^key, value} ->
         value
+
       _ ->
         default
     end
   end
-
 end

@@ -1,5 +1,6 @@
 defmodule :m_gb_trees do
   use Bitwise
+
   def empty() do
     {0, nil}
   end
@@ -12,8 +13,9 @@ defmodule :m_gb_trees do
     false
   end
 
-  def size({size, _}) when (is_integer(size) and
-                            size >= 0) do
+  def size({size, _})
+      when is_integer(size) and
+             size >= 0 do
     size
   end
 
@@ -79,12 +81,12 @@ defmodule :m_gb_trees do
   end
 
   defp update_1(key, value, {key1, v, smaller, bigger})
-      when key < key1 do
+       when key < key1 do
     {key1, v, update_1(key, value, smaller), bigger}
   end
 
   defp update_1(key, value, {key1, v, smaller, bigger})
-      when key > key1 do
+       when key > key1 do
     {key1, v, smaller, update_1(key, value, bigger)}
   end
 
@@ -98,40 +100,46 @@ defmodule :m_gb_trees do
   end
 
   defp insert_1(key, value, {key1, v, smaller, bigger}, s)
-      when key < key1 do
-    case (insert_1(key, value, smaller, s >>> 1)) do
-      {t1, h1, s1} when (is_integer(h1) and is_integer(s1)) ->
+       when key < key1 do
+    case insert_1(key, value, smaller, s >>> 1) do
+      {t1, h1, s1} when is_integer(h1) and is_integer(s1) ->
         t = {key1, v, t1, bigger}
         {h2, s2} = count(bigger)
         h = :erlang.max(h1, h2) <<< 1
         sS = s1 + s2 + 1
         p = sS * sS
+
         cond do
           h > p ->
             balance(t, sS)
+
           true ->
             {t, h, sS}
         end
+
       t1 ->
         {key1, v, t1, bigger}
     end
   end
 
   defp insert_1(key, value, {key1, v, smaller, bigger}, s)
-      when key > key1 do
-    case (insert_1(key, value, bigger, s >>> 1)) do
-      {t1, h1, s1} when (is_integer(h1) and is_integer(s1)) ->
+       when key > key1 do
+    case insert_1(key, value, bigger, s >>> 1) do
+      {t1, h1, s1} when is_integer(h1) and is_integer(s1) ->
         t = {key1, v, smaller, t1}
         {h2, s2} = count(smaller)
         h = :erlang.max(h1, h2) <<< 1
         sS = s1 + s2 + 1
         p = sS * sS
+
         cond do
           h > p ->
             balance(t, sS)
+
           true ->
             {t, h, sS}
         end
+
       t1 ->
         {key1, v, smaller, t1}
     end
@@ -150,9 +158,10 @@ defmodule :m_gb_trees do
   end
 
   def enter(key, val, t) do
-    case (is_defined(key, t)) do
+    case is_defined(key, t) do
       true ->
         update(key, val, t)
+
       false ->
         insert(key, val, t)
     end
@@ -172,7 +181,7 @@ defmodule :m_gb_trees do
     {1, 0}
   end
 
-  def balance({s, t}) when (is_integer(s) and s >= 0) do
+  def balance({s, t}) when is_integer(s) and s >= 0 do
     {s, balance(t, s)}
   end
 
@@ -209,26 +218,27 @@ defmodule :m_gb_trees do
   end
 
   def delete_any(key, t) do
-    case (is_defined(key, t)) do
+    case is_defined(key, t) do
       true ->
         delete(key, t)
+
       false ->
         t
     end
   end
 
-  def delete(key, {s, t}) when (is_integer(s) and s >= 0) do
+  def delete(key, {s, t}) when is_integer(s) and s >= 0 do
     {s - 1, delete_1(key, t)}
   end
 
   defp delete_1(key, {key1, value, smaller, larger})
-      when key < key1 do
+       when key < key1 do
     smaller1 = delete_1(key, smaller)
     {key1, value, smaller1, larger}
   end
 
   defp delete_1(key, {key1, value, smaller, bigger})
-      when key > key1 do
+       when key > key1 do
     bigger1 = delete_1(key, bigger)
     {key1, value, smaller, bigger1}
   end
@@ -251,27 +261,28 @@ defmodule :m_gb_trees do
   end
 
   def take_any(key, tree) do
-    case (is_defined(key, tree)) do
+    case is_defined(key, tree) do
       true ->
         take(key, tree)
+
       false ->
         :error
     end
   end
 
-  def take(key, {s, t}) when (is_integer(s) and s >= 0) do
+  def take(key, {s, t}) when is_integer(s) and s >= 0 do
     {value, res} = take_1(key, t)
     {value, {s - 1, res}}
   end
 
   defp take_1(key, {key1, value, smaller, larger})
-      when key < key1 do
+       when key < key1 do
     {value2, smaller1} = take_1(key, smaller)
     {value2, {key1, value, smaller1, larger}}
   end
 
   defp take_1(key, {key1, value, smaller, bigger})
-      when key > key1 do
+       when key > key1 do
     {value2, bigger1} = take_1(key, bigger)
     {value2, {key1, value, smaller, bigger1}}
   end
@@ -280,8 +291,9 @@ defmodule :m_gb_trees do
     {value, merge(smaller, larger)}
   end
 
-  def take_smallest({size, tree}) when (is_integer(size) and
-                               size >= 0) do
+  def take_smallest({size, tree})
+      when is_integer(size) and
+             size >= 0 do
     {key, value, larger} = take_smallest1(tree)
     {key, value, {size - 1, larger}}
   end
@@ -307,8 +319,9 @@ defmodule :m_gb_trees do
     smallest_1(smaller)
   end
 
-  def take_largest({size, tree}) when (is_integer(size) and
-                               size >= 0) do
+  def take_largest({size, tree})
+      when is_integer(size) and
+             size >= 0 do
     {key, value, smaller} = take_largest1(tree)
     {key, value, {size - 1, smaller}}
   end
@@ -437,5 +450,4 @@ defmodule :m_gb_trees do
   defp map_1(f, {k, v, smaller, larger}) do
     {k, f.(k, v), map_1(f, smaller), map_1(f, larger)}
   end
-
 end

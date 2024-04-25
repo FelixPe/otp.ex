@@ -1,30 +1,50 @@
 defmodule :m_beam_ssa do
   use Bitwise
-  import :lists, only: [foldl: 3, mapfoldl: 3, member: 2,
-                          reverse: 1, sort: 1]
+  import :lists, only: [foldl: 3, mapfoldl: 3, member: 2, reverse: 1, sort: 1]
   require Record
-  Record.defrecord(:r_b_module, :b_module, anno: %{},
-                                    name: :undefined, exports: :undefined,
-                                    attributes: :undefined, body: :undefined)
-  Record.defrecord(:r_b_function, :b_function, anno: %{},
-                                      args: :undefined, bs: :undefined,
-                                      cnt: :undefined)
-  Record.defrecord(:r_b_blk, :b_blk, anno: %{}, is: :undefined,
-                                 last: :undefined)
-  Record.defrecord(:r_b_set, :b_set, anno: %{}, dst: :none,
-                                 op: :undefined, args: [])
+
+  Record.defrecord(:r_b_module, :b_module,
+    anno: %{},
+    name: :undefined,
+    exports: :undefined,
+    attributes: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_b_function, :b_function,
+    anno: %{},
+    args: :undefined,
+    bs: :undefined,
+    cnt: :undefined
+  )
+
+  Record.defrecord(:r_b_blk, :b_blk, anno: %{}, is: :undefined, last: :undefined)
+  Record.defrecord(:r_b_set, :b_set, anno: %{}, dst: :none, op: :undefined, args: [])
   Record.defrecord(:r_b_ret, :b_ret, anno: %{}, arg: :undefined)
-  Record.defrecord(:r_b_br, :b_br, anno: %{}, bool: :undefined,
-                                succ: :undefined, fail: :undefined)
-  Record.defrecord(:r_b_switch, :b_switch, anno: %{},
-                                    arg: :undefined, fail: :undefined,
-                                    list: :undefined)
+
+  Record.defrecord(:r_b_br, :b_br,
+    anno: %{},
+    bool: :undefined,
+    succ: :undefined,
+    fail: :undefined
+  )
+
+  Record.defrecord(:r_b_switch, :b_switch,
+    anno: %{},
+    arg: :undefined,
+    fail: :undefined,
+    list: :undefined
+  )
+
   Record.defrecord(:r_b_var, :b_var, name: :undefined)
   Record.defrecord(:r_b_literal, :b_literal, val: :undefined)
-  Record.defrecord(:r_b_remote, :b_remote, mod: :undefined,
-                                    name: :undefined, arity: :undefined)
-  Record.defrecord(:r_b_local, :b_local, name: :undefined,
-                                   arity: :undefined)
+  Record.defrecord(:r_b_remote, :b_remote, mod: :undefined, name: :undefined, arity: :undefined)
+
+  Record.defrecord(:r_b_local, :b_local,
+    name: :undefined,
+    arity: :undefined
+  )
+
   def add_anno(key, val, r_b_function(anno: anno) = bl) do
     r_b_function(bl, anno: Map.put(anno, key, val))
   end
@@ -82,86 +102,122 @@ defmodule :m_beam_ssa do
   end
 
   def clobbers_xregs(r_b_set(op: op)) do
-    case (op) do
+    case op do
       :bs_init_writable ->
         true
+
       :build_stacktrace ->
         true
+
       :call ->
         true
+
       :landingpad ->
         true
+
       :old_make_fun ->
         true
+
       :peek_message ->
         true
+
       :raw_raise ->
         true
+
       :wait_timeout ->
         true
+
       _ ->
         false
     end
   end
 
   def no_side_effect(r_b_set(op: op)) do
-    case (op) do
+    case op do
       {:bif, _} ->
         true
+
       {:float, :get} ->
         true
+
       :bs_create_bin ->
         true
+
       :bs_init_writable ->
         true
+
       :bs_extract ->
         true
+
       :bs_match ->
         true
+
       :bs_start_match ->
         true
+
       :bs_test_tail ->
         true
+
       :bs_get_tail ->
         true
+
       :build_stacktrace ->
         true
+
       :extract ->
         true
+
       :get_hd ->
         true
+
       :get_tl ->
         true
+
       :get_map_element ->
         true
+
       :get_tuple_element ->
         true
+
       :has_map_field ->
         true
+
       :is_nonempty_list ->
         true
+
       :is_tagged_tuple ->
         true
+
       :make_fun ->
         true
+
       :match_fail ->
         true
+
       :phi ->
         true
+
       :put_map ->
         true
+
       :put_list ->
         true
+
       :put_tuple ->
         true
+
       :raw_raise ->
         true
+
       {:succeeded, :guard} ->
         true
+
       :update_record ->
         true
+
       :update_tuple ->
         true
+
       _ ->
         false
     end
@@ -175,31 +231,29 @@ defmodule :m_beam_ssa do
     :erlang.error(:unsafe_edge)
   end
 
-  defp insert_on_edges_1([{from, to, isA}, {from, to, isB} | insertions],
-            blocks, count) do
-    insert_on_edges_1([{from, to, isA ++ isB} | insertions],
-                        blocks, count)
+  defp insert_on_edges_1([{from, to, isA}, {from, to, isB} | insertions], blocks, count) do
+    insert_on_edges_1([{from, to, isA ++ isB} | insertions], blocks, count)
   end
 
-  defp insert_on_edges_1([{from, to, is} | insertions], blocks0,
-            count0) do
-    r_b_blk(last: fromLast0) = (fromBlk0 = :erlang.map_get(from,
-                                                       blocks0))
-    r_b_blk(is: toIs0) = (toBlk0 = :erlang.map_get(to, blocks0))
+  defp insert_on_edges_1([{from, to, is} | insertions], blocks0, count0) do
+    r_b_blk(last: fromLast0) =
+      fromBlk0 =
+      :erlang.map_get(
+        from,
+        blocks0
+      )
+
+    r_b_blk(is: toIs0) = toBlk0 = :erlang.map_get(to, blocks0)
     edgeLbl = count0
     count = count0 + 1
-    fromLast = insert_on_edges_reroute(fromLast0, to,
-                                         edgeLbl)
+    fromLast = insert_on_edges_reroute(fromLast0, to, edgeLbl)
     fromBlk = r_b_blk(fromBlk0, last: fromLast)
-    {edgeIs0, toIs} = insert_on_edges_is(toIs0, from,
-                                           edgeLbl, [])
+    {edgeIs0, toIs} = insert_on_edges_is(toIs0, from, edgeLbl, [])
     edgeIs = edgeIs0 ++ is
     br = r_b_br(bool: r_b_literal(val: true), succ: to, fail: to)
     edgeBlk = r_b_blk(is: edgeIs, last: br)
     toBlk = r_b_blk(toBlk0, is: toIs)
-    blocks1 = Map.put(%{blocks0
-                        |
-                        from => fromBlk, to => toBlk}, edgeLbl, edgeBlk)
+    blocks1 = Map.put(%{blocks0 | from => fromBlk, to => toBlk}, edgeLbl, edgeBlk)
     blocks = update_phi_labels([to], from, edgeLbl, blocks1)
     insert_on_edges_1(insertions, blocks, count)
   end
@@ -210,27 +264,30 @@ defmodule :m_beam_ssa do
 
   defp insert_on_edges_reroute(r_b_switch(fail: fail0, list: list0) = sw, old, new) do
     fail = rename_label(fail0, old, new)
-    list = (for {value, dst} <- list0 do
-              {value, rename_label(dst, old, new)}
-            end)
-    r_b_switch(sw, fail: fail,  list: list)
+
+    list =
+      for {value, dst} <- list0 do
+        {value, rename_label(dst, old, new)}
+      end
+
+    r_b_switch(sw, fail: fail, list: list)
   end
 
   defp insert_on_edges_reroute(r_b_br(succ: succ0, fail: fail0) = br, old, new) do
     succ = rename_label(succ0, old, new)
     fail = rename_label(fail0, old, new)
-    r_b_br(br, succ: succ,  fail: fail)
+    r_b_br(br, succ: succ, fail: fail)
   end
 
-  defp insert_on_edges_is([r_b_set(op: :bs_extract) = i | is], fromLbl, edgeLbl,
-            edgeIs) do
+  defp insert_on_edges_is([r_b_set(op: :bs_extract) = i | is], fromLbl, edgeLbl, edgeIs) do
     insert_on_edges_is(is, fromLbl, edgeLbl, [i | edgeIs])
   end
 
   defp insert_on_edges_is(toIs0, fromLbl, edgeLbl, edgeIs) do
-    case (toIs0) do
+    case toIs0 do
       [r_b_set(op: :landingpad) | _] ->
         :erlang.error(:unsafe_edge)
+
       _ ->
         toIs = update_phi_labels_is(toIs0, fromLbl, edgeLbl)
         {reverse(edgeIs), toIs}
@@ -238,9 +295,10 @@ defmodule :m_beam_ssa do
   end
 
   def is_loop_header(r_b_set(op: :wait_timeout, args: [args])) do
-    case (args) do
+    case args do
       r_b_literal(val: 0) ->
         false
+
       _ ->
         true
     end
@@ -251,38 +309,49 @@ defmodule :m_beam_ssa do
   end
 
   def successors(r_b_blk(last: terminator)) do
-    case (terminator) do
+    case terminator do
       r_b_br(bool: r_b_literal(val: true), succ: succ) ->
         [succ]
+
       r_b_br(bool: r_b_literal(val: false), fail: fail) ->
         [fail]
+
       r_b_br(succ: succ, fail: fail) ->
         [fail, succ]
+
       r_b_switch(fail: fail, list: list) ->
-        [fail | for {_, l} <- list do
-                  l
-                end]
+        [
+          fail
+          | for {_, l} <- list do
+              l
+            end
+        ]
+
       r_b_ret() ->
         []
     end
   end
 
-  def normalize(r_b_set(anno: anno0, op: {:bif, bif},
-             args: args) = set) do
-    case ({is_commutative(bif), args}) do
+  def normalize(r_b_set(anno: anno0, op: {:bif, bif}, args: args) = set) do
+    case {is_commutative(bif), args} do
       {true, [r_b_literal() = lit, r_b_var() = var]} ->
-        anno = (case (anno0) do
-                  %{arg_types: argTypes0} ->
-                    case (argTypes0) do
-                      %{1 => type} ->
-                        Map.put(anno0, :arg_types, %{0 => type})
-                      %{} ->
-                        Map.put(anno0, :arg_types, %{})
-                    end
-                  %{} ->
-                    anno0
-                end)
-        r_b_set(set, anno: anno,  args: [var, lit])
+        anno =
+          case anno0 do
+            %{arg_types: argTypes0} ->
+              case argTypes0 do
+                %{1 => type} ->
+                  Map.put(anno0, :arg_types, %{0 => type})
+
+                %{} ->
+                  Map.put(anno0, :arg_types, %{})
+              end
+
+            %{} ->
+              anno0
+          end
+
+        r_b_set(set, anno: anno, args: [var, lit])
+
       {_, _} ->
         set
     end
@@ -293,29 +362,35 @@ defmodule :m_beam_ssa do
   end
 
   def normalize(r_b_br() = br) do
-    case (br) do
+    case br do
       r_b_br(bool: bool, succ: same, fail: same) ->
-        case (bool) do
+        case bool do
           r_b_literal(val: true) ->
             br
+
           _ ->
             r_b_br(br, bool: r_b_literal(val: true))
         end
+
       r_b_br(bool: r_b_literal(val: true), succ: succ) ->
         r_b_br(br, fail: succ)
+
       r_b_br(bool: r_b_literal(val: false), fail: fail) ->
-        r_b_br(br, bool: r_b_literal(val: true),  succ: fail)
+        r_b_br(br, bool: r_b_literal(val: true), succ: fail)
+
       r_b_br() ->
         br
     end
   end
 
   def normalize(r_b_switch(arg: arg, fail: fail, list: list) = sw) do
-    case (arg) do
+    case arg do
       r_b_literal() ->
         normalize_switch(arg, list, fail)
+
       r_b_var() when list === [] ->
         r_b_br(bool: r_b_literal(val: true), succ: fail, fail: fail)
+
       r_b_var() ->
         r_b_switch(sw, list: sort(list))
     end
@@ -342,16 +417,20 @@ defmodule :m_beam_ssa do
   end
 
   def def(ls, blocks) when is_map(blocks) do
-    blks = (for l <- ls do
-              :erlang.map_get(l, blocks)
-            end)
+    blks =
+      for l <- ls do
+        :erlang.map_get(l, blocks)
+      end
+
     def_1(blks, [])
   end
 
   def def_unused(ls, unused, blocks) when is_map(blocks) do
-    blks = (for l <- ls do
-              :erlang.map_get(l, blocks)
-            end)
+    blks =
+      for l <- ls do
+        :erlang.map_get(l, blocks)
+      end
+
     preds = :sets.from_list(ls, [{:version, 2}])
     def_unused_1(blks, preds, [], unused)
   end
@@ -363,17 +442,22 @@ defmodule :m_beam_ssa do
 
   def dominators_from_predecessors(top0, preds) when is_map(preds) do
     df = :maps.from_list(number(top0, 0))
-    [{0, []} | top] = (for l <- top0 do
-                         {l, :erlang.map_get(l, preds)}
-                       end)
+
+    [{0, []} | top] =
+      for l <- top0 do
+        {l, :erlang.map_get(l, preds)}
+      end
+
     acc = %{0 => [0]}
     {dominators_1(top, df, acc), df}
   end
 
   def common_dominators(ls, dom, numbering) when is_map(dom) do
-    doms = (for l <- ls do
-              :erlang.map_get(l, dom)
-            end)
+    doms =
+      for l <- ls do
+        :erlang.map_get(l, dom)
+      end
+
     dom_intersection(doms, numbering)
   end
 
@@ -382,10 +466,13 @@ defmodule :m_beam_ssa do
   end
 
   def mapfold_blocks(fun, labels, acc, blocks) when is_map(blocks) do
-    foldl(fn lbl, a ->
-               mapfold_blocks_1(fun, lbl, a)
-          end,
-            {blocks, acc}, labels)
+    foldl(
+      fn lbl, a ->
+        mapfold_blocks_1(fun, lbl, a)
+      end,
+      {blocks, acc},
+      labels
+    )
   end
 
   defp mapfold_blocks_1(fun, lbl, {blocks0, acc0}) do
@@ -424,10 +511,10 @@ defmodule :m_beam_ssa do
     ls
   end
 
-  def between(from, to, preds, blocks) when (is_map(preds) and
-                                          is_map(blocks)) do
-    filter = between_make_filter([to], preds,
-                                   :sets.from_list([from], [{:version, 2}]))
+  def between(from, to, preds, blocks)
+      when is_map(preds) and
+             is_map(blocks) do
+    filter = between_make_filter([to], preds, :sets.from_list([from], [{:version, 2}]))
     {paths, _} = between_rpo([from], blocks, filter, [])
     paths
   end
@@ -436,24 +523,34 @@ defmodule :m_beam_ssa do
     rename_vars(:maps.from_list(rename), labels, blocks)
   end
 
-  def rename_vars(rename, labels, blocks) when (is_map(rename) and
-                                         is_map(blocks)) do
+  def rename_vars(rename, labels, blocks)
+      when is_map(rename) and
+             is_map(blocks) do
     preds = :sets.from_list(labels, [{:version, 2}])
-    f = fn r_b_set(op: :phi, args: args0) = set ->
-             args = rename_phi_vars(args0, preds, rename)
-             normalize(r_b_set(set, args: args))
-           r_b_set(args: args0) = set ->
-             args = (for a <- args0 do
-                       rename_var(a, rename)
-                     end)
-             normalize(r_b_set(set, args: args))
-           r_b_switch(arg: bool) = sw ->
-             normalize(r_b_switch(sw, arg: rename_var(bool, rename)))
-           r_b_br(bool: bool) = br ->
-             normalize(r_b_br(br, bool: rename_var(bool, rename)))
-           r_b_ret(arg: arg) = ret ->
-             normalize(r_b_ret(ret, arg: rename_var(arg, rename)))
-        end
+
+    f = fn
+      r_b_set(op: :phi, args: args0) = set ->
+        args = rename_phi_vars(args0, preds, rename)
+        normalize(r_b_set(set, args: args))
+
+      r_b_set(args: args0) = set ->
+        args =
+          for a <- args0 do
+            rename_var(a, rename)
+          end
+
+        normalize(r_b_set(set, args: args))
+
+      r_b_switch(arg: bool) = sw ->
+        normalize(r_b_switch(sw, arg: rename_var(bool, rename)))
+
+      r_b_br(bool: bool) = br ->
+        normalize(r_b_br(br, bool: rename_var(bool, rename)))
+
+      r_b_ret(arg: arg) = ret ->
+        normalize(r_b_ret(ret, arg: rename_var(arg, rename)))
+    end
+
     map_instrs_1(labels, f, blocks)
   end
 
@@ -466,8 +563,10 @@ defmodule :m_beam_ssa do
   end
 
   def trim_unreachable([_ | _] = blocks) do
-    trim_unreachable_1(blocks,
-                         :sets.from_list([0], [{:version, 2}]))
+    trim_unreachable_1(
+      blocks,
+      :sets.from_list([0], [{:version, 2}])
+    )
   end
 
   def used(r_b_blk(is: is, last: last)) do
@@ -483,9 +582,11 @@ defmodule :m_beam_ssa do
   end
 
   def used(r_b_set(op: :phi, args: args)) do
-    :ordsets.from_list(for {r_b_var() = v, _} <- args do
-                         v
-                       end)
+    :ordsets.from_list(
+      for {r_b_var() = v, _} <- args do
+        v
+      end
+    )
   end
 
   def used(r_b_set(args: args)) do
@@ -501,12 +602,18 @@ defmodule :m_beam_ssa do
   end
 
   def definitions(labels, blocks) do
-    fold_instrs(fn r_b_set(dst: var) = i, acc ->
-                     Map.put(acc, var, i)
-                   _Terminator, acc ->
-                     acc
-                end,
-                  labels, %{}, blocks)
+    fold_instrs(
+      fn
+        r_b_set(dst: var) = i, acc ->
+          Map.put(acc, var, i)
+
+        _Terminator, acc ->
+          acc
+      end,
+      labels,
+      %{},
+      blocks
+    )
   end
 
   def uses(labels, blocks) when is_map(blocks) do
@@ -515,13 +622,17 @@ defmodule :m_beam_ssa do
 
   defp fold_uses_block(lbl, r_b_blk(is: is, last: last), useMap0) do
     f = fn i, useMap ->
-             foldl(fn var, acc ->
-                        uses0 = :maps.get(var, acc, [])
-                        uses = [{lbl, i} | uses0]
-                        :maps.put(var, uses, acc)
-                   end,
-                     useMap, used(i))
-        end
+      foldl(
+        fn var, acc ->
+          uses0 = :maps.get(var, acc, [])
+          uses = [{lbl, i} | uses0]
+          :maps.put(var, uses, acc)
+        end,
+        useMap,
+        used(i)
+      )
+    end
+
     f.(last, foldl(f, useMap0, is))
   end
 
@@ -554,11 +665,11 @@ defmodule :m_beam_ssa do
     true
   end
 
-  defp is_commutative(:"+") do
+  defp is_commutative(:+) do
     true
   end
 
-  defp is_commutative(:"*") do
+  defp is_commutative(:*) do
     true
   end
 
@@ -566,7 +677,7 @@ defmodule :m_beam_ssa do
     true
   end
 
-  defp is_commutative(:"==") do
+  defp is_commutative(:==) do
     true
   end
 
@@ -582,11 +693,9 @@ defmodule :m_beam_ssa do
     false
   end
 
-  defp def_unused_1([r_b_blk(is: is, last: last) | bs], preds, def0,
-            unused0) do
+  defp def_unused_1([r_b_blk(is: is, last: last) | bs], preds, def0, unused0) do
     unused1 = :ordsets.subtract(unused0, used(last))
-    {def__, unused} = def_unused_is(is, preds, def0,
-                                      unused1)
+    {def__, unused} = def_unused_is(is, preds, def0, unused1)
     def_unused_1(bs, preds, def__, unused)
   end
 
@@ -594,15 +703,21 @@ defmodule :m_beam_ssa do
     {:ordsets.from_list(def__), unused}
   end
 
-  defp def_unused_is([r_b_set(op: :phi, dst: dst, args: args) | is], preds,
-            def0, unused0) do
+  defp def_unused_is([r_b_set(op: :phi, dst: dst, args: args) | is], preds, def0, unused0) do
     def__ = [dst | def0]
-    unused1 = (for {r_b_var() = v, l} <- args,
-                     :sets.is_element(l, preds) do
-                 v
-               end)
-    unused = :ordsets.subtract(unused0,
-                                 :ordsets.from_list(unused1))
+
+    unused1 =
+      for {r_b_var() = v, l} <- args,
+          :sets.is_element(l, preds) do
+        v
+      end
+
+    unused =
+      :ordsets.subtract(
+        unused0,
+        :ordsets.from_list(unused1)
+      )
+
     def_unused_is(is, preds, def__, unused)
   end
 
@@ -634,10 +749,12 @@ defmodule :m_beam_ssa do
   end
 
   defp dominators_1([{l, preds} | ls], df, doms) do
-    domPreds = (for p <- preds,
-                      :erlang.is_map_key(p, doms) do
-                  :erlang.map_get(p, doms)
-                end)
+    domPreds =
+      for p <- preds,
+          :erlang.is_map_key(p, doms) do
+        :erlang.map_get(p, doms)
+      end
+
     dom = [l | dom_intersection(domPreds, df)]
     dominators_1(ls, df, Map.put(doms, l, dom))
   end
@@ -668,11 +785,14 @@ defmodule :m_beam_ssa do
 
   defp dom_intersection_1([e1 | es1] = set1, [e2 | es2] = set2, df) do
     %{^e1 => df1, ^e2 => df2} = df
+
     cond do
       df1 > df2 ->
         dom_intersection_2(es1, set2, df, df2)
+
       df2 > df1 ->
         dom_intersection_2(es2, set1, df, df1)
+
       true ->
         set1
     end
@@ -680,11 +800,14 @@ defmodule :m_beam_ssa do
 
   defp dom_intersection_2([e1 | es1] = set1, [_ | es2] = set2, df, df2) do
     %{^e1 => df1} = df
+
     cond do
       df1 > df2 ->
         dom_intersection_2(es1, set2, df, df2)
+
       df2 > df1 ->
         dom_intersection_2(es2, set1, df, df1)
+
       true ->
         set1
     end
@@ -720,11 +843,16 @@ defmodule :m_beam_ssa do
   end
 
   defp mapfold_instrs_1([l | ls], fun, blocks0, acc0) do
-    r_b_blk(is: is0, last: last0) = (block0 = :erlang.map_get(l,
-                                                          blocks0))
+    r_b_blk(is: is0, last: last0) =
+      block0 =
+      :erlang.map_get(
+        l,
+        blocks0
+      )
+
     {is, acc1} = mapfoldl(fun, acc0, is0)
     {last, acc} = fun.(last0, acc1)
-    block = r_b_blk(block0, is: is,  last: last)
+    block = r_b_blk(block0, is: is, last: last)
     blocks = %{blocks0 | l => block}
     mapfold_instrs_1(ls, fun, blocks, acc)
   end
@@ -734,11 +862,16 @@ defmodule :m_beam_ssa do
   end
 
   defp flatmapfold_instrs_1([l | ls], fun, blocks0, acc0) do
-    r_b_blk(is: is0, last: last0) = (block0 = :erlang.map_get(l,
-                                                          blocks0))
+    r_b_blk(is: is0, last: last0) =
+      block0 =
+      :erlang.map_get(
+        l,
+        blocks0
+      )
+
     {is, acc1} = flatmapfoldl(fun, acc0, is0)
     {[last], acc} = fun.(last0, acc1)
-    block = r_b_blk(block0, is: is,  last: last)
+    block = r_b_blk(block0, is: is, last: last)
     blocks = %{blocks0 | l => block}
     flatmapfold_instrs_1(ls, fun, blocks, acc)
   end
@@ -748,15 +881,15 @@ defmodule :m_beam_ssa do
   end
 
   defp linearize_1([l | ls], blocks, seen0, acc0) do
-    case (:sets.is_element(l, seen0)) do
+    case :sets.is_element(l, seen0) do
       true ->
         linearize_1(ls, blocks, seen0, acc0)
+
       false ->
         seen1 = :sets.add_element(l, seen0)
         block = :erlang.map_get(l, blocks)
         successors = successors(block)
-        {acc, seen} = linearize_1(successors, blocks, seen1,
-                                    acc0)
+        {acc, seen} = linearize_1(successors, blocks, seen1, acc0)
         linearize_1(ls, blocks, seen, [{l, block} | acc])
     end
   end
@@ -766,13 +899,16 @@ defmodule :m_beam_ssa do
   end
 
   defp fix_phis([{l, blk0} | bs], s) do
-    blk = (case (blk0) do
-             r_b_blk(is: [r_b_set(op: :phi) | _] = is0) ->
-               is = fix_phis_1(is0, l, s)
-               r_b_blk(blk0, is: is)
-             r_b_blk() ->
-               blk0
-           end)
+    blk =
+      case blk0 do
+        r_b_blk(is: [r_b_set(op: :phi) | _] = is0) ->
+          is = fix_phis_1(is0, l, s)
+          r_b_blk(blk0, is: is)
+
+        r_b_blk() ->
+          blk0
+      end
+
     successors = successors(blk)
     [{l, blk} | fix_phis(bs, Map.put(s, l, successors))]
   end
@@ -782,10 +918,12 @@ defmodule :m_beam_ssa do
   end
 
   defp fix_phis_1([r_b_set(op: :phi, args: args0) = i | is], l, s) do
-    args = (for {val, pred} <- args0,
-                  is_successor(l, pred, s) do
-              {val, pred}
-            end)
+    args =
+      for {val, pred} <- args0,
+          is_successor(l, pred, s) do
+        {val, pred}
+      end
+
     [r_b_set(i, args: args) | fix_phis_1(is, l, s)]
   end
 
@@ -794,9 +932,10 @@ defmodule :m_beam_ssa do
   end
 
   defp is_successor(l, pred, s) do
-    case (s) do
+    case s do
       %{^pred => successors} ->
         member(l, successors)
+
       %{} ->
         false
     end
@@ -804,19 +943,27 @@ defmodule :m_beam_ssa do
 
   defp trim_unreachable_1([{l, blk0} | bs], seen0) do
     blk = trim_phis(blk0, seen0)
-    case (:sets.is_element(l, seen0)) do
+
+    case :sets.is_element(l, seen0) do
       false ->
         trim_unreachable_1(bs, seen0)
+
       true ->
-        case (successors(blk)) do
+        case successors(blk) do
           [] ->
             [{l, blk} | trim_unreachable_1(bs, seen0)]
+
           [next] ->
             seen = :sets.add_element(next, seen0)
             [{l, blk} | trim_unreachable_1(bs, seen)]
+
           [_ | _] = successors ->
-            seen = :sets.union(seen0,
-                                 :sets.from_list(successors, [{:version, 2}]))
+            seen =
+              :sets.union(
+                seen0,
+                :sets.from_list(successors, [{:version, 2}])
+              )
+
             [{l, blk} | trim_unreachable_1(bs, seen)]
         end
     end
@@ -836,10 +983,12 @@ defmodule :m_beam_ssa do
   end
 
   defp trim_phis_1([r_b_set(op: :phi, args: args0) = i | is], seen) do
-    args = (for ({_, l} = p) <- args0,
-                  :sets.is_element(l, seen) do
-              p
-            end)
+    args =
+      for {_, l} = p <- args0,
+          :sets.is_element(l, seen) do
+        p
+      end
+
     [r_b_set(i, args: args) | trim_phis_1(is, seen)]
   end
 
@@ -848,9 +997,10 @@ defmodule :m_beam_ssa do
   end
 
   defp between_make_filter([l | ls], preds, acc0) do
-    case (:sets.is_element(l, acc0)) do
+    case :sets.is_element(l, acc0) do
       true ->
         between_make_filter(ls, preds, acc0)
+
       false ->
         next = :erlang.map_get(l, preds)
         acc1 = :sets.add_element(l, acc0)
@@ -864,14 +1014,14 @@ defmodule :m_beam_ssa do
   end
 
   defp between_rpo([l | ls], blocks, filter0, acc0) do
-    case (:sets.is_element(l, filter0)) do
+    case :sets.is_element(l, filter0) do
       true ->
         block = :erlang.map_get(l, blocks)
         filter1 = :sets.del_element(l, filter0)
         successors = successors(block)
-        {acc, filter} = between_rpo(successors, blocks, filter1,
-                                      acc0)
+        {acc, filter} = between_rpo(successors, blocks, filter1, acc0)
         between_rpo(ls, blocks, filter, [l | acc])
+
       false ->
         between_rpo(ls, blocks, filter0, acc0)
     end
@@ -882,9 +1032,10 @@ defmodule :m_beam_ssa do
   end
 
   defp rpo_1([l | ls], blocks, seen0, acc0) do
-    case (:sets.is_element(l, seen0)) do
+    case :sets.is_element(l, seen0) do
       true ->
         rpo_1(ls, blocks, seen0, acc0)
+
       false ->
         block = :erlang.map_get(l, blocks)
         seen1 = :sets.add_element(l, seen0)
@@ -899,9 +1050,10 @@ defmodule :m_beam_ssa do
   end
 
   defp rename_var(r_b_var() = old, rename) do
-    case (rename) do
+    case rename do
       %{^old => new} ->
         new
+
       %{} ->
         old
     end
@@ -910,7 +1062,7 @@ defmodule :m_beam_ssa do
   defp rename_var(r_b_remote(mod: mod0, name: name0) = remote, rename) do
     mod = rename_var(mod0, rename)
     name = rename_var(name0, rename)
-    r_b_remote(remote, mod: mod,  name: name)
+    r_b_remote(remote, mod: mod, name: name)
   end
 
   defp rename_var(old, _) do
@@ -918,10 +1070,10 @@ defmodule :m_beam_ssa do
   end
 
   defp rename_phi_vars([{var, l} | as], preds, ren) do
-    case (:sets.is_element(l, preds)) do
+    case :sets.is_element(l, preds) do
       true ->
-        [{rename_var(var, ren), l} | rename_phi_vars(as, preds,
-                                                       ren)]
+        [{rename_var(var, ren), l} | rename_phi_vars(as, preds, ren)]
+
       false ->
         [{var, l} | rename_phi_vars(as, preds, ren)]
     end
@@ -932,13 +1084,20 @@ defmodule :m_beam_ssa do
   end
 
   defp map_instrs_1([l | ls], fun, blocks0) do
-    r_b_blk(is: is0, last: last0) = (blk0 = :erlang.map_get(l,
-                                                        blocks0))
-    is = (for i <- is0 do
-            fun.(i)
-          end)
+    r_b_blk(is: is0, last: last0) =
+      blk0 =
+      :erlang.map_get(
+        l,
+        blocks0
+      )
+
+    is =
+      for i <- is0 do
+        fun.(i)
+      end
+
     last = fun.(last0)
-    blk = r_b_blk(blk0, is: is,  last: last)
+    blk = r_b_blk(blk0, is: is, last: last)
     blocks = %{blocks0 | l => blk}
     map_instrs_1(ls, fun, blocks)
   end
@@ -958,20 +1117,20 @@ defmodule :m_beam_ssa do
   end
 
   defp split_blocks_1([l | ls], p, blocks0, count0) do
-    r_b_blk(is: is0) = (blk = :erlang.map_get(l, blocks0))
-    case (split_blocks_is(is0, p, [])) do
+    r_b_blk(is: is0) = blk = :erlang.map_get(l, blocks0)
+
+    case split_blocks_is(is0, p, []) do
       {:yes, bef, aft} ->
         newLbl = count0
         count = count0 + 1
         br = r_b_br(bool: r_b_literal(val: true), succ: newLbl, fail: newLbl)
-        befBlk = r_b_blk(blk, is: bef,  last: br)
+        befBlk = r_b_blk(blk, is: bef, last: br)
         newBlk = r_b_blk(blk, is: aft)
-        blocks1 = Map.put(%{blocks0 | l => befBlk}, newLbl,
-                                                      newBlk)
+        blocks1 = Map.put(%{blocks0 | l => befBlk}, newLbl, newBlk)
         successors = successors(newBlk)
-        blocks = update_phi_labels(successors, l, newLbl,
-                                     blocks1)
+        blocks = update_phi_labels(successors, l, newLbl, blocks1)
         split_blocks_1([newLbl | ls], p, blocks, count)
+
       :no ->
         split_blocks_1(ls, p, blocks0, count0)
     end
@@ -986,9 +1145,10 @@ defmodule :m_beam_ssa do
   end
 
   defp split_blocks_is([i | is], p, acc) do
-    case (p.(i)) do
+    case p.(i) do
       true ->
         {:yes, reverse(acc), [i | is]}
+
       false ->
         split_blocks_is(is, p, [i | acc])
     end
@@ -998,11 +1158,12 @@ defmodule :m_beam_ssa do
     :no
   end
 
-  defp update_phi_labels_is([r_b_set(op: :phi, args: args0) = i0 | is], old,
-            new) do
-    args = (for {arg, lbl} <- args0 do
-              {arg, rename_label(lbl, old, new)}
-            end)
+  defp update_phi_labels_is([r_b_set(op: :phi, args: args0) = i0 | is], old, new) do
+    args =
+      for {arg, lbl} <- args0 do
+        {arg, rename_label(lbl, old, new)}
+      end
+
     i = r_b_set(i0, args: args)
     [i | update_phi_labels_is(is, old, new)]
   end
@@ -1045,10 +1206,11 @@ defmodule :m_beam_ssa do
   end
 
   defp merge_blocks_1([l | ls], preds0, blocks0) do
-    case (preds0) do
+    case preds0 do
       %{^l => [p]} ->
         %{^p => blk0, ^l => blk1} = blocks0
-        case (is_merge_allowed(l, blk0, blk1)) do
+
+        case is_merge_allowed(l, blk0, blk1) do
           true ->
             r_b_blk(is: is0) = blk0
             r_b_blk(is: is1) = blk1
@@ -1061,9 +1223,11 @@ defmodule :m_beam_ssa do
             blocks = update_phi_labels(successors, l, p, blocks2)
             preds = merge_update_preds(successors, l, p, preds0)
             merge_blocks_1(ls, preds, blocks)
+
           false ->
             merge_blocks_1(ls, preds0, blocks0)
         end
+
       %{} ->
         merge_blocks_1(ls, preds0, blocks0)
     end
@@ -1074,10 +1238,11 @@ defmodule :m_beam_ssa do
   end
 
   defp merge_update_preds([l | ls], from, to, preds0) do
-    case (preds0) do
+    case preds0 do
       %{^l => [p]} ->
         preds = %{preds0 | l => [rename_label(p, from, to)]}
         merge_update_preds(ls, from, to, preds)
+
       %{} ->
         merge_update_preds(ls, from, to, preds0)
     end
@@ -1088,15 +1253,19 @@ defmodule :m_beam_ssa do
   end
 
   defp merge_fix_succeeded(is, r_b_blk(last: r_b_br(succ: succ, fail: fail)))
-      when succ !== fail do
+       when succ !== fail do
     is
   end
 
   defp merge_fix_succeeded([_ | _] = is0, r_b_blk()) do
-    case (reverse(is0)) do
-      [r_b_set(op: {:succeeded, :guard}, args: [dst]), r_b_set(dst: dst) |
-                                                     is] ->
+    case reverse(is0) do
+      [
+        r_b_set(op: {:succeeded, :guard}, args: [dst]),
+        r_b_set(dst: dst)
+        | is
+      ] ->
         reverse(is)
+
       _ ->
         is0
     end
@@ -1127,8 +1296,7 @@ defmodule :m_beam_ssa do
   end
 
   defp is_merge_allowed(l, r_b_blk() = blk1, r_b_blk(is: [r_b_set() = i | _]) = blk2) do
-    not is_loop_header(i) and is_merge_allowed_1(l, blk1,
-                                                   blk2)
+    not is_loop_header(i) and is_merge_allowed_1(l, blk1, blk2)
   end
 
   defp is_merge_allowed(l, blk1, blk2) do
@@ -1136,14 +1304,16 @@ defmodule :m_beam_ssa do
   end
 
   defp is_merge_allowed_1(l, r_b_blk(last: r_b_br()) = blk, r_b_blk(is: is)) do
-    case (successors(blk)) do
+    case successors(blk) do
       [^l] ->
-        case (is) do
+        case is do
           [r_b_set(op: :phi, args: [_]) | _] ->
             false
+
           _ ->
             true
         end
+
       [_ | _] ->
         false
     end
@@ -1154,12 +1324,13 @@ defmodule :m_beam_ssa do
   end
 
   defp update_phi_labels([l | ls], old, new, blocks0) do
-    case (blocks0) do
+    case blocks0 do
       %{^l => r_b_blk(is: [r_b_set(op: :phi) | _] = is0) = blk0} ->
         is = update_phi_labels_is(is0, old, new)
         blk = r_b_blk(blk0, is: is)
         blocks = %{blocks0 | l => blk}
         update_phi_labels(ls, old, new, blocks)
+
       %{^l => r_b_blk()} ->
         update_phi_labels(ls, old, new, blocks0)
     end
@@ -1168,5 +1339,4 @@ defmodule :m_beam_ssa do
   defp update_phi_labels([], _, _, blocks) do
     blocks
   end
-
 end

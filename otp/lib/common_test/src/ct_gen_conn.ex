@@ -2,21 +2,28 @@ defmodule :m_ct_gen_conn do
   use Bitwise
   @behaviour :gen_server
   require Record
-  Record.defrecord(:r_gen_opts, :gen_opts, callback: :undefined,
-                                    name: :undefined, address: :undefined,
-                                    init_data: :undefined, reconnect: true,
-                                    forward: false, use_existing: true,
-                                    old: false, conn_pid: :undefined,
-                                    cb_state: :undefined,
-                                    ct_util_server: :undefined)
+
+  Record.defrecord(:r_gen_opts, :gen_opts,
+    callback: :undefined,
+    name: :undefined,
+    address: :undefined,
+    init_data: :undefined,
+    reconnect: true,
+    forward: false,
+    use_existing: true,
+    old: false,
+    conn_pid: :undefined,
+    cb_state: :undefined,
+    ct_util_server: :undefined
+  )
+
   def start(address, initData, callbackMod, opts)
       when is_list(opts) do
     do_start(address, initData, callbackMod, opts)
   end
 
   def start(name, address, initData, callbackMod) do
-    do_start(address, initData, callbackMod,
-               [{:name, name}, {:old, true}])
+    do_start(address, initData, callbackMod, [{:name, name}, {:old, true}])
   end
 
   def stop(handle) do
@@ -48,8 +55,7 @@ defmodule :m_ct_gen_conn do
   end
 
   def do_within_time(fun, tmo) do
-    do_within_time(fun, tmo, :erlang.get(:silent),
-                     :erlang.get(:conn_pid))
+    do_within_time(fun, tmo, :erlang.get(:silent), :erlang.get(:conn_pid))
   end
 
   defp do_within_time(fun, tmo, silent, :undefined) do
@@ -58,11 +64,14 @@ defmodule :m_ct_gen_conn do
 
   defp do_within_time(fun, tmo, silent, connPid) do
     mRef = :erlang.monitor(:process, connPid)
-    pid = spawn_link(fn () ->
-                          :ct_util.mark_process()
-                          :erlang.put(:silent, silent)
-                          exit({mRef, fun.()})
-                     end)
+
+    pid =
+      spawn_link(fn ->
+        :ct_util.mark_process()
+        :erlang.put(:silent, silent)
+        exit({mRef, fun.()})
+      end)
+
     down(pid, mRef, tmo, :failure)
   end
 
@@ -71,11 +80,13 @@ defmodule :m_ct_gen_conn do
       {:EXIT, ^pid, t} ->
         :infinity == tmo or :erlang.demonitor(mRef, [:flush])
         rc(mRef, t, reason)
+
       {:DOWN, ^mRef, :process, _, _} ->
         down(pid, mRef, :connection_closed)
-    after tmo ->
-      :erlang.demonitor(mRef, [:flush])
-      down(pid, mRef, :timeout)
+    after
+      tmo ->
+        :erlang.demonitor(mRef, [:flush])
+        down(pid, mRef, :timeout)
     end
   end
 
@@ -97,17 +108,25 @@ defmodule :m_ct_gen_conn do
   end
 
   defp do_start(address, initData, callbackMod, optsList) do
-    r_gen_opts(name: name) = (opts = make_opts(optsList,
-                                        r_gen_opts(callback: callbackMod,
-                                            address: address,
-                                            init_data: initData)))
-    case (:ct_util.does_connection_exist(name, address,
-                                           callbackMod)) do
+    r_gen_opts(name: name) =
+      opts =
+      make_opts(
+        optsList,
+        r_gen_opts(
+          callback: callbackMod,
+          address: address,
+          init_data: initData
+        )
+      )
+
+    case :ct_util.does_connection_exist(name, address, callbackMod) do
       {:ok, _Pid} = ok when r_gen_opts(opts, :use_existing) ->
-        log('ct_gen_conn:start', 'Using existing connection!\n', [])
+        log(~c"ct_gen_conn:start", ~c"Using existing connection!\n", [])
         ok
+
       {:ok, pid} when not r_gen_opts(opts, :use_existing) ->
         {:error, {:connection_exists, pid}}
+
       false ->
         do_start(opts)
     end
@@ -118,11 +137,12 @@ defmodule :m_ct_gen_conn do
       :gen_server.start(:ct_gen_conn, opts, [])
     catch
       :exit, reason ->
-        log('ct_gen_conn:start', 'Connection process died: ~tp\n', [reason])
+        log(~c"ct_gen_conn:start", ~c"Connection process died: ~tp\n", [reason])
         {:error, {:connection_process_died, reason}}
     else
       {:ok, _} = ok ->
         ok
+
       {:error, reason} ->
         {:error, rc(reason)}
     end
@@ -173,9 +193,11 @@ defmodule :m_ct_gen_conn do
   end
 
   def call(pid, msg, tmo) do
-    {_, mRef} = spawn_monitor(fn () ->
-                                   exit(gen_call(pid, msg, tmo))
-                              end)
+    {_, mRef} =
+      spawn_monitor(fn ->
+        exit(gen_call(pid, msg, tmo))
+      end)
+
     receive do
       {:DOWN, ^mRef, :process, _, rC} ->
         rC
@@ -207,7 +229,7 @@ defmodule :m_ct_gen_conn do
   end
 
   defp rc(pid, :timeout) do
-    log('ct_gen_conn', 'Connection process ~w not responding. Killing now!', [pid])
+    log(~c"ct_gen_conn", ~c"Connection process ~w not responding. Killing now!", [pid])
     :erlang.exit(pid, :kill)
     :forced_termination
   end
@@ -220,11 +242,11 @@ defmodule :m_ct_gen_conn do
     :gen_server.reply(from, result)
   end
 
-  def init(r_gen_opts(callback: mod, name: name, address: addr,
-             init_data: initData) = opts) do
+  def init(r_gen_opts(callback: mod, name: name, address: addr, init_data: initData) = opts) do
     :erlang.process_flag(:trap_exit, true)
     :ct_util.mark_process()
     :erlang.put(:silent, false)
+
     try do
       mod.init(name, addr, initData)
     catch
@@ -237,9 +259,8 @@ defmodule :m_ct_gen_conn do
         srvPid = :erlang.whereis(:ct_util_server)
         :erlang.link(srvPid)
         :ct_util.register_connection(name, addr, mod, self())
-        {:ok,
-           r_gen_opts(opts, conn_pid: connPid,  cb_state: state, 
-                     ct_util_server: srvPid)}
+        {:ok, r_gen_opts(opts, conn_pid: connPid, cb_state: state, ct_util_server: srvPid)}
+
       {:error, reason} ->
         {:stop, {:shutdown, reason}}
     end
@@ -253,31 +274,37 @@ defmodule :m_ct_gen_conn do
     {:stop, :normal, :ok, opts}
   end
 
-  def handle_call({:retry, {error, _Name, connPid, _Msg}}, _From,
-           r_gen_opts(conn_pid: connPid) = opts) do
+  def handle_call(
+        {:retry, {error, _Name, connPid, _Msg}},
+        _From,
+        r_gen_opts(conn_pid: connPid) = opts
+      ) do
     {:reply, error_rc(error), opts}
   end
 
-  def handle_call({:retry, {_Error, _Name, _CPid, msg}}, _From,
-           r_gen_opts(callback: mod, cb_state: state) = opts) do
-    log('Rerunning command', 'Connection reestablished. Rerunning command...', [])
+  def handle_call(
+        {:retry, {_Error, _Name, _CPid, msg}},
+        _From,
+        r_gen_opts(callback: mod, cb_state: state) = opts
+      ) do
+    log(~c"Rerunning command", ~c"Connection reestablished. Rerunning command...", [])
     {reply, newState} = mod.handle_msg(msg, state)
     {:reply, reply, r_gen_opts(opts, cb_state: newState)}
   end
 
-  def handle_call(msg, _From,
-           r_gen_opts(old: true, callback: mod, cb_state: state) = opts) do
+  def handle_call(msg, _From, r_gen_opts(old: true, callback: mod, cb_state: state) = opts) do
     {reply, newState} = mod.handle_msg(msg, state)
     {:reply, reply, r_gen_opts(opts, cb_state: newState)}
   end
 
-  def handle_call(msg, from,
-           r_gen_opts(callback: mod, cb_state: state) = opts) do
-    case (mod.handle_msg(msg, from, state)) do
+  def handle_call(msg, from, r_gen_opts(callback: mod, cb_state: state) = opts) do
+    case mod.handle_msg(msg, from, state) do
       {:reply, reply, newState} ->
         {:reply, reply, r_gen_opts(opts, cb_state: newState)}
+
       {:noreply, newState} ->
         {:noreply, r_gen_opts(opts, cb_state: newState)}
+
       {:stop, reply, newState} ->
         {:stop, :normal, reply, r_gen_opts(opts, cb_state: newState)}
     end
@@ -287,39 +314,47 @@ defmodule :m_ct_gen_conn do
     {:noreply, opts}
   end
 
-  def handle_info({:EXIT, pid, reason},
-           r_gen_opts(reconnect: true, conn_pid: pid,
-               address: addr) = opts) do
-    log('Connection down!\nOpening new!', 'Reason: ~tp\nAddress: ~tp\n', [reason, addr])
-    case (reconnect(opts)) do
+  def handle_info(
+        {:EXIT, pid, reason},
+        r_gen_opts(reconnect: true, conn_pid: pid, address: addr) = opts
+      ) do
+    log(~c"Connection down!\nOpening new!", ~c"Reason: ~tp\nAddress: ~tp\n", [reason, addr])
+
+    case reconnect(opts) do
       {:ok, newPid, newState} ->
         :erlang.link(newPid)
         :erlang.put(:conn_pid, newPid)
-        {:noreply,
-           r_gen_opts(opts, conn_pid: newPid,  cb_state: newState)}
+        {:noreply, r_gen_opts(opts, conn_pid: newPid, cb_state: newState)}
+
       error ->
-        log('Reconnect failed. Giving up!', 'Reason: ~tp\n', [error])
+        log(~c"Reconnect failed. Giving up!", ~c"Reason: ~tp\n", [error])
         {:stop, :normal, opts}
     end
   end
 
-  def handle_info({:EXIT, pid, reason},
-           r_gen_opts(reconnect: false, conn_pid: pid) = opts) do
-    log('Connection closed!', 'Reason: ~tp\n', [reason])
+  def handle_info(
+        {:EXIT, pid, reason},
+        r_gen_opts(reconnect: false, conn_pid: pid) = opts
+      ) do
+    log(~c"Connection closed!", ~c"Reason: ~tp\n", [reason])
     {:stop, :normal, opts}
   end
 
-  def handle_info({:EXIT, pid, reason},
-           r_gen_opts(ct_util_server: pid) = opts) do
+  def handle_info(
+        {:EXIT, pid, reason},
+        r_gen_opts(ct_util_server: pid) = opts
+      ) do
     {:stop, {:shutdown, reason}, opts}
   end
 
-  def handle_info(msg,
-           r_gen_opts(forward: true, callback: mod,
-               cb_state: state) = opts) do
-    case (mod.handle_msg(msg, state)) do
+  def handle_info(
+        msg,
+        r_gen_opts(forward: true, callback: mod, cb_state: state) = opts
+      ) do
+    case mod.handle_msg(msg, state) do
       {:noreply, newState} ->
         {:noreply, r_gen_opts(opts, cb_state: newState)}
+
       {:stop, newState} ->
         {:stop, :normal, r_gen_opts(opts, cb_state: newState)}
     end
@@ -333,8 +368,10 @@ defmodule :m_ct_gen_conn do
     {:ok, state}
   end
 
-  def terminate(:normal,
-           r_gen_opts(callback: mod, conn_pid: pid, cb_state: state)) do
+  def terminate(
+        :normal,
+        r_gen_opts(callback: mod, conn_pid: pid, cb_state: state)
+      ) do
     :ct_util.unregister_connection(self())
     :erlang.unlink(pid)
     mod.terminate(pid, state)
@@ -352,18 +389,17 @@ defmodule :m_ct_gen_conn do
     {:error, reason}
   end
 
-  defp reconnect(r_gen_opts(callback: mod, address: addr,
-              cb_state: state)) do
+  defp reconnect(r_gen_opts(callback: mod, address: addr, cb_state: state)) do
     mod.reconnect(addr, state)
   end
 
   defp log(func, args) do
-    case (:erlang.get(:silent)) do
+    case :erlang.get(:silent) do
       true when not false ->
         :ok
+
       _ ->
         apply(:ct_logs, func, args)
     end
   end
-
 end

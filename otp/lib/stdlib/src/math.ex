@@ -1,5 +1,6 @@
 defmodule :m_math do
   use Bitwise
+
   def acos(_) do
     :erlang.nif_error(:undef)
   end
@@ -103,5 +104,4 @@ defmodule :m_math do
   def tau() do
     6.283185307179586
   end
-
 end

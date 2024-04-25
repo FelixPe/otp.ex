@@ -1,49 +1,81 @@
 defmodule :m_dets_utils do
   use Bitwise
   require Record
-  Record.defrecord(:r_head, :head, m: :undefined,
-                                m2: :undefined, next: :undefined,
-                                fptr: :undefined, no_objects: :undefined,
-                                no_keys: :undefined, maxobjsize: :undefined,
-                                n: :undefined, type: :undefined,
-                                keypos: :undefined, freelists: :undefined,
-                                freelists_p: :undefined,
-                                no_collections: :undefined,
-                                auto_save: :undefined, update_mode: :undefined,
-                                fixed: false, hash_bif: :undefined,
-                                has_md5: :undefined, min_no_slots: :undefined,
-                                max_no_slots: :undefined, cache: :undefined,
-                                filename: :undefined, access: :read_write,
-                                ram_file: false, name: :undefined,
-                                parent: :undefined, server: :undefined,
-                                bump: :undefined, base: :undefined)
-  Record.defrecord(:r_fileheader, :fileheader, freelist: :undefined,
-                                      fl_base: :undefined, cookie: :undefined,
-                                      closed_properly: :undefined,
-                                      type: :undefined, version: :undefined,
-                                      m: :undefined, next: :undefined,
-                                      keypos: :undefined,
-                                      no_objects: :undefined,
-                                      no_keys: :undefined,
-                                      min_no_slots: :undefined,
-                                      max_no_slots: :undefined,
-                                      no_colls: :undefined,
-                                      hash_method: :undefined,
-                                      read_md5: :undefined, has_md5: :undefined,
-                                      md5: :undefined, trailer: :undefined,
-                                      eof: :undefined, n: :undefined)
-  Record.defrecord(:r_cache, :cache, cache: :undefined,
-                                 csize: :undefined, inserts: :undefined,
-                                 wrtime: :undefined, tsize: :undefined,
-                                 delay: :undefined)
+
+  Record.defrecord(:r_head, :head,
+    m: :undefined,
+    m2: :undefined,
+    next: :undefined,
+    fptr: :undefined,
+    no_objects: :undefined,
+    no_keys: :undefined,
+    maxobjsize: :undefined,
+    n: :undefined,
+    type: :undefined,
+    keypos: :undefined,
+    freelists: :undefined,
+    freelists_p: :undefined,
+    no_collections: :undefined,
+    auto_save: :undefined,
+    update_mode: :undefined,
+    fixed: false,
+    hash_bif: :undefined,
+    has_md5: :undefined,
+    min_no_slots: :undefined,
+    max_no_slots: :undefined,
+    cache: :undefined,
+    filename: :undefined,
+    access: :read_write,
+    ram_file: false,
+    name: :undefined,
+    parent: :undefined,
+    server: :undefined,
+    bump: :undefined,
+    base: :undefined
+  )
+
+  Record.defrecord(:r_fileheader, :fileheader,
+    freelist: :undefined,
+    fl_base: :undefined,
+    cookie: :undefined,
+    closed_properly: :undefined,
+    type: :undefined,
+    version: :undefined,
+    m: :undefined,
+    next: :undefined,
+    keypos: :undefined,
+    no_objects: :undefined,
+    no_keys: :undefined,
+    min_no_slots: :undefined,
+    max_no_slots: :undefined,
+    no_colls: :undefined,
+    hash_method: :undefined,
+    read_md5: :undefined,
+    has_md5: :undefined,
+    md5: :undefined,
+    trailer: :undefined,
+    eof: :undefined,
+    n: :undefined
+  )
+
+  Record.defrecord(:r_cache, :cache,
+    cache: :undefined,
+    csize: :undefined,
+    inserts: :undefined,
+    wrtime: :undefined,
+    tsize: :undefined,
+    delay: :undefined
+  )
+
   def cmp(t, t) do
     0
   end
 
   def cmp([e1 | t1], [e2 | t2]) do
-    case (cmp(e1, e2)) do
+    case cmp(e1, e2) do
       0 ->
         cmp(t1, t2)
+
       r ->
         r
     end
@@ -53,16 +85,16 @@ defmodule :m_dets_utils do
     tcmp(t1, t2, 1, tuple_size(t1))
   end
 
-  def cmp(i, f) when (is_integer(i) and is_float(f)) do
-    - 1
+  def cmp(i, f) when is_integer(i) and is_float(f) do
+    -1
   end
 
-  def cmp(f, i) when (is_float(f) and is_integer(i)) do
+  def cmp(f, i) when is_float(f) and is_integer(i) do
     1
   end
 
   def cmp(t1, t2) when t1 < t2 do
-    - 1
+    -1
   end
 
   def cmp(_T1, _T2) do
@@ -74,10 +106,13 @@ defmodule :m_dets_utils do
   end
 
   defp tcmp(t1, t2, i, n) do
-    case (cmp(:erlang.element(i, t1),
-                :erlang.element(i, t2))) do
+    case cmp(
+           :erlang.element(i, t1),
+           :erlang.element(i, t2)
+         ) do
       0 ->
         tcmp(t1, t2, i + 1, n)
+
       r ->
         r
     end
@@ -85,26 +120,32 @@ defmodule :m_dets_utils do
 
   def msort(l) do
     f = fn x, y ->
-             cmp(x, y) <= 0
-        end
+      cmp(x, y) <= 0
+    end
+
     :lists.sort(f, :lists.sort(l))
   end
 
   def mkeysort(i, l) do
     f = fn x, y ->
-             cmp(:erlang.element(i, x), :erlang.element(i, y)) <= 0
-        end
+      cmp(:erlang.element(i, x), :erlang.element(i, y)) <= 0
+    end
+
     :lists.sort(f, :lists.keysort(i, l))
   end
 
   def mkeysearch(key, i, l) do
-    case (:lists.keysearch(key, i, l)) do
-      {:value, value} = reply when :erlang.element(i,
-                                                     value) === key
-                                   ->
+    case :lists.keysearch(key, i, l) do
+      {:value, value} = reply
+      when :erlang.element(
+             i,
+             value
+           ) === key ->
         reply
+
       false ->
         false
+
       _ ->
         mkeysearch2(key, i, l)
     end
@@ -114,8 +155,11 @@ defmodule :m_dets_utils do
     false
   end
 
-  defp mkeysearch2(key, i, [e | _L]) when :erlang.element(i,
-                                                   e) === key do
+  defp mkeysearch2(key, i, [e | _L])
+       when :erlang.element(
+              i,
+              e
+            ) === key do
     {:value, e}
   end
 
@@ -145,55 +189,67 @@ defmodule :m_dets_utils do
   end
 
   def rename(from, to) do
-    case (:file.rename(from, to)) do
+    case :file.rename(from, to) do
       :ok ->
         :ok
+
       {:error, reason} ->
         {:error, {:file_error, {from, to}, reason}}
     end
   end
 
   def pread(positions, head) do
-    r = (case (:file.pread(r_head(head, :fptr), positions)) do
-           {:ok, bins} ->
-             case (:lists.member(:eof, bins)) do
-               true ->
-                 {:error, {:premature_eof, r_head(head, :filename)}}
-               false ->
-                 {:ok, bins}
-             end
-           {:error, reason} when :enomem === reason or
-                                   :einval === reason
-                                 ->
-             {:error, {:bad_object_header, r_head(head, :filename)}}
-           {:error, reason} ->
-             {:file_error, r_head(head, :filename), reason}
-         end)
-    case (r) do
+    r =
+      case :file.pread(r_head(head, :fptr), positions) do
+        {:ok, bins} ->
+          case :lists.member(:eof, bins) do
+            true ->
+              {:error, {:premature_eof, r_head(head, :filename)}}
+
+            false ->
+              {:ok, bins}
+          end
+
+        {:error, reason}
+        when :enomem === reason or
+               :einval === reason ->
+          {:error, {:bad_object_header, r_head(head, :filename)}}
+
+        {:error, reason} ->
+          {:file_error, r_head(head, :filename), reason}
+      end
+
+    case r do
       {:ok, _Bins} ->
         r
+
       error ->
         throw(corrupt(head, error))
     end
   end
 
   def pread(head, pos, min, extra) do
-    r = (case (:file.pread(r_head(head, :fptr), pos,
-                             min + extra)) do
-           {:error, reason} when :enomem === reason or
-                                   :einval === reason
-                                 ->
-             {:error, {:bad_object_header, r_head(head, :filename)}}
-           {:error, reason} ->
-             {:file_error, r_head(head, :filename), reason}
-           {:ok, bin} when byte_size(bin) < min ->
-             {:error, {:premature_eof, r_head(head, :filename)}}
-           oK ->
-             oK
-         end)
-    case (r) do
+    r =
+      case :file.pread(r_head(head, :fptr), pos, min + extra) do
+        {:error, reason}
+        when :enomem === reason or
+               :einval === reason ->
+          {:error, {:bad_object_header, r_head(head, :filename)}}
+
+        {:error, reason} ->
+          {:file_error, r_head(head, :filename), reason}
+
+        {:ok, bin} when byte_size(bin) < min ->
+          {:error, {:premature_eof, r_head(head, :filename)}}
+
+        oK ->
+          oK
+      end
+
+    case r do
       {:ok, _Bin} ->
         r
+
       error ->
         throw(corrupt(head, error))
     end
@@ -206,12 +262,14 @@ defmodule :m_dets_utils do
       bad ->
         throw(corrupt_reason(head, {:disk_map, bad}))
     end
-    case (:file.ipread_s32bu_p32bu(r_head(head, :fptr), pos1,
-                                     maxSize)) do
+
+    case :file.ipread_s32bu_p32bu(r_head(head, :fptr), pos1, maxSize) do
       {:ok, {0, 0, :eof}} ->
         []
+
       {:ok, reply} ->
         {:ok, reply}
+
       _Else ->
         :eof
     end
@@ -228,9 +286,11 @@ defmodule :m_dets_utils do
       bad ->
         throw(corrupt_reason(head, {:disk_map, bad, bins}))
     end
-    case (:file.pwrite(r_head(head, :fptr), bins)) do
+
+    case :file.pwrite(r_head(head, :fptr), bins) do
       :ok ->
         {head, :ok}
+
       error ->
         corrupt_file(head, error)
     end
@@ -241,140 +301,164 @@ defmodule :m_dets_utils do
   end
 
   def write(head, bins) do
-    case (:file.write(r_head(head, :fptr), bins)) do
+    case :file.write(r_head(head, :fptr), bins) do
       :ok ->
         :ok
+
       error ->
         corrupt_file(head, error)
     end
   end
 
   def write_file(head, bin) do
-    r = (case (:file.open(r_head(head, :filename),
-                            [:binary, :raw, :write])) do
-           {:ok, fd} ->
-             r1 = :file.write(fd, bin)
-             r2 = :file.sync(fd)
-             r3 = :file.close(fd)
-             case ({r1, r2, r3}) do
-               {:ok, :ok, ^r3} ->
-                 r3
-               {:ok, ^r2, _} ->
-                 r2
-               {^r1, _, _} ->
-                 r1
-             end
-           else__ ->
-             else__
-         end)
-    case (r) do
+    r =
+      case :file.open(
+             r_head(head, :filename),
+             [:binary, :raw, :write]
+           ) do
+        {:ok, fd} ->
+          r1 = :file.write(fd, bin)
+          r2 = :file.sync(fd)
+          r3 = :file.close(fd)
+
+          case {r1, r2, r3} do
+            {:ok, :ok, ^r3} ->
+              r3
+
+            {:ok, ^r2, _} ->
+              r2
+
+            {^r1, _, _} ->
+              r1
+          end
+
+        else__ ->
+          else__
+      end
+
+    case r do
       :ok ->
         :ok
+
       error ->
         corrupt_file(head, error)
     end
   end
 
   def truncate(head, pos) do
-    case ((try do
+    case (try do
             truncate(r_head(head, :fptr), r_head(head, :filename), pos)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       :ok ->
         :ok
+
       error ->
         throw(corrupt(head, error))
     end
   end
 
   def position(head, pos) do
-    case (:file.position(r_head(head, :fptr), pos)) do
+    case :file.position(r_head(head, :fptr), pos) do
       {:error, _Reason} = error ->
         corrupt_file(head, error)
+
       oK ->
         oK
     end
   end
 
   def sync(head) do
-    case (:file.sync(r_head(head, :fptr))) do
+    case :file.sync(r_head(head, :fptr)) do
       :ok ->
         :ok
+
       error ->
         corrupt_file(head, error)
     end
   end
 
   def open(fileSpec, args) do
-    case (:file.open(fileSpec, args)) do
+    case :file.open(fileSpec, args) do
       {:ok, fd} ->
         {:ok, fd}
+
       error ->
         file_error(fileSpec, error)
     end
   end
 
   def truncate(fd, fileName, pos) do
-    _ = (for _ <- [:EFE_DUMMY_GEN], pos !== :cur do
-           position(fd, fileName, pos)
-         end)
-    case (:file.truncate(fd)) do
+    _ =
+      for _ <- [:EFE_DUMMY_GEN], pos !== :cur do
+        position(fd, fileName, pos)
+      end
+
+    case :file.truncate(fd) do
       :ok ->
         :ok
+
       error ->
         file_error(fileName, {:error, error})
     end
   end
 
   def fwrite(fd, fileName, b) do
-    case (:file.write(fd, b)) do
+    case :file.write(fd, b) do
       :ok ->
         :ok
+
       error ->
         file_error_close(fd, fileName, error)
     end
   end
 
   def position(fd, fileName, pos) do
-    case (:file.position(fd, pos)) do
+    case :file.position(fd, pos) do
       {:error, error} ->
         file_error(fileName, {:error, error})
+
       oK ->
         oK
     end
   end
 
   def position_close(fd, fileName, pos) do
-    case (:file.position(fd, pos)) do
+    case :file.position(fd, pos) do
       {:error, error} ->
         file_error_close(fd, fileName, {:error, error})
+
       oK ->
         oK
     end
   end
 
   def pwrite(fd, fileName, bins) do
-    case (:file.pwrite(fd, bins)) do
+    case :file.pwrite(fd, bins) do
       :ok ->
         :ok
+
       {:error, {_NoWrites, reason}} ->
         file_error(fileName, {:error, reason})
     end
   end
 
   def pread_close(fd, fileName, pos, size) do
-    case (:file.pread(fd, pos, size)) do
+    case :file.pread(fd, pos, size) do
       {:error, error} ->
         file_error_close(fd, fileName, {:error, error})
+
       {:ok, bin} when byte_size(bin) < size ->
         _ = :file.close(fd)
         throw({:error, {:tooshort, fileName}})
+
       :eof ->
         _ = :file.close(fd)
         throw({:error, {:tooshort, fileName}})
+
       oK ->
         oK
     end
@@ -390,31 +474,34 @@ defmodule :m_dets_utils do
   end
 
   def debug_mode() do
-    :os.getenv('DETS_DEBUG') === 'true'
+    :os.getenv(~c"DETS_DEBUG") === ~c"true"
   end
 
   def bad_object(where, extra) do
-    case (debug_mode()) do
+    case debug_mode() do
       true ->
         {:bad_object, where, extra}
+
       false ->
         {:bad_object, where}
     end
   end
 
   def read_n(fd, max) do
-    case (:file.read(fd, max)) do
+    case :file.read(fd, max) do
       {:ok, bin} ->
         bin
+
       _Else ->
         :eof
     end
   end
 
   def pread_n(fd, position, max) do
-    case (:file.pread(fd, position, max)) do
+    case :file.pread(fd, position, max) do
       {:ok, bin} ->
         bin
+
       _ ->
         :eof
     end
@@ -422,49 +509,59 @@ defmodule :m_dets_utils do
 
   def read_4(fd, position) do
     {:ok, _} = :file.position(fd, position)
-    <<four :: size(32)>> = :dets_utils.read_n(fd, 4)
+    <<four::size(32)>> = :dets_utils.read_n(fd, 4)
     four
   end
 
   def corrupt_file(head, {:error, reason}) do
-    error = {:error,
-               {:file_error, r_head(head, :filename), reason}}
+    error = {:error, {:file_error, r_head(head, :filename), reason}}
     throw(corrupt(head, error))
   end
 
   def corrupt_reason(head, reason0) do
-    reason = (case (get_disk_map()) do
-                :no_disk_map ->
-                  reason0
-                dM ->
-                  {:current_stacktrace, sT} = :erlang.process_info(self(),
-                                                                     :current_stacktrace)
-                  pD = :erlang.get()
-                  {reason0, sT, pD, dM}
-              end)
+    reason =
+      case get_disk_map() do
+        :no_disk_map ->
+          reason0
+
+        dM ->
+          {:current_stacktrace, sT} =
+            :erlang.process_info(
+              self(),
+              :current_stacktrace
+            )
+
+          pD = :erlang.get()
+          {reason0, sT, pD, dM}
+      end
+
     error = {:error, {reason, r_head(head, :filename)}}
     corrupt(head, error)
   end
 
   def corrupt(head, error) do
-    case (:erlang.get(:verbose)) do
+    case :erlang.get(:verbose) do
       :yes ->
-        :error_logger.format('** dets: Corrupt table ~tp: ~tp\n', [r_head(head, :name), error])
+        :error_logger.format(~c"** dets: Corrupt table ~tp: ~tp\n", [r_head(head, :name), error])
+
       _ ->
         :ok
     end
-    case (r_head(head, :update_mode)) do
+
+    case r_head(head, :update_mode) do
       {:error, _} ->
         {head, error}
+
       _ ->
         {r_head(head, update_mode: error), error}
     end
   end
 
   def vformat(f, as) do
-    case (:erlang.get(:verbose)) do
+    case :erlang.get(:verbose) do
       :yes ->
         :error_logger.format(f, as)
+
       _ ->
         :ok
     end
@@ -503,12 +600,14 @@ defmodule :m_dets_utils do
   end
 
   def cache_lookup(type, [key | keys], cL, lU) do
-    case (mkeysearch(key, 1, cL)) do
+    case mkeysearch(key, 1, cL) do
       {:value, {^key, {_Seq, {:insert, object}}}}
-          when type === :set ->
+      when type === :set ->
         cache_lookup(type, keys, cL, [object | lU])
+
       {:value, {^key, {_Seq, :delete_key}}} ->
         cache_lookup(type, keys, cL, lU)
+
       _ ->
         false
     end
@@ -520,15 +619,18 @@ defmodule :m_dets_utils do
 
   def reset_cache(c) do
     wrTime = r_cache(c, :wrtime)
-    newWrTime = (cond do
-                   wrTime === :undefined ->
-                     wrTime
-                   true ->
-                     :erlang.monotonic_time(1000000)
-                 end)
+
+    newWrTime =
+      cond do
+        wrTime === :undefined ->
+          wrTime
+
+        true ->
+          :erlang.monotonic_time(1_000_000)
+      end
+
     pK = family(r_cache(c, :cache))
-    newC = r_cache(c, cache: [],  csize: 0,  inserts: 0, 
-                  wrtime: newWrTime)
+    newC = r_cache(c, cache: [], csize: 0, inserts: 0, wrtime: newWrTime)
     {newC, r_cache(c, :inserts), pK}
   end
 
@@ -537,8 +639,7 @@ defmodule :m_dets_utils do
   end
 
   def new_cache({delay, size}) do
-    r_cache(cache: [], csize: 0, inserts: 0, tsize: size,
-        wrtime: :undefined, delay: delay)
+    r_cache(cache: [], csize: 0, inserts: 0, tsize: size, wrtime: :undefined, delay: delay)
   end
 
   def init_alloc(base) do
@@ -558,16 +659,17 @@ defmodule :m_dets_utils do
 
   def alloc_many(head, sz, n, a0) do
     ftab = r_head(head, :freelists)
-    r_head(head, freelists: alloc_many1(ftab, 1, sz * n, a0,
-                                     head))
+    r_head(head, freelists: alloc_many1(ftab, 1, sz * n, a0, head))
   end
 
   defp alloc_many1(ftab, pos, size, a0, h) do
     {fPos, addr} = find_first_free(ftab, pos, pos, h)
     true = addr >= a0
+
     cond do
       1 <<< (fPos - 1) >= size ->
         alloc_many2(ftab, sz2pos(size), size, a0, h)
+
       true ->
         newFtab = reserve_buddy(ftab, fPos, fPos, addr)
         nSize = size - (1 <<< (fPos - 1))
@@ -580,7 +682,7 @@ defmodule :m_dets_utils do
   end
 
   defp alloc_many2(ftab, pos, size, a0, h)
-      when size &&& (1 <<< (pos - 1)) > 0 do
+       when size &&& 1 <<< (pos - 1) > 0 do
     {fPos, addr} = find_first_free(ftab, pos, pos, h)
     true = addr >= a0
     newFtab = reserve_buddy(ftab, fPos, pos, addr)
@@ -614,20 +716,20 @@ defmodule :m_dets_utils do
   end
 
   defp find_first_free(_Ftab, pos, _Pos0, head) when pos > 32 do
-    throw({:error,
-             {:no_more_space_on_file, r_head(head, :filename)}})
+    throw({:error, {:no_more_space_on_file, r_head(head, :filename)}})
   end
 
   defp find_first_free(ftab, pos, pos0, head) do
     posTab = :erlang.element(pos, ftab)
-    case (bplus_lookup_first(posTab)) do
+
+    case bplus_lookup_first(posTab) do
       :undefined ->
         find_first_free(ftab, pos + 1, pos0, head)
+
       {:ok, addr}
-          when addr + (1 <<< (pos0 - 1)) > 1 <<< (32 - 1) - 50000000
-               ->
-        throw({:error,
-                 {:no_more_space_on_file, r_head(head, :filename)}})
+      when addr + (1 <<< (pos0 - 1)) > 1 <<< (32 - 1 - 50_000_000) ->
+        throw({:error, {:no_more_space_on_file, r_head(head, :filename)}})
+
       {:ok, addr} ->
         {pos, addr}
     end
@@ -635,13 +737,13 @@ defmodule :m_dets_utils do
 
   defp undo_free(ftab, pos, addr, base) do
     posTab = :erlang.element(pos, ftab)
-    case (bplus_lookup(posTab, addr)) do
+
+    case bplus_lookup(posTab, addr) do
       :undefined ->
-        {buddyAddr, moveUpAddr} = my_buddy(addr,
-                                             1 <<< (pos - 1), base)
-        newFtab = :erlang.setelement(pos, ftab,
-                                       bplus_insert(posTab, buddyAddr))
+        {buddyAddr, moveUpAddr} = my_buddy(addr, 1 <<< (pos - 1), base)
+        newFtab = :erlang.setelement(pos, ftab, bplus_insert(posTab, buddyAddr))
         undo_free(newFtab, pos + 1, moveUpAddr, base)
+
       {:ok, ^addr} ->
         newPosTab = bplus_delete(posTab, addr)
         :erlang.setelement(pos, ftab, newPosTab)
@@ -664,8 +766,13 @@ defmodule :m_dets_utils do
     pos_1 = pos - 1
     size = 1 <<< pos_1
     highBuddy = addr + (size >>> 1)
-    newPosTab_1 = bplus_insert(:erlang.element(pos_1, ftab),
-                                 highBuddy)
+
+    newPosTab_1 =
+      bplus_insert(
+        :erlang.element(pos_1, ftab),
+        highBuddy
+      )
+
     newFtab = :erlang.setelement(pos_1, ftab, newPosTab_1)
     move_down(newFtab, pos_1, pos0, addr)
   end
@@ -674,9 +781,11 @@ defmodule :m_dets_utils do
     true
     ftab = get_freelists(head)
     pos = sz2pos(sz)
-    {set_freelists(head,
-                     free_in_pos(ftab, addr, pos, r_head(head, :base))),
-       pos}
+
+    {set_freelists(
+       head,
+       free_in_pos(ftab, addr, pos, r_head(head, :base))
+     ), pos}
   end
 
   defp free_in_pos(ftab, _Addr, pos, _Base) when pos > 32 do
@@ -685,13 +794,13 @@ defmodule :m_dets_utils do
 
   defp free_in_pos(ftab, addr, pos, base) do
     posTab = :erlang.element(pos, ftab)
-    {buddyAddr, moveUpAddr} = my_buddy(addr,
-                                         1 <<< (pos - 1), base)
-    case (bplus_lookup(posTab, buddyAddr)) do
+    {buddyAddr, moveUpAddr} = my_buddy(addr, 1 <<< (pos - 1), base)
+
+    case bplus_lookup(posTab, buddyAddr) do
       :undefined ->
         true
-        :erlang.setelement(pos, ftab,
-                             bplus_insert(posTab, addr))
+        :erlang.setelement(pos, ftab, bplus_insert(posTab, addr))
+
       {:ok, ^buddyAddr} ->
         posTab1 = bplus_delete(posTab, addr)
         posTab2 = bplus_delete(posTab1, buddyAddr)
@@ -720,10 +829,10 @@ defmodule :m_dets_utils do
   end
 
   defp sz2pos(n) when n > 0 do
-    1 + log2((n + 1))
+    1 + log2(n + 1)
   end
 
-  def log2(n) when (is_integer(n) and n >= 0) do
+  def log2(n) when is_integer(n) and n >= 0 do
     cond do
       n > 1 <<< 8 ->
         cond do
@@ -732,48 +841,63 @@ defmodule :m_dets_utils do
               n > 1 <<< 11 ->
                 cond do
                   n > 1 <<< 12 ->
-                    12 + (cond do
-                            (n &&& (1 <<< 12 - 1) === 0) ->
-                              log2((n >>> 12))
-                            true ->
-                              log2((1 + (n >>> 12)))
-                          end)
+                    12 +
+                      cond do
+                        n &&& 1 <<< (12 - 1) === 0 ->
+                          log2(n >>> 12)
+
+                        true ->
+                          log2(1 + (n >>> 12))
+                      end
+
                   true ->
                     12
                 end
+
               true ->
                 11
             end
+
           n > 1 <<< 9 ->
             10
+
           true ->
             9
         end
+
       n > 1 <<< 4 ->
         cond do
           n > 1 <<< 6 ->
             cond do
               n > 1 <<< 7 ->
                 8
+
               true ->
                 7
             end
+
           n > 1 <<< 5 ->
             6
+
           true ->
             5
         end
+
       n > 1 <<< 2 ->
         cond do
           n > 1 <<< 3 ->
             4
+
           true ->
             3
         end
+
       n > 1 <<< 1 ->
         2
+
       n >= 1 <<< 0 ->
         1
+
       true ->
         0
     end
@@ -794,9 +918,10 @@ defmodule :m_dets_utils do
   end
 
   defp my_buddy(addr, sz, base) do
-    case ((addr - base) &&& sz) do
+    case addr - base &&& sz do
       0 ->
         {addr + sz, addr}
+
       _ ->
         t = addr - sz
         {t, t}
@@ -806,9 +931,11 @@ defmodule :m_dets_utils do
   def all_free(head) do
     tab = get_freelists(head)
     base = r_head(head, :base)
-    case (all_free(all(tab), base, base, [])) do
+
+    case all_free(all(tab), base, base, []) do
       [{^base, ^base} | l] ->
         l
+
       l ->
         l
     end
@@ -827,8 +954,7 @@ defmodule :m_dets_utils do
   end
 
   def all_allocated(head) do
-    all_allocated(all(get_freelists(head)), 0,
-                    r_head(head, :base), [])
+    all_allocated(all(get_freelists(head)), 0, r_head(head, :base), [])
   end
 
   defp all_allocated([], _X0, _Y0, []) do
@@ -836,8 +962,11 @@ defmodule :m_dets_utils do
   end
 
   defp all_allocated([], _X0, _Y0, a0) do
-    [<<from :: size(32), to :: size(32)>> |
-         a] = :lists.reverse(a0)
+    [
+      <<from::size(32), to::size(32)>>
+      | a
+    ] = :lists.reverse(a0)
+
     {from, to, :erlang.list_to_binary(a)}
   end
 
@@ -846,13 +975,11 @@ defmodule :m_dets_utils do
   end
 
   defp all_allocated([{x, y} | l], _X0, y0, a) when y0 < x do
-    all_allocated(l, x, y,
-                    [<<y0 :: size(32), x :: size(32)>> | a])
+    all_allocated(l, x, y, [<<y0::size(32), x::size(32)>> | a])
   end
 
   def all_allocated_as_list(head) do
-    all_allocated_as_list(all(get_freelists(head)), 0,
-                            r_head(head, :base), [])
+    all_allocated_as_list(all(get_freelists(head)), 0, r_head(head, :base), [])
   end
 
   defp all_allocated_as_list([], _X0, _Y0, []) do
@@ -891,21 +1018,23 @@ defmodule :m_dets_utils do
   end
 
   defp allocated(some, addr, max, ftab, base) do
-    case (allocated1(some, addr, max, [])) do
+    case allocated1(some, addr, max, []) do
       [] ->
-        case (find_next_allocated(ftab, addr, base)) do
+        case find_next_allocated(ftab, addr, base) do
           {from, _} ->
             find_allocated(ftab, from, 8192, base)
+
           :none ->
             <<>>
         end
+
       l ->
         :erlang.list_to_binary(:lists.reverse(l))
     end
   end
 
   defp allocated1([], y0, max, a) when y0 < max do
-    [<<y0 :: size(32), max :: size(32)>> | a]
+    [<<y0::size(32), max::size(32)>> | a]
   end
 
   defp allocated1([], _Y0, _Max, a) do
@@ -917,17 +1046,17 @@ defmodule :m_dets_utils do
   end
 
   defp allocated1([{x, y} | l], y0, max, a) do
-    allocated1(l, y, max,
-                 [<<y0 :: size(32), x :: size(32)>> | a])
+    allocated1(l, y, max, [<<y0::size(32), x::size(32)>> | a])
   end
 
   def find_next_allocated(ftab, addr, base) do
-    case (find_next_free(ftab, addr, base)) do
+    case find_next_free(ftab, addr, base) do
       :none ->
         :none
+
       {addr1, pos} when addr1 <= addr ->
-        find_next_allocated(ftab, addr1 + (1 <<< (pos - 1)),
-                              base)
+        find_next_allocated(ftab, addr1 + (1 <<< (pos - 1)), base)
+
       {next, _Pos} ->
         {addr, next}
     end
@@ -935,49 +1064,45 @@ defmodule :m_dets_utils do
 
   defp find_next_free(ftab, addr, base) do
     maxBud = tuple_size(ftab)
-    find_next_free(ftab, addr, 1, maxBud, - 1, - 1, base)
+    find_next_free(ftab, addr, 1, maxBud, -1, -1, base)
   end
 
   defp find_next_free(ftab, addr0, pos, maxBud, next, posN, base)
-      when pos <= maxBud do
+       when pos <= maxBud do
     addr = adjust_addr(addr0, pos, base)
     posTab = :erlang.element(pos, ftab)
-    case (bplus_lookup_next(posTab, addr - 1)) do
+
+    case bplus_lookup_next(posTab, addr - 1) do
       :undefined ->
-        find_next_free(ftab, addr0, pos + 1, maxBud, next, posN,
-                         base)
-      {:ok, next1} when posN === - 1 or next1 < next ->
-        find_next_free(ftab, addr0, pos + 1, maxBud, next1, pos,
-                         base)
+        find_next_free(ftab, addr0, pos + 1, maxBud, next, posN, base)
+
+      {:ok, next1} when posN === -1 or next1 < next ->
+        find_next_free(ftab, addr0, pos + 1, maxBud, next1, pos, base)
+
       {:ok, _} ->
-        find_next_free(ftab, addr0, pos + 1, maxBud, next, posN,
-                         base)
+        find_next_free(ftab, addr0, pos + 1, maxBud, next, posN, base)
     end
   end
 
-  defp find_next_free(_Ftab, _Addr, _Pos, _MaxBud, -1, _PosN,
-            _Base) do
+  defp find_next_free(_Ftab, _Addr, _Pos, _MaxBud, -1, _PosN, _Base) do
     :none
   end
 
-  defp find_next_free(_Ftab, _Addr, _Pos, _MaxBud, next, posN,
-            _Base) do
+  defp find_next_free(_Ftab, _Addr, _Pos, _MaxBud, next, posN, _Base) do
     {next, posN}
   end
 
   defp collect_all_interval(ftab, addr, maxAddr, base) do
     maxBud = tuple_size(ftab)
-    collect_all_interval(ftab, addr, maxAddr, 1, maxBud,
-                           base, [])
+    collect_all_interval(ftab, addr, maxAddr, 1, maxBud, base, [])
   end
 
   defp collect_all_interval(ftab, l0, u, pos, maxBud, base, acc0)
-      when pos <= maxBud do
+       when pos <= maxBud do
     posTab = :erlang.element(pos, ftab)
     l = adjust_addr(l0, pos, base)
     acc = collect_interval(posTab, pos, l, u, acc0)
-    collect_all_interval(ftab, l0, u, pos + 1, maxBud, base,
-                           acc)
+    collect_all_interval(ftab, l0, u, pos + 1, maxBud, base, acc)
   end
 
   defp collect_all_interval(_Ftab, _L, _U, _Pos, _MaxBud, _Base, acc) do
@@ -987,82 +1112,98 @@ defmodule :m_dets_utils do
   defp adjust_addr(addr, pos, base) do
     pow = 1 <<< (pos - 1)
     rem = rem(addr - base, pow)
+
     cond do
       rem === 0 ->
         addr
+
       addr < pow ->
         addr
+
       true ->
         addr - rem
     end
   end
 
   defp get_disk_map() do
-    case (:erlang.get(:disk_map)) do
+    case :erlang.get(:disk_map) do
       :undefined ->
         :no_disk_map
+
       t ->
         {:disk_map, :ets.tab2list(t)}
     end
   end
 
   def init_disk_map(name) do
-    :error_logger.info_msg('** dets: (debug) using disk map for ~p~n', [name])
+    :error_logger.info_msg(~c"** dets: (debug) using disk map for ~p~n", [name])
     :erlang.put(:disk_map, :ets.new(:any, [:ordered_set]))
   end
 
   def stop_disk_map() do
-    (try do
+    try do
       :ets.delete(:erlang.erase(:disk_map))
     catch
       :error, e -> {:EXIT, {e, __STACKTRACE__}}
       :exit, e -> {:EXIT, e}
       e -> e
-    end)
+    end
   end
 
   def disk_map_segment_p(fd, p) do
-    case (:erlang.get(:disk_map)) do
+    case :erlang.get(:disk_map) do
       :undefined ->
         :ok
+
       _T ->
         disk_map_segment(p, pread_n(fd, p, 8 * 256))
     end
   end
 
   def disk_map_segment(p, segment) do
-    case (:erlang.get(:disk_map)) do
+    case :erlang.get(:disk_map) do
       :undefined ->
         :ok
+
       t ->
-        ps = segment_fragment_to_pointers(p,
-                                            :erlang.iolist_to_binary(segment))
-        ss = (for {_P1,
-                     <<sz :: size(32), x :: size(32)>>} <- ps,
-                    x > 0 do
-                {x, <<sz :: size(32), 305419896 :: size(32)>>}
-              end)
+        ps =
+          segment_fragment_to_pointers(
+            p,
+            :erlang.iolist_to_binary(segment)
+          )
+
+        ss =
+          for {_P1, <<sz::size(32), x::size(32)>>} <- ps,
+              x > 0 do
+            {x, <<sz::size(32), 305_419_896::size(32)>>}
+          end
+
         dm(ps ++ ss, t)
     end
   end
 
   defp disk_map_pread(p) do
-    case (:erlang.get(:disk_map)) do
+    case :erlang.get(:disk_map) do
       :undefined ->
         :ok
+
       t ->
-        case (:ets.lookup(t, p)) do
+        case :ets.lookup(t, p) do
           [] ->
             throw({:pread, p, 8})
+
           [{^p, {:pointer, 0, 0}}] ->
             :ok
+
           [{^p, {:pointer, pointer, sz}}] ->
-            case (:ets.lookup(t, pointer)) do
+            case :ets.lookup(t, pointer) do
               [{^pointer, {:slot, _P, ^sz}}] ->
                 :ok
+
               got ->
                 throw({:pread, p, pointer, got})
             end
+
           got ->
             throw({:pread, p, got})
         end
@@ -1070,13 +1211,16 @@ defmodule :m_dets_utils do
   end
 
   defp disk_map(bins) do
-    case (:erlang.get(:disk_map)) do
+    case :erlang.get(:disk_map) do
       :undefined ->
         :ok
+
       t ->
-        bs = (for {p, io} <- bins do
-                {p, :erlang.iolist_to_binary(io)}
-              end)
+        bs =
+          for {p, io} <- bins do
+            {p, :erlang.iolist_to_binary(io)}
+          end
+
         dm(bs, t)
     end
   end
@@ -1085,113 +1229,147 @@ defmodule :m_dets_utils do
     dm(bs, t)
   end
 
-  defp dm([{p0, <<61591023 :: size(32)>>} | bs], t) do
+  defp dm([{p0, <<61_591_023::size(32)>>} | bs], t) do
     p = p0 - 4
-    case (:ets.lookup(t, p)) do
+
+    case :ets.lookup(t, p) do
       [] ->
         throw({:free, p0})
+
       [{^p, _OldSz}] ->
         true = :ets.delete(t, p)
     end
+
     dm(bs, t)
   end
 
-  defp dm([{slotP,
-              <<sz :: size(32), 305419896 :: size(32),
-                  _ :: binary>>} |
-               bs],
-            t) do
-    ptr = (case (:ets.lookup(t, {:pointer, slotP})) do
-             [{{:pointer, ^slotP}, pointer}] ->
-               case (:ets.lookup(t, pointer)) do
-                 [{^pointer, {:pointer, ^slotP, sz2}}] ->
-                   case (log2(sz) === log2(sz2)) do
-                     true ->
-                       pointer
-                     false ->
-                       throw({:active, slotP, sz, pointer, sz2})
-                   end
-                 got ->
-                   throw({:active, slotP, sz, got})
-               end
-             [] ->
-               throw({:active, slotP, sz})
-           end)
+  defp dm(
+         [
+           {slotP, <<sz::size(32), 305_419_896::size(32), _::binary>>}
+           | bs
+         ],
+         t
+       ) do
+    ptr =
+      case :ets.lookup(t, {:pointer, slotP}) do
+        [{{:pointer, ^slotP}, pointer}] ->
+          case :ets.lookup(t, pointer) do
+            [{^pointer, {:pointer, ^slotP, sz2}}] ->
+              case log2(sz) === log2(sz2) do
+                true ->
+                  pointer
+
+                false ->
+                  throw({:active, slotP, sz, pointer, sz2})
+              end
+
+            got ->
+              throw({:active, slotP, sz, got})
+          end
+
+        [] ->
+          throw({:active, slotP, sz})
+      end
+
     true = :ets.insert(t, {slotP, {:slot, ptr, sz}})
     dm(bs, t)
   end
 
-  defp dm([{p, <<sz :: size(32), x :: size(32)>>} | bs],
-            t) do
-    case (prev(p, t)) do
+  defp dm(
+         [{p, <<sz::size(32), x::size(32)>>} | bs],
+         t
+       ) do
+    case prev(p, t) do
       {prev, prevSz} ->
         throw({:prev, p, sz, x, prev, prevSz})
+
       :ok ->
         :ok
     end
-    case (next(p, 8, t)) do
+
+    case next(p, 8, t) do
       {:next, next} ->
         throw({:next, p, sz, x, next})
+
       :ok ->
         :ok
     end
+
     true = :ets.insert(t, {p, {:pointer, x, sz}})
+
     cond do
       sz === 0 ->
         ^x = 0
         true
+
       true ->
         true = :ets.insert(t, {{:pointer, x}, p})
     end
+
     dm(bs, t)
   end
 
-  defp dm([{p, <<x :: size(32)>>} | bs], t) do
-    case (:ets.lookup(t, x)) do
+  defp dm([{p, <<x::size(32)>>} | bs], t) do
+    case :ets.lookup(t, x) do
       [] ->
         throw({:segment, p, x})
+
       [{^x, {:pointer, 0, 0}}] ->
         :ok
+
       [{^x, {:pointer, ^p, ^x}}] ->
         :ok
     end
+
     dm(bs, t)
   end
 
-  defp dm([{p, <<_Sz :: size(32), b0 :: binary>> = b} |
-               bs],
-            t) do
-    overwrite = (case ((try do
-                         :erlang.binary_to_term(b0)
-                       catch
-                         :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                         :exit, e -> {:EXIT, e}
-                         e -> e
-                       end)) do
-                   {:EXIT, _} ->
-                     <<_Sz1 :: size(32), b1 :: binary>> = b0
-                     case ((try do
-                             :erlang.binary_to_term(b1)
-                           catch
-                             :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                             :exit, e -> {:EXIT, e}
-                             e -> e
-                           end)) do
-                       {:EXIT, _} ->
-                         false
-                       _ ->
-                         true
-                     end
-                   _ ->
-                     true
-                 end)
+  defp dm(
+         [
+           {p, <<_Sz::size(32), b0::binary>> = b}
+           | bs
+         ],
+         t
+       ) do
+    overwrite =
+      case (try do
+              :erlang.binary_to_term(b0)
+            catch
+              :error, e -> {:EXIT, {e, __STACKTRACE__}}
+              :exit, e -> {:EXIT, e}
+              e -> e
+            end) do
+        {:EXIT, _} ->
+          <<_Sz1::size(32), b1::binary>> = b0
+
+          case (try do
+                  :erlang.binary_to_term(b1)
+                catch
+                  :error, e -> {:EXIT, {e, __STACKTRACE__}}
+                  :exit, e -> {:EXIT, e}
+                  e -> e
+                end) do
+            {:EXIT, _} ->
+              false
+
+            _ ->
+              true
+          end
+
+        _ ->
+          true
+      end
+
     cond do
       overwrite ->
-        dm([{p - 8,
-               <<byte_size(b) + 8 :: size(32), 305419896 :: size(32),
-                   b :: binary>>} |
-                bs],
-             t)
+        dm(
+          [
+            {p - 8, <<byte_size(b) + 8::size(32), 305_419_896::size(32), b::binary>>}
+            | bs
+          ],
+          t
+        )
+
       true ->
         dm(segment_fragment_to_pointers(p, b) ++ bs, t)
     end
@@ -1205,20 +1383,23 @@ defmodule :m_dets_utils do
     []
   end
 
-  defp segment_fragment_to_pointers(p, <<szP :: size(8) - binary, b :: binary>>) do
+  defp segment_fragment_to_pointers(p, <<szP::size(8)-binary, b::binary>>) do
     [{p, szP} | segment_fragment_to_pointers(p + 8, b)]
   end
 
   defp prev(p, t) do
-    case (:ets.prev(t, p)) do
+    case :ets.prev(t, p) do
       :"$end_of_table" ->
         :ok
+
       prev ->
-        case (:ets.lookup(t, prev)) do
+        case :ets.lookup(t, prev) do
           [{^prev, {:pointer, _Ptr, _}}] when prev + 8 > p ->
             {prev, 8}
+
           [{^prev, {:slot, _, sz}}] when prev + sz > p ->
             {prev, sz}
+
           _ ->
             :ok
         end
@@ -1226,11 +1407,13 @@ defmodule :m_dets_utils do
   end
 
   defp next(p, pSz, t) do
-    case (:ets.next(t, p)) do
+    case :ets.next(t, p) do
       :"$end_of_table" ->
         :ok
+
       next when p + pSz > next ->
         {:next, next}
+
       _ ->
         :ok
     end
@@ -1247,9 +1430,11 @@ defmodule :m_dets_utils do
 
   defp collect_tree2(tree, pow, acc) do
     s = bplus_get_size(tree)
-    case (:erlang.element(1, tree)) do
+
+    case :erlang.element(1, tree) do
       :l ->
         collect_leaf(tree, s, pow, acc)
+
       :n ->
         collect_node(tree, s, pow, acc)
     end
@@ -1279,47 +1464,41 @@ defmodule :m_dets_utils do
   end
 
   def tree_to_bin(t, f, max, ws, wsSz) do
-    {n, l1, ws1, wsSz1} = tree_to_bin2(t, f, max, 0, [], ws,
-                                         wsSz)
-    {n1, l2, ws2, wsSz2} = f.(n, :lists.reverse(l1), ws1,
-                                wsSz1)
+    {n, l1, ws1, wsSz1} = tree_to_bin2(t, f, max, 0, [], ws, wsSz)
+    {n1, l2, ws2, wsSz2} = f.(n, :lists.reverse(l1), ws1, wsSz1)
     {0, [], nWs, nWsSz} = f.(n1, l2, ws2, wsSz2)
     {nWs, nWsSz}
   end
 
   defp tree_to_bin2(tree, f, max, n, acc, ws, wsSz) when n >= max do
-    {nN, nAcc, nWs, nWsSz} = f.(n, :lists.reverse(acc), ws,
-                                  wsSz)
-    tree_to_bin2(tree, f, max, nN, :lists.reverse(nAcc),
-                   nWs, nWsSz)
+    {nN, nAcc, nWs, nWsSz} = f.(n, :lists.reverse(acc), ws, wsSz)
+    tree_to_bin2(tree, f, max, nN, :lists.reverse(nAcc), nWs, nWsSz)
   end
 
   defp tree_to_bin2(tree, f, max, n, acc, ws, wsSz) do
     s = bplus_get_size(tree)
-    case (:erlang.element(1, tree)) do
+
+    case :erlang.element(1, tree) do
       :l ->
-        {n + s, leaf_to_bin(bplus_leaf_to_list(tree), acc), ws,
-           wsSz}
+        {n + s, leaf_to_bin(bplus_leaf_to_list(tree), acc), ws, wsSz}
+
       :n ->
         node_to_bin(tree, f, max, n, acc, 1, s, ws, wsSz)
     end
   end
 
   defp node_to_bin(_Node, _F, _Max, n, acc, i, s, ws, wsSz)
-      when i > s do
+       when i > s do
     {n, acc, ws, wsSz}
   end
 
   defp node_to_bin(node, f, max, n, acc, i, s, ws, wsSz) do
-    {n1, acc1, ws1,
-       wsSz1} = tree_to_bin2(bplus_get_tree(node, i), f, max,
-                               n, acc, ws, wsSz)
-    node_to_bin(node, f, max, n1, acc1, i + 1, s, ws1,
-                  wsSz1)
+    {n1, acc1, ws1, wsSz1} = tree_to_bin2(bplus_get_tree(node, i), f, max, n, acc, ws, wsSz)
+    node_to_bin(node, f, max, n1, acc1, i + 1, s, ws1, wsSz1)
   end
 
   defp leaf_to_bin([n | l], acc) do
-    leaf_to_bin(l, [<<n :: size(32)>> | acc])
+    leaf_to_bin(l, [<<n::size(32)>> | acc])
   end
 
   defp leaf_to_bin([], acc) do
@@ -1335,19 +1514,22 @@ defmodule :m_dets_utils do
   end
 
   defp leafs_to_nodes([], 0, _F, l) do
-    leafs_to_nodes(:lists.reverse(l), length(l), &mk_node/1,
-                     [])
+    leafs_to_nodes(:lists.reverse(l), length(l), &mk_node/1, [])
   end
 
   defp leafs_to_nodes(ls, sz, f, l) do
-    i = (cond do
-           sz <= 16 ->
-             sz
-           sz <= 32 ->
-             div(sz, 2)
-           true ->
-             12
-         end)
+    i =
+      cond do
+        sz <= 16 ->
+          sz
+
+        sz <= 32 ->
+          div(sz, 2)
+
+        true ->
+          12
+      end
+
     {l1, r} = split_list(ls, i, [])
     n = f.(l1)
     sz1 = sz - i
@@ -1355,10 +1537,17 @@ defmodule :m_dets_utils do
   end
 
   defp mk_node([e | es]) do
-    nL = [e | :lists.foldr(fn x, a ->
-                                [get_first_key(x), x | a]
-                           end,
-                             [], es)]
+    nL = [
+      e
+      | :lists.foldr(
+          fn x, a ->
+            [get_first_key(x), x | a]
+          end,
+          [],
+          es
+        )
+    ]
+
     bplus_mk_node(nL)
   end
 
@@ -1371,9 +1560,10 @@ defmodule :m_dets_utils do
   end
 
   defp get_first_key(t) do
-    case (:erlang.element(1, t)) do
+    case :erlang.element(1, t) do
       :l ->
         :erlang.element(1 + 1, t)
+
       :n ->
         get_first_key(bplus_get_tree(t, 1))
     end
@@ -1390,9 +1580,11 @@ defmodule :m_dets_utils do
 
   defp collect_interval2(tree, pow, l, u, acc) do
     s = bplus_get_size(tree)
-    case (:erlang.element(1, tree)) do
+
+    case :erlang.element(1, tree) do
       :l ->
         collect_leaf_interval(tree, s, pow, l, u, acc)
+
       :n ->
         {max, _} = bplus_select_sub_tree(tree, u)
         {min, _} = bplus_select_sub_tree_2(tree, l, max)
@@ -1406,14 +1598,16 @@ defmodule :m_dets_utils do
 
   defp collect_leaf_interval(leaf, i, pow, l, u, acc) do
     key = :erlang.element(i + 1, leaf)
+
     cond do
       key < l ->
         acc
+
       key > u ->
         collect_leaf_interval(leaf, i - 1, pow, l, u, acc)
+
       true ->
-        collect_leaf_interval(leaf, i - 1, pow, l, u,
-                                [{key, key + pow} | acc])
+        collect_leaf_interval(leaf, i - 1, pow, l, u, [{key, key + pow} | acc])
     end
   end
 
@@ -1422,8 +1616,7 @@ defmodule :m_dets_utils do
   end
 
   defp collect_node_interval(node, i, uP, pow, l, u, acc) do
-    acc1 = collect_interval2(bplus_get_tree(node, i), pow,
-                               l, u, acc)
+    acc1 = collect_interval2(bplus_get_tree(node, i), pow, l, u, acc)
     collect_node_interval(node, i + 1, uP, pow, l, u, acc1)
   end
 
@@ -1436,9 +1629,10 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_lookup(tree, key) do
-    case (:erlang.element(1, tree)) do
+    case :erlang.element(1, tree) do
       :l ->
         bplus_lookup_leaf(key, tree)
+
       :n ->
         {_, subTree} = bplus_select_sub_tree(tree, key)
         bplus_lookup(subTree, key)
@@ -1454,9 +1648,10 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_lookup_leaf_2(key, leaf, n) do
-    case (:erlang.element(n + 1, leaf)) do
+    case :erlang.element(n + 1, leaf) do
       ^key ->
         {:ok, key}
+
       _ ->
         bplus_lookup_leaf_2(key, leaf, n - 1)
     end
@@ -1467,9 +1662,10 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_lookup_first(tree) do
-    case (:erlang.element(1, tree)) do
+    case :erlang.element(1, tree) do
       :l ->
         {:ok, :erlang.element(1 + 1, tree)}
+
       :n ->
         bplus_lookup_first(bplus_get_tree(tree, 1))
     end
@@ -1480,20 +1676,25 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_lookup_next(tree, key) do
-    case (:erlang.element(1, tree)) do
+    case :erlang.element(1, tree) do
       :l ->
         lookup_next_leaf(key, tree)
+
       :n ->
         {pos, subTree} = bplus_select_sub_tree(tree, key)
-        case (bplus_lookup_next(subTree, key)) do
+
+        case bplus_lookup_next(subTree, key) do
           :undefined ->
             s = bplus_get_size(tree)
+
             cond do
               s > pos ->
                 bplus_lookup_first(bplus_get_tree(tree, pos + 1))
+
               true ->
                 :undefined
             end
+
           result ->
             result
         end
@@ -1506,9 +1707,11 @@ defmodule :m_dets_utils do
 
   defp lookup_next_leaf_2(key, leaf, size, size) do
     k = :erlang.element(size + 1, leaf)
+
     cond do
       k > key ->
         {:ok, :erlang.element(size + 1, leaf)}
+
       true ->
         :undefined
     end
@@ -1516,11 +1719,14 @@ defmodule :m_dets_utils do
 
   defp lookup_next_leaf_2(key, leaf, size, n) do
     k = :erlang.element(n + 1, leaf)
+
     cond do
       k < key ->
         lookup_next_leaf_2(key, leaf, size, n + 1)
+
       key == k ->
         {:ok, :erlang.element(n + 1 + 1, leaf)}
+
       true ->
         {:ok, :erlang.element(n + 1, leaf)}
     end
@@ -1532,17 +1738,24 @@ defmodule :m_dets_utils do
 
   defp bplus_insert(tree, key) do
     newTree = bplus_insert_in(tree, key)
-    case (bplus_get_size(newTree) > 16) do
+
+    case bplus_get_size(newTree) > 16 do
       false ->
         newTree
+
       true ->
-        {lTree, dKey, rTree} = (case (:erlang.element(1,
-                                                        newTree)) do
-                                  :l ->
-                                    bplus_split_leaf(newTree)
-                                  :n ->
-                                    bplus_split_node(newTree)
-                                end)
+        {lTree, dKey, rTree} =
+          case :erlang.element(
+                 1,
+                 newTree
+               ) do
+            :l ->
+              bplus_split_leaf(newTree)
+
+            :n ->
+              bplus_split_node(newTree)
+          end
+
         bplus_mk_node([lTree, dKey, rTree])
     end
   end
@@ -1554,18 +1767,22 @@ defmodule :m_dets_utils do
   defp bplus_delete(tree, key) do
     newTree = bplus_delete_in(tree, key)
     s = bplus_get_size(newTree)
-    case (:erlang.element(1, newTree)) do
+
+    case :erlang.element(1, newTree) do
       :l ->
         cond do
           s === 0 ->
             :v
+
           true ->
             newTree
         end
+
       :n ->
         cond do
           s === 1 ->
             bplus_get_tree(newTree, 1)
+
           true ->
             newTree
         end
@@ -1573,24 +1790,32 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_insert_in(tree, key) do
-    case (:erlang.element(1, tree)) do
+    case :erlang.element(1, tree) do
       :l ->
         bplus_insert_in_leaf(tree, key)
+
       :n ->
         {pos, subTree} = bplus_select_sub_tree(tree, key)
         newSubTree = bplus_insert_in(subTree, key)
-        case (bplus_get_size(newSubTree) > 16) do
+
+        case bplus_get_size(newSubTree) > 16 do
           false ->
             bplus_put_subtree(tree, [newSubTree, pos])
+
           true ->
-            case (bplus_reorganize_tree_ins(tree, newSubTree,
-                                              pos)) do
+            case bplus_reorganize_tree_ins(tree, newSubTree, pos) do
               {:left, {leftT, dKey, middleT}} ->
-                bplus_put_subtree(bplus_put_lkey(tree, dKey, pos),
-                                    [leftT, pos - 1, middleT, pos])
+                bplus_put_subtree(
+                  bplus_put_lkey(tree, dKey, pos),
+                  [leftT, pos - 1, middleT, pos]
+                )
+
               {:right, {middleT, dKey, rightT}} ->
-                bplus_put_subtree(bplus_put_rkey(tree, dKey, pos),
-                                    [middleT, pos, rightT, pos + 1])
+                bplus_put_subtree(
+                  bplus_put_rkey(tree, dKey, pos),
+                  [middleT, pos, rightT, pos + 1]
+                )
+
               {:split, {leftT, dKey, rightT}} ->
                 bplus_extend_tree(tree, {leftT, dKey, rightT}, pos)
             end
@@ -1599,8 +1824,7 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_insert_in_leaf(leaf, key) do
-    bplus_insert_in_leaf_2(leaf, key, bplus_get_size(leaf),
-                             [])
+    bplus_insert_in_leaf_2(leaf, key, bplus_get_size(leaf), [])
   end
 
   defp bplus_insert_in_leaf_2(leaf, key, 0, accum) do
@@ -1609,11 +1833,14 @@ defmodule :m_dets_utils do
 
   defp bplus_insert_in_leaf_2(leaf, key, n, accum) do
     k = :erlang.element(n + 1, leaf)
+
     cond do
       key < k ->
         bplus_insert_in_leaf_2(leaf, key, n - 1, [k | accum])
+
       k < key ->
         bplus_insert_in_leaf_3(leaf, n - 1, [k, key | accum])
+
       k == key ->
         bplus_insert_in_leaf_3(leaf, n - 1, [key | accum])
     end
@@ -1624,31 +1851,39 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_insert_in_leaf_3(leaf, n, leafList) do
-    bplus_insert_in_leaf_3(leaf, n - 1,
-                             [:erlang.element(n + 1, leaf) | leafList])
+    bplus_insert_in_leaf_3(leaf, n - 1, [:erlang.element(n + 1, leaf) | leafList])
   end
 
   defp bplus_delete_in(tree, key) do
-    case (:erlang.element(1, tree)) do
+    case :erlang.element(1, tree) do
       :l ->
         bplus_delete_in_leaf(tree, key)
+
       :n ->
         {pos, subTree} = bplus_select_sub_tree(tree, key)
         newSubTree = bplus_delete_in(subTree, key)
-        case (bplus_get_size(newSubTree) < 8) do
+
+        case bplus_get_size(newSubTree) < 8 do
           false ->
             bplus_put_subtree(tree, [newSubTree, pos])
+
           true ->
-            case (bplus_reorganize_tree_del(tree, newSubTree,
-                                              pos)) do
+            case bplus_reorganize_tree_del(tree, newSubTree, pos) do
               {:left, {leftT, dKey, middleT}} ->
-                bplus_put_subtree(bplus_put_lkey(tree, dKey, pos),
-                                    [leftT, pos - 1, middleT, pos])
+                bplus_put_subtree(
+                  bplus_put_lkey(tree, dKey, pos),
+                  [leftT, pos - 1, middleT, pos]
+                )
+
               {:right, {middleT, dKey, rightT}} ->
-                bplus_put_subtree(bplus_put_rkey(tree, dKey, pos),
-                                    [middleT, pos, rightT, pos + 1])
+                bplus_put_subtree(
+                  bplus_put_rkey(tree, dKey, pos),
+                  [middleT, pos, rightT, pos + 1]
+                )
+
               {:join_left, joinedTree} ->
                 bplus_joinleft_tree(tree, joinedTree, pos)
+
               {:join_right, joinedTree} ->
                 bplus_joinright_tree(tree, joinedTree, pos)
             end
@@ -1657,8 +1892,7 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_delete_in_leaf(leaf, key) do
-    bplus_delete_in_leaf_2(leaf, key, bplus_get_size(leaf),
-                             [])
+    bplus_delete_in_leaf_2(leaf, key, bplus_get_size(leaf), [])
   end
 
   defp bplus_delete_in_leaf_2(leaf, _, 0, _) do
@@ -1667,9 +1901,11 @@ defmodule :m_dets_utils do
 
   defp bplus_delete_in_leaf_2(leaf, key, n, accum) do
     k = :erlang.element(n + 1, leaf)
+
     cond do
       key == k ->
         bplus_delete_in_leaf_3(leaf, n - 1, accum)
+
       true ->
         bplus_delete_in_leaf_2(leaf, key, n - 1, [k | accum])
     end
@@ -1680,8 +1916,7 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_delete_in_leaf_3(leaf, n, leafList) do
-    bplus_delete_in_leaf_3(leaf, n - 1,
-                             [:erlang.element(n + 1, leaf) | leafList])
+    bplus_delete_in_leaf_3(leaf, n - 1, [:erlang.element(n + 1, leaf) | leafList])
   end
 
   defp bplus_select_sub_tree(tree, key) do
@@ -1694,9 +1929,11 @@ defmodule :m_dets_utils do
 
   defp bplus_select_sub_tree_2(tree, key, n) do
     k = bplus_get_lkey(tree, n)
+
     cond do
       k > key ->
         bplus_select_sub_tree_2(tree, key, n - 1)
+
       k <= key ->
         {n, bplus_get_tree(tree, n)}
     end
@@ -1704,9 +1941,11 @@ defmodule :m_dets_utils do
 
   defp bplus_reorganize_tree_ins(tree, newSubTree, 1) do
     rTree = bplus_get_tree(tree, 2)
-    case (bplus_get_size(rTree) >= 16) do
+
+    case bplus_get_size(rTree) >= 16 do
       false ->
         bplus_reorganize_tree_r(tree, newSubTree, 1, rTree)
+
       true ->
         bplus_reorganize_tree_s(newSubTree)
     end
@@ -1714,29 +1953,37 @@ defmodule :m_dets_utils do
 
   defp bplus_reorganize_tree_ins(tree, newSubTree, pos) do
     size = bplus_get_size(tree)
+
     cond do
       pos == size ->
         lTree = bplus_get_tree(tree, pos - 1)
-        case (bplus_get_size(lTree) >= 16) do
+
+        case bplus_get_size(lTree) >= 16 do
           false ->
             bplus_reorganize_tree_l(tree, newSubTree, pos, lTree)
+
           true ->
             bplus_reorganize_tree_s(newSubTree)
         end
+
       true ->
         lTree = bplus_get_tree(tree, pos - 1)
         rTree = bplus_get_tree(tree, pos + 1)
         sL = bplus_get_size(lTree)
         sR = bplus_get_size(rTree)
+
         cond do
           sL > sR ->
             bplus_reorganize_tree_r(tree, newSubTree, pos, rTree)
+
           sL < sR ->
             bplus_reorganize_tree_l(tree, newSubTree, pos, lTree)
+
           true ->
-            case (bplus_get_size(lTree) >= 16) do
+            case bplus_get_size(lTree) >= 16 do
               false ->
                 bplus_reorganize_tree_l(tree, newSubTree, pos, lTree)
+
               true ->
                 bplus_reorganize_tree_s(newSubTree)
             end
@@ -1746,9 +1993,11 @@ defmodule :m_dets_utils do
 
   defp bplus_reorganize_tree_del(tree, newSubTree, 1) do
     rTree = bplus_get_tree(tree, 2)
-    case (bplus_get_size(rTree) <= 8) do
+
+    case bplus_get_size(rTree) <= 8 do
       false ->
         bplus_reorganize_tree_r(tree, newSubTree, 1, rTree)
+
       true ->
         bplus_reorganize_tree_jr(tree, newSubTree, 1, rTree)
     end
@@ -1756,29 +2005,37 @@ defmodule :m_dets_utils do
 
   defp bplus_reorganize_tree_del(tree, newSubTree, pos) do
     size = bplus_get_size(tree)
+
     cond do
       pos == size ->
         lTree = bplus_get_tree(tree, pos - 1)
-        case (bplus_get_size(lTree) <= 8) do
+
+        case bplus_get_size(lTree) <= 8 do
           false ->
             bplus_reorganize_tree_l(tree, newSubTree, pos, lTree)
+
           true ->
             bplus_reorganize_tree_jl(tree, newSubTree, pos, lTree)
         end
+
       true ->
         lTree = bplus_get_tree(tree, pos - 1)
         rTree = bplus_get_tree(tree, pos + 1)
         sL = bplus_get_size(lTree)
         sR = bplus_get_size(rTree)
+
         cond do
           sL > sR ->
             bplus_reorganize_tree_l(tree, newSubTree, pos, lTree)
+
           sL < sR ->
             bplus_reorganize_tree_r(tree, newSubTree, pos, rTree)
+
           true ->
-            case (bplus_get_size(lTree) <= 8) do
+            case bplus_get_size(lTree) <= 8 do
               false ->
                 bplus_reorganize_tree_l(tree, newSubTree, pos, lTree)
+
               true ->
                 bplus_reorganize_tree_jl(tree, newSubTree, pos, lTree)
             end
@@ -1787,69 +2044,109 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_reorganize_tree_l(tree, newSubTree, pos, lTree) do
-    case (:erlang.element(1, newSubTree)) do
+    case :erlang.element(1, newSubTree) do
       :l ->
         {:left,
-           bplus_split_leaf(bplus_mk_leaf(:lists.append(bplus_leaf_to_list(lTree),
-                                                          bplus_leaf_to_list(newSubTree))))}
+         bplus_split_leaf(
+           bplus_mk_leaf(
+             :lists.append(
+               bplus_leaf_to_list(lTree),
+               bplus_leaf_to_list(newSubTree)
+             )
+           )
+         )}
+
       :n ->
         {:left,
-           bplus_split_node(bplus_mk_node(:lists.append([bplus_node_to_list(lTree),
-                                                             [bplus_get_lkey(tree,
-                                                                               pos)],
-                                                                 bplus_node_to_list(newSubTree)])))}
+         bplus_split_node(
+           bplus_mk_node(
+             :lists.append([
+               bplus_node_to_list(lTree),
+               [
+                 bplus_get_lkey(
+                   tree,
+                   pos
+                 )
+               ],
+               bplus_node_to_list(newSubTree)
+             ])
+           )
+         )}
     end
   end
 
   defp bplus_reorganize_tree_r(tree, newSubTree, pos, rTree) do
-    case (:erlang.element(1, newSubTree)) do
+    case :erlang.element(1, newSubTree) do
       :l ->
         {:right,
-           bplus_split_leaf(bplus_mk_leaf(:lists.append([bplus_leaf_to_list(newSubTree),
-                                                             bplus_leaf_to_list(rTree)])))}
+         bplus_split_leaf(
+           bplus_mk_leaf(
+             :lists.append([bplus_leaf_to_list(newSubTree), bplus_leaf_to_list(rTree)])
+           )
+         )}
+
       :n ->
         {:right,
-           bplus_split_node(bplus_mk_node(:lists.append([bplus_node_to_list(newSubTree),
-                                                             [bplus_get_rkey(tree,
-                                                                               pos)],
-                                                                 bplus_node_to_list(rTree)])))}
+         bplus_split_node(
+           bplus_mk_node(
+             :lists.append([
+               bplus_node_to_list(newSubTree),
+               [
+                 bplus_get_rkey(
+                   tree,
+                   pos
+                 )
+               ],
+               bplus_node_to_list(rTree)
+             ])
+           )
+         )}
     end
   end
 
   defp bplus_reorganize_tree_s(newSubTree) do
-    case (:erlang.element(1, newSubTree)) do
+    case :erlang.element(1, newSubTree) do
       :l ->
         {:split, bplus_split_leaf(newSubTree)}
+
       :n ->
         {:split, bplus_split_node(newSubTree)}
     end
   end
 
   defp bplus_reorganize_tree_jl(tree, newSubTree, pos, lTree) do
-    case (:erlang.element(1, newSubTree)) do
+    case :erlang.element(1, newSubTree) do
       :l ->
         {:join_left,
-           bplus_mk_leaf(:lists.append([bplus_leaf_to_list(lTree),
-                                            bplus_leaf_to_list(newSubTree)]))}
+         bplus_mk_leaf(:lists.append([bplus_leaf_to_list(lTree), bplus_leaf_to_list(newSubTree)]))}
+
       :n ->
         {:join_left,
-           bplus_mk_node(:lists.append([bplus_node_to_list(lTree),
-                                            [bplus_get_lkey(tree, pos)],
-                                                bplus_node_to_list(newSubTree)]))}
+         bplus_mk_node(
+           :lists.append([
+             bplus_node_to_list(lTree),
+             [bplus_get_lkey(tree, pos)],
+             bplus_node_to_list(newSubTree)
+           ])
+         )}
     end
   end
 
   defp bplus_reorganize_tree_jr(tree, newSubTree, pos, rTree) do
-    case (:erlang.element(1, newSubTree)) do
+    case :erlang.element(1, newSubTree) do
       :l ->
         {:join_right,
-           bplus_mk_leaf(:lists.append([bplus_leaf_to_list(newSubTree),
-                                            bplus_leaf_to_list(rTree)]))}
+         bplus_mk_leaf(:lists.append([bplus_leaf_to_list(newSubTree), bplus_leaf_to_list(rTree)]))}
+
       :n ->
         {:join_right,
-           bplus_mk_node(:lists.append([bplus_node_to_list(newSubTree),
-                                            [bplus_get_rkey(tree, pos)],
-                                                bplus_node_to_list(rTree)]))}
+         bplus_mk_node(
+           :lists.append([
+             bplus_node_to_list(newSubTree),
+             [bplus_get_rkey(tree, pos)],
+             bplus_node_to_list(rTree)
+           ])
+         )}
     end
   end
 
@@ -1864,8 +2161,7 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_split_leaf_2(leaf, pos, n, accum) do
-    bplus_split_leaf_2(leaf, pos - 1, n - 1,
-                         [:erlang.element(pos + 1, leaf) | accum])
+    bplus_split_leaf_2(leaf, pos - 1, n - 1, [:erlang.element(pos + 1, leaf) | accum])
   end
 
   defp bplus_split_leaf_3(_, 0, leftAcc, dKey, rightAcc) do
@@ -1873,9 +2169,7 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_split_leaf_3(leaf, pos, leftAcc, dKey, rightAcc) do
-    bplus_split_leaf_3(leaf, pos - 1,
-                         [:erlang.element(pos + 1, leaf) | leftAcc], dKey,
-                         rightAcc)
+    bplus_split_leaf_3(leaf, pos - 1, [:erlang.element(pos + 1, leaf) | leftAcc], dKey, rightAcc)
   end
 
   defp bplus_split_node(node) do
@@ -1884,37 +2178,43 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_split_node_2(node, pos, 1, accum) do
-    bplus_split_node_3(node, pos - 1, [],
-                         bplus_get_lkey(node, pos),
-                         [bplus_get_tree(node, pos) | accum])
+    bplus_split_node_3(node, pos - 1, [], bplus_get_lkey(node, pos), [
+      bplus_get_tree(node, pos) | accum
+    ])
   end
 
   defp bplus_split_node_2(node, pos, n, accum) do
-    bplus_split_node_2(node, pos - 1, n - 1,
-                         [bplus_get_lkey(node, pos), bplus_get_tree(node, pos) |
-                                                         accum])
+    bplus_split_node_2(node, pos - 1, n - 1, [
+      bplus_get_lkey(node, pos),
+      bplus_get_tree(node, pos)
+      | accum
+    ])
   end
 
   defp bplus_split_node_3(node, 1, leftAcc, dKey, rightAcc) do
-    {bplus_mk_node([bplus_get_tree(node, 1) | leftAcc]),
-       dKey, bplus_mk_node(rightAcc)}
+    {bplus_mk_node([bplus_get_tree(node, 1) | leftAcc]), dKey, bplus_mk_node(rightAcc)}
   end
 
   defp bplus_split_node_3(node, pos, leftAcc, dKey, rightAcc) do
-    bplus_split_node_3(node, pos - 1,
-                         [bplus_get_lkey(node, pos), bplus_get_tree(node, pos) |
-                                                         leftAcc],
-                         dKey, rightAcc)
+    bplus_split_node_3(
+      node,
+      pos - 1,
+      [
+        bplus_get_lkey(node, pos),
+        bplus_get_tree(node, pos)
+        | leftAcc
+      ],
+      dKey,
+      rightAcc
+    )
   end
 
   defp bplus_joinleft_tree(tree, joinedTree, pos) do
-    bplus_join_tree_2(tree, joinedTree, pos,
-                        bplus_get_size(tree), [])
+    bplus_join_tree_2(tree, joinedTree, pos, bplus_get_size(tree), [])
   end
 
   defp bplus_joinright_tree(tree, joinedTree, pos) do
-    bplus_join_tree_2(tree, joinedTree, pos + 1,
-                        bplus_get_size(tree), [])
+    bplus_join_tree_2(tree, joinedTree, pos + 1, bplus_get_size(tree), [])
   end
 
   defp bplus_join_tree_2(tree, joinedTree, pos, pos, accum) do
@@ -1922,9 +2222,11 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_join_tree_2(tree, joinedTree, pos, n, accum) do
-    bplus_join_tree_2(tree, joinedTree, pos, n - 1,
-                        [bplus_get_lkey(tree, n), bplus_get_tree(tree, n) |
-                                                      accum])
+    bplus_join_tree_2(tree, joinedTree, pos, n - 1, [
+      bplus_get_lkey(tree, n),
+      bplus_get_tree(tree, n)
+      | accum
+    ])
   end
 
   defp bplus_join_tree_3(_Tree, 0, accum) do
@@ -1932,9 +2234,11 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_join_tree_3(tree, pos, accum) do
-    bplus_join_tree_3(tree, pos - 1,
-                        [bplus_get_tree(tree, pos), bplus_get_rkey(tree, pos) |
-                                                        accum])
+    bplus_join_tree_3(tree, pos - 1, [
+      bplus_get_tree(tree, pos),
+      bplus_get_rkey(tree, pos)
+      | accum
+    ])
   end
 
   defp bplus_mk_node(nodeList) do
@@ -1960,25 +2264,26 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_put_subtree(tree, [newSubTree, pos | rest]) do
-    bplus_put_subtree(:erlang.setelement(pos * 2, tree,
-                                           newSubTree),
-                        rest)
+    bplus_put_subtree(
+      :erlang.setelement(pos * 2, tree, newSubTree),
+      rest
+    )
   end
 
   defp bplus_extend_tree(tree, inserts, pos) do
-    bplus_extend_tree_2(tree, inserts, pos,
-                          bplus_get_size(tree), [])
+    bplus_extend_tree_2(tree, inserts, pos, bplus_get_size(tree), [])
   end
 
   defp bplus_extend_tree_2(tree, {t1, dKey, t2}, pos, pos, accum) do
-    bplus_extend_tree_3(tree, pos - 1,
-                          [t1, dKey, t2 | accum])
+    bplus_extend_tree_3(tree, pos - 1, [t1, dKey, t2 | accum])
   end
 
   defp bplus_extend_tree_2(tree, inserts, pos, n, accum) do
-    bplus_extend_tree_2(tree, inserts, pos, n - 1,
-                          [bplus_get_lkey(tree, n), bplus_get_tree(tree, n) |
-                                                        accum])
+    bplus_extend_tree_2(tree, inserts, pos, n - 1, [
+      bplus_get_lkey(tree, n),
+      bplus_get_tree(tree, n)
+      | accum
+    ])
   end
 
   defp bplus_extend_tree_3(_, 0, accum) do
@@ -1986,9 +2291,11 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_extend_tree_3(tree, n, accum) do
-    bplus_extend_tree_3(tree, n - 1,
-                          [bplus_get_tree(tree, n), bplus_get_rkey(tree, n) |
-                                                        accum])
+    bplus_extend_tree_3(tree, n - 1, [
+      bplus_get_tree(tree, n),
+      bplus_get_rkey(tree, n)
+      | accum
+    ])
   end
 
   defp bplus_put_lkey(tree, dKey, pos) do
@@ -2000,9 +2307,10 @@ defmodule :m_dets_utils do
   end
 
   defp bplus_get_size(tree) do
-    case (:erlang.element(1, tree)) do
+    case :erlang.element(1, tree) do
       :l ->
         tuple_size(tree) - 1
+
       :n ->
         div(tuple_size(tree), 2)
     end
@@ -2019,5 +2327,4 @@ defmodule :m_dets_utils do
   defp bplus_get_rkey(tree, pos) do
     :erlang.element(pos * 2 + 1, tree)
   end
-
 end

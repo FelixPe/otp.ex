@@ -2,78 +2,125 @@ defmodule :m_ssh_channel_sup do
   use Bitwise
   @behaviour :supervisor
   require Record
-  Record.defrecord(:r_address, :address, address: :undefined,
-                                   port: :undefined, profile: :undefined)
-  Record.defrecord(:r_ssh, :ssh, role: :undefined,
-                               peer: :undefined, local: :undefined,
-                               c_vsn: :undefined, s_vsn: :undefined,
-                               c_version: :undefined, s_version: :undefined,
-                               c_keyinit: :undefined, s_keyinit: :undefined,
-                               send_ext_info: :undefined,
-                               recv_ext_info: :undefined,
-                               kex_strict_negotiated: false,
-                               algorithms: :undefined, send_mac: :none,
-                               send_mac_key: :undefined, send_mac_size: 0,
-                               recv_mac: :none, recv_mac_key: :undefined,
-                               recv_mac_size: 0, encrypt: :none,
-                               encrypt_cipher: :undefined,
-                               encrypt_keys: :undefined, encrypt_block_size: 8,
-                               encrypt_ctx: :undefined, decrypt: :none,
-                               decrypt_cipher: :undefined,
-                               decrypt_keys: :undefined, decrypt_block_size: 8,
-                               decrypt_ctx: :undefined, compress: :none,
-                               compress_ctx: :undefined, decompress: :none,
-                               decompress_ctx: :undefined, c_lng: :none,
-                               s_lng: :none, user_ack: true, timeout: :infinity,
-                               shared_secret: :undefined,
-                               exchanged_hash: :undefined,
-                               session_id: :undefined, opts: [],
-                               send_sequence: 0, recv_sequence: 0,
-                               keyex_key: :undefined, keyex_info: :undefined,
-                               random_length_padding: 15, user: :undefined,
-                               service: :undefined,
-                               userauth_quiet_mode: :undefined,
-                               userauth_methods: :undefined,
-                               userauth_supported_methods: :undefined,
-                               userauth_pubkeys: :undefined, kb_tries_left: 0,
-                               userauth_preference: :undefined,
-                               available_host_keys: :undefined,
-                               pwdfun_user_state: :undefined,
-                               authenticated: false)
-  Record.defrecord(:r_alg, :alg, kex: :undefined,
-                               hkey: :undefined, send_mac: :undefined,
-                               recv_mac: :undefined, encrypt: :undefined,
-                               decrypt: :undefined, compress: :undefined,
-                               decompress: :undefined, c_lng: :undefined,
-                               s_lng: :undefined, send_ext_info: :undefined,
-                               recv_ext_info: :undefined,
-                               kex_strict_negotiated: false)
-  Record.defrecord(:r_ssh_pty, :ssh_pty, c_version: '', term: '',
-                                   width: 80, height: 25, pixel_width: 1024,
-                                   pixel_height: 768, modes: <<>>)
-  Record.defrecord(:r_circ_buf_entry, :circ_buf_entry, module: :undefined,
-                                          line: :undefined,
-                                          function: :undefined, pid: self(),
-                                          value: :undefined)
+
+  Record.defrecord(:r_address, :address,
+    address: :undefined,
+    port: :undefined,
+    profile: :undefined
+  )
+
+  Record.defrecord(:r_ssh, :ssh,
+    role: :undefined,
+    peer: :undefined,
+    local: :undefined,
+    c_vsn: :undefined,
+    s_vsn: :undefined,
+    c_version: :undefined,
+    s_version: :undefined,
+    c_keyinit: :undefined,
+    s_keyinit: :undefined,
+    send_ext_info: :undefined,
+    recv_ext_info: :undefined,
+    kex_strict_negotiated: false,
+    algorithms: :undefined,
+    send_mac: :none,
+    send_mac_key: :undefined,
+    send_mac_size: 0,
+    recv_mac: :none,
+    recv_mac_key: :undefined,
+    recv_mac_size: 0,
+    encrypt: :none,
+    encrypt_cipher: :undefined,
+    encrypt_keys: :undefined,
+    encrypt_block_size: 8,
+    encrypt_ctx: :undefined,
+    decrypt: :none,
+    decrypt_cipher: :undefined,
+    decrypt_keys: :undefined,
+    decrypt_block_size: 8,
+    decrypt_ctx: :undefined,
+    compress: :none,
+    compress_ctx: :undefined,
+    decompress: :none,
+    decompress_ctx: :undefined,
+    c_lng: :none,
+    s_lng: :none,
+    user_ack: true,
+    timeout: :infinity,
+    shared_secret: :undefined,
+    exchanged_hash: :undefined,
+    session_id: :undefined,
+    opts: [],
+    send_sequence: 0,
+    recv_sequence: 0,
+    keyex_key: :undefined,
+    keyex_info: :undefined,
+    random_length_padding: 15,
+    user: :undefined,
+    service: :undefined,
+    userauth_quiet_mode: :undefined,
+    userauth_methods: :undefined,
+    userauth_supported_methods: :undefined,
+    userauth_pubkeys: :undefined,
+    kb_tries_left: 0,
+    userauth_preference: :undefined,
+    available_host_keys: :undefined,
+    pwdfun_user_state: :undefined,
+    authenticated: false
+  )
+
+  Record.defrecord(:r_alg, :alg,
+    kex: :undefined,
+    hkey: :undefined,
+    send_mac: :undefined,
+    recv_mac: :undefined,
+    encrypt: :undefined,
+    decrypt: :undefined,
+    compress: :undefined,
+    decompress: :undefined,
+    c_lng: :undefined,
+    s_lng: :undefined,
+    send_ext_info: :undefined,
+    recv_ext_info: :undefined,
+    kex_strict_negotiated: false
+  )
+
+  Record.defrecord(:r_ssh_pty, :ssh_pty,
+    c_version: ~c"",
+    term: ~c"",
+    width: 80,
+    height: 25,
+    pixel_width: 1024,
+    pixel_height: 768,
+    modes: <<>>
+  )
+
+  Record.defrecord(:r_circ_buf_entry, :circ_buf_entry,
+    module: :undefined,
+    line: :undefined,
+    function: :undefined,
+    pid: self(),
+    value: :undefined
+  )
+
   def start_link(args) do
     :supervisor.start_link(:ssh_channel_sup, [args])
   end
 
-  def start_child(:client, channelSup, connRef, callback, id, args,
-           exec, _Opts)
+  def start_child(:client, channelSup, connRef, callback, id, args, exec, _Opts)
       when is_pid(connRef) do
-    start_the_channel(:ssh_client_channel, channelSup,
-                        connRef, callback, id, args, exec)
+    start_the_channel(:ssh_client_channel, channelSup, connRef, callback, id, args, exec)
   end
 
-  def start_child(:server, channelSup, connRef, callback, id, args,
-           exec, opts)
+  def start_child(:server, channelSup, connRef, callback, id, args, exec, opts)
       when is_pid(connRef) do
-    case (max_num_channels_not_exceeded(channelSup,
-                                          opts)) do
+    case max_num_channels_not_exceeded(
+           channelSup,
+           opts
+         ) do
       true ->
-        start_the_channel(:ssh_server_channel, channelSup,
-                            connRef, callback, id, args, exec)
+        start_the_channel(:ssh_server_channel, channelSup, connRef, callback, id, args, exec)
+
       false ->
         {:error, :max_num_channels_exceeded}
     end
@@ -88,33 +135,40 @@ defmodule :m_ssh_channel_sup do
   end
 
   defp max_num_channels_not_exceeded(channelSup, opts) do
-    maxNumChannels = :ssh_options.get_value(:user_options,
-                                              :max_channels, opts,
-                                              :ssh_channel_sup, 68)
-    numChannels = length(for {_, _, :worker,
-                                [:ssh_server_channel]} <- :supervisor.which_children(channelSup) do
-                           :x
-                         end)
+    maxNumChannels =
+      :ssh_options.get_value(:user_options, :max_channels, opts, :ssh_channel_sup, 68)
+
+    numChannels =
+      length(
+        for {_, _, :worker, [:ssh_server_channel]} <- :supervisor.which_children(channelSup) do
+          :x
+        end
+      )
+
     numChannels < maxNumChannels
   end
 
-  defp start_the_channel(chanMod, channelSup, connRef, callback, id,
-            args, exec) do
-    childSpec = %{id: make_ref(),
-                    start:
-                    {chanMod, :start_link,
-                       [connRef, id, callback, args, exec]},
-                    restart: :temporary, type: :worker, modules: [chanMod]}
-    case (:supervisor.start_child(channelSup, childSpec)) do
+  defp start_the_channel(chanMod, channelSup, connRef, callback, id, args, exec) do
+    childSpec = %{
+      id: make_ref(),
+      start: {chanMod, :start_link, [connRef, id, callback, args, exec]},
+      restart: :temporary,
+      type: :worker,
+      modules: [chanMod]
+    }
+
+    case :supervisor.start_child(channelSup, childSpec) do
       {:ok, pid} ->
         {:ok, pid}
+
       {:ok, pid, _Info} ->
         {:ok, pid}
+
       {:error, {error, _Info}} ->
         {:error, error}
+
       {:error, error} ->
         {:error, error}
     end
   end
-
 end

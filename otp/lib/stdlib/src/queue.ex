@@ -1,10 +1,11 @@
 defmodule :m_queue do
   use Bitwise
+
   def new() do
     {[], []}
   end
 
-  def is_queue({r, f}) when (is_list(r) and is_list(f)) do
+  def is_queue({r, f}) when is_list(r) and is_list(f) do
     true
   end
 
@@ -16,8 +17,9 @@ defmodule :m_queue do
     true
   end
 
-  def is_empty({in__, out}) when (is_list(in__) and
-                              is_list(out)) do
+  def is_empty({in__, out})
+      when is_list(in__) and
+             is_list(out) do
     false
   end
 
@@ -25,7 +27,7 @@ defmodule :m_queue do
     :erlang.error(:badarg, [q])
   end
 
-  def len({r, f}) when (is_list(r) and is_list(f)) do
+  def len({r, f}) when is_list(r) and is_list(f) do
     length(r) + length(f)
   end
 
@@ -33,8 +35,9 @@ defmodule :m_queue do
     :erlang.error(:badarg, [q])
   end
 
-  def to_list({in__, out}) when (is_list(in__) and
-                              is_list(out)) do
+  def to_list({in__, out})
+      when is_list(in__) and
+             is_list(out) do
     out ++ :lists.reverse(in__, [])
   end
 
@@ -50,7 +53,7 @@ defmodule :m_queue do
     :erlang.error(:badarg, [l])
   end
 
-  def member(x, {r, f}) when (is_list(r) and is_list(f)) do
+  def member(x, {r, f}) when is_list(r) and is_list(f) do
     :lists.member(x, r) or :lists.member(x, f)
   end
 
@@ -62,8 +65,9 @@ defmodule :m_queue do
     {[x], in__}
   end
 
-  def unquote(:in)(x, {in__, out}) when (is_list(in__) and
-                                   is_list(out)) do
+  def unquote(:in)(x, {in__, out})
+      when is_list(in__) and
+             is_list(out) do
     {[x | in__], out}
   end
 
@@ -75,7 +79,7 @@ defmodule :m_queue do
     {f, [x]}
   end
 
-  def in_r(x, {r, f}) when (is_list(r) and is_list(f)) do
+  def in_r(x, {r, f}) when is_list(r) and is_list(f) do
     {r, [x | f]}
   end
 
@@ -137,7 +141,7 @@ defmodule :m_queue do
     :erlang.error(:empty, [q])
   end
 
-  def get({r, f}) when (is_list(r) and is_list(f)) do
+  def get({r, f}) when is_list(r) and is_list(f) do
     get(r, f)
   end
 
@@ -267,7 +271,7 @@ defmodule :m_queue do
     :erlang.error(:badarg, [q])
   end
 
-  def reverse({r, f}) when (is_list(r) and is_list(f)) do
+  def reverse({r, f}) when is_list(r) and is_list(f) do
     {f, r}
   end
 
@@ -275,19 +279,22 @@ defmodule :m_queue do
     :erlang.error(:badarg, [q])
   end
 
-  def join({r, f} = q, {[], []}) when (is_list(r) and
-                                       is_list(f)) do
+  def join({r, f} = q, {[], []})
+      when is_list(r) and
+             is_list(f) do
     q
   end
 
-  def join({[], []}, {r, f} = q) when (is_list(r) and
-                                       is_list(f)) do
+  def join({[], []}, {r, f} = q)
+      when is_list(r) and
+             is_list(f) do
     q
   end
 
-  def join({r1, f1}, {r2, f2}) when (is_list(r1) and
-                                     is_list(f1) and is_list(r2) and
-                                     is_list(f2)) do
+  def join({r1, f1}, {r2, f2})
+      when is_list(r1) and
+             is_list(f1) and is_list(r2) and
+             is_list(f2) do
     {r2, f1 ++ :lists.reverse(r1, f2)}
   end
 
@@ -295,30 +302,38 @@ defmodule :m_queue do
     :erlang.error(:badarg, [q1, q2])
   end
 
-  def split(0, {r, f} = q) when (is_list(r) and
-                                is_list(f)) do
+  def split(0, {r, f} = q)
+      when is_list(r) and
+             is_list(f) do
     {{[], []}, q}
   end
 
-  def split(n, {r, f} = q) when (is_integer(n) and n >= 1 and
-                                is_list(r) and is_list(f)) do
+  def split(n, {r, f} = q)
+      when is_integer(n) and n >= 1 and
+             is_list(r) and is_list(f) do
     lf = :erlang.length(f)
+
     cond do
       n < lf ->
         [x | f1] = f
         split_f1_to_r2(n - 1, r, f1, [], [x])
+
       n > lf ->
         lr = length(r)
         m = lr - (n - lf)
+
         cond do
           m < 0 ->
             :erlang.error(:badarg, [n, q])
+
           m > 0 ->
             [x | r1] = r
             split_r1_to_f2(m - 1, r1, f, [x], [])
+
           true ->
             {q, {[], []}}
         end
+
       true ->
         {f2r(f), r2f(r)}
     end
@@ -344,15 +359,19 @@ defmodule :m_queue do
     split_r1_to_f2(n - 1, r1, f1, r2, [x | f2])
   end
 
-  def filter(fun, {r0, f0}) when (is_function(fun, 1) and
-                                is_list(r0) and is_list(f0)) do
+  def filter(fun, {r0, f0})
+      when is_function(fun, 1) and
+             is_list(r0) and is_list(f0) do
     f = filter_f(fun, f0)
     r = filter_r(fun, r0)
+
     cond do
       r === [] ->
         f2r(f)
+
       f === [] ->
         r2f(r)
+
       true ->
         {r, f}
     end
@@ -367,15 +386,19 @@ defmodule :m_queue do
   end
 
   defp filter_f(fun, [x | f]) do
-    case (fun.(x)) do
+    case fun.(x) do
       true ->
         [x | filter_f(fun, f)]
+
       [y] ->
         [y | filter_f(fun, f)]
+
       false ->
         filter_f(fun, f)
+
       [] ->
         filter_f(fun, f)
+
       l when is_list(l) ->
         l ++ filter_f(fun, f)
     end
@@ -387,29 +410,38 @@ defmodule :m_queue do
 
   defp filter_r(fun, [x | r0]) do
     r = filter_r(fun, r0)
-    case (fun.(x)) do
+
+    case fun.(x) do
       true ->
         [x | r]
+
       [y] ->
         [y | r]
+
       false ->
         r
+
       [] ->
         r
+
       l when is_list(l) ->
         :lists.reverse(l, r)
     end
   end
 
-  def filtermap(fun, {r0, f0}) when (is_function(fun, 1) and
-                                is_list(r0) and is_list(f0)) do
+  def filtermap(fun, {r0, f0})
+      when is_function(fun, 1) and
+             is_list(r0) and is_list(f0) do
     f = :lists.filtermap(fun, f0)
     r = filtermap_r(fun, r0)
+
     cond do
       r === [] ->
         f2r(f)
+
       f === [] ->
         r2f(r)
+
       true ->
         {r, f}
     end
@@ -425,18 +457,22 @@ defmodule :m_queue do
 
   defp filtermap_r(fun, [x | r0]) do
     r = filtermap_r(fun, r0)
-    case (fun.(x)) do
+
+    case fun.(x) do
       true ->
         [x | r]
+
       {true, y} ->
         [y | r]
+
       false ->
         r
     end
   end
 
-  def fold(fun, acc0, {r, f}) when (is_function(fun, 2) and
-                                    is_list(r) and is_list(f)) do
+  def fold(fun, acc0, {r, f})
+      when is_function(fun, 2) and
+             is_list(r) and is_list(f) do
     acc1 = :lists.foldl(fun, acc0, f)
     :lists.foldr(fun, acc1, r)
   end
@@ -445,8 +481,9 @@ defmodule :m_queue do
     :erlang.error(:badarg, [fun, acc0, q])
   end
 
-  def any(pred, {r, f}) when (is_function(pred, 1) and
-                               is_list(r) and is_list(f)) do
+  def any(pred, {r, f})
+      when is_function(pred, 1) and
+             is_list(r) and is_list(f) do
     :lists.any(pred, f) or :lists.any(pred, r)
   end
 
@@ -454,8 +491,9 @@ defmodule :m_queue do
     :erlang.error(:badarg, [pred, q])
   end
 
-  def all(pred, {r, f}) when (is_function(pred, 1) and
-                               is_list(r) and is_list(f)) do
+  def all(pred, {r, f})
+      when is_function(pred, 1) and
+             is_list(r) and is_list(f) do
     :lists.all(pred, f) and :lists.all(pred, r)
   end
 
@@ -463,20 +501,25 @@ defmodule :m_queue do
     :erlang.error(:badarg, [pred, q])
   end
 
-  def delete(item, {r0, f0} = q) when (is_list(r0) and
-                                     is_list(f0)) do
-    case (delete_front(item, f0)) do
+  def delete(item, {r0, f0} = q)
+      when is_list(r0) and
+             is_list(f0) do
+    case delete_front(item, f0) do
       false ->
-        case (delete_rear(item, r0)) do
+        case delete_rear(item, r0) do
           false ->
             q
+
           [] ->
             f2r(f0)
+
           r1 ->
             {r1, f0}
         end
+
       [] ->
         r2f(r0)
+
       f1 ->
         {r0, f1}
     end
@@ -486,8 +529,9 @@ defmodule :m_queue do
     :erlang.error(:badarg, [item, q])
   end
 
-  def delete_r(item, {r0, f0}) when (is_list(r0) and
-                                 is_list(f0)) do
+  def delete_r(item, {r0, f0})
+      when is_list(r0) and
+             is_list(f0) do
     {f1, r1} = delete(item, {f0, r0})
     {r1, f1}
   end
@@ -501,9 +545,10 @@ defmodule :m_queue do
   end
 
   defp delete_front(item, [x | rest]) do
-    case (delete_front(item, rest)) do
+    case delete_front(item, rest) do
       false ->
         false
+
       f ->
         [x | f]
     end
@@ -514,11 +559,13 @@ defmodule :m_queue do
   end
 
   defp delete_rear(item, [x | rest]) do
-    case (delete_rear(item, rest)) do
+    case delete_rear(item, rest) do
       false when x === item ->
         rest
+
       false ->
         false
+
       r ->
         [x | r]
     end
@@ -528,21 +575,28 @@ defmodule :m_queue do
     false
   end
 
-  def delete_with(pred, {r0, f0} = q) when (is_function(pred,
-                                                 1) and
-                                     is_list(r0) and is_list(f0)) do
-    case (delete_with_front(pred, f0)) do
+  def delete_with(pred, {r0, f0} = q)
+      when is_function(
+             pred,
+             1
+           ) and
+             is_list(r0) and is_list(f0) do
+    case delete_with_front(pred, f0) do
       false ->
-        case (delete_with_rear(pred, r0)) do
+        case delete_with_rear(pred, r0) do
           false ->
             q
+
           [] ->
             f2r(f0)
+
           r1 ->
             {r1, f0}
         end
+
       [] ->
         r2f(r0)
+
       f1 ->
         {r0, f1}
     end
@@ -552,8 +606,9 @@ defmodule :m_queue do
     :erlang.error(:badarg, [pred, q])
   end
 
-  def delete_with_r(pred, {r0, f0}) when (is_function(pred, 1) and
-                                 is_list(r0) and is_list(f0)) do
+  def delete_with_r(pred, {r0, f0})
+      when is_function(pred, 1) and
+             is_list(r0) and is_list(f0) do
     {f1, r1} = delete_with(pred, {f0, r0})
     {r1, f1}
   end
@@ -563,13 +618,15 @@ defmodule :m_queue do
   end
 
   defp delete_with_front(pred, [x | rest]) do
-    case (pred.(x)) do
+    case pred.(x) do
       true ->
         rest
+
       false ->
-        case (delete_with_front(pred, rest)) do
+        case delete_with_front(pred, rest) do
           false ->
             false
+
           f ->
             [x | f]
         end
@@ -581,14 +638,16 @@ defmodule :m_queue do
   end
 
   defp delete_with_rear(pred, [x | rest]) do
-    case (delete_with_rear(pred, rest)) do
+    case delete_with_rear(pred, rest) do
       false ->
-        case (pred.(x)) do
+        case pred.(x) do
           true ->
             rest
+
           false ->
             false
         end
+
       r ->
         [x | r]
     end
@@ -606,7 +665,7 @@ defmodule :m_queue do
     :erlang.error(:empty, [q])
   end
 
-  def head({r, f}) when (is_list(r) and is_list(f)) do
+  def head({r, f}) when is_list(r) and is_list(f) do
     get(r, f)
   end
 
@@ -675,5 +734,4 @@ defmodule :m_queue do
     {fF, rR} = :lists.split(div(length(list), 2), list)
     {:lists.reverse(rR, []), fF}
   end
-
 end

@@ -1142,7 +1142,9 @@ defmodule :m_ssl_session_cache do
 
   Record.defrecord(:r_finished, :finished, verify_data: :undefined)
 
-  Record.defrecord(:r_renegotiation_info, :renegotiation_info, renegotiated_connection: :undefined)
+  Record.defrecord(:r_renegotiation_info, :renegotiation_info,
+    renegotiated_connection: :undefined
+  )
 
   Record.defrecord(:r_srp, :srp, username: :undefined)
   Record.defrecord(:r_hash_sign_algos, :hash_sign_algos, hash_sign_algos: :undefined)
@@ -1282,6 +1284,6 @@ defmodule :m_ssl_session_cache do
   end
 
   defp cache_name(name) do
-    :erlang.list_to_atom(:erlang.atom_to_list(name) ++ '_ssl_otp_session_cache')
+    :erlang.list_to_atom(:erlang.atom_to_list(name) ++ ~c"_ssl_otp_session_cache")
   end
 end

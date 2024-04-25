@@ -1,43 +1,69 @@
 defmodule :m_edoc do
   use Bitwise
   require Record
-  Record.defrecord(:r_doclet_context, :doclet_context, dir: '',
-                                          env: :undefined, opts: [])
-  Record.defrecord(:r_doclet_gen, :doclet_gen, sources: [],
-                                      app: :no_app, modules: [])
-  Record.defrecord(:r_doclet_toc, :doclet_toc, paths: :undefined,
-                                      indir: :undefined)
-  Record.defrecord(:r_module, :module, name: [],
-                                  parameters: :none, functions: [], exports: [],
-                                  attributes: [], records: [],
-                                  encoding: :latin1, file: :undefined)
-  Record.defrecord(:r_env, :env, module: [], root: '',
-                               file_suffix: :undefined, apps: :undefined,
-                               modules: :undefined, app_default: :undefined,
-                               macros: [], includes: [])
-  Record.defrecord(:r_comment, :comment, line: 0,
-                                   text: :undefined)
-  Record.defrecord(:r_entry, :entry, name: :undefined, args: [],
-                                 line: 0, export: :undefined, data: :undefined)
-  Record.defrecord(:r_tag, :tag, name: :undefined, line: 0,
-                               origin: :comment, data: :undefined,
-                               form: :undefined)
+  Record.defrecord(:r_doclet_context, :doclet_context, dir: ~c"", env: :undefined, opts: [])
+  Record.defrecord(:r_doclet_gen, :doclet_gen, sources: [], app: :no_app, modules: [])
+
+  Record.defrecord(:r_doclet_toc, :doclet_toc,
+    paths: :undefined,
+    indir: :undefined
+  )
+
+  Record.defrecord(:r_module, :module,
+    name: [],
+    parameters: :none,
+    functions: [],
+    exports: [],
+    attributes: [],
+    records: [],
+    encoding: :latin1,
+    file: :undefined
+  )
+
+  Record.defrecord(:r_env, :env,
+    module: [],
+    root: ~c"",
+    file_suffix: :undefined,
+    apps: :undefined,
+    modules: :undefined,
+    app_default: :undefined,
+    macros: [],
+    includes: []
+  )
+
+  Record.defrecord(:r_comment, :comment,
+    line: 0,
+    text: :undefined
+  )
+
+  Record.defrecord(:r_entry, :entry,
+    name: :undefined,
+    args: [],
+    line: 0,
+    export: :undefined,
+    data: :undefined
+  )
+
+  Record.defrecord(:r_tag, :tag,
+    name: :undefined,
+    line: 0,
+    origin: :comment,
+    data: :undefined,
+    form: :undefined
+  )
+
   def file(name) do
     file(name, [])
   end
 
   def file(name, options) do
     text = read(name, options)
-    srcSuffix = :proplists.get_value(:source_suffix,
-                                       options, '.erl')
+    srcSuffix = :proplists.get_value(:source_suffix, options, ~c".erl")
     baseName = :filename.basename(name, srcSuffix)
-    suffix = :proplists.get_value(:file_suffix, options, '.html')
-    dir = :proplists.get_value(:dir, options,
-                                 :filename.dirname(name))
-    encoding = [{:encoding,
-                   :edoc_lib.read_encoding(name, [])}]
-    :edoc_lib.write_file(text, dir, baseName ++ suffix,
-                           encoding)
+    suffix = :proplists.get_value(:file_suffix, options, ~c".html")
+    dir = :proplists.get_value(:dir, options, :filename.dirname(name))
+    encoding = [{:encoding, :edoc_lib.read_encoding(name, [])}]
+    :edoc_lib.write_file(text, dir, baseName ++ suffix, encoding)
   end
 
   def files(files) do
@@ -53,45 +79,67 @@ defmodule :m_edoc do
   end
 
   def application(app, options) when is_atom(app) do
-    case (:code.lib_dir(app)) do
+    case :code.lib_dir(app) do
       dir when is_list(dir) ->
         application(app, dir, options)
+
       _ ->
-        :edoc_report.report('cannot find application directory for \'~s\'.', [app])
+        :edoc_report.report(~c"cannot find application directory for '~s'.", [app])
         exit(:error)
     end
   end
 
   def application(app, dir, options) when is_atom(app) do
-    src = :edoc_lib.try_subdir(dir, 'src')
-    overview = :filename.join(:edoc_lib.try_subdir(dir, 'doc'),
-                                'overview.edoc')
-    opts = options ++ [{:source_path, [src]}, :subpackages,
-                                                  {:title,
-                                                     :io_lib.fwrite('The ~ts application', [app])},
-                                                      {:overview, overview},
-                                                          {:dir,
-                                                             :filename.join(dir,
-                                                                              'doc')},
-                                                              {:includes,
-                                                                 [:filename.join(dir,
-                                                                                   'include')]}]
+    src = :edoc_lib.try_subdir(dir, ~c"src")
+
+    overview =
+      :filename.join(
+        :edoc_lib.try_subdir(dir, ~c"doc"),
+        ~c"overview.edoc"
+      )
+
+    opts =
+      options ++
+        [
+          {:source_path, [src]},
+          :subpackages,
+          {:title, :io_lib.fwrite(~c"The ~ts application", [app])},
+          {:overview, overview},
+          {:dir,
+           :filename.join(
+             dir,
+             ~c"doc"
+           )},
+          {:includes,
+           [
+             :filename.join(
+               dir,
+               ~c"include"
+             )
+           ]}
+        ]
+
     opts1 = set_app_default(app, dir, opts)
     run([], [{:application, app} | opts1])
   end
 
   defp set_app_default(app, dir0, opts) do
-    case (:proplists.get_value(:app_default, opts)) do
+    case :proplists.get_value(:app_default, opts) do
       :undefined ->
         appName = :erlang.atom_to_list(app)
         dir = :edoc_lib.simplify_path(:filename.absname(dir0))
-        appDir = (case (:filename.basename(dir)) do
-                    ^appName ->
-                      :filename.dirname(dir)
-                    _ ->
-                      'http://www.erlang.org/edoc/doc'
-                  end)
+
+        appDir =
+          case :filename.basename(dir) do
+            ^appName ->
+              :filename.dirname(dir)
+
+            _ ->
+              ~c"http://www.erlang.org/edoc/doc"
+          end
+
         [{:app_default, appDir} | opts]
+
       _ ->
         opts
     end
@@ -102,12 +150,12 @@ defmodule :m_edoc do
   end
 
   defp opt_negations() do
-    [{:no_preprocess, :preprocess}, {:no_subpackages,
-                                       :subpackages},
-                                        {:no_report_missing_types,
-                                           :report_missing_types},
-                                            {:no_link_predefined_types,
-                                               :link_predefined_types}]
+    [
+      {:no_preprocess, :preprocess},
+      {:no_subpackages, :subpackages},
+      {:no_report_missing_types, :report_missing_types},
+      {:no_link_predefined_types, :link_predefined_types}
+    ]
   end
 
   def run(files, opts0) do
@@ -116,27 +164,36 @@ defmodule :m_edoc do
     dir = r_doclet_context(ctxt, :dir)
     path = :proplists.append_values(:source_path, opts)
     ss = sources(path, opts)
-    {ss1, ms} = expand_sources(expand_files(files) ++ ss,
-                                 opts)
+
+    {ss1, ms} =
+      expand_sources(
+        expand_files(files) ++ ss,
+        opts
+      )
+
     app = :proplists.get_value(:application, opts, :no_app)
     {app1, ms1} = target_dir_info(dir, app, ms, opts)
     ms2 = :edoc_lib.unique(:lists.sort(ms1))
     env = :edoc_lib.get_doc_env(app1, ms2, opts)
     ctxt1 = r_doclet_context(ctxt, env: env)
     cmd = r_doclet_gen(sources: ss1, app: app1, modules: ms2)
+
     f = fn m ->
-             m.run(cmd, ctxt1)
-        end
+      m.run(cmd, ctxt1)
+    end
+
     :edoc_lib.run_doclet(f, opts)
   end
 
   defp expand_opts(opts0) do
-    :proplists.substitute_negations(opt_negations(),
-                                      opts0 ++ opt_defaults())
+    :proplists.substitute_negations(
+      opt_negations(),
+      opts0 ++ opt_defaults()
+    )
   end
 
   defp init_context(opts) do
-    r_doclet_context(dir: :proplists.get_value(:dir, opts, '.'), opts: opts)
+    r_doclet_context(dir: :proplists.get_value(:dir, opts, ~c"."), opts: opts)
   end
 
   defp sources(path, opts) do
@@ -144,8 +201,10 @@ defmodule :m_edoc do
   end
 
   defp expand_files([f | fs]) do
-    [{:filename.basename(f), :filename.dirname(f)} |
-         expand_files(fs)]
+    [
+      {:filename.basename(f), :filename.dirname(f)}
+      | expand_files(fs)
+    ]
   end
 
   defp expand_files([]) do
@@ -153,22 +212,26 @@ defmodule :m_edoc do
   end
 
   defp expand_sources(ss, opts) do
-    suffix = :proplists.get_value(:source_suffix, opts, '.erl')
-    ss1 = (for {f, d} <- ss do
-             {f, d}
-           end)
+    suffix = :proplists.get_value(:source_suffix, opts, ~c".erl")
+
+    ss1 =
+      for {f, d} <- ss do
+        {f, d}
+      end
+
     expand_sources(ss1, suffix, :sets.new(), [], [])
   end
 
   defp expand_sources([{f, d} | fs], suffix, s, as, ms) do
     m = :erlang.list_to_atom(:filename.rootname(f, suffix))
-    case (:sets.is_element(m, s)) do
+
+    case :sets.is_element(m, s) do
       true ->
         expand_sources(fs, suffix, s, as, ms)
+
       false ->
         s1 = :sets.add_element(m, s)
-        expand_sources(fs, suffix, s1, [{m, f, d} | as],
-                         [m | ms])
+        expand_sources(fs, suffix, s1, [{m, f, d} | as], [m | ms])
     end
   end
 
@@ -177,18 +240,20 @@ defmodule :m_edoc do
   end
 
   defp target_dir_info(dir, app, ms, opts) do
-    case (:proplists.get_bool(:new, opts)) do
+    case :proplists.get_bool(:new, opts) do
       true ->
         {app, ms}
+
       false ->
         {app1, ms1} = :edoc_lib.read_info_file(dir)
+
         {cond do
            app == :no_app ->
              app1
+
            true ->
              app
-         end,
-           ms ++ ms1}
+         end, ms ++ ms1}
     end
   end
 
@@ -197,8 +262,12 @@ defmodule :m_edoc do
   end
 
   def toc(dir, opts) do
-    paths = :proplists.append_values(:doc_path,
-                                       opts) ++ :edoc_lib.find_doc_dirs()
+    paths =
+      :proplists.append_values(
+        :doc_path,
+        opts
+      ) ++ :edoc_lib.find_doc_dirs()
+
     toc(dir, paths, opts)
   end
 
@@ -207,9 +276,11 @@ defmodule :m_edoc do
     ctxt = init_context(opts)
     env = :edoc_lib.get_doc_env(:"", [], opts)
     ctxt1 = r_doclet_context(ctxt, env: env)
+
     f = fn m ->
-             m.run(r_doclet_toc(paths: paths), ctxt1)
-        end
+      m.run(r_doclet_toc(paths: paths), ctxt1)
+    end
+
     :edoc_lib.run_doclet(f, opts)
   end
 
@@ -228,8 +299,9 @@ defmodule :m_edoc do
 
   def layout(doc, opts) do
     f = fn m ->
-             m.module(doc, opts)
-        end
+      m.module(doc, opts)
+    end
+
     :edoc_lib.run_layout(f, opts)
   end
 
@@ -247,71 +319,89 @@ defmodule :m_edoc do
 
   def read_source(name, opts0) do
     opts = expand_opts(opts0)
-    case (read_source_1(name, opts)) do
+
+    case read_source_1(name, opts) do
       {:ok, forms} ->
         check_forms(forms, name, opts)
         forms
+
       {:error, r} ->
-        :edoc_report.error({'error reading file \'~ts\'.', [:edoc_lib.filename(name)]})
+        :edoc_report.error({~c"error reading file '~ts'.", [:edoc_lib.filename(name)]})
         exit({:error, r})
     end
   end
 
   defp read_source_1(name, opts) do
-    case (:proplists.get_bool(:preprocess, opts)) do
+    case :proplists.get_bool(:preprocess, opts) do
       true ->
         read_source_2(name, opts)
+
       false ->
-        :epp_dodger.quick_parse_file(name,
-                                       opts ++ [{:no_fail, false}])
+        :epp_dodger.quick_parse_file(
+          name,
+          opts ++ [{:no_fail, false}]
+        )
     end
   end
 
   defp read_source_2(name, opts) do
-    includes = :proplists.append_values(:includes,
-                                          opts) ++ [:filename.dirname(name)]
+    includes =
+      :proplists.append_values(
+        :includes,
+        opts
+      ) ++ [:filename.dirname(name)]
+
     macros = :proplists.append_values(:macros, opts)
     parse_file(name, includes, macros)
   end
 
   defp parse_file(name, includes, macros) do
-    case (parse_file(:utf8, name, includes, macros)) do
+    case parse_file(:utf8, name, includes, macros) do
       :invalid_unicode ->
         parse_file(:latin1, name, includes, macros)
+
       ret ->
         ret
     end
   end
 
   defp parse_file(defEncoding, name, includes, macros) do
-    options = [{:name, name}, {:includes, includes},
-                                  {:macros, macros}, {:default_encoding,
-                                                        defEncoding}]
-    case (:epp.open([:extra | options])) do
+    options = [
+      {:name, name},
+      {:includes, includes},
+      {:macros, macros},
+      {:default_encoding, defEncoding}
+    ]
+
+    case :epp.open([:extra | options]) do
       {:ok, epp, extra} ->
         try do
           parse_file(epp)
         else
           forms ->
             encoding = :proplists.get_value(:encoding, extra)
-            case (find_invalid_unicode(forms)) do
+
+            case find_invalid_unicode(forms) do
               :invalid_unicode when encoding !== :utf8 ->
                 :invalid_unicode
+
               _ ->
                 {:ok, forms}
             end
         after
           _ = :epp.close(epp)
         end
+
       error ->
         error
     end
   end
 
   defp find_invalid_unicode([h | t]) do
-    case (h) do
+    case h do
       {:error, {_Line, :file_io_server, :invalid_unicode}} ->
         :invalid_unicode
+
       _Other ->
         find_invalid_unicode(t)
     end
@@ -322,26 +412,31 @@ defmodule :m_edoc do
   end
 
   defp parse_file(epp) do
-    case (scan_and_parse(epp)) do
+    case scan_and_parse(epp) do
       {:ok, form} ->
         [form | parse_file(epp)]
+
       {:error, e} ->
         [{:error, e} | parse_file(epp)]
+
       {:eof, location} ->
         [{:eof, location}]
     end
   end
 
   defp scan_and_parse(epp) do
-    case (:epp.scan_erl_form(epp)) do
+    case :epp.scan_erl_form(epp) do
       {:ok, toks0} ->
         toks = fix_last_line(toks0)
-        case (:erl_parse.parse_form(toks)) do
+
+        case :erl_parse.parse_form(toks) do
           {:ok, form} ->
             {:ok, form}
+
           else__ ->
             else__
         end
+
       else__ ->
         else__
     end
@@ -353,8 +448,7 @@ defmodule :m_edoc do
     fll(toks1, lastLine, [])
   end
 
-  defp fll([{category, anno0, symbol} | l], lastLine,
-            ts) do
+  defp fll([{category, anno0, symbol} | l], lastLine, ts) do
     anno = :erl_anno.set_line(lastLine, anno0)
     :lists.reverse(l, [{category, anno, symbol} | ts])
   end
@@ -369,34 +463,47 @@ defmodule :m_edoc do
 
   defp check_forms(fs, name, opts) do
     fun = fn f ->
-               case (:erl_syntax.type(f)) do
-                 :error_marker ->
-                   case (:erl_syntax.error_marker_info(f)) do
-                     {l, m, d} ->
-                       :edoc_report.error(l, name, {:format_error, m, d})
-                       case (:proplists.get_bool(:preprocess, opts)) do
-                         true ->
-                           :ok
-                         false ->
-                           helpful_message(name)
-                       end
-                     other ->
-                       :edoc_report.report(name, 'unknown error in source code: ~w.', [other])
-                   end
-                   exit(:error)
-                 _ ->
-                   :ok
-               end
+      case :erl_syntax.type(f) do
+        :error_marker ->
+          case :erl_syntax.error_marker_info(f) do
+            {l, m, d} ->
+              :edoc_report.error(l, name, {:format_error, m, d})
+
+              case :proplists.get_bool(:preprocess, opts) do
+                true ->
+                  :ok
+
+                false ->
+                  helpful_message(name)
+              end
+
+            other ->
+              :edoc_report.report(name, ~c"unknown error in source code: ~w.", [other])
           end
+
+          exit(:error)
+
+        _ ->
+          :ok
+      end
+    end
+
     :lists.foreach(fun, fs)
   end
 
   defp helpful_message(name) do
-    ms = ['If the error is caused by too exotic macro', 'definitions or uses of macros, adding option', '{preprocess, true} can help. See also edoc(3).']
-    :lists.foreach(fn m ->
-                        :edoc_report.report(name, m, [])
-                   end,
-                     ms)
+    ms = [
+      ~c"If the error is caused by too exotic macro",
+      ~c"definitions or uses of macros, adding option",
+      ~c"{preprocess, true} can help. See also edoc(3)."
+    ]
+
+    :lists.foreach(
+      fn m ->
+        :edoc_report.report(name, m, [])
+      end,
+      ms
+    )
   end
 
   def get_doc(file) do
@@ -411,5 +518,4 @@ defmodule :m_edoc do
   def get_doc(file, env, opts) do
     :edoc_extract.source(file, env, opts)
   end
-
 end

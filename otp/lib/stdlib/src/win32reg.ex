@@ -1,15 +1,18 @@
 defmodule :m_win32reg do
   use Bitwise
+
   def open(modes) do
-    case (:os.type()) do
+    case :os.type() do
       {:win32, _} ->
-        case (open_mode(modes, [])) do
+        case open_mode(modes, []) do
           {:error, reason} ->
             {:error, reason}
+
           modeStr ->
-            p = :erlang.open_port({:spawn, 'registry__drv__ ' ++ modeStr}, [])
+            p = :erlang.open_port({:spawn, ~c"registry__drv__ " ++ modeStr}, [])
             {:ok, {:win32reg, p}}
         end
+
       _ ->
         {:error, :enotsup}
     end
@@ -26,13 +29,15 @@ defmodule :m_win32reg do
     send(reg, {self(), {:command, cmd}})
     {:state, hkey, name} = get_result(reg)
     root = hkey_to_string(hkey)
+
     {:ok,
-       case (name) do
-         [] ->
-           root
-         _ ->
-           root ++ [?\\ | name]
-       end}
+     case name do
+       [] ->
+         root
+
+       _ ->
+         root ++ [?\\ | name]
+     end}
   end
 
   def change_key({:win32reg, reg}, key) when is_port(reg) do
@@ -44,11 +49,11 @@ defmodule :m_win32reg do
   end
 
   defp change_key(reg, cmd, key) do
-    case (parse_key(key, reg)) do
+    case parse_key(key, reg) do
       {:ok, hkey, path} ->
-        send(reg, {self(),
-                     {:command, [cmd, i32(hkey), path, 0]}})
+        send(reg, {self(), {:command, [cmd, i32(hkey), path, 0]}})
         get_result(reg)
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -63,15 +68,18 @@ defmodule :m_win32reg do
   def delete_key({:win32reg, reg}) when is_port(reg) do
     cmd = [0]
     send(reg, {self(), {:command, cmd}})
-    case (get_result(reg)) do
+
+    case get_result(reg) do
       {:state, _Hkey, []} ->
         {:error, :eperm}
+
       {:state, _Hkey, rest} ->
         [name | _] = split_key(rest)
-        :ok = change_key(reg, 1, '..')
+        :ok = change_key(reg, 1, ~c"..")
         cmd2 = [7]
         send(reg, {self(), {:command, [cmd2, name, 0]}})
         get_result(reg)
+
       {:error, erorr} ->
         {:error, erorr}
     end
@@ -79,12 +87,15 @@ defmodule :m_win32reg do
 
   def set_value({:win32reg, reg}, name0, value)
       when is_port(reg) do
-    name = (case (name0) do
-              :default ->
-                []
-              _ ->
-                name0
-            end)
+    name =
+      case name0 do
+        :default ->
+          []
+
+        _ ->
+          name0
+      end
+
     {type, v} = term_to_value(value)
     cmd = [6, type, name, 0, v]
     send(reg, {self(), {:command, cmd}})
@@ -92,19 +103,25 @@ defmodule :m_win32reg do
   end
 
   def value({:win32reg, reg}, name0) when is_port(reg) do
-    name = (case (name0) do
-              :default ->
-                []
-              _ ->
-                name0
-            end)
+    name =
+      case name0 do
+        :default ->
+          []
+
+        _ ->
+          name0
+      end
+
     cmd = [4, name, 0]
     send(reg, {self(), {:command, cmd}})
-    case (get_result(reg)) do
+
+    case get_result(reg) do
       {:value, {:default, value}} when name === [] ->
         {:ok, value}
+
       {:value, {^name, value}} ->
         {:ok, value}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -117,12 +134,15 @@ defmodule :m_win32reg do
   end
 
   def delete_value({:win32reg, reg}, name0) when is_port(reg) do
-    name = (case (name0) do
-              :default ->
-                []
-              _ ->
-                name0
-            end)
+    name =
+      case name0 do
+        :default ->
+          []
+
+        _ ->
+          name0
+      end
+
     cmd = [8, name, 0]
     send(reg, {self(), {:command, cmd}})
     get_result(reg)
@@ -146,8 +166,7 @@ defmodule :m_win32reg do
 
   defp expand([?% | rest], env0, result) do
     env = :lists.reverse(env0)
-    expand(rest, [],
-             :lists.reverse(:os.getenv(env, '')) ++ result)
+    expand(rest, [], :lists.reverse(:os.getenv(env, ~c"")) ++ result)
   end
 
   defp expand([c | rest], env, result) do
@@ -163,22 +182,26 @@ defmodule :m_win32reg do
   end
 
   defp collect_values(p, result) do
-    case (get_result(p)) do
+    case get_result(p) do
       :ok ->
         {:ok, :lists.reverse(result)}
+
       {:value, valueData} ->
         collect_values(p, [valueData | result])
+
       {:error, reason} ->
         {:error, reason}
     end
   end
 
   defp collect_keys(p, result) do
-    case (get_result(p)) do
+    case get_result(p) do
       :ok ->
         {:ok, :lists.reverse(result)}
+
       {:key, keyData} ->
         collect_keys(p, [keyData | result])
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -206,12 +229,16 @@ defmodule :m_win32reg do
   defp get_result1([?v | rest0]) do
     {:ok, type, rest1} = i32_on_head(rest0)
     {:ok, name0, value} = get_cstring(rest1)
-    name = (case (name0) do
-              [] ->
-                :default
-              _ ->
-                name0
-            end)
+
+    name =
+      case name0 do
+        [] ->
+          :default
+
+        _ ->
+          name0
+      end
+
     {:value, {name, encode_value(type, value)}}
   end
 
@@ -269,17 +296,15 @@ defmodule :m_win32reg do
   end
 
   defp i32(int) when is_integer(int) do
-    [(int >>> 24) &&& 255, (int >>> 16) &&& 255,
-                               (int >>> 8) &&& 255, int &&& 255]
+    [int >>> 24 &&& 255, int >>> 16 &&& 255, int >>> 8 &&& 255, int &&& 255]
   end
 
   defp i32([x1, x2, x3, x4]) do
-    x1 <<< 24 ||| (x2 <<< 16) ||| (x3 <<< 8) ||| x4
+    x1 <<< 24 ||| x2 <<< 16 ||| x3 <<< 8 ||| x4
   end
 
   defp i32_on_head([x1, x2, x3, x4 | rest]) do
-    {:ok, x1 <<< 24 ||| (x2 <<< 16) ||| (x3 <<< 8) ||| x4,
-       rest}
+    {:ok, x1 <<< 24 ||| x2 <<< 16 ||| x3 <<< 8 ||| x4, rest}
   end
 
   defp parse_key([?\\ | rest], _) do
@@ -296,19 +321,21 @@ defmodule :m_win32reg do
     {:state, rootHandle, name} = get_result(reg)
     original = split_key(name)
     relative = :lists.reverse(split_key(path))
-    case (parse_relative1(relative, original)) do
+
+    case parse_relative1(relative, original) do
       {:error, error} ->
         {:error, error}
+
       newPath ->
         {:ok, rootHandle, newPath}
     end
   end
 
-  defp parse_relative1(['..' | _], []) do
+  defp parse_relative1([~c".." | _], []) do
     {:error, :enoent}
   end
 
-  defp parse_relative1(['..' | t1], [_ | t2]) do
+  defp parse_relative1([~c".." | t1], [_ | t2]) do
     parse_relative1(t1, t2)
   end
 
@@ -325,7 +352,7 @@ defmodule :m_win32reg do
   end
 
   defp reverse_and_join([x | rest], result) do
-    reverse_and_join(rest, [x, '\\' | result])
+    reverse_and_join(rest, [x, ~c"\\" | result])
   end
 
   defp reverse_and_join([], result) do
@@ -353,15 +380,19 @@ defmodule :m_win32reg do
   end
 
   defp parse_root([?\\ | rest], result) do
-    root = (case (:lists.reverse(result)) do
-              [?h, ?k, ?e, ?y, ?_ | root0] ->
-                root0
-              root0 ->
-                root0
-            end)
-    case (root_to_handle(:erlang.list_to_atom(root))) do
+    root =
+      case :lists.reverse(result) do
+        [?h, ?k, ?e, ?y, ?_ | root0] ->
+          root0
+
+        root0 ->
+          root0
+      end
+
+    case root_to_handle(:erlang.list_to_atom(root)) do
       false ->
         {:error, :enoent}
+
       handle ->
         {:ok, handle, rest}
     end
@@ -376,87 +407,87 @@ defmodule :m_win32reg do
   end
 
   defp root_to_handle(:classes_root) do
-    2147483648
+    2_147_483_648
   end
 
   defp root_to_handle(:hkcr) do
-    2147483648
+    2_147_483_648
   end
 
   defp root_to_handle(:current_user) do
-    2147483649
+    2_147_483_649
   end
 
   defp root_to_handle(:hkcu) do
-    2147483649
+    2_147_483_649
   end
 
   defp root_to_handle(:local_machine) do
-    2147483650
+    2_147_483_650
   end
 
   defp root_to_handle(:hklm) do
-    2147483650
+    2_147_483_650
   end
 
   defp root_to_handle(:users) do
-    2147483651
+    2_147_483_651
   end
 
   defp root_to_handle(:hku) do
-    2147483651
+    2_147_483_651
   end
 
   defp root_to_handle(:current_config) do
-    2147483653
+    2_147_483_653
   end
 
   defp root_to_handle(:hkcc) do
-    2147483653
+    2_147_483_653
   end
 
   defp root_to_handle(:dyn_data) do
-    2147483654
+    2_147_483_654
   end
 
   defp root_to_handle(:hkdd) do
-    2147483654
+    2_147_483_654
   end
 
   defp root_to_handle(:performance_data) do
-    2147483652
+    2_147_483_652
   end
 
   defp root_to_handle(_) do
     false
   end
 
-  defp hkey_to_string(2147483648) do
-    '\\hkey_classes_root'
+  defp hkey_to_string(2_147_483_648) do
+    ~c"\\hkey_classes_root"
   end
 
-  defp hkey_to_string(2147483649) do
-    '\\hkey_current_user'
+  defp hkey_to_string(2_147_483_649) do
+    ~c"\\hkey_current_user"
   end
 
-  defp hkey_to_string(2147483650) do
-    '\\hkey_local_machine'
+  defp hkey_to_string(2_147_483_650) do
+    ~c"\\hkey_local_machine"
   end
 
-  defp hkey_to_string(2147483651) do
-    '\\hkey_users'
+  defp hkey_to_string(2_147_483_651) do
+    ~c"\\hkey_users"
   end
 
-  defp hkey_to_string(2147483652) do
-    '\\hkey_performance_data'
+  defp hkey_to_string(2_147_483_652) do
+    ~c"\\hkey_performance_data"
   end
 
-  defp hkey_to_string(2147483653) do
-    '\\hkey_current_config'
+  defp hkey_to_string(2_147_483_653) do
+    ~c"\\hkey_current_config"
   end
 
-  defp hkey_to_string(2147483654) do
-    '\\hkey_dyn_data'
+  defp hkey_to_string(2_147_483_654) do
+    ~c"\\hkey_dyn_data"
   end
 
   defp open_mode([:read | rest], result) do
@@ -474,5 +505,4 @@ defmodule :m_win32reg do
   defp open_mode(_, _) do
     {:error, :einval}
   end
-
 end

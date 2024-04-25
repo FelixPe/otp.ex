@@ -22,7 +22,12 @@ defmodule :m_beam_ssa_funs do
   Record.defrecord(:r_b_set, :b_set, anno: %{}, dst: :none, op: :undefined, args: [])
   Record.defrecord(:r_b_ret, :b_ret, anno: %{}, arg: :undefined)
 
-  Record.defrecord(:r_b_br, :b_br, anno: %{}, bool: :undefined, succ: :undefined, fail: :undefined)
+  Record.defrecord(:r_b_br, :b_br,
+    anno: %{},
+    bool: :undefined,
+    succ: :undefined,
+    fail: :undefined
+  )
 
   Record.defrecord(:r_b_switch, :b_switch,
     anno: %{},

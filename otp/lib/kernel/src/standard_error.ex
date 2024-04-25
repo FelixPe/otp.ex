@@ -2,41 +2,43 @@ defmodule :m_standard_error do
   use Bitwise
   @behaviour :supervisor_bridge
   def start_link() do
-    :supervisor_bridge.start_link({:local,
-                                     :standard_error_sup},
-                                    :standard_error, [])
+    :supervisor_bridge.start_link({:local, :standard_error_sup}, :standard_error, [])
   end
 
   def terminate(_Reason, pid) do
-    (try do
+    try do
       :erlang.exit(pid, :kill)
     catch
       :error, e -> {:EXIT, {e, __STACKTRACE__}}
       :exit, e -> {:EXIT, e}
       e -> e
-    end)
+    end
+
     :ok
   end
 
   def init([]) do
-    case ((try do
+    case (try do
             start_port([:out, :binary])
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       pid when is_pid(pid) ->
         {:ok, pid, pid}
+
       _ ->
         {:error, :no_stderror}
     end
   end
 
   defp start_port(portSettings) do
-    id = spawn(fn () ->
-                    server({:fd, 2, 2}, portSettings)
-               end)
+    id =
+      spawn(fn ->
+        server({:fd, 2, 2}, portSettings)
+      end)
+
     :erlang.register(:standard_error, id)
     id
   end
@@ -55,31 +57,33 @@ defmodule :m_standard_error do
 
   defp server_loop(port) do
     receive do
-      {:io_request, from, replyAs, request} when is_pid(from)
-                                                 ->
+      {:io_request, from, replyAs, request} when is_pid(from) ->
         _ = do_io_request(request, from, replyAs, port)
         server_loop(port)
+
       {:EXIT, ^port, :badsig} ->
         server_loop(port)
+
       {:EXIT, ^port, what} ->
         exit(what)
+
       _Other ->
         server_loop(port)
     end
   end
 
   defp get_fd_geometry(port) do
-    case ((try do
-            :erlang.port_control(port, 100 + 25889024, [])
+    case (try do
+            :erlang.port_control(port, 100 + 25_889_024, [])
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       list when length(list) === 8 ->
-        <<w :: size(32) - native,
-            h :: size(32) - native>> = :erlang.list_to_binary(list)
+        <<w::size(32)-native, h::size(32)-native>> = :erlang.list_to_binary(list)
         {w, h}
+
       _ ->
         :error
     end
@@ -91,75 +95,79 @@ defmodule :m_standard_error do
   end
 
   defp io_request({:put_chars, :unicode, chars}, port) do
-    case (wrap_characters_to_binary(chars, :unicode,
-                                      :erlang.get(:encoding))) do
+    case wrap_characters_to_binary(chars, :unicode, :erlang.get(:encoding)) do
       :error ->
         {:error, {:error, :put_chars}}
+
       bin ->
         put_chars(bin, port)
     end
   end
 
-  defp io_request({:put_chars, :unicode, mod, func, args},
-            port) do
-    case ((try do
+  defp io_request(
+         {:put_chars, :unicode, mod, func, args},
+         port
+       ) do
+    case (try do
             apply(mod, func, args)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       data when is_list(data) or is_binary(data) ->
-        case (wrap_characters_to_binary(data, :unicode,
-                                          :erlang.get(:encoding))) do
+        case wrap_characters_to_binary(data, :unicode, :erlang.get(:encoding)) do
           bin when is_binary(bin) ->
             put_chars(bin, port)
+
           :error ->
             {:error, {:error, :put_chars}}
         end
+
       _ ->
         {:error, {:error, :put_chars}}
     end
   end
 
   defp io_request({:put_chars, :latin1, chars}, port) do
-    case ((try do
-            :unicode.characters_to_binary(chars, :latin1,
-                                            :erlang.get(:encoding))
+    case (try do
+            :unicode.characters_to_binary(chars, :latin1, :erlang.get(:encoding))
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       data when is_binary(data) ->
         put_chars(data, port)
+
       _ ->
         {:error, {:error, :put_chars}}
     end
   end
 
   defp io_request({:put_chars, :latin1, mod, func, args}, port) do
-    case ((try do
+    case (try do
             apply(mod, func, args)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       data when is_list(data) or is_binary(data) ->
-        case ((try do
-                :unicode.characters_to_binary(data, :latin1,
-                                                :erlang.get(:encoding))
+        case (try do
+                :unicode.characters_to_binary(data, :latin1, :erlang.get(:encoding))
               catch
                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
                 :exit, e -> {:EXIT, e}
                 e -> e
-              end)) do
+              end) do
           bin when is_binary(bin) ->
             put_chars(bin, port)
+
           _ ->
             {:error, {:error, :put_chars}}
         end
+
       _ ->
         {:error, {:error, :put_chars}}
     end
@@ -174,18 +182,20 @@ defmodule :m_standard_error do
   end
 
   defp io_request({:get_geometry, :columns}, port) do
-    case (get_fd_geometry(port)) do
+    case get_fd_geometry(port) do
       {w, _H} ->
         {:ok, w}
+
       _ ->
         {:error, {:error, :enotsup}}
     end
   end
 
   defp io_request({:get_geometry, :rows}, port) do
-    case (get_fd_geometry(port)) do
+    case get_fd_geometry(port) do
       {_W, h} ->
         {:ok, h}
+
       _ ->
         {:error, {:error, :enotsup}}
     end
@@ -238,15 +248,22 @@ defmodule :m_standard_error do
 
   defp do_setopts(opts0) do
     opts = expand_encoding(opts0)
-    case (check_valid_opts(opts)) do
+
+    case check_valid_opts(opts) do
       true ->
-        :lists.foreach(fn {:encoding, enc} ->
-                            :erlang.put(:encoding, enc)
-                          {:onlcr, bool} ->
-                            :erlang.put(:onlcr, bool)
-                       end,
-                         opts)
+        :lists.foreach(
+          fn
+            {:encoding, enc} ->
+              :erlang.put(:encoding, enc)
+
+            {:onlcr, bool} ->
+              :erlang.put(:onlcr, bool)
+          end,
+          opts
+        )
+
         {:ok, :ok}
+
       false ->
         {:error, {:error, :enotsup}}
     end
@@ -257,8 +274,8 @@ defmodule :m_standard_error do
   end
 
   defp check_valid_opts([{:encoding, valid} | t])
-      when valid === :unicode or valid === :utf8 or
-             valid === :latin1 do
+       when valid === :unicode or valid === :utf8 or
+              valid === :latin1 do
     check_valid_opts(t)
   end
 
@@ -302,35 +319,43 @@ defmodule :m_standard_error do
 
   defp wrap_characters_to_binary(chars, from, to) do
     trNl = :erlang.get(:onlcr)
-    limit = (case (to) do
-               :latin1 ->
-                 255
-               _Else ->
-                 1114111
-             end)
-    case ((try do
+
+    limit =
+      case to do
+        :latin1 ->
+          255
+
+        _Else ->
+          1_114_111
+      end
+
+    case (try do
             :unicode.characters_to_list(chars, from)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end)) do
+          end) do
       l when is_list(l) ->
-        :unicode.characters_to_binary(for x <- l do
-                                        case (x) do
-                                          ?\n when trNl ->
-                                            '\r\n'
-                                          high when high > limit ->
-                                            ['\\x{', :erlang.integer_to_list(x, 16),
-                                                    ?}]
-                                          low ->
-                                            low
-                                        end
-                                      end,
-                                        :unicode, to)
+        :unicode.characters_to_binary(
+          for x <- l do
+            case x do
+              ?\n when trNl ->
+                ~c"\r\n"
+
+              high when high > limit ->
+                [~c"\\x{", :erlang.integer_to_list(x, 16), ?}]
+
+              low ->
+                low
+            end
+          end,
+          :unicode,
+          to
+        )
+
       _ ->
         :error
     end
   end
-
 end

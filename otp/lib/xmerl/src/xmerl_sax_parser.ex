@@ -1,42 +1,59 @@
 defmodule :m_xmerl_sax_parser do
   use Bitwise
   require Record
-  Record.defrecord(:r_xmerl_sax_parser_state, :xmerl_sax_parser_state, event_state: :undefined,
-                                                  event_fun: :undefined,
-                                                  continuation_state: :undefined,
-                                                  continuation_fun: :undefined,
-                                                  encoding: :utf8, line_no: 1,
-                                                  ns: [], current_tag: [],
-                                                  end_tags: [],
-                                                  match_end_tags: true,
-                                                  ref_table: :undefined,
-                                                  standalone: :no,
-                                                  file_type: :normal,
-                                                  current_location: :undefined,
-                                                  entity: :undefined,
-                                                  skip_external_dtd: false,
-                                                  input_type: :undefined,
-                                                  attribute_values: [],
-                                                  allow_entities: true,
-                                                  entity_recurse_limit: 3,
-                                                  external_entities: :all,
-                                                  fail_undeclared_ref: true)
+
+  Record.defrecord(:r_xmerl_sax_parser_state, :xmerl_sax_parser_state,
+    event_state: :undefined,
+    event_fun: :undefined,
+    continuation_state: :undefined,
+    continuation_fun: :undefined,
+    encoding: :utf8,
+    line_no: 1,
+    ns: [],
+    current_tag: [],
+    end_tags: [],
+    match_end_tags: true,
+    ref_table: :undefined,
+    standalone: :no,
+    file_type: :normal,
+    current_location: :undefined,
+    entity: :undefined,
+    skip_external_dtd: false,
+    input_type: :undefined,
+    attribute_values: [],
+    allow_entities: true,
+    entity_recurse_limit: 3,
+    external_entities: :all,
+    fail_undeclared_ref: true
+  )
+
   def file(name, options) do
-    case (:file.open(name,
-                       [:raw, :read_ahead, :read, :binary])) do
+    case :file.open(
+           name,
+           [:raw, :read_ahead, :read, :binary]
+         ) do
       {:error, reason} ->
         {:error, {name, :file.format_error(reason)}}
+
       {:ok, fD} ->
         dir = :filename.dirname(name)
         cL = :filename.absname(dir)
         file = :filename.basename(name)
         continuationFun = &default_continuation_cb/1
-        res = stream(<<>>,
-                       [{:continuation_fun, continuationFun},
-                            {:continuation_state, fD}, {:current_location, cL},
-                                                           {:entity, file} |
-                                                               options],
-                       :file)
+
+        res =
+          stream(
+            <<>>,
+            [
+              {:continuation_fun, continuationFun},
+              {:continuation_state, fD},
+              {:current_location, cL},
+              {:entity, file}
+              | options
+            ],
+            :file
+          )
+
         :ok = :file.close(fD)
         res
     end
@@ -46,42 +63,63 @@ defmodule :m_xmerl_sax_parser do
     stream(xml, options, :stream)
   end
 
-  def stream(xml, options, inputType) when (is_list(xml) and
-                                          is_list(options)) do
+  def stream(xml, options, inputType)
+      when is_list(xml) and
+             is_list(options) do
     state = parse_options(options, initial_state())
-    case (r_xmerl_sax_parser_state(state, :file_type)) do
+
+    case r_xmerl_sax_parser_state(state, :file_type) do
       :dtd ->
-        :xmerl_sax_parser_list.parse_dtd(xml,
-                                           r_xmerl_sax_parser_state(state, encoding: :list, 
-                                                      input_type: inputType))
+        :xmerl_sax_parser_list.parse_dtd(
+          xml,
+          r_xmerl_sax_parser_state(state,
+            encoding: :list,
+            input_type: inputType
+          )
+        )
+
       :normal ->
-        :xmerl_sax_parser_list.parse(xml,
-                                       r_xmerl_sax_parser_state(state, encoding: :list, 
-                                                  input_type: inputType))
+        :xmerl_sax_parser_list.parse(
+          xml,
+          r_xmerl_sax_parser_state(state,
+            encoding: :list,
+            input_type: inputType
+          )
+        )
     end
   end
 
-  def stream(xml, options, inputType) when (is_binary(xml) and
-                                          is_list(options)) do
-    case (parse_options(options, initial_state())) do
+  def stream(xml, options, inputType)
+      when is_binary(xml) and
+             is_list(options) do
+    case parse_options(options, initial_state()) do
       {:error, reason} ->
         {:error, reason}
+
       state ->
-        parseFunction = (case (r_xmerl_sax_parser_state(state, :file_type)) do
-                           :dtd ->
-                             :parse_dtd
-                           :normal ->
-                             :parse
-                         end)
+        parseFunction =
+          case r_xmerl_sax_parser_state(state, :file_type) do
+            :dtd ->
+              :parse_dtd
+
+            :normal ->
+              :parse
+          end
+
         try do
           {xml1, state1} = detect_charset(xml, state)
-          parse_binary(xml1, r_xmerl_sax_parser_state(state1, input_type: inputType),
-                         parseFunction)
+
+          parse_binary(
+            xml1,
+            r_xmerl_sax_parser_state(state1, input_type: inputType),
+            parseFunction
+          )
         catch
           {:fatal_error, {state2, reason}} ->
             {:fatal_error,
-               {r_xmerl_sax_parser_state(state2, :current_location), r_xmerl_sax_parser_state(state2, :entity), 1},
-               reason, [], r_xmerl_sax_parser_state(state2, :event_state)}
+             {r_xmerl_sax_parser_state(state2, :current_location),
+              r_xmerl_sax_parser_state(state2, :entity), 1}, reason, [],
+             r_xmerl_sax_parser_state(state2, :event_state)}
         end
     end
   end
@@ -90,8 +128,7 @@ defmodule :m_xmerl_sax_parser do
     apply(:xmerl_sax_parser_utf8, f, [xml, state])
   end
 
-  defp parse_binary(xml, r_xmerl_sax_parser_state(encoding: {:utf16, :little}) = state,
-            f) do
+  defp parse_binary(xml, r_xmerl_sax_parser_state(encoding: {:utf16, :little}) = state, f) do
     apply(:xmerl_sax_parser_utf16le, f, [xml, state])
   end
 
@@ -104,13 +141,19 @@ defmodule :m_xmerl_sax_parser do
   end
 
   defp parse_binary(_, r_xmerl_sax_parser_state(encoding: enc), state) do
-    throw({:fatal_error,
-             {state, :lists.flatten(:io_lib.format('Character set ~p not supported', [enc]))}})
+    throw(
+      {:fatal_error,
+       {state, :lists.flatten(:io_lib.format(~c"Character set ~p not supported", [enc]))}}
+    )
   end
 
   defp initial_state() do
-    r_xmerl_sax_parser_state(event_fun: &default_event_cb/3, ns: [{'xml', 'http://www.w3.org/XML/1998/namespace'}],
-        current_location: '.', entity: '')
+    r_xmerl_sax_parser_state(
+      event_fun: &default_event_cb/3,
+      ns: [{~c"xml", ~c"http://www.w3.org/XML/1998/namespace"}],
+      current_location: ~c".",
+      entity: ~c""
+    )
   end
 
   defp parse_options([], state) do
@@ -125,10 +168,14 @@ defmodule :m_xmerl_sax_parser do
     parse_options(options, r_xmerl_sax_parser_state(state, event_fun: cbF))
   end
 
-  defp parse_options([{:continuation_state, cState} | options],
-            state) do
-    parse_options(options,
-                    r_xmerl_sax_parser_state(state, continuation_state: cState))
+  defp parse_options(
+         [{:continuation_state, cState} | options],
+         state
+       ) do
+    parse_options(
+      options,
+      r_xmerl_sax_parser_state(state, continuation_state: cState)
+    )
   end
 
   defp parse_options([{:continuation_fun, cF} | options], state) do
@@ -136,14 +183,15 @@ defmodule :m_xmerl_sax_parser do
   end
 
   defp parse_options([{:file_type, fT} | options], state)
-      when fT == :normal or fT == :dtd do
+       when fT == :normal or fT == :dtd do
     parse_options(options, r_xmerl_sax_parser_state(state, file_type: fT))
   end
 
   defp parse_options([{:encoding, e} | options], state) do
-    case (check_encoding_option(e)) do
+    case check_encoding_option(e) do
       {:error, reason} ->
         {:error, reason}
+
       enc ->
         parse_options(options, r_xmerl_sax_parser_state(state, encoding: enc))
     end
@@ -158,9 +206,13 @@ defmodule :m_xmerl_sax_parser do
   end
 
   defp parse_options([:skip_external_dtd | options], state) do
-    parse_options(options,
-                    r_xmerl_sax_parser_state(state, skip_external_dtd: true, 
-                               fail_undeclared_ref: false))
+    parse_options(
+      options,
+      r_xmerl_sax_parser_state(state,
+        skip_external_dtd: true,
+        fail_undeclared_ref: false
+      )
+    )
   end
 
   defp parse_options([:disallow_entities | options], state) do
@@ -168,30 +220,37 @@ defmodule :m_xmerl_sax_parser do
   end
 
   defp parse_options([{:entity_recurse_limit, n} | options], state)
-      when is_integer(n) do
-    parse_options(options,
-                    r_xmerl_sax_parser_state(state, entity_recurse_limit: n))
+       when is_integer(n) do
+    parse_options(
+      options,
+      r_xmerl_sax_parser_state(state, entity_recurse_limit: n)
+    )
   end
 
   defp parse_options([{:external_entities, type} | options], state)
-      when type === :all or type === :file or
-             type === :none do
-    parse_options(options,
-                    r_xmerl_sax_parser_state(state, external_entities: type))
+       when type === :all or type === :file or
+              type === :none do
+    parse_options(
+      options,
+      r_xmerl_sax_parser_state(state, external_entities: type)
+    )
   end
 
   defp parse_options([{:fail_undeclared_ref, bool} | options], state)
-      when is_boolean(bool) do
-    parse_options(options,
-                    r_xmerl_sax_parser_state(state, fail_undeclared_ref: bool))
+       when is_boolean(bool) do
+    parse_options(
+      options,
+      r_xmerl_sax_parser_state(state, fail_undeclared_ref: bool)
+    )
   end
 
   defp parse_options([o | _], _State) do
-    {:error, :lists.flatten(:io_lib.format('Option: ~p not supported', [o]))}
+    {:error, :lists.flatten(:io_lib.format(~c"Option: ~p not supported", [o]))}
   end
 
-  defp check_encoding_option(e) when e == :utf8 or e == {:utf16, :little} or
-                    e == {:utf16, :big} or e == :latin1 or e == :list do
+  defp check_encoding_option(e)
+       when e == :utf8 or e == {:utf16, :little} or
+              e == {:utf16, :big} or e == :latin1 or e == :list do
     e
   end
 
@@ -200,12 +259,14 @@ defmodule :m_xmerl_sax_parser do
   end
 
   defp check_encoding_option(e) do
-    {:error, :io_lib.format('Character set ~p not supported', [e])}
+    {:error, :io_lib.format(~c"Character set ~p not supported", [e])}
   end
 
-  defp detect_charset(<<>>,
-            r_xmerl_sax_parser_state(continuation_fun: :undefined) = state) do
-    throw({:fatal_error, {state, 'Can\'t detect character encoding due to lack of indata'}})
+  defp detect_charset(
+         <<>>,
+         r_xmerl_sax_parser_state(continuation_fun: :undefined) = state
+       ) do
+    throw({:fatal_error, {state, ~c"Can't detect character encoding due to lack of indata"}})
   end
 
   defp detect_charset(<<>>, state) do
@@ -213,12 +274,12 @@ defmodule :m_xmerl_sax_parser do
   end
 
   defp detect_charset(bytes, state) do
-    case (:unicode.bom_to_encoding(bytes)) do
+    case :unicode.bom_to_encoding(bytes) do
       {:latin1, 0} ->
         detect_charset_1(bytes, state)
+
       {enc, length} ->
-        <<_ :: size(length) - binary,
-            realBytes :: binary>> = bytes
+        <<_::size(length)-binary, realBytes::binary>> = bytes
         {realBytes, r_xmerl_sax_parser_state(state, encoding: enc)}
     end
   end
@@ -235,7 +296,7 @@ defmodule :m_xmerl_sax_parser do
     cf(xml, state, &detect_charset_1/2)
   end
 
-  defp detect_charset_1(<<0, 60, 0, 63, _ :: binary>> = xml, state) do
+  defp detect_charset_1(<<0, 60, 0, 63, _::binary>> = xml, state) do
     {xml, r_xmerl_sax_parser_state(state, encoding: {:utf16, :big})}
   end
 
@@ -251,7 +312,7 @@ defmodule :m_xmerl_sax_parser do
     cf(xml, state, &detect_charset_1/2)
   end
 
-  defp detect_charset_1(<<60, 0, 63, 0, _ :: binary>> = xml, state) do
+  defp detect_charset_1(<<60, 0, 63, 0, _::binary>> = xml, state) do
     {xml, r_xmerl_sax_parser_state(state, encoding: {:utf16, :little})}
   end
 
@@ -271,18 +332,25 @@ defmodule :m_xmerl_sax_parser do
     cf(xml, state, &detect_charset_1/2)
   end
 
-  defp detect_charset_1(<<60, 63, 120, 109, 108, xml2 :: binary>>,
-            state) do
-    {xml3, state1} = read_until_end_of_xml_directive(xml2,
-                                                       state)
+  defp detect_charset_1(
+         <<60, 63, 120, 109, 108, xml2::binary>>,
+         state
+       ) do
+    {xml3, state1} =
+      read_until_end_of_xml_directive(
+        xml2,
+        state
+      )
+
     attrList = parse_xml_directive(xml3, state)
-    case (:lists.keysearch('encoding', 1, attrList)) do
+
+    case :lists.keysearch(~c"encoding", 1, attrList) do
       {:value, {_, e}} ->
         enc = convert_encoding(e, state)
-        {<<60, 63, 120, 109, 108, xml3 :: binary>>,
-           r_xmerl_sax_parser_state(state1, encoding: enc)}
+        {<<60, 63, 120, 109, 108, xml3::binary>>, r_xmerl_sax_parser_state(state1, encoding: enc)}
+
       _ ->
-        {<<60, 63, 120, 109, 108, xml3 :: binary>>, state1}
+        {<<60, 63, 120, 109, 108, xml3::binary>>, state1}
     end
   end
 
@@ -291,70 +359,83 @@ defmodule :m_xmerl_sax_parser do
   end
 
   defp convert_encoding(enc, state) do
-    case (:string.to_lower(enc)) do
-      'utf-8' ->
+    case :string.to_lower(enc) do
+      ~c"utf-8" ->
         :utf8
-      'us-ascii' ->
+
+      ~c"us-ascii" ->
         :utf8
-      'latin1' ->
+
+      ~c"latin1" ->
         :latin1
-      'iso-8859-1' ->
+
+      ~c"iso-8859-1" ->
         :latin1
-      'iso-8859-2' ->
+
+      ~c"iso-8859-2" ->
         :latin1
-      'iso-8859-3' ->
+
+      ~c"iso-8859-3" ->
         :latin1
-      'iso-8859-4' ->
+
+      ~c"iso-8859-4" ->
         :latin1
-      'iso-8859-5' ->
+
+      ~c"iso-8859-5" ->
         :latin1
-      'iso-8859-6' ->
+
+      ~c"iso-8859-6" ->
         :latin1
-      'iso-8859-7' ->
+
+      ~c"iso-8859-7" ->
         :latin1
-      'iso-8859-8' ->
+
+      ~c"iso-8859-8" ->
         :latin1
-      'iso-8859-9' ->
+
+      ~c"iso-8859-9" ->
         :latin1
+
       _ ->
-        throw({:fatal_error, {state, 'Unknown encoding: ' ++ enc}})
+        throw({:fatal_error, {state, ~c"Unknown encoding: " ++ enc}})
     end
   end
 
-  defp parse_xml_directive(<<c, rest :: binary>>, state) when c === 32 or
-                                               c === 13 or c === 10 or
-                                               c === 9 do
+  defp parse_xml_directive(<<c, rest::binary>>, state)
+       when c === 32 or
+              c === 13 or c === 10 or
+              c === 9 do
     parse_xml_directive_1(rest, [], state)
   end
 
   defp parse_xml_directive(_, state) do
-    throw({:fatal_error, {state, 'Expected whitespace in directive'}})
+    throw({:fatal_error, {state, ~c"Expected whitespace in directive"}})
   end
 
-  defp parse_xml_directive_1(<<c, rest :: binary>>, acc, state)
-      when c === 32 or c === 13 or c === 10 or c === 9 do
+  defp parse_xml_directive_1(<<c, rest::binary>>, acc, state)
+       when c === 32 or c === 13 or c === 10 or c === 9 do
     parse_xml_directive_1(rest, acc, state)
   end
 
-  defp parse_xml_directive_1(<<"?>", _ :: binary>>, acc, _State) do
+  defp parse_xml_directive_1(<<"?>", _::binary>>, acc, _State) do
     acc
   end
 
-  defp parse_xml_directive_1(<<c, rest :: binary>>, acc, state)
-      when (97 <= c and c <= 122) do
+  defp parse_xml_directive_1(<<c, rest::binary>>, acc, state)
+       when 97 <= c and c <= 122 do
     {name, rest1} = parse_name(rest, [c])
     rest2 = parse_eq(rest1, state)
     {value, rest3} = parse_value(rest2, state)
-    parse_xml_directive_1(rest3, [{name, value} | acc],
-                            state)
+    parse_xml_directive_1(rest3, [{name, value} | acc], state)
   end
 
   defp parse_xml_directive_1(_, _, state) do
-    throw({:fatal_error, {state, 'Unknown attribute in xml directive'}})
+    throw({:fatal_error, {state, ~c"Unknown attribute in xml directive"}})
   end
 
-  defp parse_name(<<c, rest :: binary>>, acc) when (97 <= c and
-                                              c <= 122) do
+  defp parse_name(<<c, rest::binary>>, acc)
+       when 97 <= c and
+              c <= 122 do
     parse_name(rest, [c | acc])
   end
 
@@ -362,45 +443,48 @@ defmodule :m_xmerl_sax_parser do
     {:lists.reverse(acc), rest}
   end
 
-  defp parse_eq(<<c, rest :: binary>>, state) when c === 32 or
-                                               c === 13 or c === 10 or
-                                               c === 9 do
+  defp parse_eq(<<c, rest::binary>>, state)
+       when c === 32 or
+              c === 13 or c === 10 or
+              c === 9 do
     parse_eq(rest, state)
   end
 
-  defp parse_eq(<<"=", rest :: binary>>, _State) do
+  defp parse_eq(<<"=", rest::binary>>, _State) do
     rest
   end
 
   defp parse_eq(_, state) do
-    throw({:fatal_error, {state, 'expecting = or whitespace'}})
+    throw({:fatal_error, {state, ~c"expecting = or whitespace"}})
   end
 
-  defp parse_value(<<c, rest :: binary>>, state) when c === 32 or
-                                               c === 13 or c === 10 or
-                                               c === 9 do
+  defp parse_value(<<c, rest::binary>>, state)
+       when c === 32 or
+              c === 13 or c === 10 or
+              c === 9 do
     parse_value(rest, state)
   end
 
-  defp parse_value(<<c, rest :: binary>>, state) when c == ?' or
-                                               c == ?" do
+  defp parse_value(<<c, rest::binary>>, state)
+       when c == ?' or
+              c == ?" do
     parse_value_1(rest, c, [], state)
   end
 
   defp parse_value(_, state) do
-    throw({:fatal_error, {state, '\', " or whitespace expected'}})
+    throw({:fatal_error, {state, ~c"', \" or whitespace expected"}})
   end
 
-  defp parse_value_1(<<stop, rest :: binary>>, stop, acc, _State) do
+  defp parse_value_1(<<stop, rest::binary>>, stop, acc, _State) do
     {:lists.reverse(acc), rest}
   end
 
-  defp parse_value_1(<<c, rest :: binary>>, stop, acc, state) do
+  defp parse_value_1(<<c, rest::binary>>, stop, acc, state) do
     parse_value_1(rest, stop, [c | acc], state)
   end
 
   defp parse_value_1(_, _Stop, _Acc, state) do
-    throw({:fatal_error, {state, 'end of input and no \' or " found'}})
+    throw({:fatal_error, {state, ~c"end of input and no ' or \" found"}})
   end
 
   defp default_event_cb(_Event, _LineNo, state) do
@@ -408,77 +492,100 @@ defmodule :m_xmerl_sax_parser do
   end
 
   def default_continuation_cb(ioDevice) do
-    case (:file.read(ioDevice, 1024)) do
+    case :file.read(ioDevice, 1024) do
       :eof ->
         {<<>>, ioDevice}
+
       {:ok, fileBin} ->
         {fileBin, ioDevice}
     end
   end
 
   defp read_until_end_of_xml_directive(rest, state) do
-    case (:binary.match(rest, "?>")) do
+    case :binary.match(rest, "?>") do
       :nomatch ->
-        case (cf(rest, state)) do
+        case cf(rest, state) do
           {<<>>, _} ->
-            throw({:fatal_error, {state, 'Can\'t detect character encoding due to lack of indata'}})
+            throw(
+              {:fatal_error, {state, ~c"Can't detect character encoding due to lack of indata"}}
+            )
+
           {newBytes, newState} ->
             read_until_end_of_xml_directive(newBytes, newState)
         end
+
       _ ->
         {rest, state}
     end
   end
 
-  defp cf(_Rest,
-            r_xmerl_sax_parser_state(continuation_fun: :undefined) = state) do
-    throw({:fatal_error, {state, 'Continuation function undefined'}})
+  defp cf(
+         _Rest,
+         r_xmerl_sax_parser_state(continuation_fun: :undefined) = state
+       ) do
+    throw({:fatal_error, {state, ~c"Continuation function undefined"}})
   end
 
-  defp cf(rest,
-            r_xmerl_sax_parser_state(continuation_fun: cFun,
-                continuation_state: cState) = state) do
-    result = (try do
-                cFun.(cState)
-              catch
-                errorTerm ->
-                  throw({:fatal_error, {state, errorTerm}})
-                :exit, reason ->
-                  throw({:fatal_error, {state, {:EXIT, reason}}})
-              end)
-    case (result) do
+  defp cf(
+         rest,
+         r_xmerl_sax_parser_state(
+           continuation_fun: cFun,
+           continuation_state: cState
+         ) = state
+       ) do
+    result =
+      try do
+        cFun.(cState)
+      catch
+        errorTerm ->
+          throw({:fatal_error, {state, errorTerm}})
+
+        :exit, reason ->
+          throw({:fatal_error, {state, {:EXIT, reason}}})
+      end
+
+    case result do
       {<<>>, _} ->
-        throw({:fatal_error, {state, 'Can\'t detect character encoding due to lack of indata'}})
+        throw({:fatal_error, {state, ~c"Can't detect character encoding due to lack of indata"}})
+
       {newBytes, newContState} ->
-        {<<rest :: binary, newBytes :: binary>>,
-           r_xmerl_sax_parser_state(state, continuation_state: newContState)}
+        {<<rest::binary, newBytes::binary>>,
+         r_xmerl_sax_parser_state(state, continuation_state: newContState)}
     end
   end
 
-  defp cf(_Rest, r_xmerl_sax_parser_state(continuation_fun: :undefined) = state,
-            _) do
-    throw({:fatal_error, {state, 'Continuation function undefined'}})
+  defp cf(_Rest, r_xmerl_sax_parser_state(continuation_fun: :undefined) = state, _) do
+    throw({:fatal_error, {state, ~c"Continuation function undefined"}})
   end
 
-  defp cf(rest,
-            r_xmerl_sax_parser_state(continuation_fun: cFun,
-                continuation_state: cState) = state,
-            nextCall) do
-    result = (try do
-                cFun.(cState)
-              catch
-                errorTerm ->
-                  throw({:fatal_error, {state, errorTerm}})
-                :exit, reason ->
-                  throw({:fatal_error, {state, {:EXIT, reason}}})
-              end)
-    case (result) do
+  defp cf(
+         rest,
+         r_xmerl_sax_parser_state(
+           continuation_fun: cFun,
+           continuation_state: cState
+         ) = state,
+         nextCall
+       ) do
+    result =
+      try do
+        cFun.(cState)
+      catch
+        errorTerm ->
+          throw({:fatal_error, {state, errorTerm}})
+
+        :exit, reason ->
+          throw({:fatal_error, {state, {:EXIT, reason}}})
+      end
+
+    case result do
       {<<>>, _} ->
-        throw({:fatal_error, {state, 'Can\'t detect character encoding due to lack of indata'}})
+        throw({:fatal_error, {state, ~c"Can't detect character encoding due to lack of indata"}})
+
       {newBytes, newContState} ->
-        nextCall.(<<rest :: binary, newBytes :: binary>>,
-                    r_xmerl_sax_parser_state(state, continuation_state: newContState))
+        nextCall.(
+          <<rest::binary, newBytes::binary>>,
+          r_xmerl_sax_parser_state(state, continuation_state: newContState)
+        )
     end
   end
-
 end

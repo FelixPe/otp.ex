@@ -1,5 +1,6 @@
 defmodule :m_ordsets do
   use Bitwise
+
   def new() do
     []
   end
@@ -219,5 +220,4 @@ defmodule :m_ordsets do
   def filter(f, set) do
     :lists.filter(f, set)
   end
-
 end

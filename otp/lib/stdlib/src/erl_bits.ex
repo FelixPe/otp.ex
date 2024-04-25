@@ -1,9 +1,14 @@
 defmodule :m_erl_bits do
   use Bitwise
   require Record
-  Record.defrecord(:r_bittype, :bittype, type: :undefined,
-                                   unit: :undefined, sign: :undefined,
-                                   endian: :undefined)
+
+  Record.defrecord(:r_bittype, :bittype,
+    type: :undefined,
+    unit: :undefined,
+    sign: :undefined,
+    endian: :undefined
+  )
+
   def system_bitdefault() do
     :no_system_bitdefault
   end
@@ -13,8 +18,12 @@ defmodule :m_erl_bits do
   end
 
   def as_list(bt) do
-    [r_bittype(bt, :type), {:unit, r_bittype(bt, :unit)}, r_bittype(bt, :sign),
-                                              r_bittype(bt, :endian)]
+    [
+      r_bittype(bt, :type),
+      {:unit, r_bittype(bt, :unit)},
+      r_bittype(bt, :sign),
+      r_bittype(bt, :endian)
+    ]
   end
 
   def set_bit_type(size, :default) do
@@ -23,8 +32,7 @@ defmodule :m_erl_bits do
 
   def set_bit_type(size, typeList) do
     try do
-      r_bittype(type: type, unit: unit, sign: sign,
-          endian: endian) = set_bit(typeList)
+      r_bittype(type: type, unit: unit, sign: sign, endian: endian) = set_bit(typeList)
       apply_defaults(type, size, unit, sign, endian)
     catch
       error ->
@@ -90,8 +98,9 @@ defmodule :m_erl_bits do
     r_bittype(unit: :undefined)
   end
 
-  defp type_to_record({:unit, sz}) when (is_integer(sz) and sz > 0 and
-                               sz <= 256) do
+  defp type_to_record({:unit, sz})
+       when is_integer(sz) and sz > 0 and
+              sz <= 256 do
     r_bittype(unit: sz)
   end
 
@@ -120,8 +129,7 @@ defmodule :m_erl_bits do
   end
 
   defp merge_bittype(b1, b2) do
-    endian = merge_field(r_bittype(b1, :endian), r_bittype(b2, :endian),
-                           :endianness)
+    endian = merge_field(r_bittype(b1, :endian), r_bittype(b2, :endian), :endianness)
     sign = merge_field(r_bittype(b1, :sign), r_bittype(b2, :sign), :sign)
     type = merge_field(r_bittype(b1, :type), r_bittype(b2, :type), :type)
     unit = merge_field(r_bittype(b1, :unit), r_bittype(b2, :unit), :unit)
@@ -141,8 +149,7 @@ defmodule :m_erl_bits do
   end
 
   defp merge_field(x, y, what) do
-    throw({:error,
-             {:bittype_mismatch, x, y, :erlang.atom_to_list(what)}})
+    throw({:error, {:bittype_mismatch, x, y, :erlang.atom_to_list(what)}})
   end
 
   defp apply_defaults(:undefined, size, unit, sign, endian) do
@@ -197,8 +204,7 @@ defmodule :m_erl_bits do
 
   defp apply_defaults(type, size, unit, sign, endian) do
     check_size_unit(type, size, unit)
-    {:ok, size,
-       r_bittype(type: type, unit: unit, sign: sign, endian: endian)}
+    {:ok, size, r_bittype(type: type, unit: unit, sign: sign, endian: endian)}
   end
 
   defp check_size_unit(:utf8, size, unit) do
@@ -218,21 +224,27 @@ defmodule :m_erl_bits do
   end
 
   defp check_size_unit_1(size, unit) do
-    case (size) do
+    case size do
       :default ->
         :ok
+
       :undefined ->
         :ok
+
       {:atom, _, :undefined} ->
         :ok
+
       {:value, _, :undefined} ->
         :ok
+
       _ ->
         throw({:error, :utf_bittype_size_or_unit})
     end
-    case (unit) do
+
+    case unit do
       :undefined ->
         :ok
+
       _ ->
         throw({:error, :utf_bittype_size_or_unit})
     end
@@ -245,5 +257,4 @@ defmodule :m_erl_bits do
   defp check_unit(_) do
     throw({:error, :bittype_unit})
   end
-
 end

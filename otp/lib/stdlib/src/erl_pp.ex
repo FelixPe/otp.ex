@@ -1,18 +1,31 @@
 defmodule :m_erl_pp do
   use Bitwise
-  import :erl_parse, only: [func_prec: 0, inop_prec: 1,
-                              max_prec: 0, preop_prec: 1, type_inop_prec: 1,
-                              type_preop_prec: 1]
+
+  import :erl_parse,
+    only: [
+      func_prec: 0,
+      inop_prec: 1,
+      max_prec: 0,
+      preop_prec: 1,
+      type_inop_prec: 1,
+      type_preop_prec: 1
+    ]
+
   import :io_lib, only: [format: 2, write: 1]
-  import :lists, only: [append: 1, foldr: 3, map: 2,
-                          mapfoldl: 3, reverse: 1, reverse: 2]
+  import :lists, only: [append: 1, foldr: 3, map: 2, mapfoldl: 3, reverse: 1, reverse: 2]
   require Record
-  Record.defrecord(:r_pp, :pp, value_fun: :undefined,
-                              singleton_atom_type_fun: :undefined,
-                              string_fun: :undefined, char_fun: :undefined,
-                              linewidth: 72, indent: 4)
-  Record.defrecord(:r_options, :options, hook: :undefined,
-                                   encoding: :undefined, opts: :undefined)
+
+  Record.defrecord(:r_pp, :pp,
+    value_fun: :undefined,
+    singleton_atom_type_fun: :undefined,
+    string_fun: :undefined,
+    char_fun: :undefined,
+    linewidth: 72,
+    indent: 4
+  )
+
+  Record.defrecord(:r_options, :options, hook: :undefined, encoding: :undefined, opts: :undefined)
+
   def form(thing) do
     form(thing, :none)
   end
@@ -61,8 +74,7 @@ defmodule :m_erl_pp do
 
   def exprs(es, i, options) do
     :ok
-    frmt({:seq, [], [], [?,], lexprs(es, options(options))},
-           i, state(options))
+    frmt({:seq, [], [], [?,], lexprs(es, options(options))}, i, state(options))
   end
 
   def expr(e) do
@@ -87,20 +99,26 @@ defmodule :m_erl_pp do
 
   def legalize_vars({:function, aNNO, name0, arity, clauses0}) do
     :ok
+
     f = fn {:var, _Anno, name}, {valid, invalid} ->
-             str = ([first | _] = :erlang.atom_to_list(name))
-             case (first) do
-               x when (x >= ?a and x <= ?z) ->
-                 {valid, Map.put(invalid, name, str)}
-               _ ->
-                 {Map.put(valid, name, name), invalid}
-             end
-        end
+      str = [first | _] = :erlang.atom_to_list(name)
+
+      case first do
+        x when x >= ?a and x <= ?z ->
+          {valid, Map.put(invalid, name, str)}
+
+        _ ->
+          {Map.put(valid, name, name), invalid}
+      end
+    end
+
     {valid, invalid} = fold_vars(f, {%{}, %{}}, clauses0)
     mapping = :maps.fold(&legalize_name/3, valid, invalid)
+
     subs = fn {:var, anno, name} ->
-                {:var, anno, :erlang.map_get(name, mapping)}
-           end
+      {:var, anno, :erlang.map_get(name, mapping)}
+    end
+
     clauses = map_vars(subs, clauses0)
     {:function, aNNO, name0, arity, clauses}
   end
@@ -120,18 +138,24 @@ defmodule :m_erl_pp do
   end
 
   defp state(options) when is_list(options) do
-    quote = :proplists.get_bool(:quote_singleton_atom_types,
-                                  options)
-    state = (case (encoding(options)) do
-               :latin1 ->
-                 latin1_state(quote)
-               :unicode ->
-                 unicode_state(quote)
-             end)
+    quote =
+      :proplists.get_bool(
+        :quote_singleton_atom_types,
+        options
+      )
+
+    state =
+      case encoding(options) do
+        :latin1 ->
+          latin1_state(quote)
+
+        :unicode ->
+          unicode_state(quote)
+      end
+
     indent = :proplists.get_value(:indent, options, 4)
-    lineWidth = :proplists.get_value(:linewidth, options,
-                                       72)
-    r_pp(state, indent: indent,  linewidth: lineWidth)
+    lineWidth = :proplists.get_value(:linewidth, options, 72)
+    r_pp(state, indent: indent, linewidth: lineWidth)
   end
 
   defp state(_Hook) do
@@ -140,50 +164,67 @@ defmodule :m_erl_pp do
 
   defp latin1_state(quote) do
     options = [{:encoding, :latin1}]
+
     valueFun = fn v ->
-                    :io_lib_pretty.print(v, options)
-               end
-    singletonFun = (case (quote) do
-                      true ->
-                        fn a ->
-                             :io_lib.write_string_as_latin1(:erlang.atom_to_list(a),
-                                                              ?')
-                        end
-                      false ->
-                        valueFun
-                    end)
-    r_pp(value_fun: valueFun,
-        singleton_atom_type_fun: singletonFun,
-        string_fun: &:io_lib.write_string_as_latin1/1,
-        char_fun: &:io_lib.write_char_as_latin1/1)
+      :io_lib_pretty.print(v, options)
+    end
+
+    singletonFun =
+      case quote do
+        true ->
+          fn a ->
+            :io_lib.write_string_as_latin1(
+              :erlang.atom_to_list(a),
+              ?'
+            )
+          end
+
+        false ->
+          valueFun
+      end
+
+    r_pp(
+      value_fun: valueFun,
+      singleton_atom_type_fun: singletonFun,
+      string_fun: &:io_lib.write_string_as_latin1/1,
+      char_fun: &:io_lib.write_char_as_latin1/1
+    )
   end
 
   defp unicode_state(quote) do
     options = [{:encoding, :unicode}]
+
     valueFun = fn v ->
-                    :io_lib_pretty.print(v, options)
-               end
-    singletonFun = (case (quote) do
-                      true ->
-                        fn a ->
-                             :io_lib.write_string(:erlang.atom_to_list(a), ?')
-                        end
-                      false ->
-                        valueFun
-                    end)
-    r_pp(value_fun: valueFun,
-        singleton_atom_type_fun: singletonFun,
-        string_fun: &:io_lib.write_string/1,
-        char_fun: &:io_lib.write_char/1)
+      :io_lib_pretty.print(v, options)
+    end
+
+    singletonFun =
+      case quote do
+        true ->
+          fn a ->
+            :io_lib.write_string(:erlang.atom_to_list(a), ?')
+          end
+
+        false ->
+          valueFun
+      end
+
+    r_pp(
+      value_fun: valueFun,
+      singleton_atom_type_fun: singletonFun,
+      string_fun: &:io_lib.write_string/1,
+      char_fun: &:io_lib.write_char/1
+    )
   end
 
   defp encoding(options) do
-    case (:proplists.get_value(:encoding, options,
-                                 :epp.default_encoding())) do
+    case :proplists.get_value(:encoding, options, :epp.default_encoding()) do
       :latin1 ->
         :latin1
+
       :utf8 ->
         :unicode
+
       :unicode ->
         :unicode
     end
@@ -193,8 +234,10 @@ defmodule :m_erl_pp do
     lattribute({:attribute, anno, name, arg}, opts)
   end
 
-  defp lform({:function, anno, name, arity, clauses},
-            opts) do
+  defp lform(
+         {:function, anno, name, arity, clauses},
+         opts
+       ) do
     lfunction({:function, anno, name, arity, clauses}, opts)
   end
 
@@ -211,42 +254,54 @@ defmodule :m_erl_pp do
   end
 
   defp message(m, r_options(encoding: encoding)) do
-    f = (case (encoding) do
-           :latin1 ->
-             '~p\n'
-           :unicode ->
-             '~tp\n'
-         end)
+    f =
+      case encoding do
+        :latin1 ->
+          ~c"~p\n"
+
+        :unicode ->
+          ~c"~tp\n"
+      end
+
     leaf(format(f, [m]))
   end
 
   defp lattribute({:attribute, _Anno, :type, type}, opts) do
-    [typeattr(:type, type, opts), leaf('.\n')]
+    [typeattr(:type, type, opts), leaf(~c".\n")]
   end
 
   defp lattribute({:attribute, _Anno, :opaque, type}, opts) do
-    [typeattr(:opaque, type, opts), leaf('.\n')]
+    [typeattr(:opaque, type, opts), leaf(~c".\n")]
   end
 
   defp lattribute({:attribute, _Anno, :spec, arg}, _Opts) do
-    [specattr(:spec, arg), leaf('.\n')]
+    [specattr(:spec, arg), leaf(~c".\n")]
   end
 
   defp lattribute({:attribute, _Anno, :callback, arg}, _Opts) do
-    [specattr(:callback, arg), leaf('.\n')]
+    [specattr(:callback, arg), leaf(~c".\n")]
   end
 
   defp lattribute({:attribute, _Anno, name, arg}, opts) do
-    [lattribute(name, arg, opts), leaf('.\n')]
+    [lattribute(name, arg, opts), leaf(~c".\n")]
   end
 
   defp lattribute(:module, {m, vs}, _Opts) do
     a = a0()
-    attr(:module,
-           [{:var, a, pname(m)}, foldr(fn v, c ->
-                                            {:cons, a, {:var, a, v}, c}
-                                       end,
-                                         {nil, a}, vs)])
+
+    attr(
+      :module,
+      [
+        {:var, a, pname(m)},
+        foldr(
+          fn v, c ->
+            {:cons, a, {:var, a, v}, c}
+          end,
+          {nil, a},
+          vs
+        )
+      ]
+    )
   end
 
   defp lattribute(:module, m, _Opts) do
@@ -279,12 +334,14 @@ defmodule :m_erl_pp do
   end
 
   defp lattribute(:file, {name, anno}, _Opts) do
-    attr(:file,
-           [{:string, a0(), name}, {:integer, a0(), anno}])
+    attr(
+      :file,
+      [{:string, a0(), name}, {:integer, a0(), anno}]
+    )
   end
 
   defp lattribute(:record, {name, is}, opts) do
-    nl = [leaf('-record('), {:atom, name}, ?,]
+    nl = [leaf(~c"-record("), {:atom, name}, ?,]
     [{:first, nl, record_fields(is, opts)}, ?)]
   end
 
@@ -297,10 +354,11 @@ defmodule :m_erl_pp do
   end
 
   defp typeattr(tag, {typeName, type, args}, _Opts) do
-    {:first, leaf('-' ++ :erlang.atom_to_list(tag) ++ ' '),
-       typed(call({:atom, a0(), typeName}, args, 0,
-                    options(:none)),
-               type)}
+    {:first, leaf(~c"-" ++ :erlang.atom_to_list(tag) ++ ~c" "),
+     typed(
+       call({:atom, a0(), typeName}, args, 0, options(:none)),
+       type
+     )}
   end
 
   defp ltype(t) do
@@ -320,7 +378,7 @@ defmodule :m_erl_pp do
   end
 
   defp ltype({:type, _Anno, :union, ts}, prec) do
-    {_L, p, r} = type_inop_prec(:"|")
+    {_L, p, r} = type_inop_prec(:|)
     e = {:seq, [], [], [:" |"], ltypes(ts, r)}
     maybe_paren(p, prec, e)
   end
@@ -330,7 +388,7 @@ defmodule :m_erl_pp do
   end
 
   defp ltype({:type, _Anno, :nonempty_list, [t]}, _) do
-    {:seq, ?[, ?], [?,], [ltype(t), leaf('...')]}
+    {:seq, ?[, ?], [?,], [ltype(t), leaf(~c"...")]}
   end
 
   defp ltype({:type, anno, nil, []}, _) do
@@ -355,20 +413,26 @@ defmodule :m_erl_pp do
     tuple_type(ts, &ltype/2)
   end
 
-  defp ltype({:type, _Anno, :record, [{:atom, _, n} | fs]},
-            prec) do
+  defp ltype(
+         {:type, _Anno, :record, [{:atom, _, n} | fs]},
+         prec
+       ) do
     {p, _R} = type_preop_prec(:"#")
     e = record_type(n, fs)
     maybe_paren(p, prec, e)
   end
 
-  defp ltype({:type, _Anno, :range, [_I1, _I2] = es},
-            prec) do
-    {_L, p, r} = type_inop_prec(:"..")
+  defp ltype(
+         {:type, _Anno, :range, [_I1, _I2] = es},
+         prec
+       ) do
+    {_L, p, r} = type_inop_prec(:..)
+
     f = fn e, opts ->
-             lexpr(e, r, opts)
-        end
-    e = expr_list(es, :"..", f, options(:none))
+      lexpr(e, r, opts)
+    end
+
+    e = expr_list(es, :.., f, options(:none))
     maybe_paren(p, prec, e)
   end
 
@@ -377,18 +441,20 @@ defmodule :m_erl_pp do
   end
 
   defp ltype({:type, _Anno, :fun, []}, _) do
-    leaf('fun()')
+    leaf(~c"fun()")
   end
 
-  defp ltype({:type, _, :fun,
-             [{:type, _, :any}, _]} = funType,
-            _) do
+  defp ltype(
+         {:type, _, :fun, [{:type, _, :any}, _]} = funType,
+         _
+       ) do
     [fun_type([:fun, ?(], funType), ?)]
   end
 
-  defp ltype({:type, _Anno, :fun,
-             [{:type, _, :product, _}, _]} = funType,
-            _) do
+  defp ltype(
+         {:type, _Anno, :fun, [{:type, _, :product, _}, _]} = funType,
+         _
+       ) do
     [fun_type([:fun, ?(], funType), ?)]
   end
 
@@ -413,22 +479,32 @@ defmodule :m_erl_pp do
   end
 
   defp binary_type(i1, i2) do
-    b = (for {:integer, _, 0} <- [i1] do
-           []
-         end) === []
-    u = (for {:integer, _, 0} <- [i2] do
-           []
-         end) === []
+    b =
+      for {:integer, _, 0} <- [i1] do
+        []
+      end === []
+
+    u =
+      for {:integer, _, 0} <- [i2] do
+        []
+      end === []
+
     p = max_prec()
-    e1 = (for _ <- [:EFE_DUMMY_GEN], b do
-            [leaf('_:'), lexpr(i1, p, options(:none))]
-          end)
-    e2 = (for _ <- [:EFE_DUMMY_GEN], u do
-            [leaf('_:_*'), lexpr(i2, p, options(:none))]
-          end)
-    case (e1 ++ e2) do
+
+    e1 =
+      for _ <- [:EFE_DUMMY_GEN], b do
+        [leaf(~c"_:"), lexpr(i1, p, options(:none))]
+      end
+
+    e2 =
+      for _ <- [:EFE_DUMMY_GEN], u do
+        [leaf(~c"_:_*"), lexpr(i2, p, options(:none))]
+      end
+
+    case e1 ++ e2 do
       [] ->
-        leaf('<<>>')
+        leaf(~c"<<>>")
+
       es ->
         {:seq, :"<<", :">>", [?,], es}
     end
@@ -442,20 +518,18 @@ defmodule :m_erl_pp do
     tuple_type(fs, &map_pair_type/2)
   end
 
-  defp map_pair_type({:type, _Anno, :map_field_assoc,
-             [kType, vType]},
-            prec) do
-    {:list,
-       [{:cstep, [ltype(kType, prec), leaf(' =>')],
-           ltype(vType, prec)}]}
+  defp map_pair_type(
+         {:type, _Anno, :map_field_assoc, [kType, vType]},
+         prec
+       ) do
+    {:list, [{:cstep, [ltype(kType, prec), leaf(~c" =>")], ltype(vType, prec)}]}
   end
 
-  defp map_pair_type({:type, _Anno, :map_field_exact,
-             [kType, vType]},
-            prec) do
-    {:list,
-       [{:cstep, [ltype(kType, prec), leaf(' :=')],
-           ltype(vType, prec)}]}
+  defp map_pair_type(
+         {:type, _Anno, :map_field_exact, [kType, vType]},
+         prec
+       ) do
+    {:list, [{:cstep, [ltype(kType, prec), leaf(~c" :=")], ltype(vType, prec)}]}
   end
 
   defp record_type(name, fields) do
@@ -466,8 +540,10 @@ defmodule :m_erl_pp do
     tuple_type(fs, &field_type/2)
   end
 
-  defp field_type({:type, _Anno, :field_type, [name, type]},
-            _Prec) do
+  defp field_type(
+         {:type, _Anno, :field_type, [name, type]},
+         _Prec
+       ) do
     typed(lexpr(name, options(:none)), type)
   end
 
@@ -476,7 +552,7 @@ defmodule :m_erl_pp do
   end
 
   defp tuple_type([], _) do
-    leaf('{}')
+    leaf(~c"{}")
   end
 
   defp tuple_type(ts, f) do
@@ -484,21 +560,24 @@ defmodule :m_erl_pp do
   end
 
   defp specattr(specKind, {funcSpec, typeSpecs}) do
-    func = (case (funcSpec) do
-              {f, _A} ->
-                {:atom, f}
-              {m, f, _A} ->
-                [{:atom, m}, ?:, {:atom, f}]
-            end)
-    {:first, leaf(:lists.concat(['-', specKind, ' '])),
-       {:list, [{:first, func, spec_clauses(typeSpecs)}]}}
+    func =
+      case funcSpec do
+        {f, _A} ->
+          {:atom, f}
+
+        {m, f, _A} ->
+          [{:atom, m}, ?:, {:atom, f}]
+      end
+
+    {:first, leaf(:lists.concat([~c"-", specKind, ~c" "])),
+     {:list, [{:first, func, spec_clauses(typeSpecs)}]}}
   end
 
   defp spec_clauses(typeSpecs) do
     {:prefer_nl, [?;],
-       for t <- typeSpecs do
-         sig_type(t)
-       end}
+     for t <- typeSpecs do
+       sig_type(t)
+     end}
   end
 
   defp sig_type({:type, _Anno, :bounded_fun, [t, gs]}) do
@@ -511,30 +590,30 @@ defmodule :m_erl_pp do
 
   defp guard_type(before, gs) do
     opts = options(:none)
-    gl = {:list,
-            [{:step, :when,
-                expr_list(gs, [?,], &constraint/2, opts)}]}
+    gl = {:list, [{:step, :when, expr_list(gs, [?,], &constraint/2, opts)}]}
     {:list, [{:step, before, gl}]}
   end
 
-  defp constraint({:type, _Anno, :constraint,
-             [{:atom, _, :is_subtype}, [{:var, _, _} = v, type]]},
-            _Opts) do
+  defp constraint(
+         {:type, _Anno, :constraint, [{:atom, _, :is_subtype}, [{:var, _, _} = v, type]]},
+         _Opts
+       ) do
     typed(lexpr(v, options(:none)), type)
   end
 
-  defp constraint({:type, _Anno, :constraint, [tag, as]},
-            _Opts) do
+  defp constraint(
+         {:type, _Anno, :constraint, [tag, as]},
+         _Opts
+       ) do
     simple_type(tag, as)
   end
 
   defp fun_type(before, {:type, _, :fun, [fType, ret]}) do
-    {:first, before,
-       {:step, [type_args(fType), :" ->"], ltype(ret)}}
+    {:first, before, {:step, [type_args(fType), :" ->"], ltype(ret)}}
   end
 
   defp type_args({:type, _Anno, :any}) do
-    leaf('(...)')
+    leaf(~c"(...)")
   end
 
   defp type_args({:type, _line, :product, ts}) do
@@ -560,13 +639,11 @@ defmodule :m_erl_pp do
   end
 
   defp attr(name, args) do
-    {:first, [?-, {:atom, name}],
-       args(args, options(:none))}
+    {:first, [?-, {:atom, name}], args(args, options(:none))}
   end
 
   defp attrib(name, args) do
-    {:first, [?-, {:atom, name}],
-       [{:seq, ?(, ?), [?,], args}]}
+    {:first, [?-, {:atom, name}], [{:seq, ?(, ?), [?,], args}]}
   end
 
   defp pname([:"" | as]) do
@@ -590,25 +667,30 @@ defmodule :m_erl_pp do
   end
 
   defp falist(falist) do
-    l = (for fa <- falist do
-           (
-             {name, arity} = fa
-             [{:atom, name}, leaf(format('/~w', [arity]))]
-           )
-         end)
+    l =
+      for fa <- falist do
+        {name, arity} = fa
+        [{:atom, name}, leaf(format(~c"/~w", [arity]))]
+      end
+
     [{:seq, ?[, ?], ?,, l}]
   end
 
   defp lfunction({:function, _Anno, name, _Arity, cs}, opts) do
-    cll = nl_clauses(fn c, h ->
-                          func_clause(name, c, h)
-                     end,
-                       ?;, opts, cs)
-    [cll, leaf('.\n')]
+    cll =
+      nl_clauses(
+        fn c, h ->
+          func_clause(name, c, h)
+        end,
+        ?;,
+        opts,
+        cs
+      )
+
+    [cll, leaf(~c".\n")]
   end
 
-  defp func_clause(name, {:clause, anno, head, guard, body},
-            opts) do
+  defp func_clause(name, {:clause, anno, head, guard, body}, opts) do
     hl = call({:atom, anno, name}, head, 0, opts)
     gl = guard_when(hl, guard, opts)
     bl = body(body, opts)
@@ -625,9 +707,7 @@ defmodule :m_erl_pp do
   end
 
   defp lguard([e | es], opts) when is_list(e) do
-    {:list,
-       [{:step, :when,
-           expr_list([e | es], [?;], &guard0/2, opts)}]}
+    {:list, [{:step, :when, expr_list([e | es], [?;], &guard0/2, opts)}]}
   end
 
   defp lguard([e | es], opts) do
@@ -655,11 +735,11 @@ defmodule :m_erl_pp do
   end
 
   defp lexpr({:var, _, v}, _, _) when is_integer(v) do
-    leaf(format('_~w', [v]))
+    leaf(format(~c"_~w", [v]))
   end
 
   defp lexpr({:var, _, v}, _, _) do
-    leaf(format('~ts', [v]))
+    leaf(format(~c"~ts", [v]))
   end
 
   defp lexpr({:char, _, c}, _, _) do
@@ -691,31 +771,19 @@ defmodule :m_erl_pp do
   end
 
   defp lexpr({:lc, _, e, qs}, _Prec, opts) do
-    lcl = {:list,
-             [{:step, [lexpr(e, opts), leaf(' ||')],
-                 lc_quals(qs, opts)}]}
-    {:list,
-       [{:seq, ?[, [], [[]], [{:force_nl, leaf(' '), [lcl]}]},
-            ?]]}
+    lcl = {:list, [{:step, [lexpr(e, opts), leaf(~c" ||")], lc_quals(qs, opts)}]}
+    {:list, [{:seq, ?[, [], [[]], [{:force_nl, leaf(~c" "), [lcl]}]}, ?]]}
   end
 
   defp lexpr({:bc, _, e, qs}, _Prec, opts) do
     p = max_prec()
-    lcl = {:list,
-             [{:step, [lexpr(e, p, opts), leaf(' ||')],
-                 lc_quals(qs, opts)}]}
-    {:list,
-       [{:seq, :"<<", [], [[]], [{:force_nl, leaf(' '), [lcl]}]},
-            :">>"]}
+    lcl = {:list, [{:step, [lexpr(e, p, opts), leaf(~c" ||")], lc_quals(qs, opts)}]}
+    {:list, [{:seq, :"<<", [], [[]], [{:force_nl, leaf(~c" "), [lcl]}]}, :">>"]}
   end
 
   defp lexpr({:mc, _, e, qs}, _Prec, opts) do
-    lcl = {:list,
-             [{:step, [map_field(e, opts), leaf(' ||')],
-                 lc_quals(qs, opts)}]}
-    {:list,
-       [{:seq, :"\#{", [], [[]], [{:force_nl, leaf(' '), [lcl]}]},
-            ?}]}
+    lcl = {:list, [{:step, [map_field(e, opts), leaf(~c" ||")], lc_quals(qs, opts)}]}
+    {:list, [{:seq, :"\#{", [], [[]], [{:force_nl, leaf(~c" "), [lcl]}]}, ?}]}
   end
 
   defp lexpr({:tuple, _, elts}, _, opts) do
@@ -754,15 +822,14 @@ defmodule :m_erl_pp do
     maybe_paren(p, prec, el)
   end
 
-  defp lexpr({:record_field, _, {:atom, _, :""}, f}, prec,
-            opts) do
-    {_L, p, r} = inop_prec(:".")
+  defp lexpr({:record_field, _, {:atom, _, :""}, f}, prec, opts) do
+    {_L, p, r} = inop_prec(:.)
     el = [?., lexpr(f, r, opts)]
     maybe_paren(p, prec, el)
   end
 
   defp lexpr({:record_field, _, rec, f}, prec, opts) do
-    {l, p, r} = inop_prec(:".")
+    {l, p, r} = inop_prec(:.)
     el = [lexpr(rec, l, opts), ?., lexpr(f, r, opts)]
     maybe_paren(p, prec, el)
   end
@@ -782,101 +849,76 @@ defmodule :m_erl_pp do
   end
 
   defp lexpr({:block, _, es}, _, opts) do
-    {:list,
-       [{:step, :begin, body(es, opts)}, {:reserved, :end}]}
+    {:list, [{:step, :begin, body(es, opts)}, {:reserved, :end}]}
   end
 
   defp lexpr({:if, _, cs}, _, opts) do
-    {:list,
-       [{:step, :if, if_clauses(cs, opts)}, {:reserved, :end}]}
+    {:list, [{:step, :if, if_clauses(cs, opts)}, {:reserved, :end}]}
   end
 
   defp lexpr({:case, _, expr, cs}, _, opts) do
     {:list,
-       [{:step,
-           {:list,
-              [{:step, :case, lexpr(expr, opts)}, {:reserved, :of}]},
-           cr_clauses(cs, opts)},
-            {:reserved, :end}]}
+     [
+       {:step, {:list, [{:step, :case, lexpr(expr, opts)}, {:reserved, :of}]},
+        cr_clauses(cs, opts)},
+       {:reserved, :end}
+     ]}
   end
 
   defp lexpr({:cond, _, cs}, _, opts) do
-    {:list,
-       [{:step, leaf('cond'), cond_clauses(cs, opts)}, {:reserved,
-                                                     :end}]}
+    {:list, [{:step, leaf(~c"cond"), cond_clauses(cs, opts)}, {:reserved, :end}]}
   end
 
   defp lexpr({:receive, _, cs}, _, opts) do
-    {:list,
-       [{:step, :receive, cr_clauses(cs, opts)}, {:reserved,
-                                                    :end}]}
+    {:list, [{:step, :receive, cr_clauses(cs, opts)}, {:reserved, :end}]}
   end
 
   defp lexpr({:receive, _, cs, to, toOpt}, _, opts) do
-    al = {:list,
-            [{:step, [lexpr(to, opts), :" ->"], body(toOpt, opts)}]}
-    {:list,
-       [{:step, :receive, cr_clauses(cs, opts)}, {:step,
-                                                    :after, al},
-                                                     {:reserved, :end}]}
+    al = {:list, [{:step, [lexpr(to, opts), :" ->"], body(toOpt, opts)}]}
+    {:list, [{:step, :receive, cr_clauses(cs, opts)}, {:step, :after, al}, {:reserved, :end}]}
   end
 
   defp lexpr({:fun, _, {:function, f, a}}, _Prec, _Opts) do
-    [leaf('fun '), {:atom, f}, leaf(format('/~w', [a]))]
+    [leaf(~c"fun "), {:atom, f}, leaf(format(~c"/~w", [a]))]
   end
 
-  defp lexpr({:fun, a, {:function, _, _} = func, extra},
-            prec, opts) do
-    {:force_nl, fun_info(extra),
-       lexpr({:fun, a, func}, prec, opts)}
+  defp lexpr({:fun, a, {:function, _, _} = func, extra}, prec, opts) do
+    {:force_nl, fun_info(extra), lexpr({:fun, a, func}, prec, opts)}
   end
 
   defp lexpr({:fun, _, {:function, m, f, a}}, _Prec, opts) do
     nameItem = lexpr(m, opts)
     callItem = lexpr(f, opts)
     arityItem = lexpr(a, opts)
-    ['fun ', nameItem, ?:, callItem, ?/, arityItem]
+    [~c"fun ", nameItem, ?:, callItem, ?/, arityItem]
   end
 
   defp lexpr({:fun, _, {:clauses, cs}}, _Prec, opts) do
-    {:list,
-       [{:first, :fun, fun_clauses(cs, opts, :unnamed)},
-            {:reserved, :end}]}
+    {:list, [{:first, :fun, fun_clauses(cs, opts, :unnamed)}, {:reserved, :end}]}
   end
 
   defp lexpr({:named_fun, _, name, cs}, _Prec, opts) do
-    {:list,
-       [{:first, [:fun, ' '],
-           fun_clauses(cs, opts, {:named, name})},
-            {:reserved, :end}]}
+    {:list, [{:first, [:fun, ~c" "], fun_clauses(cs, opts, {:named, name})}, {:reserved, :end}]}
   end
 
-  defp lexpr({:fun, _, {:clauses, cs}, extra}, _Prec,
-            opts) do
+  defp lexpr({:fun, _, {:clauses, cs}, extra}, _Prec, opts) do
     {:force_nl, fun_info(extra),
-       {:list,
-          [{:first, :fun, fun_clauses(cs, opts, :unnamed)},
-               {:reserved, :end}]}}
+     {:list, [{:first, :fun, fun_clauses(cs, opts, :unnamed)}, {:reserved, :end}]}}
   end
 
-  defp lexpr({:named_fun, _, name, cs, extra}, _Prec,
-            opts) do
+  defp lexpr({:named_fun, _, name, cs, extra}, _Prec, opts) do
     {:force_nl, fun_info(extra),
-       {:list,
-          [{:first, [:fun, ' '],
-              fun_clauses(cs, opts, {:named, name})},
-               {:reserved, :end}]}}
+     {:list, [{:first, [:fun, ~c" "], fun_clauses(cs, opts, {:named, name})}, {:reserved, :end}]}}
   end
 
-  defp lexpr({:call, _,
-             {:remote, _, {:atom, _, m}, {:atom, _, f} = n} = name,
-             args},
-            prec, opts) do
-    case (:erl_internal.bif(m, f, length(args))) do
+  defp lexpr({:call, _, {:remote, _, {:atom, _, m}, {:atom, _, f} = n} = name, args}, prec, opts) do
+    case :erl_internal.bif(m, f, length(args)) do
       true when f !== :float ->
         call(n, args, prec, opts)
+
       true ->
         call(name, args, prec, opts)
+
       false ->
         call(name, args, prec, opts)
     end
@@ -888,25 +930,30 @@ defmodule :m_erl_pp do
 
   defp lexpr({:try, _, es, scs, ccs, as}, _, opts) do
     {:list,
-       [cond do
-          (scs === []) ->
-            {:step, :try, body(es, opts)}
-          true ->
-            {:step,
-               {:list,
-                  [{:step, :try, body(es, opts)}, {:reserved, :of}]},
-               cr_clauses(scs, opts)}
-        end] ++ (cond do
-                   (ccs === []) ->
-                     []
-                   true ->
-                     [{:step, :catch, try_clauses(ccs, opts)}]
-                 end) ++ (cond do
-                            (as === []) ->
-                              []
-                            true ->
-                              [{:step, :after, body(as, opts)}]
-                          end) ++ [{:reserved, :end}]}
+     [
+       cond do
+         scs === [] ->
+           {:step, :try, body(es, opts)}
+
+         true ->
+           {:step, {:list, [{:step, :try, body(es, opts)}, {:reserved, :of}]},
+            cr_clauses(scs, opts)}
+       end
+     ] ++
+       cond do
+         ccs === [] ->
+           []
+
+         true ->
+           [{:step, :catch, try_clauses(ccs, opts)}]
+       end ++
+       cond do
+         as === [] ->
+           []
+
+         true ->
+           [{:step, :after, body(as, opts)}]
+       end ++ [{:reserved, :end}]}
   end
 
   defp lexpr({:catch, _, expr}, prec, opts) do
@@ -916,33 +963,31 @@ defmodule :m_erl_pp do
   end
 
   defp lexpr({:maybe, _, es}, _, opts) do
-    {:list,
-       [{:step, :maybe, body(es, opts)}, {:reserved, :end}]}
+    {:list, [{:step, :maybe, body(es, opts)}, {:reserved, :end}]}
   end
 
   defp lexpr({:maybe, _, es, {:else, _, cs}}, _, opts) do
     {:list,
-       [{:step, :maybe, body(es, opts)}, {:step, :else,
-                                            cr_clauses(cs, opts)},
-                                             {:reserved, :end}]}
+     [{:step, :maybe, body(es, opts)}, {:step, :else, cr_clauses(cs, opts)}, {:reserved, :end}]}
   end
 
   defp lexpr({:maybe_match, _, lhs, rhs}, _, opts) do
     pl = lexpr(lhs, 0, opts)
     rl = lexpr(rhs, 0, opts)
-    {:list, [{:cstep, [pl, leaf(' ?=')], rl}]}
+    {:list, [{:cstep, [pl, leaf(~c" ?=")], rl}]}
   end
 
   defp lexpr({:match, _, lhs, rhs}, prec, opts) do
-    {l, p, r} = inop_prec(:"=")
+    {l, p, r} = inop_prec(:=)
     pl = lexpr(lhs, l, opts)
     rl = lexpr(rhs, r, opts)
     el = {:list, [{:cstep, [pl, :" ="], rl}]}
     maybe_paren(p, prec, el)
   end
 
-  defp lexpr({:op, _, op, arg}, prec, opts) when op === :"+" or
-                                                op === :- do
+  defp lexpr({:op, _, op, arg}, prec, opts)
+       when op === :+ or
+              op === :- do
     {p, r} = preop_prec(op)
     ol = {:reserved, leaf(:erlang.atom_to_list(op))}
     el = [ol, lexpr(arg, r, opts)]
@@ -951,16 +996,16 @@ defmodule :m_erl_pp do
 
   defp lexpr({:op, _, op, arg}, prec, opts) do
     {p, r} = preop_prec(op)
-    ol = {:reserved, leaf(format('~s ', [op]))}
+    ol = {:reserved, leaf(format(~c"~s ", [op]))}
     el = [ol, lexpr(arg, r, opts)]
     maybe_paren(p, prec, el)
   end
 
   defp lexpr({:op, _, op, larg, rarg}, prec, opts)
-      when op === :orelse or op === :andalso do
+       when op === :orelse or op === :andalso do
     {l, p, r} = inop_prec(op)
     ll = lexpr(larg, l, opts)
-    ol = {:reserved, leaf(format('~s', [op]))}
+    ol = {:reserved, leaf(format(~c"~s", [op]))}
     lr = lexpr(rarg, r, opts)
     el = {:prefer_nl, [[]], [ll, ol, lr]}
     maybe_paren(p, prec, el)
@@ -969,7 +1014,7 @@ defmodule :m_erl_pp do
   defp lexpr({:op, _, op, larg, rarg}, prec, opts) do
     {l, p, r} = inop_prec(op)
     ll = lexpr(larg, l, opts)
-    ol = {:reserved, leaf(format('~s', [op]))}
+    ol = {:reserved, leaf(format(~c"~s", [op]))}
     lr = lexpr(rarg, r, opts)
     el = {:list, [ll, ol, lr]}
     maybe_paren(p, prec, el)
@@ -991,16 +1036,15 @@ defmodule :m_erl_pp do
   end
 
   defp lexpr(other, _Precedence, r_options(hook: :none)) do
-    leaf(format('INVALID-FORM:~w:', [other]))
+    leaf(format(~c"INVALID-FORM:~w:", [other]))
   end
 
   defp lexpr(hookExpr, precedence, r_options(hook: {mod, func, eas}))
-      when mod !== :fun do
+       when mod !== :fun do
     {:ehook, hookExpr, precedence, {mod, func, eas}}
   end
 
-  defp lexpr(hookExpr, precedence,
-            r_options(hook: func, opts: options)) do
+  defp lexpr(hookExpr, precedence, r_options(hook: func, opts: options)) do
     {:hook, hookExpr, precedence, func, options}
   end
 
@@ -1027,11 +1071,11 @@ defmodule :m_erl_pp do
   end
 
   defp fun_info(extra) do
-    [leaf('% fun-info: '), {:value, extra}]
+    [leaf(~c"% fun-info: "), {:value, extra}]
   end
 
   defp bit_grp([], _Opts) do
-    leaf('<<>>')
+    leaf(~c"<<>>")
   end
 
   defp bit_grp(fs, opts) do
@@ -1045,15 +1089,20 @@ defmodule :m_erl_pp do
   defp bit_elem({:bin_element, _, expr, sz, types}, opts) do
     p = max_prec()
     vChars = lexpr(expr, p, opts)
-    sChars = (cond do
-                sz !== :default ->
-                  [vChars, ?:, lexpr(sz, p, opts)]
-                true ->
-                  vChars
-              end)
+
+    sChars =
+      cond do
+        sz !== :default ->
+          [vChars, ?:, lexpr(sz, p, opts)]
+
+        true ->
+          vChars
+      end
+
     cond do
       types !== :default ->
         [sChars, ?/ | bit_elem_types(types)]
+
       true ->
         sChars
     end
@@ -1068,9 +1117,14 @@ defmodule :m_erl_pp do
   end
 
   defp bit_elem_type({a, b}) do
-    [lexpr(:erl_parse.abstract(a), options(:none)), ?:,
-                                                        lexpr(:erl_parse.abstract(b),
-                                                                options(:none))]
+    [
+      lexpr(:erl_parse.abstract(a), options(:none)),
+      ?:,
+      lexpr(
+        :erl_parse.abstract(b),
+        options(:none)
+      )
+    ]
   end
 
   defp bit_elem_type(t) do
@@ -1086,16 +1140,17 @@ defmodule :m_erl_pp do
   end
 
   defp record_field({:record_field, _, f, val}, opts) do
-    {l, _P, r} = inop_prec(:"=")
+    {l, _P, r} = inop_prec(:=)
     fl = lexpr(f, l, opts)
     vl = lexpr(val, r, opts)
     {:list, [{:cstep, [fl, :" ="], vl}]}
   end
 
-  defp record_field({:typed_record_field,
-             {:record_field, _, f, val}, type},
-            opts) do
-    {l, _P, r} = inop_prec(:"=")
+  defp record_field(
+         {:typed_record_field, {:record_field, _, f, val}, type},
+         opts
+       ) do
+    {l, _P, r} = inop_prec(:=)
     fl = lexpr(f, l, opts)
     vl = typed(lexpr(val, r, opts), type)
     {:list, [{:cstep, [fl, :" ="], vl}]}
@@ -1115,12 +1170,12 @@ defmodule :m_erl_pp do
 
   defp map_field({:map_field_assoc, _, k, v}, opts) do
     pl = lexpr(k, 0, opts)
-    {:list, [{:step, [pl, leaf(' =>')], lexpr(v, 0, opts)}]}
+    {:list, [{:step, [pl, leaf(~c" =>")], lexpr(v, 0, opts)}]}
   end
 
   defp map_field({:map_field_exact, _, k, v}, opts) do
     pl = lexpr(k, 0, opts)
-    {:list, [{:step, [pl, leaf(' :=')], lexpr(v, 0, opts)}]}
+    {:list, [{:step, [pl, leaf(~c" :=")], lexpr(v, 0, opts)}]}
   end
 
   defp list({:cons, _, h, t}, es, opts) do
@@ -1153,7 +1208,7 @@ defmodule :m_erl_pp do
   end
 
   defp guard_no_when([], _) do
-    leaf('true')
+    leaf(~c"true")
   end
 
   defp cr_clauses(cs, opts) do
@@ -1171,8 +1226,10 @@ defmodule :m_erl_pp do
     clauses(&try_clause/2, opts, cs)
   end
 
-  defp try_clause({:clause, _, [{:tuple, _, [c, v, s]}], g, b},
-            opts) do
+  defp try_clause(
+         {:clause, _, [{:tuple, _, [c, v, s]}], g, b},
+         opts
+       ) do
     cs = lexpr(c, 0, opts)
     el = lexpr(v, 0, opts)
     csEl = [cs, ?:, el]
@@ -1195,11 +1252,15 @@ defmodule :m_erl_pp do
   end
 
   defp fun_clauses(cs, opts, {:named, name}) do
-    nl_clauses(fn c, h ->
-                    {:step, gl, bl} = fun_clause(c, h)
-                    {:step, [:erlang.atom_to_list(name), gl], bl}
-               end,
-                 [?;], opts, cs)
+    nl_clauses(
+      fn c, h ->
+        {:step, gl, bl} = fun_clause(c, h)
+        {:step, [:erlang.atom_to_list(name), gl], bl}
+      end,
+      [?;],
+      opts,
+      cs
+    )
   end
 
   defp fun_clause({:clause, _, a, g, b}, opts) do
@@ -1231,17 +1292,17 @@ defmodule :m_erl_pp do
 
   defp lc_qual({:m_generate, _, pat, e}, opts) do
     pl = map_field(pat, opts)
-    {:list, [{:step, [pl, leaf(' <-')], lexpr(e, 0, opts)}]}
+    {:list, [{:step, [pl, leaf(~c" <-")], lexpr(e, 0, opts)}]}
   end
 
   defp lc_qual({:b_generate, _, pat, e}, opts) do
     pl = lexpr(pat, 0, opts)
-    {:list, [{:step, [pl, leaf(' <=')], lexpr(e, 0, opts)}]}
+    {:list, [{:step, [pl, leaf(~c" <=")], lexpr(e, 0, opts)}]}
   end
 
   defp lc_qual({:generate, _, pat, e}, opts) do
     pl = lexpr(pat, 0, opts)
-    {:list, [{:step, [pl, leaf(' <-')], lexpr(e, 0, opts)}]}
+    {:list, [{:step, [pl, leaf(~c" <-")], lexpr(e, 0, opts)}]}
   end
 
   defp lc_qual(q, opts) do
@@ -1261,7 +1322,7 @@ defmodule :m_erl_pp do
   end
 
   defp tuple([], _F, _Opts) do
-    leaf('{}')
+    leaf(~c"{}")
   end
 
   defp tuple(es, f, opts) do
@@ -1322,8 +1383,7 @@ defmodule :m_erl_pp do
   end
 
   defp f([item | items], i0, sT, wT, pP) do
-    consecutive(items, f(item, i0, sT, wT, pP), i0, sT, wT,
-                  pP)
+    consecutive(items, f(item, i0, sT, wT, pP), i0, sT, wT, pP)
   end
 
   defp f({:list, items}, i0, sT, wT, pP) do
@@ -1334,63 +1394,67 @@ defmodule :m_erl_pp do
     f({:seq, e, [], [[]], [item]}, i0, sT, wT, pP)
   end
 
-  defp f({:seq, before, after__, sep, lItems}, i0, sT,
-            wT, pP) do
+  defp f({:seq, before, after__, sep, lItems}, i0, sT, wT, pP) do
     bCharsSize = f(before, i0, sT, wT, pP)
     i = indent(bCharsSize, i0)
     charsSizeL = fl(lItems, sep, i, after__, sT, wT, pP)
     {charsL, sizeL} = unz(charsSizeL)
     {bCharsL, bSizeL} = unz1([bCharsSize])
     sizes = bSizeL ++ sizeL
-    nSepChars = (cond do
-                   (is_list(sep) and sep !== []) ->
-                     :erlang.max(0, length(charsL) - 1)
-                   true ->
-                     0
-                 end)
-    case (same_line(i0, sizes, nSepChars, pP)) do
+
+    nSepChars =
+      cond do
+        is_list(sep) and sep !== [] ->
+          :erlang.max(0, length(charsL) - 1)
+
+        true ->
+          0
+      end
+
+    case same_line(i0, sizes, nSepChars, pP) do
       {:yes, size} ->
-        chars = (cond do
-                   nSepChars > 0 ->
-                     insert_sep(charsL, ?\s)
-                   true ->
-                     charsL
-                 end)
+        chars =
+          cond do
+            nSepChars > 0 ->
+              insert_sep(charsL, ?\s)
+
+            true ->
+              charsL
+          end
+
         {bCharsL ++ chars, size}
+
       :no ->
         charsList = handle_step(charsSizeL, i, sT, pP)
-        {lChars, lSize} = maybe_newlines(charsList, lItems, i,
-                                           nSepChars, sT, pP)
+        {lChars, lSize} = maybe_newlines(charsList, lItems, i, nSepChars, sT, pP)
         {[bCharsL, lChars], nsz(lSize, i0)}
     end
   end
 
-  defp f({:force_nl, _ExtraInfoItem, item}, i, sT, wT,
-            pP)
-      when i < 0 do
+  defp f({:force_nl, _ExtraInfoItem, item}, i, sT, wT, pP)
+       when i < 0 do
     f(item, i, sT, wT, pP)
   end
 
-  defp f({:force_nl, extraInfoItem, item}, i, sT, wT,
-            pP) do
-    f({:prefer_nl, [], [extraInfoItem, item]}, i, sT, wT,
-        pP)
+  defp f({:force_nl, extraInfoItem, item}, i, sT, wT, pP) do
+    f({:prefer_nl, [], [extraInfoItem, item]}, i, sT, wT, pP)
   end
 
   defp f({:prefer_nl, sep, lItems}, i, sT, wT, pP)
-      when i < 0 do
+       when i < 0 do
     f({:seq, [], [], sep, lItems}, i, sT, wT, pP)
   end
 
   defp f({:prefer_nl, sep, lItems}, i0, sT, wT, pP) do
     charsSize2L = fl(lItems, sep, i0, [], sT, wT, pP)
     {_CharsL, sizes} = unz(charsSize2L)
+
     cond do
       sizes === [] ->
         {[], 0}
+
       true ->
-        {insert_newlines(charsSize2L, i0, sT, pP),
-           nsz(:lists.last(sizes), i0)}
+        {insert_newlines(charsSize2L, i0, sT, pP), nsz(:lists.last(sizes), i0)}
     end
   end
 
@@ -1418,22 +1482,18 @@ defmodule :m_erl_pp do
     f(r, i, sT, wT, pP)
   end
 
-  defp f({:hook, hookExpr, precedence, func, options}, i,
-            _ST, _WT, _PP) do
+  defp f({:hook, hookExpr, precedence, func, options}, i, _ST, _WT, _PP) do
     chars = func.(hookExpr, i, precedence, options)
     {chars, indentation(chars, i)}
   end
 
-  defp f({:ehook, hookExpr, precedence,
-             {mod, func, eas} = modFuncEas},
-            i, _ST, _WT, _PP) do
-    chars = apply(mod, func,
-                    [hookExpr, i, precedence, modFuncEas | eas])
+  defp f({:ehook, hookExpr, precedence, {mod, func, eas} = modFuncEas}, i, _ST, _WT, _PP) do
+    chars = apply(mod, func, [hookExpr, i, precedence, modFuncEas | eas])
     {chars, indentation(chars, i)}
   end
 
   defp f(wordName, _I, _ST, wT, _PP)
-      when is_atom(wordName) do
+       when is_atom(wordName) do
     word(wordName, wT)
   end
 
@@ -1442,26 +1502,29 @@ defmodule :m_erl_pp do
   end
 
   defp fl(cItems, sep0, i0, after__, sT, wT, pP) do
-    f = fn {:step, item1, item2}, s ->
-             [f(item1, i0, sT, wT, pP), f([item2, s],
-                                            incr(i0, r_pp(pP, :indent)), sT, wT,
-                                            pP)]
-           {:cstep, item1, item2}, s ->
-             {_, sz1} = (charSize1 = f(item1, i0, sT, wT, pP))
-             cond do
-               (is_integer(sz1) and sz1 < r_pp(pP, :indent)) ->
-                 item2p = [leaf(' '), item2, s]
-                 [consecutive(item2p, charSize1, i0, sT, wT, pP), {[],
-                                                                     0}]
-               true ->
-                 [charSize1, f([item2, s], incr(i0, r_pp(pP, :indent)), sT,
-                                 wT, pP)]
-             end
-           {:reserved, word}, s ->
-             [f([word, s], i0, sT, wT, pP), {[], 0}]
-           item, s ->
-             [f([item, s], i0, sT, wT, pP), {[], 0}]
+    f = fn
+      {:step, item1, item2}, s ->
+        [f(item1, i0, sT, wT, pP), f([item2, s], incr(i0, r_pp(pP, :indent)), sT, wT, pP)]
+
+      {:cstep, item1, item2}, s ->
+        {_, sz1} = charSize1 = f(item1, i0, sT, wT, pP)
+
+        cond do
+          is_integer(sz1) and sz1 < r_pp(pP, :indent) ->
+            item2p = [leaf(~c" "), item2, s]
+            [consecutive(item2p, charSize1, i0, sT, wT, pP), {[], 0}]
+
+          true ->
+            [charSize1, f([item2, s], incr(i0, r_pp(pP, :indent)), sT, wT, pP)]
         end
+
+      {:reserved, word}, s ->
+        [f([word, s], i0, sT, wT, pP), {[], 0}]
+
+      item, s ->
+        [f([item, s], i0, sT, wT, pP), {[], 0}]
+    end
+
     {sep, lastSep} = sep(sep0)
     fl1(cItems, f, sep, lastSep, after__)
   end
@@ -1491,11 +1554,16 @@ defmodule :m_erl_pp do
   end
 
   defp consecutive(items, charSize1, i0, sT, wT, pP) do
-    {charsSizes, _Length} = mapfoldl(fn item, len ->
-                                          charsSize = f(item, len, sT, wT, pP)
-                                          {charsSize, indent(charsSize, len)}
-                                     end,
-                                       indent(charSize1, i0), items)
+    {charsSizes, _Length} =
+      mapfoldl(
+        fn item, len ->
+          charsSize = f(item, len, sT, wT, pP)
+          {charsSize, indent(charsSize, len)}
+        end,
+        indent(charSize1, i0),
+        items
+      )
+
     {charsL, sizeL} = unz1([charSize1 | charsSizes])
     {charsL, line_size(sizeL)}
   end
@@ -1509,65 +1577,67 @@ defmodule :m_erl_pp do
   end
 
   defp nonzero(charSizes) do
-    :lists.filter(fn {_, sz} ->
-                       sz !== 0
-                  end,
-                    charSizes)
+    :lists.filter(
+      fn {_, sz} ->
+        sz !== 0
+      end,
+      charSizes
+    )
   end
 
-  defp maybe_newlines([{chars, size}], [], _I, _NSepChars, _ST,
-            _PP) do
+  defp maybe_newlines([{chars, size}], [], _I, _NSepChars, _ST, _PP) do
     {chars, size}
   end
 
   defp maybe_newlines(charsSizeList, items, i, nSepChars, sT, pP)
-      when i >= 0 do
-    maybe_sep(charsSizeList, items, i, nSepChars,
-                nl_indent(i, sT), pP)
+       when i >= 0 do
+    maybe_sep(charsSizeList, items, i, nSepChars, nl_indent(i, sT), pP)
   end
 
-  defp maybe_sep([{chars1, size1} | charsSizeL], [item | items],
-            i0, nSepChars, sep, pP) do
-    i1 = (case (classify_item(item)) do
-            :atomic ->
-              i0 + size1
-            _ ->
-              r_pp(pP, :linewidth) + 1
-          end)
-    maybe_sep1(charsSizeL, items, i0, i1, sep, nSepChars,
-                 size1, [chars1], pP)
+  defp maybe_sep([{chars1, size1} | charsSizeL], [item | items], i0, nSepChars, sep, pP) do
+    i1 =
+      case classify_item(item) do
+        :atomic ->
+          i0 + size1
+
+        _ ->
+          r_pp(pP, :linewidth) + 1
+      end
+
+    maybe_sep1(charsSizeL, items, i0, i1, sep, nSepChars, size1, [chars1], pP)
   end
 
-  defp maybe_sep1([{chars, size} | charsSizeL], [item | items],
-            i0, i, sep, nSepChars, sz0, a, pP) do
-    case (classify_item(item)) do
+  defp maybe_sep1([{chars, size} | charsSizeL], [item | items], i0, i, sep, nSepChars, sz0, a, pP) do
+    case classify_item(item) do
       :atomic when is_integer(size) ->
         size1 = size + 1
         i1 = i + size1
+
         cond do
           i1 <= r_pp(pP, :linewidth) ->
-            a1 = (cond do
-                    nSepChars > 0 ->
-                      [chars, ?\s | a]
-                    true ->
-                      [chars | a]
-                  end)
-            maybe_sep1(charsSizeL, items, i0, i1, sep, nSepChars,
-                         sz0 + size1, a1, pP)
+            a1 =
+              cond do
+                nSepChars > 0 ->
+                  [chars, ?\s | a]
+
+                true ->
+                  [chars | a]
+              end
+
+            maybe_sep1(charsSizeL, items, i0, i1, sep, nSepChars, sz0 + size1, a1, pP)
+
           true ->
             a1 = [chars, sep | a]
-            maybe_sep1(charsSizeL, items, i0, i0 + size, sep,
-                         nSepChars, size1, a1, pP)
+            maybe_sep1(charsSizeL, items, i0, i0 + size, sep, nSepChars, size1, a1, pP)
         end
+
       _ ->
         a1 = [chars, sep | a]
-        maybe_sep1(charsSizeL, items, i0, r_pp(pP, :linewidth) + 1,
-                     sep, nSepChars, 0, a1, pP)
+        maybe_sep1(charsSizeL, items, i0, r_pp(pP, :linewidth) + 1, sep, nSepChars, 0, a1, pP)
     end
   end
 
-  defp maybe_sep1(_CharsSizeL, _Items, _Io, _I, _Sep, _NSepChars,
-            sz, a, _PP) do
+  defp maybe_sep1(_CharsSizeL, _Items, _Io, _I, _Sep, _NSepChars, sz, a, _PP) do
     {:lists.reverse(a), sz}
   end
 
@@ -1577,15 +1647,19 @@ defmodule :m_erl_pp do
   end
 
   defp handle_step(charsSizesL, i, sT, pP) do
-    map(fn [{_C1, 0}, {_C2, 0}] ->
-             {[], 0}
-           [{c1, sz1}, {_C2, 0}] ->
-             {c1, sz1}
-           [{c1, sz1}, {c2, sz2}] when sz2 > 0 ->
-             {insert_nl([c1, c2], i + r_pp(pP, :indent), sT),
-                line_size([sz1, sz2])}
-        end,
-          charsSizesL)
+    map(
+      fn
+        [{_C1, 0}, {_C2, 0}] ->
+          {[], 0}
+
+        [{c1, sz1}, {_C2, 0}] ->
+          {c1, sz1}
+
+        [{c1, sz1}, {c2, sz2}] when sz2 > 0 ->
+          {insert_nl([c1, c2], i + r_pp(pP, :indent), sT), line_size([sz1, sz2])}
+      end,
+      charsSizesL
+    )
   end
 
   defp insert_nl(charsL, i, sT) do
@@ -1593,9 +1667,12 @@ defmodule :m_erl_pp do
   end
 
   defp insert_sep([chars1 | charsL], sep) do
-    [chars1 | for chars <- charsL do
-                [sep, chars]
-              end]
+    [
+      chars1
+      | for chars <- charsL do
+          [sep, chars]
+        end
+    ]
   end
 
   defp nl_indent(0, _T) do
@@ -1687,9 +1764,11 @@ defmodule :m_erl_pp do
 
   defp indentation(e, i0) do
     i = :io_lib_format.indentation(e, i0)
-    case (has_nl(e)) do
+
+    case has_nl(e) do
       true ->
         {:line, i}
+
       false ->
         i
     end
@@ -1743,13 +1822,24 @@ defmodule :m_erl_pp do
   defp write_a_string(s, n, len, pP) do
     sS = :string.slice(s, 0, n)
     sl = write_string(sS, pP)
-    case (:erlang.and(:string.length(sl) > len, n > 5)) do
+
+    case :erlang.and(:string.length(sl) > len, n > 5) do
       true ->
         write_a_string(s, n - 1, len, pP)
+
       false ->
-        [flat_leaf(sl) | write_a_string(:string.slice(s,
-                                                        :string.length(sS)),
-                                          len, len, pP)]
+        [
+          flat_leaf(sl)
+          | write_a_string(
+              :string.slice(
+                s,
+                :string.length(sS)
+              ),
+              len,
+              len,
+              pP
+            )
+        ]
     end
   end
 
@@ -1759,23 +1849,23 @@ defmodule :m_erl_pp do
   end
 
   defp write_value(v, pP) do
-    (r_pp(pP, :value_fun)).(v)
+    r_pp(pP, :value_fun).(v)
   end
 
   defp write_atom(a, pP) do
-    (r_pp(pP, :value_fun)).(a)
+    r_pp(pP, :value_fun).(a)
   end
 
   defp write_singleton_atom_type(a, pP) do
-    (r_pp(pP, :singleton_atom_type_fun)).(a)
+    r_pp(pP, :singleton_atom_type_fun).(a)
   end
 
   defp write_string(s, pP) do
-    (r_pp(pP, :string_fun)).(s)
+    r_pp(pP, :string_fun).(s)
   end
 
   defp write_char(c, pP) do
-    (r_pp(pP, :char_fun)).(c)
+    r_pp(pP, :char_fun).(c)
   end
 
   defp a0() do
@@ -1783,10 +1873,15 @@ defmodule :m_erl_pp do
   end
 
   defp spacetab() do
-    {[_ | l], _} = mapfoldl(fn _, a ->
-                                 {a, [?\s | a]}
-                            end,
-                              [], :lists.seq(0, 30))
+    {[_ | l], _} =
+      mapfoldl(
+        fn _, a ->
+          {a, [?\s | a]}
+        end,
+        [],
+        :lists.seq(0, 30)
+      )
+
     :erlang.list_to_tuple(l)
   end
 
@@ -1799,15 +1894,35 @@ defmodule :m_erl_pp do
   end
 
   defp wordtable() do
-    l = (for w <- [' ->', ' =', '<<', '>>', '[]', 'after', 'begin', 'case', 'catch', 'end', 'fun', 'if', 'of', 'receive',
-                                                              'try', 'when', ' ::', '..', ' |', 'maybe',
-                                                                                 'else',
-                                                                                     '\#{'] do
-           (
-             {:leaf, sz, s} = leaf(w)
-             {s, sz}
-           )
-         end)
+    l =
+      for w <- [
+            ~c" ->",
+            ~c" =",
+            ~c"<<",
+            ~c">>",
+            ~c"[]",
+            ~c"after",
+            ~c"begin",
+            ~c"case",
+            ~c"catch",
+            ~c"end",
+            ~c"fun",
+            ~c"if",
+            ~c"of",
+            ~c"receive",
+            ~c"try",
+            ~c"when",
+            ~c" ::",
+            ~c"..",
+            ~c" |",
+            ~c"maybe",
+            ~c"else",
+            ~c"\#{"
+          ] do
+        {:leaf, sz, s} = leaf(w)
+        {s, sz}
+      end
+
     :erlang.list_to_tuple(l)
   end
 
@@ -1879,7 +1994,7 @@ defmodule :m_erl_pp do
     :erlang.element(17, wT)
   end
 
-  defp word(:"..", wT) do
+  defp word(:.., wT) do
     :erlang.element(18, wT)
   end
 
@@ -1902,19 +2017,24 @@ defmodule :m_erl_pp do
   defp legalize_name(invalidName, stringName, used) do
     upper = :string.to_upper(stringName)
     newName = :erlang.list_to_atom(upper)
-    case (used) do
+
+    case used do
       %{^newName => _} ->
         legalize_name(invalidName, [?X | stringName], used)
+
       %{} ->
         Map.put(used, invalidName, newName)
     end
   end
 
   defp fold_vars(f, acc0, forms) when is_list(forms) do
-    :lists.foldl(fn elem, acc ->
-                      fold_vars(f, acc, elem)
-                 end,
-                   acc0, forms)
+    :lists.foldl(
+      fn elem, acc ->
+        fold_vars(f, acc, elem)
+      end,
+      acc0,
+      forms
+    )
   end
 
   defp fold_vars(f, acc0, v = {:var, _, _}) do
@@ -1922,10 +2042,13 @@ defmodule :m_erl_pp do
   end
 
   defp fold_vars(f, acc0, form) when is_tuple(form) do
-    :lists.foldl(fn elem, acc ->
-                      fold_vars(f, acc, elem)
-                 end,
-                   acc0, :erlang.tuple_to_list(form))
+    :lists.foldl(
+      fn elem, acc ->
+        fold_vars(f, acc, elem)
+      end,
+      acc0,
+      :erlang.tuple_to_list(form)
+    )
   end
 
   defp fold_vars(_, acc, _) do
@@ -1943,13 +2066,14 @@ defmodule :m_erl_pp do
   end
 
   defp map_vars(f, form) when is_tuple(form) do
-    :erlang.list_to_tuple(for elem <- :erlang.tuple_to_list(form) do
-                            map_vars(f, elem)
-                          end)
+    :erlang.list_to_tuple(
+      for elem <- :erlang.tuple_to_list(form) do
+        map_vars(f, elem)
+      end
+    )
   end
 
   defp map_vars(_, form) do
     form
   end
-
 end

@@ -1,5 +1,6 @@
 defmodule :m_odbc_debug do
   use Bitwise
+
   def trace_odbc(process, onOff) do
     trace_odbc(process, onOff, :exported)
   end
@@ -22,5 +23,4 @@ defmodule :m_odbc_debug do
     :dbg.stop()
     :ok
   end
-
 end

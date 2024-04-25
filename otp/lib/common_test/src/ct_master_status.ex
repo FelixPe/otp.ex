@@ -2,16 +2,16 @@ defmodule :m_ct_master_status do
   use Bitwise
   @behaviour :gen_event
   require Record
-  Record.defrecord(:r_event, :event, name: :undefined,
-                                 node: :undefined, data: :undefined)
+  Record.defrecord(:r_event, :event, name: :undefined, node: :undefined, data: :undefined)
   Record.defrecord(:r_state, :state, status: [])
+
   def init(_) do
     {:ok, r_state()}
   end
 
   def handle_event(r_event(name: name, node: node, data: data), state) do
-    print('~n=== ~w ===~n', [:ct_master_status])
-    print('~tw on ~w: ~tp~n', [name, node, data])
+    print(~c"~n=== ~w ===~n", [:ct_master_status])
+    print(~c"~tw on ~w: ~tp~n", [name, node, data])
     {:ok, state}
   end
 
@@ -35,5 +35,4 @@ defmodule :m_ct_master_status do
   defp print(_Str, _Args) do
     :ok
   end
-
 end

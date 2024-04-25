@@ -1,148 +1,277 @@
 defmodule :m_v3_kernel do
   use Bitwise
-  import :lists, only: [all: 2, droplast: 1, flatten: 1,
-                          foldl: 3, foldr: 3, keyfind: 3, last: 1, map: 2,
-                          mapfoldl: 3, member: 2, partition: 2, reverse: 1,
-                          sort: 1, sort: 2, splitwith: 2]
-  import :ordsets, only: [add_element: 2, intersection: 2,
-                            subtract: 2, union: 1, union: 2]
+
+  import :lists,
+    only: [
+      all: 2,
+      droplast: 1,
+      flatten: 1,
+      foldl: 3,
+      foldr: 3,
+      keyfind: 3,
+      last: 1,
+      map: 2,
+      mapfoldl: 3,
+      member: 2,
+      partition: 2,
+      reverse: 1,
+      sort: 1,
+      sort: 2,
+      splitwith: 2
+    ]
+
+  import :ordsets, only: [add_element: 2, intersection: 2, subtract: 2, union: 1, union: 2]
   require Record
-  Record.defrecord(:r_c_alias, :c_alias, anno: [],
-                                   var: :undefined, pat: :undefined)
-  Record.defrecord(:r_c_apply, :c_apply, anno: [], op: :undefined,
-                                   args: :undefined)
-  Record.defrecord(:r_c_binary, :c_binary, anno: [],
-                                    segments: :undefined)
-  Record.defrecord(:r_c_bitstr, :c_bitstr, anno: [],
-                                    val: :undefined, size: :undefined,
-                                    unit: :undefined, type: :undefined,
-                                    flags: :undefined)
-  Record.defrecord(:r_c_call, :c_call, anno: [],
-                                  module: :undefined, name: :undefined,
-                                  args: :undefined)
-  Record.defrecord(:r_c_case, :c_case, anno: [], arg: :undefined,
-                                  clauses: :undefined)
-  Record.defrecord(:r_c_catch, :c_catch, anno: [],
-                                   body: :undefined)
-  Record.defrecord(:r_c_clause, :c_clause, anno: [],
-                                    pats: :undefined, guard: :undefined,
-                                    body: :undefined)
-  Record.defrecord(:r_c_cons, :c_cons, anno: [], hd: :undefined,
-                                  tl: :undefined)
-  Record.defrecord(:r_c_fun, :c_fun, anno: [], vars: :undefined,
-                                 body: :undefined)
-  Record.defrecord(:r_c_let, :c_let, anno: [], vars: :undefined,
-                                 arg: :undefined, body: :undefined)
-  Record.defrecord(:r_c_letrec, :c_letrec, anno: [],
-                                    defs: :undefined, body: :undefined)
-  Record.defrecord(:r_c_literal, :c_literal, anno: [],
-                                     val: :undefined)
-  Record.defrecord(:r_c_map, :c_map, anno: [],
-                                 arg: :EFE_TODO_NESTED_RECORD, es: :undefined,
-                                 is_pat: false)
-  Record.defrecord(:r_c_map_pair, :c_map_pair, anno: [],
-                                      op: :undefined, key: :undefined,
-                                      val: :undefined)
-  Record.defrecord(:r_c_module, :c_module, anno: [],
-                                    name: :undefined, exports: :undefined,
-                                    attrs: :undefined, defs: :undefined)
-  Record.defrecord(:r_c_opaque, :c_opaque, anno: [],
-                                    val: :undefined)
-  Record.defrecord(:r_c_primop, :c_primop, anno: [],
-                                    name: :undefined, args: :undefined)
-  Record.defrecord(:r_c_receive, :c_receive, anno: [],
-                                     clauses: :undefined, timeout: :undefined,
-                                     action: :undefined)
-  Record.defrecord(:r_c_seq, :c_seq, anno: [], arg: :undefined,
-                                 body: :undefined)
-  Record.defrecord(:r_c_try, :c_try, anno: [], arg: :undefined,
-                                 vars: :undefined, body: :undefined,
-                                 evars: :undefined, handler: :undefined)
+  Record.defrecord(:r_c_alias, :c_alias, anno: [], var: :undefined, pat: :undefined)
+  Record.defrecord(:r_c_apply, :c_apply, anno: [], op: :undefined, args: :undefined)
+
+  Record.defrecord(:r_c_binary, :c_binary,
+    anno: [],
+    segments: :undefined
+  )
+
+  Record.defrecord(:r_c_bitstr, :c_bitstr,
+    anno: [],
+    val: :undefined,
+    size: :undefined,
+    unit: :undefined,
+    type: :undefined,
+    flags: :undefined
+  )
+
+  Record.defrecord(:r_c_call, :c_call,
+    anno: [],
+    module: :undefined,
+    name: :undefined,
+    args: :undefined
+  )
+
+  Record.defrecord(:r_c_case, :c_case, anno: [], arg: :undefined, clauses: :undefined)
+
+  Record.defrecord(:r_c_catch, :c_catch,
+    anno: [],
+    body: :undefined
+  )
+
+  Record.defrecord(:r_c_clause, :c_clause,
+    anno: [],
+    pats: :undefined,
+    guard: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_c_cons, :c_cons, anno: [], hd: :undefined, tl: :undefined)
+  Record.defrecord(:r_c_fun, :c_fun, anno: [], vars: :undefined, body: :undefined)
+
+  Record.defrecord(:r_c_let, :c_let,
+    anno: [],
+    vars: :undefined,
+    arg: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_c_letrec, :c_letrec, anno: [], defs: :undefined, body: :undefined)
+
+  Record.defrecord(:r_c_literal, :c_literal,
+    anno: [],
+    val: :undefined
+  )
+
+  Record.defrecord(:r_c_map, :c_map,
+    anno: [],
+    arg: :EFE_TODO_NESTED_RECORD,
+    es: :undefined,
+    is_pat: false
+  )
+
+  Record.defrecord(:r_c_map_pair, :c_map_pair,
+    anno: [],
+    op: :undefined,
+    key: :undefined,
+    val: :undefined
+  )
+
+  Record.defrecord(:r_c_module, :c_module,
+    anno: [],
+    name: :undefined,
+    exports: :undefined,
+    attrs: :undefined,
+    defs: :undefined
+  )
+
+  Record.defrecord(:r_c_opaque, :c_opaque,
+    anno: [],
+    val: :undefined
+  )
+
+  Record.defrecord(:r_c_primop, :c_primop, anno: [], name: :undefined, args: :undefined)
+
+  Record.defrecord(:r_c_receive, :c_receive,
+    anno: [],
+    clauses: :undefined,
+    timeout: :undefined,
+    action: :undefined
+  )
+
+  Record.defrecord(:r_c_seq, :c_seq, anno: [], arg: :undefined, body: :undefined)
+
+  Record.defrecord(:r_c_try, :c_try,
+    anno: [],
+    arg: :undefined,
+    vars: :undefined,
+    body: :undefined,
+    evars: :undefined,
+    handler: :undefined
+  )
+
   Record.defrecord(:r_c_tuple, :c_tuple, anno: [], es: :undefined)
-  Record.defrecord(:r_c_values, :c_values, anno: [],
-                                    es: :undefined)
+
+  Record.defrecord(:r_c_values, :c_values,
+    anno: [],
+    es: :undefined
+  )
+
   Record.defrecord(:r_c_var, :c_var, anno: [], name: :undefined)
-  Record.defrecord(:r_k_literal, :k_literal, anno: [],
-                                     val: :undefined)
+
+  Record.defrecord(:r_k_literal, :k_literal,
+    anno: [],
+    val: :undefined
+  )
+
   Record.defrecord(:r_k_tuple, :k_tuple, anno: [], es: :undefined)
-  Record.defrecord(:r_k_map, :k_map, anno: [],
-                                 var: :EFE_TODO_NESTED_RECORD, op: :undefined,
-                                 es: :undefined)
-  Record.defrecord(:r_k_map_pair, :k_map_pair, anno: [],
-                                      key: :undefined, val: :undefined)
-  Record.defrecord(:r_k_cons, :k_cons, anno: [], hd: :undefined,
-                                  tl: :undefined)
-  Record.defrecord(:r_k_binary, :k_binary, anno: [],
-                                    segs: :undefined)
-  Record.defrecord(:r_k_bin_seg, :k_bin_seg, anno: [],
-                                     size: :undefined, unit: :undefined,
-                                     type: :undefined, flags: :undefined,
-                                     seg: :undefined, next: :undefined)
-  Record.defrecord(:r_k_bin_int, :k_bin_int, anno: [],
-                                     size: :undefined, unit: :undefined,
-                                     flags: :undefined, val: :undefined,
-                                     next: :undefined)
+
+  Record.defrecord(:r_k_map, :k_map,
+    anno: [],
+    var: :EFE_TODO_NESTED_RECORD,
+    op: :undefined,
+    es: :undefined
+  )
+
+  Record.defrecord(:r_k_map_pair, :k_map_pair, anno: [], key: :undefined, val: :undefined)
+  Record.defrecord(:r_k_cons, :k_cons, anno: [], hd: :undefined, tl: :undefined)
+
+  Record.defrecord(:r_k_binary, :k_binary,
+    anno: [],
+    segs: :undefined
+  )
+
+  Record.defrecord(:r_k_bin_seg, :k_bin_seg,
+    anno: [],
+    size: :undefined,
+    unit: :undefined,
+    type: :undefined,
+    flags: :undefined,
+    seg: :undefined,
+    next: :undefined
+  )
+
+  Record.defrecord(:r_k_bin_int, :k_bin_int,
+    anno: [],
+    size: :undefined,
+    unit: :undefined,
+    flags: :undefined,
+    val: :undefined,
+    next: :undefined
+  )
+
   Record.defrecord(:r_k_bin_end, :k_bin_end, anno: [])
   Record.defrecord(:r_k_var, :k_var, anno: [], name: :undefined)
-  Record.defrecord(:r_k_local, :k_local, anno: [],
-                                   name: :undefined, arity: :undefined)
-  Record.defrecord(:r_k_remote, :k_remote, anno: [],
-                                    mod: :undefined, name: :undefined,
-                                    arity: :undefined)
-  Record.defrecord(:r_k_internal, :k_internal, anno: [],
-                                      name: :undefined, arity: :undefined)
-  Record.defrecord(:r_k_mdef, :k_mdef, anno: [],
-                                  name: :undefined, exports: :undefined,
-                                  attributes: :undefined, body: :undefined)
-  Record.defrecord(:r_k_fdef, :k_fdef, anno: [],
-                                  func: :undefined, arity: :undefined,
-                                  vars: :undefined, body: :undefined)
-  Record.defrecord(:r_k_seq, :k_seq, anno: [], arg: :undefined,
-                                 body: :undefined)
-  Record.defrecord(:r_k_put, :k_put, anno: [], arg: :undefined,
-                                 ret: [])
-  Record.defrecord(:r_k_bif, :k_bif, anno: [], op: :undefined,
-                                 args: :undefined, ret: [])
-  Record.defrecord(:r_k_test, :k_test, anno: [], op: :undefined,
-                                  args: :undefined)
-  Record.defrecord(:r_k_call, :k_call, anno: [], op: :undefined,
-                                  args: :undefined, ret: [])
-  Record.defrecord(:r_k_enter, :k_enter, anno: [], op: :undefined,
-                                   args: :undefined)
-  Record.defrecord(:r_k_try, :k_try, anno: [], arg: :undefined,
-                                 vars: :undefined, body: :undefined,
-                                 evars: :undefined, handler: :undefined,
-                                 ret: [])
-  Record.defrecord(:r_k_try_enter, :k_try_enter, anno: [],
-                                       arg: :undefined, vars: :undefined,
-                                       body: :undefined, evars: :undefined,
-                                       handler: :undefined)
-  Record.defrecord(:r_k_catch, :k_catch, anno: [],
-                                   body: :undefined, ret: [])
-  Record.defrecord(:r_k_letrec_goto, :k_letrec_goto, anno: [],
-                                         label: :undefined, vars: [],
-                                         first: :undefined, then: :undefined,
-                                         ret: [])
-  Record.defrecord(:r_k_goto, :k_goto, anno: [],
-                                  label: :undefined, args: [])
-  Record.defrecord(:r_k_match, :k_match, anno: [],
-                                   body: :undefined, ret: [])
-  Record.defrecord(:r_k_alt, :k_alt, anno: [],
-                                 first: :undefined, then: :undefined)
-  Record.defrecord(:r_k_select, :k_select, anno: [],
-                                    var: :undefined, types: :undefined)
-  Record.defrecord(:r_k_type_clause, :k_type_clause, anno: [],
-                                         type: :undefined, values: :undefined)
-  Record.defrecord(:r_k_val_clause, :k_val_clause, anno: [],
-                                        val: :undefined, body: :undefined)
-  Record.defrecord(:r_k_guard, :k_guard, anno: [],
-                                   clauses: :undefined)
-  Record.defrecord(:r_k_guard_clause, :k_guard_clause, anno: [],
-                                          guard: :undefined, body: :undefined)
+  Record.defrecord(:r_k_local, :k_local, anno: [], name: :undefined, arity: :undefined)
+
+  Record.defrecord(:r_k_remote, :k_remote,
+    anno: [],
+    mod: :undefined,
+    name: :undefined,
+    arity: :undefined
+  )
+
+  Record.defrecord(:r_k_internal, :k_internal, anno: [], name: :undefined, arity: :undefined)
+
+  Record.defrecord(:r_k_mdef, :k_mdef,
+    anno: [],
+    name: :undefined,
+    exports: :undefined,
+    attributes: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_k_fdef, :k_fdef,
+    anno: [],
+    func: :undefined,
+    arity: :undefined,
+    vars: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_k_seq, :k_seq, anno: [], arg: :undefined, body: :undefined)
+  Record.defrecord(:r_k_put, :k_put, anno: [], arg: :undefined, ret: [])
+  Record.defrecord(:r_k_bif, :k_bif, anno: [], op: :undefined, args: :undefined, ret: [])
+  Record.defrecord(:r_k_test, :k_test, anno: [], op: :undefined, args: :undefined)
+  Record.defrecord(:r_k_call, :k_call, anno: [], op: :undefined, args: :undefined, ret: [])
+  Record.defrecord(:r_k_enter, :k_enter, anno: [], op: :undefined, args: :undefined)
+
+  Record.defrecord(:r_k_try, :k_try,
+    anno: [],
+    arg: :undefined,
+    vars: :undefined,
+    body: :undefined,
+    evars: :undefined,
+    handler: :undefined,
+    ret: []
+  )
+
+  Record.defrecord(:r_k_try_enter, :k_try_enter,
+    anno: [],
+    arg: :undefined,
+    vars: :undefined,
+    body: :undefined,
+    evars: :undefined,
+    handler: :undefined
+  )
+
+  Record.defrecord(:r_k_catch, :k_catch, anno: [], body: :undefined, ret: [])
+
+  Record.defrecord(:r_k_letrec_goto, :k_letrec_goto,
+    anno: [],
+    label: :undefined,
+    vars: [],
+    first: :undefined,
+    then: :undefined,
+    ret: []
+  )
+
+  Record.defrecord(:r_k_goto, :k_goto, anno: [], label: :undefined, args: [])
+  Record.defrecord(:r_k_match, :k_match, anno: [], body: :undefined, ret: [])
+  Record.defrecord(:r_k_alt, :k_alt, anno: [], first: :undefined, then: :undefined)
+  Record.defrecord(:r_k_select, :k_select, anno: [], var: :undefined, types: :undefined)
+
+  Record.defrecord(:r_k_type_clause, :k_type_clause,
+    anno: [],
+    type: :undefined,
+    values: :undefined
+  )
+
+  Record.defrecord(:r_k_val_clause, :k_val_clause, anno: [], val: :undefined, body: :undefined)
+
+  Record.defrecord(:r_k_guard, :k_guard,
+    anno: [],
+    clauses: :undefined
+  )
+
+  Record.defrecord(:r_k_guard_clause, :k_guard_clause,
+    anno: [],
+    guard: :undefined,
+    body: :undefined
+  )
+
   Record.defrecord(:r_k_break, :k_break, anno: [], args: [])
   Record.defrecord(:r_k_return, :k_return, anno: [], args: [])
-  Record.defrecord(:r_k_opaque, :k_opaque, anno: [],
-                                    val: :undefined)
+
+  Record.defrecord(:r_k_opaque, :k_opaque,
+    anno: [],
+    val: :undefined
+  )
+
   defp get_kanno(kthing) do
     :erlang.element(2, kthing)
   end
@@ -156,52 +285,93 @@ defmodule :m_v3_kernel do
     set_kanno(kdst, anno)
   end
 
-  Record.defrecord(:r_ivalues, :ivalues, anno: [],
-                                   args: :undefined)
-  Record.defrecord(:r_ifun, :ifun, anno: [], vars: :undefined,
-                                body: :undefined)
-  Record.defrecord(:r_iset, :iset, anno: [], vars: :undefined,
-                                arg: :undefined, body: :undefined)
-  Record.defrecord(:r_iletrec, :iletrec, anno: [],
-                                   defs: :undefined)
-  Record.defrecord(:r_ialias, :ialias, anno: [],
-                                  vars: :undefined, pat: :undefined)
-  Record.defrecord(:r_iclause, :iclause, anno: [],
-                                   isub: :undefined, osub: :undefined,
-                                   pats: :undefined, guard: :undefined,
-                                   body: :undefined)
-  Record.defrecord(:r_kern, :kern, func: :undefined, fargs: [],
-                                vcount: 0, fcount: 0,
-                                ds: :sets.new([{:version, 2}]), funs: [],
-                                free: %{}, ws: [],
-                                no_shared_fun_wrappers: false,
-                                no_min_max_bifs: false,
-                                labels: :sets.new([{:version, 2}]))
-  def module(r_c_module(anno: a, name: m, exports: es, attrs: as,
-             defs: fs),
-           options) do
+  Record.defrecord(:r_ivalues, :ivalues,
+    anno: [],
+    args: :undefined
+  )
+
+  Record.defrecord(:r_ifun, :ifun, anno: [], vars: :undefined, body: :undefined)
+  Record.defrecord(:r_iset, :iset, anno: [], vars: :undefined, arg: :undefined, body: :undefined)
+
+  Record.defrecord(:r_iletrec, :iletrec,
+    anno: [],
+    defs: :undefined
+  )
+
+  Record.defrecord(:r_ialias, :ialias, anno: [], vars: :undefined, pat: :undefined)
+
+  Record.defrecord(:r_iclause, :iclause,
+    anno: [],
+    isub: :undefined,
+    osub: :undefined,
+    pats: :undefined,
+    guard: :undefined,
+    body: :undefined
+  )
+
+  Record.defrecord(:r_kern, :kern,
+    func: :undefined,
+    fargs: [],
+    vcount: 0,
+    fcount: 0,
+    ds: :sets.new([{:version, 2}]),
+    funs: [],
+    free: %{},
+    ws: [],
+    no_shared_fun_wrappers: false,
+    no_min_max_bifs: false,
+    labels: :sets.new([{:version, 2}])
+  )
+
+  def module(
+        r_c_module(anno: a, name: m, exports: es, attrs: as, defs: fs),
+        options
+      ) do
     kas = attributes(as)
-    kes = map(fn r_c_var(name: {_, _} = fname) ->
-                   fname
-              end,
-                es)
-    noSharedFunWrappers = :proplists.get_bool(:no_shared_fun_wrappers,
-                                                options)
-    noMinMaxBifs = :proplists.get_bool(:no_min_max_bifs,
-                                         options)
-    st0 = r_kern(no_shared_fun_wrappers: noSharedFunWrappers,
-              no_min_max_bifs: noMinMaxBifs)
+
+    kes =
+      map(
+        fn r_c_var(name: {_, _} = fname) ->
+          fname
+        end,
+        es
+      )
+
+    noSharedFunWrappers =
+      :proplists.get_bool(
+        :no_shared_fun_wrappers,
+        options
+      )
+
+    noMinMaxBifs =
+      :proplists.get_bool(
+        :no_min_max_bifs,
+        options
+      )
+
+    st0 =
+      r_kern(
+        no_shared_fun_wrappers: noSharedFunWrappers,
+        no_min_max_bifs: noMinMaxBifs
+      )
+
     {kfs, st} = mapfoldl(&function/2, st0, fs)
+
     {:ok,
-       r_k_mdef(anno: a, name: r_c_literal(m, :val), exports: kes,
-           attributes: kas, body: kfs ++ r_kern(st, :funs)),
-       sort(r_kern(st, :ws))}
+     r_k_mdef(
+       anno: a,
+       name: r_c_literal(m, :val),
+       exports: kes,
+       attributes: kas,
+       body: kfs ++ r_kern(st, :funs)
+     ), sort(r_kern(st, :ws))}
   end
 
   defp attributes([{r_c_literal(val: name), r_c_literal(val: val)} | as]) do
-    case (include_attribute(name)) do
+    case include_attribute(name) do
       false ->
         attributes(as)
+
       true ->
         [{name, val} | attributes(as)]
     end
@@ -254,15 +424,13 @@ defmodule :m_v3_kernel do
   defp function({r_c_var(name: {f, arity} = fA), body}, st0) do
     try do
       count = :cerl_trees.next_free_variable_name(body)
-      st1 = r_kern(st0, func: fA,  vcount: count,  fcount: 0, 
-                     ds: :sets.new([{:version, 2}]))
-      {r_ifun(anno: ab, vars: kvs, body: b0), [], st2} = expr(body,
-                                                           new_sub(), st1)
+      st1 = r_kern(st0, func: fA, vcount: count, fcount: 0, ds: :sets.new([{:version, 2}]))
+      {r_ifun(anno: ab, vars: kvs, body: b0), [], st2} = expr(body, new_sub(), st1)
       {b1, _, st3} = ubody(b0, :return, st2)
       {make_fdef(ab, f, arity, kvs, b1), st3}
     catch
       class, error ->
-        :io.fwrite('Function: ~w/~w\n', [f, arity])
+        :io.fwrite(~c"Function: ~w/~w\n", [f, arity])
         :erlang.raise(class, error, __STACKTRACE__)
     end
   end
@@ -282,23 +450,36 @@ defmodule :m_v3_kernel do
     {pre_seq(pre, ge), st}
   end
 
-  defp gexpr_test(r_k_bif(anno: a,
-              op: r_k_remote(mod: r_k_literal(val: :erlang), name: r_k_literal(val: f),
-                      arity: ar) = op,
-              args: kargs) = ke,
-            st) do
-    case (:erl_internal.new_type_test(f,
-                                        ar) or :erl_internal.comp_op(f, ar)) do
+  defp gexpr_test(
+         r_k_bif(
+           anno: a,
+           op:
+             r_k_remote(mod: r_k_literal(val: :erlang), name: r_k_literal(val: f), arity: ar) = op,
+           args: kargs
+         ) = ke,
+         st
+       ) do
+    case :erl_internal.new_type_test(
+           f,
+           ar
+         ) or :erl_internal.comp_op(f, ar) do
       true ->
         {r_k_test(anno: a, op: op, args: kargs), st}
+
       false ->
         gexpr_test_add(ke, st)
     end
   end
 
-  defp gexpr_test(r_k_try(arg: b0, vars: [r_k_var(name: x)], body: r_k_var(name: x),
-              handler: r_k_literal(val: false)) = try,
-            st0) do
+  defp gexpr_test(
+         r_k_try(
+           arg: b0,
+           vars: [r_k_var(name: x)],
+           body: r_k_var(name: x),
+           handler: r_k_literal(val: false)
+         ) = try,
+         st0
+       ) do
     {b, st} = gexpr_test(b0, st0)
     {r_k_try(try, arg: b), st}
   end
@@ -313,27 +494,28 @@ defmodule :m_v3_kernel do
   end
 
   defp gexpr_test_add(ke, st0) do
-    test = r_k_remote(mod: r_k_literal(val: :erlang), name: r_k_literal(val: :"=:="),
-               arity: 2)
+    test = r_k_remote(mod: r_k_literal(val: :erlang), name: r_k_literal(val: :"=:="), arity: 2)
     {ae, ap, st1} = force_atomic(ke, st0)
-    {pre_seq(ap,
-               r_k_test(anno: get_kanno(ke), op: test,
-                   args: [ae, r_k_literal(val: true)])),
-       st1}
+
+    {pre_seq(
+       ap,
+       r_k_test(anno: get_kanno(ke), op: test, args: [ae, r_k_literal(val: true)])
+     ), st1}
   end
 
-  defp expr(r_c_var(anno: a, name: {name0, arity}) = fname, sub,
-            st) do
-    case (r_kern(st, :no_shared_fun_wrappers)) do
+  defp expr(r_c_var(anno: a, name: {name0, arity}) = fname, sub, st) do
+    case r_kern(st, :no_shared_fun_wrappers) do
       false ->
         name = get_fsub(name0, arity, sub)
         {r_k_local(anno: a, name: name, arity: arity), [], st}
+
       true ->
-        vs = (for v <- integers(1, arity) do
-                r_c_var(name: :erlang.list_to_atom('V' ++ :erlang.integer_to_list(v)))
-              end)
-        fun = r_c_fun(anno: a, vars: vs,
-                  body: r_c_apply(anno: a, op: fname, args: vs))
+        vs =
+          for v <- integers(1, arity) do
+            r_c_var(name: :erlang.list_to_atom(~c"V" ++ :erlang.integer_to_list(v)))
+          end
+
+        fun = r_c_fun(anno: a, vars: vs, body: r_c_apply(anno: a, op: fname, args: vs))
         expr(fun, sub, st)
     end
   end
@@ -351,8 +533,7 @@ defmodule :m_v3_kernel do
     {kt0, tp0, st2} = expr(ct, sub, st1)
     {kt1, tp1, st3} = force_atomic(kt0, st2)
     {kh1, hp1, st4} = force_atomic(kh0, st3)
-    {r_k_cons(anno: a, hd: kh1, tl: kt1), hp0 ++ tp0 ++ tp1 ++ hp1,
-       st4}
+    {r_k_cons(anno: a, hd: kh1, tl: kt1), hp0 ++ tp0 ++ tp1 ++ hp1, st4}
   end
 
   defp expr(r_c_tuple(anno: a, es: ces), sub, st0) do
@@ -369,8 +550,7 @@ defmodule :m_v3_kernel do
       atomic_bin(cv, sub, st0)
     catch
       {:bad_segment_size, location} ->
-        st1 = add_warning(location,
-                            {:failed, :bad_segment_size}, a, st0)
+        st1 = add_warning(location, {:failed, :bad_segment_size}, a, st0)
         erl = r_c_literal(val: :erlang)
         name = r_c_literal(val: :error)
         args = [r_c_literal(val: :badarg)]
@@ -382,12 +562,10 @@ defmodule :m_v3_kernel do
     end
   end
 
-  defp expr(r_c_fun(anno: a, vars: cvs, body: cb), sub0,
-            r_kern(fargs: oldFargs) = st0) do
+  defp expr(r_c_fun(anno: a, vars: cvs, body: cb), sub0, r_kern(fargs: oldFargs) = st0) do
     {kvs, sub1, st1} = pattern_list(cvs, sub0, st0)
     {kb, pb, st2} = body(cb, sub1, r_kern(st1, fargs: kvs))
-    {r_ifun(anno: a, vars: kvs, body: pre_seq(pb, kb)), [],
-       r_kern(st2, fargs: oldFargs)}
+    {r_ifun(anno: a, vars: kvs, body: pre_seq(pb, kb)), [], r_kern(st2, fargs: oldFargs)}
   end
 
   defp expr(r_c_seq(arg: ca, body: cb), sub, st0) do
@@ -396,27 +574,35 @@ defmodule :m_v3_kernel do
     {kb, pa ++ [ka] ++ pb, st2}
   end
 
-  defp expr(r_c_let(anno: a, vars: cvs, arg: ca, body: cb), sub0,
-            st0) do
+  defp expr(r_c_let(anno: a, vars: cvs, arg: ca, body: cb), sub0, st0) do
     {ka, pa, st1} = body(ca, sub0, st0)
     {kps, sub1, st2} = pattern_list(cvs, sub0, st1)
-    sets = (case (ka) do
-              r_ivalues(args: kas) ->
-                foldr2(fn v, val, sb ->
-                            [r_iset(vars: [v], arg: val) | sb]
-                       end,
-                         [], kps, kas)
-              _Other ->
-                [r_iset(anno: a, vars: kps, arg: ka)]
-            end)
+
+    sets =
+      case ka do
+        r_ivalues(args: kas) ->
+          foldr2(
+            fn v, val, sb ->
+              [r_iset(vars: [v], arg: val) | sb]
+            end,
+            [],
+            kps,
+            kas
+          )
+
+        _Other ->
+          [r_iset(anno: a, vars: kps, arg: ka)]
+      end
+
     {kb, pb, st3} = body(cb, sub1, st2)
     {kb, pa ++ sets ++ pb, st3}
   end
 
   defp expr(r_c_letrec(anno: a, defs: cfs, body: cb), sub, st) do
-    case (member(:letrec_goto, a)) do
+    case member(:letrec_goto, a) do
       true ->
         letrec_goto(cfs, cb, sub, st)
+
       false ->
         letrec_local_function(a, cfs, cb, sub, st)
     end
@@ -434,54 +620,69 @@ defmodule :m_v3_kernel do
     c_apply(a, cop, cargs, sub, st)
   end
 
-  defp expr(r_c_call(anno: a, module: m0, name: f0, args: cargs),
-            sub, st0) do
+  defp expr(r_c_call(anno: a, module: m0, name: f0, args: cargs), sub, st0) do
     ar = length(cargs)
-    {[m, f | kargs], ap, st1} = atomic_list([m0, f0 |
-                                                     cargs],
-                                              sub, st0)
+
+    {[m, f | kargs], ap, st1} =
+      atomic_list(
+        [
+          m0,
+          f0
+          | cargs
+        ],
+        sub,
+        st0
+      )
+
     remote = r_k_remote(mod: m, name: f, arity: ar)
-    case (call_type(m0, f0, cargs, st1)) do
+
+    case call_type(m0, f0, cargs, st1) do
       :bif ->
         {r_k_bif(anno: a, op: remote, args: kargs), ap, st1}
+
       :call ->
         {r_k_call(anno: a, op: remote, args: kargs), ap, st1}
+
       :error ->
-        st = add_warning(get_location(a), {:failed, :bad_call},
-                           a, st0)
-        call = r_c_call(anno: a, module: r_c_literal(val: :erlang),
-                   name: r_c_literal(val: :apply),
-                   args: [m0, f0, :cerl.make_list(cargs)])
+        st = add_warning(get_location(a), {:failed, :bad_call}, a, st0)
+
+        call =
+          r_c_call(
+            anno: a,
+            module: r_c_literal(val: :erlang),
+            name: r_c_literal(val: :apply),
+            args: [m0, f0, :cerl.make_list(cargs)]
+          )
+
         expr(call, sub, st)
     end
   end
 
-  defp expr(r_c_primop(anno: a, name: r_c_literal(val: :match_fail),
-              args: [arg]),
-            sub, st) do
+  defp expr(r_c_primop(anno: a, name: r_c_literal(val: :match_fail), args: [arg]), sub, st) do
     translate_match_fail(arg, sub, a, st)
   end
 
-  defp expr(r_c_primop(anno: a, name: r_c_literal(val: n), args: cargs), sub,
-            st0) do
+  defp expr(r_c_primop(anno: a, name: r_c_literal(val: n), args: cargs), sub, st0) do
     {kargs, ap, st1} = atomic_list(cargs, sub, st0)
     ar = length(cargs)
-    {r_k_bif(anno: a, op: r_k_internal(name: n, arity: ar), args: kargs), ap,
-       st1}
+    {r_k_bif(anno: a, op: r_k_internal(name: n, arity: ar), args: kargs), ap, st1}
   end
 
-  defp expr(r_c_try(anno: a, arg: ca, vars: cvs, body: cb,
-              evars: evs, handler: ch),
-            sub0, st0) do
+  defp expr(r_c_try(anno: a, arg: ca, vars: cvs, body: cb, evars: evs, handler: ch), sub0, st0) do
     {ka, pa, st1} = body(ca, sub0, st0)
     {kcvs, sub1, st2} = pattern_list(cvs, sub0, st1)
     {kb, pb, st3} = body(cb, sub1, st2)
     {kevs, sub2, st4} = pattern_list(evs, sub0, st3)
     {kh, ph, st5} = body(ch, sub2, st4)
-    {r_k_try(anno: a, arg: pre_seq(pa, ka), vars: kcvs,
-         body: pre_seq(pb, kb), evars: kevs,
-         handler: pre_seq(ph, kh)),
-       [], st5}
+
+    {r_k_try(
+       anno: a,
+       arg: pre_seq(pa, ka),
+       vars: kcvs,
+       body: pre_seq(pb, kb),
+       evars: kevs,
+       handler: pre_seq(ph, kh)
+     ), [], st5}
   end
 
   defp expr(r_c_catch(anno: a, body: cb), sub, st0) do
@@ -494,85 +695,128 @@ defmodule :m_v3_kernel do
   end
 
   defp letrec_local_function(a, cfs, cb, sub0, st0) do
-    {fs0, {sub1, st1}} = mapfoldl(fn {r_c_var(name: {f, ar}), b0},
-                                       {sub, s0} ->
-                                       {n,
-                                          st1} = new_fun_name(:erlang.atom_to_list(f) ++ '/' ++ :erlang.integer_to_list(ar),
-                                                                s0)
-                                       b = set_kanno(b0, [{:letrec_name, n}])
-                                       {{n, b}, {set_fsub(f, ar, n, sub), st1}}
-                                  end,
-                                    {sub0, st0}, cfs)
-    {fs1, st2} = mapfoldl(fn {n, fd0}, s1 ->
-                               {fd1, [], st2} = expr(fd0, sub1, s1)
-                               fd = set_kanno(fd1, a)
-                               {{n, fd}, st2}
-                          end,
-                            st1, fs0)
+    {fs0, {sub1, st1}} =
+      mapfoldl(
+        fn {r_c_var(name: {f, ar}), b0}, {sub, s0} ->
+          {n, st1} =
+            new_fun_name(
+              :erlang.atom_to_list(f) ++ ~c"/" ++ :erlang.integer_to_list(ar),
+              s0
+            )
+
+          b = set_kanno(b0, [{:letrec_name, n}])
+          {{n, b}, {set_fsub(f, ar, n, sub), st1}}
+        end,
+        {sub0, st0},
+        cfs
+      )
+
+    {fs1, st2} =
+      mapfoldl(
+        fn {n, fd0}, s1 ->
+          {fd1, [], st2} = expr(fd0, sub1, s1)
+          fd = set_kanno(fd1, a)
+          {{n, fd}, st2}
+        end,
+        st1,
+        fs0
+      )
+
     {kb, pb, st3} = body(cb, sub1, st2)
     {kb, [r_iletrec(anno: a, defs: fs1) | pb], st3}
   end
 
-  defp letrec_goto([{r_c_var(name: {label, _Arity}), cfail}], cb, sub0,
-            r_kern(labels: labels0) = st0) do
+  defp letrec_goto(
+         [{r_c_var(name: {label, _Arity}), cfail}],
+         cb,
+         sub0,
+         r_kern(labels: labels0) = st0
+       ) do
     r_c_fun(vars: funVars, body: funBody) = cfail
-    {kvars, {funSub, st1}} = mapfoldl(fn r_c_var(anno: a,
-                                             name: v),
-                                           {subInt, stInt0} ->
-                                           {new, stInt1} = new_var_name(stInt0)
-                                           {r_k_var(anno: a, name: new),
-                                              {set_vsub(v, new, subInt),
-                                                 r_kern(stInt1, ds: :sets.add_element(new,
-                                                                                   r_kern(stInt1, :ds)))}}
-                                      end,
-                                        {sub0, st0}, funVars)
+
+    {kvars, {funSub, st1}} =
+      mapfoldl(
+        fn r_c_var(
+             anno: a,
+             name: v
+           ),
+           {subInt, stInt0} ->
+          {new, stInt1} = new_var_name(stInt0)
+
+          {r_k_var(anno: a, name: new),
+           {set_vsub(v, new, subInt),
+            r_kern(stInt1,
+              ds:
+                :sets.add_element(
+                  new,
+                  r_kern(stInt1, :ds)
+                )
+            )}}
+        end,
+        {sub0, st0},
+        funVars
+      )
+
     labels = :sets.add_element(label, labels0)
     {kb, pb, st2} = body(cb, sub0, r_kern(st1, labels: labels))
     {kfail, fb, st3} = body(funBody, funSub, st2)
-    case ({kb, kfail, fb}) do
+
+    case {kb, kfail, fb} do
       {r_k_goto(label: ^label), r_k_goto() = innerGoto, []} ->
         {innerGoto, pb, st3}
+
       {_, _, _} ->
         st4 = r_kern(st3, labels: labels0)
-        alt = r_k_letrec_goto(label: label, vars: kvars, first: kb,
-                  then: pre_seq(fb, kfail))
+        alt = r_k_letrec_goto(label: label, vars: kvars, first: kb, then: pre_seq(fb, kfail))
         {alt, pb, st4}
     end
   end
 
   defp translate_match_fail(arg, sub, anno, st0) do
-    {cargs, extraAnno, st1} = (case ({:cerl.data_type(arg),
-                                        :cerl.data_es(arg)}) do
-                                 {:tuple,
-                                    [r_c_literal(val: :function_clause) | _] = as} ->
-                                   translate_fc_args(as, sub, anno, st0)
-                                 {:tuple, [r_c_literal() | _] = as} ->
-                                   {as, [], st0}
-                                 {{:atomic, reason}, []} ->
-                                   {[r_c_literal(val: reason)], [], st0}
-                               end)
+    {cargs, extraAnno, st1} =
+      case {:cerl.data_type(arg), :cerl.data_es(arg)} do
+        {:tuple, [r_c_literal(val: :function_clause) | _] = as} ->
+          translate_fc_args(as, sub, anno, st0)
+
+        {:tuple, [r_c_literal() | _] = as} ->
+          {as, [], st0}
+
+        {{:atomic, reason}, []} ->
+          {[r_c_literal(val: reason)], [], st0}
+      end
+
     {kargs, ap, st} = atomic_list(cargs, sub, st1)
     ar = length(cargs)
-    primop = r_k_bif(anno: extraAnno ++ anno,
-                 op: r_k_internal(name: :match_fail, arity: ar), args: kargs)
+
+    primop =
+      r_k_bif(
+        anno: extraAnno ++ anno,
+        op: r_k_internal(name: :match_fail, arity: ar),
+        args: kargs
+      )
+
     {primop, ap, st}
   end
 
   defp translate_fc_args(as, sub, anno, r_kern(fargs: fargs) = st0) do
-    {extraAnno, st} = (case (same_args(as, fargs, sub)) do
-                         true ->
-                           {[], st0}
-                         false ->
-                           case (keyfind(:function, 1, anno)) do
-                             false ->
-                               {name, st1} = new_fun_name('inlined', st0)
-                               {[{:inlined, {name, length(as) - 1}}], st1}
-                             {_, {name0, arity}} ->
-                               name1 = ['-inlined-', name0, '/', arity, '-']
-                               name = :erlang.list_to_atom(:lists.concat(name1))
-                               {[{:inlined, {name, arity}}], st0}
-                           end
-                       end)
+    {extraAnno, st} =
+      case same_args(as, fargs, sub) do
+        true ->
+          {[], st0}
+
+        false ->
+          case keyfind(:function, 1, anno) do
+            false ->
+              {name, st1} = new_fun_name(~c"inlined", st0)
+              {[{:inlined, {name, length(as) - 1}}], st1}
+
+            {_, {name0, arity}} ->
+              name1 = [~c"-inlined-", name0, ~c"/", arity, ~c"-"]
+              name = :erlang.list_to_atom(:lists.concat(name1))
+              {[{:inlined, {name, arity}}], st0}
+          end
+      end
+
     {as, extraAnno, st}
   end
 
@@ -595,39 +839,49 @@ defmodule :m_v3_kernel do
   end
 
   defp map_split_pairs(a, var, ces, sub, st0) do
-    pairs0 = (for r_c_map_pair(op: r_c_literal(val: op), key: k,
-                      val: v) <- ces do
-                {op, k, v}
-              end)
-    {pairs, esp, st1} = foldr(fn {op, k0, v0},
-                                   {ops, espi, sti0}
-                                     when op === :assoc or op === :exact ->
-                                   {k, eps1, sti1} = atomic(k0, sub, sti0)
-                                   {v, eps2, sti2} = atomic(v0, sub, sti1)
-                                   {[{op, k, v} | ops], eps1 ++ eps2 ++ espi,
-                                      sti2}
-                              end,
-                                {[], [], st0}, pairs0)
+    pairs0 =
+      for r_c_map_pair(op: r_c_literal(val: op), key: k, val: v) <- ces do
+        {op, k, v}
+      end
+
+    {pairs, esp, st1} =
+      foldr(
+        fn {op, k0, v0}, {ops, espi, sti0}
+           when op === :assoc or op === :exact ->
+          {k, eps1, sti1} = atomic(k0, sub, sti0)
+          {v, eps2, sti2} = atomic(v0, sub, sti1)
+          {[{op, k, v} | ops], eps1 ++ eps2 ++ espi, sti2}
+        end,
+        {[], [], st0},
+        pairs0
+      )
+
     map_split_pairs_1(a, var, pairs, esp, st1)
   end
 
-  defp map_split_pairs_1(a, map0, [{op, key, val} | pairs1] = pairs0,
-            esp0, st0) do
+  defp map_split_pairs_1(a, map0, [{op, key, val} | pairs1] = pairs0, esp0, st0) do
     {map1, em, st1} = force_atomic(map0, st0)
-    case (key) do
+
+    case key do
       r_k_var() ->
         kes = [r_k_map_pair(key: key, val: val)]
         map = r_k_map(anno: a, op: op, var: map1, es: kes)
         map_split_pairs_1(a, map, pairs1, esp0 ++ em, st1)
+
       _ ->
-        {l, pairs} = splitwith(fn {_, r_k_var(), _} ->
-                                    false
-                                  {_, _, _} ->
-                                    true
-                               end,
-                                 pairs0)
-        {map, esp, st2} = map_group_pairs(a, map1, l,
-                                            esp0 ++ em, st1)
+        {l, pairs} =
+          splitwith(
+            fn
+              {_, r_k_var(), _} ->
+                false
+
+              {_, _, _} ->
+                true
+            end,
+            pairs0
+          )
+
+        {map, esp, st2} = map_group_pairs(a, map1, l, esp0 ++ em, st1)
         map_split_pairs_1(a, map, pairs, esp, st2)
     end
   end
@@ -638,22 +892,28 @@ defmodule :m_v3_kernel do
 
   defp map_group_pairs(a, var, pairs0, esp, st0) do
     pairs = map_remove_dup_keys(pairs0)
-    assoc = (for {_, {:assoc, k, v}} <- pairs do
-               r_k_map_pair(key: k, val: v)
-             end)
-    exact = (for {_, {:exact, k, v}} <- pairs do
-               r_k_map_pair(key: k, val: v)
-             end)
-    case ({assoc, exact}) do
+
+    assoc =
+      for {_, {:assoc, k, v}} <- pairs do
+        r_k_map_pair(key: k, val: v)
+      end
+
+    exact =
+      for {_, {:exact, k, v}} <- pairs do
+        r_k_map_pair(key: k, val: v)
+      end
+
+    case {assoc, exact} do
       {[_ | _], []} ->
         {r_k_map(anno: a, op: :assoc, var: var, es: assoc), esp, st0}
+
       {[], [_ | _]} ->
         {r_k_map(anno: a, op: :exact, var: var, es: exact), esp, st0}
+
       {[_ | _], [_ | _]} ->
         map = r_k_map(anno: a, op: :assoc, var: var, es: assoc)
         {mvar, em, st1} = force_atomic(map, st0)
-        {r_k_map(anno: a, op: :exact, var: mvar, es: exact),
-           esp ++ em, st1}
+        {r_k_map(anno: a, op: :exact, var: mvar, es: exact), esp ++ em, st1}
     end
   end
 
@@ -663,24 +923,32 @@ defmodule :m_v3_kernel do
 
   defp map_remove_dup_keys([{:assoc, k0, v} | es0], used0) do
     k = map_key_clean(k0)
-    op = (case (used0) do
-            %{^k => {:exact, _, _}} ->
-              :exact
-            %{} ->
-              :assoc
-          end)
+
+    op =
+      case used0 do
+        %{^k => {:exact, _, _}} ->
+          :exact
+
+        %{} ->
+          :assoc
+      end
+
     used1 = Map.put(used0, k, {op, k0, v})
     map_remove_dup_keys(es0, used1)
   end
 
   defp map_remove_dup_keys([{:exact, k0, v} | es0], used0) do
     k = map_key_clean(k0)
-    op = (case (used0) do
-            %{^k => {:assoc, _, _}} ->
-              :assoc
-            %{} ->
-              :exact
-          end)
+
+    op =
+      case used0 do
+        %{^k => {:assoc, _, _}} ->
+          :assoc
+
+        %{} ->
+          :exact
+      end
+
     used1 = Map.put(used0, k, {op, k0, v})
     map_remove_dup_keys(es0, used1)
   end
@@ -698,16 +966,19 @@ defmodule :m_v3_kernel do
   end
 
   defp call_type(r_c_literal(val: m), r_c_literal(val: f), as, st)
-      when (is_atom(m) and is_atom(f)) do
-    case (is_remote_bif(m, f, as)) do
+       when is_atom(m) and is_atom(f) do
+    case is_remote_bif(m, f, as) do
       false ->
         :call
+
       true ->
-        case ({m, f, r_kern(st, :no_min_max_bifs)}) do
+        case {m, f, r_kern(st, :no_min_max_bifs)} do
           {:erlang, :min, true} ->
             :call
+
           {:erlang, :max, true} ->
             :call
+
           {_, _, _} ->
             :bif
         end
@@ -731,11 +1002,14 @@ defmodule :m_v3_kernel do
   end
 
   defp match_vars(r_ivalues(args: as), st) do
-    foldr(fn ka, {vs, vsp, st0} ->
-               {v, vp, st1} = force_variable(ka, st0)
-               {[v | vs], vp ++ vsp, st1}
-          end,
-            {[], [], st}, as)
+    foldr(
+      fn ka, {vs, vsp, st0} ->
+        {v, vp, st1} = force_variable(ka, st0)
+        {[v | vs], vp ++ vsp, st1}
+      end,
+      {[], [], st},
+      as
+    )
   end
 
   defp match_vars(ka, st0) do
@@ -743,18 +1017,16 @@ defmodule :m_v3_kernel do
     {[v], vp, st1}
   end
 
-  defp c_apply(a, r_c_var(anno: ra, name: {f0, ar}), cargs, sub,
-            r_kern(labels: labels) = st0) do
-    case (:sets.is_element(f0, labels)) do
+  defp c_apply(a, r_c_var(anno: ra, name: {f0, ar}), cargs, sub, r_kern(labels: labels) = st0) do
+    case :sets.is_element(f0, labels) do
       true ->
         {kargs, ap, st1} = atomic_list(cargs, sub, st0)
         {r_k_goto(label: f0, args: kargs), ap, st1}
+
       false ->
         {kargs, ap, st1} = atomic_list(cargs, sub, st0)
         f1 = get_fsub(f0, ar, sub)
-        {r_k_call(anno: a, op: r_k_local(anno: ra, name: f1, arity: ar),
-             args: kargs),
-           ap, st1}
+        {r_k_call(anno: a, op: r_k_local(anno: ra, name: f1, arity: ar), args: kargs), ap, st1}
     end
   end
 
@@ -772,8 +1044,10 @@ defmodule :m_v3_kernel do
     [ke]
   end
 
-  defp pre_seq([r_iset(anno: a, vars: vs, arg: arg, body: b) | ps],
-            k) do
+  defp pre_seq(
+         [r_iset(anno: a, vars: vs, arg: arg, body: b) | ps],
+         k
+       ) do
     ^b = :undefined
     r_iset(anno: a, vars: vs, arg: arg, body: pre_seq(ps, k))
   end
@@ -793,28 +1067,40 @@ defmodule :m_v3_kernel do
   end
 
   defp force_atomic(ke, st0) do
-    case (is_atomic(ke)) do
+    case is_atomic(ke) do
       true ->
         {ke, [], st0}
+
       false ->
         {v, st1} = new_var(st0)
         {v, [r_iset(vars: [v], arg: ke)], st1}
     end
   end
 
-  defp atomic_bin([r_c_bitstr(anno: a, val: e0, size: s0, unit: u0,
-               type: t, flags: fs0) |
-               es0],
-            sub, st0) do
+  defp atomic_bin(
+         [
+           r_c_bitstr(anno: a, val: e0, size: s0, unit: u0, type: t, flags: fs0)
+           | es0
+         ],
+         sub,
+         st0
+       ) do
     {e, ap1, st1} = atomic(e0, sub, st0)
     {s1, ap2, st2} = atomic(s0, sub, st1)
     validate_bin_element_size(s1, a)
     u1 = :cerl.concrete(u0)
     fs1 = :cerl.concrete(fs0)
     {es, ap3, st3} = atomic_bin(es0, sub, st2)
-    {r_k_bin_seg(anno: a, size: s1, unit: u1, type: :cerl.concrete(t),
-         flags: fs1, seg: e, next: es),
-       ap1 ++ ap2 ++ ap3, st3}
+
+    {r_k_bin_seg(
+       anno: a,
+       size: s1,
+       unit: u1,
+       type: :cerl.concrete(t),
+       flags: fs1,
+       seg: e,
+       next: es
+     ), ap1 ++ ap2 ++ ap3, st3}
   end
 
   defp atomic_bin([], _Sub, st) do
@@ -826,24 +1112,30 @@ defmodule :m_v3_kernel do
   end
 
   defp validate_bin_element_size(r_k_literal(val: val), anno) do
-    case (val) do
+    case val do
       :all ->
         :ok
+
       :undefined ->
         :ok
-      _ when (is_integer(val) and val >= 0) ->
+
+      _ when is_integer(val) and val >= 0 ->
         :ok
+
       _ ->
         throw({:bad_segment_size, get_location(anno)})
     end
   end
 
   defp atomic_list(ces, sub, st) do
-    foldr(fn ce, {kes, esp, st0} ->
-               {ke, ep, st1} = atomic(ce, sub, st0)
-               {[ke | kes], ep ++ esp, st1}
-          end,
-            {[], [], st}, ces)
+    foldr(
+      fn ce, {kes, esp, st0} ->
+        {ke, ep, st1} = atomic(ce, sub, st0)
+        {[ke | kes], ep ++ esp, st1}
+      end,
+      {[], [], st},
+      ces
+    )
   end
 
   defp is_atomic(r_k_literal()) do
@@ -874,14 +1166,15 @@ defmodule :m_v3_kernel do
   end
 
   defp pattern(r_c_var(anno: a, name: v), _Isub, osub, st0) do
-    case (:sets.is_element(v, r_kern(st0, :ds))) do
+    case :sets.is_element(v, r_kern(st0, :ds)) do
       true ->
         {new, st1} = new_var_name(st0)
+
         {r_k_var(anno: a, name: new), set_vsub(v, new, osub),
-           r_kern(st1, ds: :sets.add_element(new, r_kern(st1, :ds)))}
+         r_kern(st1, ds: :sets.add_element(new, r_kern(st1, :ds)))}
+
       false ->
-        {r_k_var(anno: a, name: v), osub,
-           r_kern(st0, ds: :sets.add_element(v, r_kern(st0, :ds)))}
+        {r_k_var(anno: a, name: v), osub, r_kern(st0, ds: :sets.add_element(v, r_kern(st0, :ds)))}
     end
   end
 
@@ -901,8 +1194,7 @@ defmodule :m_v3_kernel do
   end
 
   defp pattern(r_c_map(anno: a, es: ces), isub, osub0, st0) do
-    {kes, osub1, st1} = pattern_map_pairs(ces, isub, osub0,
-                                            st0)
+    {kes, osub1, st1} = pattern_map_pairs(ces, isub, osub0, st0)
     {r_k_map(anno: a, op: :exact, es: kes), osub1, st1}
   end
 
@@ -911,11 +1203,9 @@ defmodule :m_v3_kernel do
     {r_k_binary(anno: a, segs: kv), osub1, st1}
   end
 
-  defp pattern(r_c_alias(anno: a, var: cv, pat: cp), isub, osub0,
-            st0) do
+  defp pattern(r_c_alias(anno: a, var: cv, pat: cp), isub, osub0, st0) do
     {cvs, cpat} = flatten_alias(cp)
-    {kvs, osub1, st1} = pattern_list([cv | cvs], isub,
-                                       osub0, st0)
+    {kvs, osub1, st1} = pattern_list([cv | cvs], isub, osub0, st0)
     {kpat, osub2, st2} = pattern(cpat, isub, osub1, st1)
     {r_ialias(anno: a, vars: kvs, pat: kpat), osub2, st2}
   end
@@ -930,23 +1220,27 @@ defmodule :m_v3_kernel do
   end
 
   defp pattern_map_pairs(ces0, isub, osub0, st0) do
-    {kes, {osub1, st1}} = mapfoldl(fn r_c_map_pair(anno: a, key: ck,
-                                          val: cv),
-                                        {osubi0, sti0} ->
-                                        {kk, [], sti1} = expr(ck, isub, sti0)
-                                        {kv, osubi2, sti2} = pattern(cv, isub,
-                                                                       osubi0,
-                                                                       sti1)
-                                        {r_k_map_pair(anno: a, key: kk, val: kv),
-                                           {osubi2, sti2}}
-                                   end,
-                                     {osub0, st0}, ces0)
-    kes1 = sort(fn r_k_map_pair(key: kkA), r_k_map_pair(key: kkB) ->
-                     a = map_key_clean(kkA)
-                     b = map_key_clean(kkB)
-                     :erts_internal.cmp_term(a, b) < 0
-                end,
-                  kes)
+    {kes, {osub1, st1}} =
+      mapfoldl(
+        fn r_c_map_pair(anno: a, key: ck, val: cv), {osubi0, sti0} ->
+          {kk, [], sti1} = expr(ck, isub, sti0)
+          {kv, osubi2, sti2} = pattern(cv, isub, osubi0, sti1)
+          {r_k_map_pair(anno: a, key: kk, val: kv), {osubi2, sti2}}
+        end,
+        {osub0, st0},
+        ces0
+      )
+
+    kes1 =
+      sort(
+        fn r_k_map_pair(key: kkA), r_k_map_pair(key: kkB) ->
+          a = map_key_clean(kkA)
+          b = map_key_clean(kkB)
+          :erts_internal.cmp_term(a, b) < 0
+        end,
+        kes
+      )
+
     {kes1, osub1, st1}
   end
 
@@ -954,65 +1248,87 @@ defmodule :m_v3_kernel do
     pattern_bin_1(es, isub, osub0, st)
   end
 
-  defp pattern_bin_1([r_c_bitstr(anno: a, val: e0, size: s0, unit: u0,
-               type: t, flags: fs0) |
-               es0],
-            isub, osub0, st0) do
+  defp pattern_bin_1(
+         [
+           r_c_bitstr(anno: a, val: e0, size: s0, unit: u0, type: t, flags: fs0)
+           | es0
+         ],
+         isub,
+         osub0,
+         st0
+       ) do
     {s1, [], st1} = expr(s0, isub, st0)
-    s = (case (s1) do
-           r_k_var() ->
-             s1
-           r_k_literal(val: val) when is_integer(val) or is_atom(val) ->
-             s1
-           _ ->
-             r_k_literal(val: :bad_size)
-         end)
+
+    s =
+      case s1 do
+        r_k_var() ->
+          s1
+
+        r_k_literal(val: val) when is_integer(val) or is_atom(val) ->
+          s1
+
+        _ ->
+          r_k_literal(val: :bad_size)
+      end
+
     u = :cerl.concrete(u0)
     fs = :cerl.concrete(fs0)
     {e, osub1, st2} = pattern(e0, isub, osub0, st1)
     {es, osub, st3} = pattern_bin_1(es0, isub, osub1, st2)
-    {build_bin_seg(a, s, u, :cerl.concrete(t), fs, e, es),
-       osub, st3}
+    {build_bin_seg(a, s, u, :cerl.concrete(t), fs, e, es), osub, st3}
   end
 
   defp pattern_bin_1([], _Isub, osub, st) do
     {r_k_bin_end(), osub, st}
   end
 
-  defp build_bin_seg(a, r_k_literal(val: bits) = sz, u, :integer = type,
-            [:unsigned, :big] = flags, r_k_literal(val: int) = seg, next)
-      when is_integer(bits) do
+  defp build_bin_seg(
+         a,
+         r_k_literal(val: bits) = sz,
+         u,
+         :integer = type,
+         [:unsigned, :big] = flags,
+         r_k_literal(val: int) = seg,
+         next
+       )
+       when is_integer(bits) do
     size = bits * u
-    case (integer_fits_and_is_expandable(int, size)) do
+
+    case integer_fits_and_is_expandable(int, size) do
       true ->
         build_bin_seg_integer_recur(a, size, int, next)
+
       false ->
-        r_k_bin_seg(anno: a, size: sz, unit: u, type: type, flags: flags,
-            seg: seg, next: next)
+        r_k_bin_seg(anno: a, size: sz, unit: u, type: type, flags: flags, seg: seg, next: next)
     end
   end
 
-  defp build_bin_seg(a, sz, u, :utf8 = type,
-            [:unsigned, :big] = flags, r_k_literal(val: utf8) = seg, next) do
-    case (utf8_fits(utf8)) do
+  defp build_bin_seg(
+         a,
+         sz,
+         u,
+         :utf8 = type,
+         [:unsigned, :big] = flags,
+         r_k_literal(val: utf8) = seg,
+         next
+       ) do
+    case utf8_fits(utf8) do
       {int, bits} ->
         build_bin_seg_integer_recur(a, bits, int, next)
+
       :error ->
-        r_k_bin_seg(anno: a, size: sz, unit: u, type: type, flags: flags,
-            seg: seg, next: next)
+        r_k_bin_seg(anno: a, size: sz, unit: u, type: type, flags: flags, seg: seg, next: next)
     end
   end
 
   defp build_bin_seg(a, sz, u, type, flags, seg, next) do
-    r_k_bin_seg(anno: a, size: sz, unit: u, type: type, flags: flags,
-        seg: seg, next: next)
+    r_k_bin_seg(anno: a, size: sz, unit: u, type: type, flags: flags, seg: seg, next: next)
   end
 
   defp build_bin_seg_integer_recur(a, bits, val, next) when bits > 8 do
     nextBits = bits - 8
-    nextVal = val &&& (1 <<< nextBits - 1)
-    last = build_bin_seg_integer_recur(a, nextBits, nextVal,
-                                         next)
+    nextVal = val &&& 1 <<< (nextBits - 1)
+    last = build_bin_seg_integer_recur(a, nextBits, nextVal, next)
     build_bin_seg_integer(a, 8, val >>> nextBits, last)
   end
 
@@ -1023,15 +1339,25 @@ defmodule :m_v3_kernel do
   defp build_bin_seg_integer(a, bits, val, next) do
     sz = r_k_literal(anno: a, val: bits)
     seg = r_k_literal(anno: a, val: val)
-    r_k_bin_seg(anno: a, size: sz, unit: 1, type: :integer,
-        flags: [:unsigned, :big], seg: seg, next: next)
+
+    r_k_bin_seg(
+      anno: a,
+      size: sz,
+      unit: 1,
+      type: :integer,
+      flags: [:unsigned, :big],
+      seg: seg,
+      next: next
+    )
   end
 
-  defp integer_fits_and_is_expandable(int, size) when (is_integer(int) and
-                             is_integer(size) and 0 < size and size <= 1024) do
-    case (<<int :: size(size)>>) do
-      <<^int :: size(size)>> ->
+  defp integer_fits_and_is_expandable(int, size)
+       when is_integer(int) and
+              is_integer(size) and 0 < size and size <= 1024 do
+    case <<int::size(size)>> do
+      <<^int::size(size)>> ->
         true
+
       _ ->
         false
     end
@@ -1043,9 +1369,9 @@ defmodule :m_v3_kernel do
 
   defp utf8_fits(utf8) do
     try do
-      bin = <<utf8 :: utf8>>
+      bin = <<utf8::utf8>>
       bits = bit_size(bin)
-      <<int :: size(bits)>> = bin
+      <<int::size(bits)>> = bin
       {int, bits}
     catch
       _, _ ->
@@ -1058,11 +1384,14 @@ defmodule :m_v3_kernel do
   end
 
   defp pattern_list(ces, isub, osub, st) do
-    foldr(fn ce, {kes, osub0, st0} ->
-               {ke, osub1, st1} = pattern(ce, isub, osub0, st0)
-               {[ke | kes], osub1, st1}
-          end,
-            {[], osub, st}, ces)
+    foldr(
+      fn ce, {kes, osub0, st0} ->
+        {ke, osub1, st1} = pattern(ce, isub, osub0, st0)
+        {[ke | kes], osub1, st1}
+      end,
+      {[], osub, st},
+      ces
+    )
   end
 
   defp new_sub() do
@@ -1094,9 +1423,10 @@ defmodule :m_v3_kernel do
   end
 
   defp bimap_get(key, {map, _InvMap}, default) do
-    case (map) do
+    case map do
       %{^key => val} ->
         val
+
       _ ->
         default
     end
@@ -1110,20 +1440,27 @@ defmodule :m_v3_kernel do
 
   defp bm_update_inv_lookup(key, val, map, invMap0) do
     invMap = bm_cleanup_inv_lookup(key, map, invMap0)
-    case (invMap) do
+
+    case invMap do
       %{^val => keys} ->
         %{invMap | val => :ordsets.add_element(key, keys)}
+
       %{} ->
         Map.put(invMap, val, [key])
     end
   end
 
-  defp bm_cleanup_inv_lookup(key, map, invMap) when :erlang.is_map_key(key,
-                                                      map) do
+  defp bm_cleanup_inv_lookup(key, map, invMap)
+       when :erlang.is_map_key(
+              key,
+              map
+            ) do
     %{^key => old} = map
-    case (invMap) do
+
+    case invMap do
       %{^old => [^key]} ->
         :maps.remove(old, invMap)
+
       %{^old => [_ | _] = keys} ->
         %{invMap | old => :ordsets.del_element(key, keys)}
     end
@@ -1134,13 +1471,12 @@ defmodule :m_v3_kernel do
   end
 
   defp bimap_rename(key, val, {map0, invMap0})
-      when :erlang.is_map_key(key, invMap0) do
+       when :erlang.is_map_key(key, invMap0) do
     keys = :erlang.map_get(key, invMap0)
     map1 = Map.put(map0, key, val)
     map = bimap_update_lookup(keys, val, map1)
     invMap1 = :maps.remove(key, invMap0)
-    invMap = Map.put(invMap1, val,
-                                :ordsets.add_element(key, keys))
+    invMap = Map.put(invMap1, val, :ordsets.add_element(key, keys))
     {map, invMap}
   end
 
@@ -1157,11 +1493,17 @@ defmodule :m_v3_kernel do
   end
 
   defp new_fun_name(st) do
-    new_fun_name('anonymous', st)
+    new_fun_name(~c"anonymous", st)
   end
 
   defp new_fun_name(type, r_kern(func: {f, arity}, fcount: c) = st) do
-    name = '-' ++ :erlang.atom_to_list(f) ++ '/' ++ :erlang.integer_to_list(arity) ++ '-' ++ type ++ '-' ++ :erlang.integer_to_list(c) ++ '-'
+    name =
+      ~c"-" ++
+        :erlang.atom_to_list(f) ++
+        ~c"/" ++
+        :erlang.integer_to_list(arity) ++
+        ~c"-" ++ type ++ ~c"-" ++ :erlang.integer_to_list(c) ++ ~c"-"
+
     {:erlang.list_to_atom(name), r_kern(st, fcount: c + 1)}
   end
 
@@ -1198,11 +1540,12 @@ defmodule :m_v3_kernel do
   end
 
   defp is_remote_bif(:erlang, :is_record, [_, tag, sz]) do
-    case ({tag, sz}) do
-      {r_c_literal(val: atom), r_c_literal(val: int)} when (is_atom(atom) and
-                                          is_integer(int))
-                                       ->
+    case {tag, sz} do
+      {r_c_literal(val: atom), r_c_literal(val: int)}
+      when is_atom(atom) and
+             is_integer(int) ->
         true
+
       {_, _} ->
         false
     end
@@ -1210,9 +1553,11 @@ defmodule :m_v3_kernel do
 
   defp is_remote_bif(:erlang, n, as) do
     arity = length(as)
-    case (:erl_internal.guard_bif(n, arity)) do
+
+    case :erl_internal.guard_bif(n, arity) do
       true ->
         true
+
       false ->
         try do
           :erl_internal.op_type(n, arity)
@@ -1222,12 +1567,16 @@ defmodule :m_v3_kernel do
         else
           :arith ->
             true
+
           :bool ->
             true
+
           :comp ->
             true
+
           :list ->
             false
+
           :send ->
             false
         end
@@ -1266,23 +1615,30 @@ defmodule :m_v3_kernel do
   end
 
   defp match_pre(cs, sub0, st) do
-    foldr(fn r_c_clause(anno: a, pats: ps, guard: g, body: b),
-               {cs0, st0} ->
-               {kps, osub1, st1} = pattern_list(ps, sub0, st0)
-               {[r_iclause(anno: a, isub: sub0, osub: osub1, pats: kps,
-                     guard: g, body: b) |
-                     cs0],
-                  st1}
-          end,
-            {[], st}, cs)
+    foldr(
+      fn r_c_clause(anno: a, pats: ps, guard: g, body: b), {cs0, st0} ->
+        {kps, osub1, st1} = pattern_list(ps, sub0, st0)
+
+        {[
+           r_iclause(anno: a, isub: sub0, osub: osub1, pats: kps, guard: g, body: b)
+           | cs0
+         ], st1}
+      end,
+      {[], st},
+      cs
+    )
   end
 
   defp match([_U | _Us] = l, cs, def__, st0) do
     pcss = partition(cs)
-    foldr(fn pcs, {d, st} ->
-               match_varcon(l, pcs, d, st)
-          end,
-            {def__, st0}, pcss)
+
+    foldr(
+      fn pcs, {d, st} ->
+        match_varcon(l, pcs, d, st)
+      end,
+      {def__, st0},
+      pcss
+    )
   end
 
   defp match([], cs, def__, st) do
@@ -1294,15 +1650,21 @@ defmodule :m_v3_kernel do
     {build_alt(build_guard(cs1), def1), st1}
   end
 
-  defp match_guard_1([r_iclause(anno: a, osub: osub, guard: g, body: b) |
-               cs0],
-            def0, st0) do
-    case (is_true_guard(g)) do
+  defp match_guard_1(
+         [
+           r_iclause(anno: a, osub: osub, guard: g, body: b)
+           | cs0
+         ],
+         def0,
+         st0
+       ) do
+    case is_true_guard(g) do
       true ->
         {kb, pb, st1} = body(b, osub, st0)
         st2 = maybe_add_warning(cs0, a, st1)
         st = maybe_add_warning(def0, a, st2)
         {[], pre_seq(pb, kb), st}
+
       false ->
         {kg, st1} = guard(g, osub, st0)
         {kb, pb, st2} = body(b, osub, st1)
@@ -1328,19 +1690,24 @@ defmodule :m_v3_kernel do
   end
 
   defp maybe_add_warning(ke, matchAnno, st) do
-    case (is_compiler_generated(ke)) do
+    case is_compiler_generated(ke) do
       true ->
         st
+
       false ->
         anno = get_kanno(ke)
         line = get_location(anno)
         matchLine = get_line(matchAnno)
-        warn = (case (matchLine) do
-                  :none ->
-                    {:nomatch, :shadow}
-                  _ ->
-                    {:nomatch, {:shadow, matchLine}}
-                end)
+
+        warn =
+          case matchLine do
+            :none ->
+              {:nomatch, :shadow}
+
+            _ ->
+              {:nomatch, {:shadow, matchLine}}
+          end
+
         add_warning(line, warn, anno, st)
     end
   end
@@ -1350,7 +1717,7 @@ defmodule :m_v3_kernel do
   end
 
   defp get_location([{line, column} | _T])
-      when (is_integer(line) and is_integer(column)) do
+       when is_integer(line) and is_integer(column) do
     {line, column}
   end
 
@@ -1387,7 +1754,7 @@ defmodule :m_v3_kernel do
   end
 
   defp get_file([]) do
-    'no_file'
+    ~c"no_file"
   end
 
   defp is_true_guard(r_c_literal(val: true)) do
@@ -1400,10 +1767,15 @@ defmodule :m_v3_kernel do
 
   defp partition([c1 | cs]) do
     v1 = is_var_clause(c1)
-    {more, rest} = splitwith(fn c ->
-                                  is_var_clause(c) === v1
-                             end,
-                               cs)
+
+    {more, rest} =
+      splitwith(
+        fn c ->
+          is_var_clause(c) === v1
+        end,
+        cs
+      )
+
     [[c1 | more] | partition(rest)]
   end
 
@@ -1412,108 +1784,129 @@ defmodule :m_v3_kernel do
   end
 
   defp match_varcon(us, [c | _] = cs, def__, st) do
-    case (is_var_clause(c)) do
+    case is_var_clause(c) do
       true ->
         match_var(us, cs, def__, st)
+
       false ->
         match_con(us, cs, def__, st)
     end
   end
 
   defp match_var([u | us], cs0, def__, st) do
-    cs1 = map(fn r_iclause(isub: isub0, osub: osub0,
-                     pats: [arg | as]) = c ->
-                   vs = [arg_arg(arg) | arg_alias(arg)]
-                   osub1 = foldl(fn r_k_var(name: v), acc ->
-                                      subst_vsub(v, r_k_var(u, :name), acc)
-                                 end,
-                                   osub0, vs)
-                   isub1 = foldl(fn r_k_var(name: v), acc ->
-                                      subst_vsub(v, r_k_var(u, :name), acc)
-                                 end,
-                                   isub0, vs)
-                   r_iclause(c, isub: isub1,  osub: osub1,  pats: as)
+    cs1 =
+      map(
+        fn r_iclause(isub: isub0, osub: osub0, pats: [arg | as]) = c ->
+          vs = [arg_arg(arg) | arg_alias(arg)]
+
+          osub1 =
+            foldl(
+              fn r_k_var(name: v), acc ->
+                subst_vsub(v, r_k_var(u, :name), acc)
               end,
-                cs0)
+              osub0,
+              vs
+            )
+
+          isub1 =
+            foldl(
+              fn r_k_var(name: v), acc ->
+                subst_vsub(v, r_k_var(u, :name), acc)
+              end,
+              isub0,
+              vs
+            )
+
+          r_iclause(c, isub: isub1, osub: osub1, pats: as)
+        end,
+        cs0
+      )
+
     match(us, cs1, def__, st)
   end
 
   defp match_con([u | _Us] = l, cs, def__, st0) do
-    ttcs0 = select_types(cs, [], [], [], [], [], [], [], [],
-                           [])
-    ttcs1 = (for {t, [_ | _] = types} <- ttcs0 do
-               {t, types}
-             end)
+    ttcs0 = select_types(cs, [], [], [], [], [], [], [], [], [])
+
+    ttcs1 =
+      for {t, [_ | _] = types} <- ttcs0 do
+        {t, types}
+      end
+
     ttcs = opt_single_valued(ttcs1)
-    {scs, st1} = mapfoldl(fn {t, tcs}, st ->
-                               {[s | _] = sc, s1} = match_value(l, t, tcs,
-                                                                  :fail, st)
-                               anno = get_kanno(s)
-                               {r_k_type_clause(anno: anno, type: t, values: sc), s1}
-                          end,
-                            st0, ttcs)
-    {build_alt_1st_no_fail(build_select(u, scs), def__),
-       st1}
+
+    {scs, st1} =
+      mapfoldl(
+        fn {t, tcs}, st ->
+          {[s | _] = sc, s1} = match_value(l, t, tcs, :fail, st)
+          anno = get_kanno(s)
+          {r_k_type_clause(anno: anno, type: t, values: sc), s1}
+        end,
+        st0,
+        ttcs
+      )
+
+    {build_alt_1st_no_fail(build_select(u, scs), def__), st1}
   end
 
-  defp select_types([noExpC | cs], bin, binCon, cons, tuple, map,
-            atom, float, int, nil__) do
+  defp select_types([noExpC | cs], bin, binCon, cons, tuple, map, atom, float, int, nil__) do
     c = expand_pat_lit_clause(noExpC)
-    case (clause_con(c)) do
+
+    case clause_con(c) do
       :k_binary ->
-        select_types(cs, [c | bin], binCon, cons, tuple, map,
-                       atom, float, int, nil__)
+        select_types(cs, [c | bin], binCon, cons, tuple, map, atom, float, int, nil__)
+
       :k_bin_seg ->
-        select_types(cs, bin, [c | binCon], cons, tuple, map,
-                       atom, float, int, nil__)
+        select_types(cs, bin, [c | binCon], cons, tuple, map, atom, float, int, nil__)
+
       :k_bin_end ->
-        select_types(cs, bin, [c | binCon], cons, tuple, map,
-                       atom, float, int, nil__)
+        select_types(cs, bin, [c | binCon], cons, tuple, map, atom, float, int, nil__)
+
       :k_cons ->
-        select_types(cs, bin, binCon, [c | cons], tuple, map,
-                       atom, float, int, nil__)
+        select_types(cs, bin, binCon, [c | cons], tuple, map, atom, float, int, nil__)
+
       :k_tuple ->
-        select_types(cs, bin, binCon, cons, [c | tuple], map,
-                       atom, float, int, nil__)
+        select_types(cs, bin, binCon, cons, [c | tuple], map, atom, float, int, nil__)
+
       :k_map ->
-        select_types(cs, bin, binCon, cons, tuple, [c | map],
-                       atom, float, int, nil__)
+        select_types(cs, bin, binCon, cons, tuple, [c | map], atom, float, int, nil__)
+
       :k_atom ->
-        select_types(cs, bin, binCon, cons, tuple, map,
-                       [c | atom], float, int, nil__)
+        select_types(cs, bin, binCon, cons, tuple, map, [c | atom], float, int, nil__)
+
       :k_float ->
-        select_types(cs, bin, binCon, cons, tuple, map, atom,
-                       [c | float], int, nil__)
+        select_types(cs, bin, binCon, cons, tuple, map, atom, [c | float], int, nil__)
+
       :k_int ->
-        select_types(cs, bin, binCon, cons, tuple, map, atom,
-                       float, [c | int], nil__)
+        select_types(cs, bin, binCon, cons, tuple, map, atom, float, [c | int], nil__)
+
       :k_nil ->
-        select_types(cs, bin, binCon, cons, tuple, map, atom,
-                       float, int, [c | nil__])
+        select_types(cs, bin, binCon, cons, tuple, map, atom, float, int, [c | nil__])
     end
   end
 
-  defp select_types([], bin, binCon, cons, tuple, map, atom, float,
-            int, nil__) do
-    [{:k_binary,
-        reverse(bin)}] ++ handle_bin_con(reverse(binCon)) ++ [{:k_cons,
-                                                                 reverse(cons)},
-                                                                  {:k_tuple,
-                                                                     reverse(tuple)},
-                                                                      {:k_map,
-                                                                         reverse(map)},
-                                                                          {:k_atom,
-                                                                             reverse(atom)},
-                                                                              {:k_float,
-                                                                                 reverse(float)},
-                                                                                  {:k_int,
-                                                                                     reverse(int)},
-                                                                                      {:k_nil,
-                                                                                         reverse(nil__)}]
+  defp select_types([], bin, binCon, cons, tuple, map, atom, float, int, nil__) do
+    [{:k_binary, reverse(bin)}] ++
+      handle_bin_con(reverse(binCon)) ++
+      [
+        {:k_cons, reverse(cons)},
+        {:k_tuple, reverse(tuple)},
+        {:k_map, reverse(map)},
+        {:k_atom, reverse(atom)},
+        {:k_float, reverse(float)},
+        {:k_int, reverse(int)},
+        {:k_nil, reverse(nil__)}
+      ]
   end
 
-  defp expand_pat_lit_clause(r_iclause(pats: [r_ialias(pat: r_k_literal(anno: a, val: val)) = alias |
-                       ps]) = c) do
+  defp expand_pat_lit_clause(
+         r_iclause(
+           pats: [
+             r_ialias(pat: r_k_literal(anno: a, val: val)) = alias
+             | ps
+           ]
+         ) = c
+       ) do
     p = expand_pat_lit(val, a)
     r_iclause(c, pats: [r_ialias(alias, pat: p) | ps])
   end
@@ -1528,15 +1921,17 @@ defmodule :m_v3_kernel do
   end
 
   defp expand_pat_lit([h | t], a) do
-    r_k_cons(anno: a, hd: r_k_literal(anno: a, val: h),
-        tl: r_k_literal(anno: a, val: t))
+    r_k_cons(anno: a, hd: r_k_literal(anno: a, val: h), tl: r_k_literal(anno: a, val: t))
   end
 
   defp expand_pat_lit(tuple, a) when is_tuple(tuple) do
-    r_k_tuple(anno: a,
-        es: for e <- :erlang.tuple_to_list(tuple) do
-              r_k_literal(anno: a, val: e)
-            end)
+    r_k_tuple(
+      anno: a,
+      es:
+        for e <- :erlang.tuple_to_list(tuple) do
+          r_k_literal(anno: a, val: e)
+        end
+    )
   end
 
   defp expand_pat_lit(lit, a) do
@@ -1547,13 +1942,15 @@ defmodule :m_v3_kernel do
     opt_single_valued(ttcs, [], [])
   end
 
-  defp opt_single_valued([{_, [r_iclause(pats: [r_k_literal() | _])]} = ttc | ttcs],
-            ttcAcc, litAcc) do
+  defp opt_single_valued(
+         [{_, [r_iclause(pats: [r_k_literal() | _])]} = ttc | ttcs],
+         ttcAcc,
+         litAcc
+       ) do
     opt_single_valued(ttcs, [ttc | ttcAcc], litAcc)
   end
 
-  defp opt_single_valued([{_, [r_iclause(pats: [p0 | ps]) = tc]} = ttc | ttcs],
-            ttcAcc, litAcc) do
+  defp opt_single_valued([{_, [r_iclause(pats: [p0 | ps]) = tc]} = ttc | ttcs], ttcAcc, litAcc) do
     try do
       combine_lit_pat(p0)
     catch
@@ -1576,9 +1973,11 @@ defmodule :m_v3_kernel do
 
   defp opt_single_valued([], ttcAcc, litAcc) do
     literals = {:k_literal, reverse(litAcc)}
-    case (reverse(ttcAcc)) do
+
+    case reverse(ttcAcc) do
       [{:k_binary, _} = bin | ttcs] ->
         [bin, literals | ttcs]
+
       ttcs ->
         [literals | ttcs]
     end
@@ -1613,12 +2012,12 @@ defmodule :m_v3_kernel do
   end
 
   defp do_combine_lit_pat(r_k_tuple(anno: a, es: es0)) do
-    es = (for el <- es0 do
-            (
-              r_k_literal(val: lit) = do_combine_lit_pat(el)
-              lit
-            )
-          end)
+    es =
+      for el <- es0 do
+        r_k_literal(val: lit) = do_combine_lit_pat(el)
+        lit
+      end
+
     r_k_literal(anno: a, val: :erlang.list_to_tuple(es))
   end
 
@@ -1626,10 +2025,18 @@ defmodule :m_v3_kernel do
     throw(:not_possible)
   end
 
-  defp combine_bin_segs(r_k_bin_seg(size: r_k_literal(val: 8), unit: 1, type: :integer,
-              flags: [:unsigned, :big], seg: r_k_literal(val: int), next: next))
-      when (is_integer(int) and 0 <= int and int <= 255) do
-    <<int, combine_bin_segs(next) :: bits>>
+  defp combine_bin_segs(
+         r_k_bin_seg(
+           size: r_k_literal(val: 8),
+           unit: 1,
+           type: :integer,
+           flags: [:unsigned, :big],
+           seg: r_k_literal(val: int),
+           next: next
+         )
+       )
+       when is_integer(int) and 0 <= int and int <= 255 do
+    <<int, combine_bin_segs(next)::bits>>
   end
 
   defp combine_bin_segs(r_k_bin_end()) do
@@ -1642,14 +2049,20 @@ defmodule :m_v3_kernel do
 
   defp handle_bin_con(cs) do
     try do
-      {binSegs0, binEnd} = partition(fn c ->
-                                          clause_con(c) === :k_bin_seg
-                                     end,
-                                       cs)
+      {binSegs0, binEnd} =
+        partition(
+          fn c ->
+            clause_con(c) === :k_bin_seg
+          end,
+          cs
+        )
+
       binSegs = select_bin_int(binSegs0)
-      case (binEnd) do
+
+      case binEnd do
         [] ->
           binSegs
+
         [_ | _] ->
           binSegs ++ [{:k_bin_end, binEnd}]
       end
@@ -1661,10 +2074,15 @@ defmodule :m_v3_kernel do
 
   defp handle_bin_con_not_possible([c1 | cs]) do
     con = clause_con(c1)
-    {more, rest} = splitwith(fn c ->
-                                  clause_con(c) === con
-                             end,
-                               cs)
+
+    {more, rest} =
+      splitwith(
+        fn c ->
+          clause_con(c) === con
+        end,
+        cs
+      )
+
     [{con, [c1 | more]} | handle_bin_con_not_possible(rest)]
   end
 
@@ -1672,30 +2090,46 @@ defmodule :m_v3_kernel do
     []
   end
 
-  defp select_bin_int([r_iclause(pats: [r_k_bin_seg(anno: a, type: :integer,
-                        size: r_k_literal(val: bits0) = sz, unit: u, flags: fl,
-                        seg: r_k_literal(val: val), next: n) |
-                        ps]) = c |
-               cs0])
-      when is_integer(bits0) do
+  defp select_bin_int([
+         r_iclause(
+           pats: [
+             r_k_bin_seg(
+               anno: a,
+               type: :integer,
+               size: r_k_literal(val: bits0) = sz,
+               unit: u,
+               flags: fl,
+               seg: r_k_literal(val: val),
+               next: n
+             )
+             | ps
+           ]
+         ) = c
+         | cs0
+       ])
+       when is_integer(bits0) do
     bits = u * bits0
+
     cond do
       bits > 1024 ->
         throw(:not_possible)
+
       true ->
         :ok
     end
+
     select_assert_match_possible(bits, val, fl)
-    p = r_k_bin_int(anno: a, size: sz, unit: u, flags: fl, val: val,
-            next: n)
-    case (member(:native, fl)) do
+    p = r_k_bin_int(anno: a, size: sz, unit: u, flags: fl, val: val, next: n)
+
+    case member(:native, fl) do
       true ->
         throw(:not_possible)
+
       false ->
         :ok
     end
-    cs1 = [r_iclause(c, pats: [p | ps]) | select_bin_int_1(cs0,
-                                                     bits, fl, val)]
+
+    cs1 = [r_iclause(c, pats: [p | ps]) | select_bin_int_1(cs0, bits, fl, val)]
     cs = reorder_bin_ints(cs1)
     [{:k_bin_int, cs}]
   end
@@ -1704,23 +2138,39 @@ defmodule :m_v3_kernel do
     throw(:not_possible)
   end
 
-  defp select_bin_int_1([r_iclause(pats: [r_k_bin_seg(anno: a, type: :integer,
-                        size: r_k_literal(val: bits0) = sz, unit: u, flags: fl,
-                        seg: r_k_literal(val: val), next: n) |
-                        ps]) = c |
-               cs],
-            bits, fl, val)
-      when is_integer(val) do
+  defp select_bin_int_1(
+         [
+           r_iclause(
+             pats: [
+               r_k_bin_seg(
+                 anno: a,
+                 type: :integer,
+                 size: r_k_literal(val: bits0) = sz,
+                 unit: u,
+                 flags: fl,
+                 seg: r_k_literal(val: val),
+                 next: n
+               )
+               | ps
+             ]
+           ) = c
+           | cs
+         ],
+         bits,
+         fl,
+         val
+       )
+       when is_integer(val) do
     cond do
       bits0 * u === bits ->
         :ok
+
       true ->
         throw(:not_possible)
     end
-    p = r_k_bin_int(anno: a, size: sz, unit: u, flags: fl, val: val,
-            next: n)
-    [r_iclause(c, pats: [p | ps]) | select_bin_int_1(cs, bits, fl,
-                                               val)]
+
+    p = r_k_bin_int(anno: a, size: sz, unit: u, flags: fl, val: val, next: n)
+    [r_iclause(c, pats: [p | ps]) | select_bin_int_1(cs, bits, fl, val)]
   end
 
   defp select_bin_int_1([], _, _, _) do
@@ -1731,22 +2181,23 @@ defmodule :m_v3_kernel do
     throw(:not_possible)
   end
 
-  defp select_assert_match_possible(sz, val, fs) when (is_integer(sz) and
-                               sz >= 0 and is_integer(val)) do
+  defp select_assert_match_possible(sz, val, fs)
+       when is_integer(sz) and
+              sz >= 0 and is_integer(val) do
     emptyBindings = :erl_eval.new_bindings()
     matchFun = match_fun(val)
+
     evalFun = fn {:integer, _, s}, b ->
-                   {:value, s, b}
-              end
-    expr = [{:bin_element, 0, {:integer, 0, val},
-               {:integer, 0, sz}, [{:unit, 1} | fs]}]
-    {:value, bin,
-       ^emptyBindings} = :eval_bits.expr_grp(expr,
-                                               emptyBindings, evalFun)
+      {:value, s, b}
+    end
+
+    expr = [{:bin_element, 0, {:integer, 0, val}, {:integer, 0, sz}, [{:unit, 1} | fs]}]
+    {:value, bin, ^emptyBindings} = :eval_bits.expr_grp(expr, emptyBindings, evalFun)
+
     try do
-      {:match, _} = :eval_bits.match_bits(expr, bin,
-                                            emptyBindings, emptyBindings,
-                                            matchFun, evalFun)
+      {:match, _} =
+        :eval_bits.match_bits(expr, bin, emptyBindings, emptyBindings, matchFun, evalFun)
+
       :ok
     catch
       :nomatch ->
@@ -1760,8 +2211,8 @@ defmodule :m_v3_kernel do
 
   defp match_fun(val) do
     fn :match, {{:integer, _, _}, newV, bs}
-           when newV === val ->
-         {:match, bs}
+       when newV === val ->
+      {:match, bs}
     end
   end
 
@@ -1771,9 +2222,13 @@ defmodule :m_v3_kernel do
 
   defp reorder_bin_ints(cs0) do
     try do
-      cs = sort(for c <- cs0 do
-                  {reorder_bin_int_sort_key(c), c}
-                end)
+      cs =
+        sort(
+          for c <- cs0 do
+            {reorder_bin_int_sort_key(c), c}
+          end
+        )
+
       for {_, c} <- cs do
         c
       end
@@ -1784,21 +2239,29 @@ defmodule :m_v3_kernel do
   end
 
   defp reorder_bin_int_sort_key(r_iclause(pats: [pat | more], guard: r_c_literal(val: true))) do
-    case (all(fn r_k_var() ->
-                   true
-                 _ ->
-                   false
-              end,
-                more)) do
+    case all(
+           fn
+             r_k_var() ->
+               true
+
+             _ ->
+               false
+           end,
+           more
+         ) do
       true ->
         :ok
+
       false ->
         throw(:not_possible)
     end
+
     ensure_fixed_size(r_k_bin_int(pat, :next))
-    case (pat) do
+
+    case pat do
       r_k_bin_int(val: val, next: r_k_bin_end()) ->
         [val]
+
       r_k_bin_int(val: val) ->
         [val, :more]
     end
@@ -1809,9 +2272,10 @@ defmodule :m_v3_kernel do
   end
 
   defp ensure_fixed_size(r_k_bin_seg(size: size, next: next)) do
-    case (size) do
+    case size do
       r_k_literal(val: sz) when is_integer(sz) ->
         ensure_fixed_size(next)
+
       _ ->
         throw(:not_possible)
     end
@@ -1822,28 +2286,38 @@ defmodule :m_v3_kernel do
   end
 
   defp match_value(us0, t, cs0, def__, st0) do
-    {us1, cs1, st1} = partition_intersection(t, us0, cs0,
-                                               st0)
+    {us1, cs1, st1} = partition_intersection(t, us0, cs0, st0)
     uCss = group_value(t, us1, cs1)
-    mapfoldl(fn {us, cs}, st ->
-                  match_clause(us, cs, def__, st)
-             end,
-               st1, uCss)
+
+    mapfoldl(
+      fn {us, cs}, st ->
+        match_clause(us, cs, def__, st)
+      end,
+      st1,
+      uCss
+    )
   end
 
   defp partition_intersection(:k_map, [u | _] = us, [_, _ | _] = cs0, st0) do
-    ps = (for c <- cs0 do
-            clause_val(c)
-          end)
-    case (find_key_intersection(ps)) do
+    ps =
+      for c <- cs0 do
+        clause_val(c)
+      end
+
+    case find_key_intersection(ps) do
       :none ->
         {us, cs0, st0}
+
       ks ->
-        cs1 = map(fn r_iclause(pats: [arg | args]) = c ->
-                       {arg1, arg2} = partition_keys(arg, ks)
-                       r_iclause(c, pats: [arg1, arg2 | args])
-                  end,
-                    cs0)
+        cs1 =
+          map(
+            fn r_iclause(pats: [arg | args]) = c ->
+              {arg1, arg2} = partition_keys(arg, ks)
+              r_iclause(c, pats: [arg1, arg2 | args])
+            end,
+            cs0
+          )
+
         {[u | us], cs1, st0}
     end
   end
@@ -1854,8 +2328,9 @@ defmodule :m_v3_kernel do
 
   defp partition_keys(r_k_map(es: pairs) = map, ks) do
     f = fn r_k_map_pair(key: key) ->
-             :sets.is_element(map_key_clean(key), ks)
-        end
+      :sets.is_element(map_key_clean(key), ks)
+    end
+
     {ps1, ps2} = partition(f, pairs)
     {r_k_map(map, es: ps1), r_k_map(map, es: ps2)}
   end
@@ -1866,21 +2341,30 @@ defmodule :m_v3_kernel do
   end
 
   defp find_key_intersection(ps) do
-    sets = (for ks <- ps do
-              :sets.from_list(ks, [{:version, 2}])
-            end)
+    sets =
+      for ks <- ps do
+        :sets.from_list(ks, [{:version, 2}])
+      end
+
     intersection = :sets.intersection(sets)
-    case (:sets.is_empty(intersection)) do
+
+    case :sets.is_empty(intersection) do
       true ->
         :none
+
       false ->
-        all = all(fn kset ->
-                       kset === intersection
-                  end,
-                    sets)
-        case (all) do
+        all =
+          all(
+            fn kset ->
+              kset === intersection
+            end,
+            sets
+          )
+
+        case all do
           true ->
             :none
+
           false ->
             intersection
         end
@@ -1889,9 +2373,11 @@ defmodule :m_v3_kernel do
 
   defp group_values([c | cs], acc) do
     val = clause_val(c)
-    case (acc) do
+
+    case acc do
       %{^val => gcs} ->
         group_values(cs, %{acc | val => [c | gcs]})
+
       %{} ->
         group_values(cs, Map.put(acc, val, [c]))
     end
@@ -1903,10 +2389,15 @@ defmodule :m_v3_kernel do
 
   defp group_keeping_order(us, [c1 | cs]) do
     v1 = clause_val(c1)
-    {more, rest} = splitwith(fn c ->
-                                  clause_val(c) === v1
-                             end,
-                               cs)
+
+    {more, rest} =
+      splitwith(
+        fn c ->
+          clause_val(c) === v1
+        end,
+        cs
+      )
+
     [{us, [c1 | more]} | group_keeping_order(us, rest)]
   end
 
@@ -1924,8 +2415,10 @@ defmodule :m_v3_kernel do
     {r_k_val_clause(anno: anno, val: match, body: b), st3}
   end
 
-  defp sub_size_var(r_k_bin_seg(size: r_k_var(name: name) = kvar) = binSeg,
-            [r_iclause(isub: sub) | _]) do
+  defp sub_size_var(
+         r_k_bin_seg(size: r_k_var(name: name) = kvar) = binSeg,
+         [r_iclause(isub: sub) | _]
+       ) do
     r_k_bin_seg(binSeg, size: r_k_var(kvar, name: get_vsub(name, sub)))
   end
 
@@ -1947,16 +2440,20 @@ defmodule :m_v3_kernel do
     {r_k_binary(segs: v), mes, st1}
   end
 
-  defp get_match(r_k_bin_seg(size: r_k_literal(val: :all),
-              next: {:k_bin_end, []}) = seg,
-            st0) do
+  defp get_match(
+         r_k_bin_seg(
+           size: r_k_literal(val: :all),
+           next: {:k_bin_end, []}
+         ) = seg,
+         st0
+       ) do
     {[s, n], st1} = new_vars(2, st0)
-    {r_k_bin_seg(seg, seg: s,  next: n), [s], st1}
+    {r_k_bin_seg(seg, seg: s, next: n), [s], st1}
   end
 
   defp get_match(r_k_bin_seg() = seg, st0) do
     {[s, n], st1} = new_vars(2, st0)
-    {r_k_bin_seg(seg, seg: s,  next: n), [s, n], st1}
+    {r_k_bin_seg(seg, seg: s, next: n), [s, n], st1}
   end
 
   defp get_match(r_k_bin_int() = binInt, st0) do
@@ -1971,10 +2468,16 @@ defmodule :m_v3_kernel do
 
   defp get_match(r_k_map(op: :exact, es: es0), st0) do
     {mes, st1} = new_vars(length(es0), st0)
-    {es, _} = mapfoldl(fn r_k_map_pair() = pair, [v | vs] ->
-                            {r_k_map_pair(pair, val: v), vs}
-                       end,
-                         mes, es0)
+
+    {es, _} =
+      mapfoldl(
+        fn r_k_map_pair() = pair, [v | vs] ->
+          {r_k_map_pair(pair, val: v), vs}
+        end,
+        mes,
+        es0
+      )
+
     {r_k_map(op: :exact, es: es), mes, st1}
   end
 
@@ -1983,53 +2486,79 @@ defmodule :m_v3_kernel do
   end
 
   defp new_clauses(cs0, u, st) do
-    cs1 = map(fn r_iclause(isub: isub0, osub: osub0,
-                     pats: [arg | as]) = c ->
-                   head = (case (arg_arg(arg)) do
-                             r_k_cons(hd: h, tl: t) ->
-                               [h, t | as]
-                             r_k_tuple(es: es) ->
-                               es ++ as
-                             r_k_binary(segs: e) ->
-                               [e | as]
-                             r_k_bin_seg(size: r_k_literal(val: :all), seg: s,
-                                 next: {:k_bin_end, []}) ->
-                               [s | as]
-                             r_k_bin_seg(seg: s, next: n) ->
-                               [s, n | as]
-                             r_k_bin_int(next: n) ->
-                               [n | as]
-                             r_k_map(op: :exact, es: es) ->
-                               vals = (for r_k_map_pair(val: v) <- es do
-                                         v
-                                       end)
-                               vals ++ as
-                             _Other ->
-                               as
-                           end)
-                   vs = arg_alias(arg)
-                   osub1 = foldl(fn r_k_var(name: v), acc ->
-                                      subst_vsub(v, r_k_var(u, :name), acc)
-                                 end,
-                                   osub0, vs)
-                   isub1 = foldl(fn r_k_var(name: v), acc ->
-                                      subst_vsub(v, r_k_var(u, :name), acc)
-                                 end,
-                                   isub0, vs)
-                   r_iclause(c, isub: isub1,  osub: osub1,  pats: head)
+    cs1 =
+      map(
+        fn r_iclause(isub: isub0, osub: osub0, pats: [arg | as]) = c ->
+          head =
+            case arg_arg(arg) do
+              r_k_cons(hd: h, tl: t) ->
+                [h, t | as]
+
+              r_k_tuple(es: es) ->
+                es ++ as
+
+              r_k_binary(segs: e) ->
+                [e | as]
+
+              r_k_bin_seg(size: r_k_literal(val: :all), seg: s, next: {:k_bin_end, []}) ->
+                [s | as]
+
+              r_k_bin_seg(seg: s, next: n) ->
+                [s, n | as]
+
+              r_k_bin_int(next: n) ->
+                [n | as]
+
+              r_k_map(op: :exact, es: es) ->
+                vals =
+                  for r_k_map_pair(val: v) <- es do
+                    v
+                  end
+
+                vals ++ as
+
+              _Other ->
+                as
+            end
+
+          vs = arg_alias(arg)
+
+          osub1 =
+            foldl(
+              fn r_k_var(name: v), acc ->
+                subst_vsub(v, r_k_var(u, :name), acc)
               end,
-                cs0)
+              osub0,
+              vs
+            )
+
+          isub1 =
+            foldl(
+              fn r_k_var(name: v), acc ->
+                subst_vsub(v, r_k_var(u, :name), acc)
+              end,
+              isub0,
+              vs
+            )
+
+          r_iclause(c, isub: isub1, osub: osub1, pats: head)
+        end,
+        cs0
+      )
+
     {cs1, st}
   end
 
   defp squeeze_clauses_by_bin_integer_count([clause | clauses], acc) do
-    case (clause_count_bin_integer_segments(clause)) do
+    case clause_count_bin_integer_segments(clause) do
       {:literal, n} ->
-        squeeze_clauses_by_bin_integer_count(clauses, n, 1,
-                                               [clause], acc)
+        squeeze_clauses_by_bin_integer_count(clauses, n, 1, [clause], acc)
+
       _ ->
-        squeeze_clauses_by_bin_integer_count(clauses,
-                                               [[clause] | acc])
+        squeeze_clauses_by_bin_integer_count(
+          clauses,
+          [[clause] | acc]
+        )
     end
   end
 
@@ -2038,42 +2567,69 @@ defmodule :m_v3_kernel do
   end
 
   defp squeeze_clauses_by_bin_integer_count([], n, count, groupAcc, acc) do
-    squeezed = squeeze_clauses(groupAcc,
-                                 fix_count_without_variadic_segment(n), count)
+    squeezed = squeeze_clauses(groupAcc, fix_count_without_variadic_segment(n), count)
     flat_reverse([squeezed | acc], [])
   end
 
-  defp squeeze_clauses_by_bin_integer_count([r_iclause(pats: [r_k_bin_end() | _]) = clause], n, count,
-            groupAcc, acc) do
-    squeezed = squeeze_clauses(groupAcc,
-                                 fix_count_without_variadic_segment(n), count)
+  defp squeeze_clauses_by_bin_integer_count(
+         [r_iclause(pats: [r_k_bin_end() | _]) = clause],
+         n,
+         count,
+         groupAcc,
+         acc
+       ) do
+    squeezed = squeeze_clauses(groupAcc, fix_count_without_variadic_segment(n), count)
     flat_reverse([[clause | squeezed] | acc], [])
   end
 
   defp squeeze_clauses_by_bin_integer_count([clause | clauses], n, count, groupAcc, acc) do
-    case (clause_count_bin_integer_segments(clause)) do
+    case clause_count_bin_integer_segments(clause) do
       {:literal, newN} ->
-        squeeze_clauses_by_bin_integer_count(clauses,
-                                               min(n, newN), count + 1,
-                                               [clause | groupAcc], acc)
+        squeeze_clauses_by_bin_integer_count(
+          clauses,
+          min(n, newN),
+          count + 1,
+          [clause | groupAcc],
+          acc
+        )
+
       {:variadic, newN} when newN <= n ->
         squeezed = squeeze_clauses(groupAcc, newN, count)
-        squeeze_clauses_by_bin_integer_count(clauses,
-                                               [[clause | squeezed] | acc])
+
+        squeeze_clauses_by_bin_integer_count(
+          clauses,
+          [[clause | squeezed] | acc]
+        )
+
       _ ->
-        squeeze_clauses_by_bin_integer_count(clauses,
-                                               [[clause | groupAcc] | acc])
+        squeeze_clauses_by_bin_integer_count(
+          clauses,
+          [[clause | groupAcc] | acc]
+        )
     end
   end
 
-  defp clause_count_bin_integer_segments(r_iclause(pats: [r_k_bin_seg(seg: r_k_literal()) = binSeg | _])) do
+  defp clause_count_bin_integer_segments(
+         r_iclause(pats: [r_k_bin_seg(seg: r_k_literal()) = binSeg | _])
+       ) do
     count_bin_integer_segments(binSeg, 0)
   end
 
-  defp clause_count_bin_integer_segments(r_iclause(pats: [r_k_bin_seg(size: r_k_literal(val: size), unit: unit,
-                       type: :integer, flags: [:unsigned, :big], seg: r_k_var()) |
-                       _]))
-      when rem(size * unit, 8) === 0 do
+  defp clause_count_bin_integer_segments(
+         r_iclause(
+           pats: [
+             r_k_bin_seg(
+               size: r_k_literal(val: size),
+               unit: unit,
+               type: :integer,
+               flags: [:unsigned, :big],
+               seg: r_k_var()
+             )
+             | _
+           ]
+         )
+       )
+       when rem(size * unit, 8) === 0 do
     {:variadic, div(size * unit, 8)}
   end
 
@@ -2081,10 +2637,18 @@ defmodule :m_v3_kernel do
     :error
   end
 
-  defp count_bin_integer_segments(r_k_bin_seg(size: r_k_literal(val: 8), unit: 1, type: :integer,
-              flags: [:unsigned, :big], seg: r_k_literal(val: int), next: next),
-            count)
-      when (is_integer(int) and 0 <= int and int <= 255) do
+  defp count_bin_integer_segments(
+         r_k_bin_seg(
+           size: r_k_literal(val: 8),
+           unit: 1,
+           type: :integer,
+           flags: [:unsigned, :big],
+           seg: r_k_literal(val: int),
+           next: next
+         ),
+         count
+       )
+       when is_integer(int) and 0 <= int and int <= 255 do
     count_bin_integer_segments(next, count + 1)
   end
 
@@ -2104,8 +2668,9 @@ defmodule :m_v3_kernel do
     n
   end
 
-  defp squeeze_clauses(clauses, size, count) when count >= 16 or
-                                       size <= 1 do
+  defp squeeze_clauses(clauses, size, count)
+       when count >= 16 or
+              size <= 1 do
     clauses
   end
 
@@ -2113,29 +2678,47 @@ defmodule :m_v3_kernel do
     squeeze_clauses(clauses, size)
   end
 
-  defp squeeze_clauses([r_iclause(pats: [r_k_bin_seg(seg: r_k_literal()) = binSeg |
-                        pats]) = clause |
-               clauses],
-            size) do
-    [r_iclause(clause, pats: [squeeze_segments(binSeg, 0, 0, size) |
-                          pats]) |
-         squeeze_clauses(clauses, size)]
+  defp squeeze_clauses(
+         [
+           r_iclause(
+             pats: [
+               r_k_bin_seg(seg: r_k_literal()) = binSeg
+               | pats
+             ]
+           ) = clause
+           | clauses
+         ],
+         size
+       ) do
+    [
+      r_iclause(clause,
+        pats: [
+          squeeze_segments(binSeg, 0, 0, size)
+          | pats
+        ]
+      )
+      | squeeze_clauses(clauses, size)
+    ]
   end
 
   defp squeeze_clauses([], _Size) do
     []
   end
 
-  defp squeeze_segments(r_k_bin_seg(size: sz, seg: r_k_literal(val: val) = lit) = binSeg,
-            acc, size, 1) do
-    r_k_bin_seg(binSeg, size: r_k_literal(sz, val: size + 8), 
-                seg: r_k_literal(lit, val: acc <<< 8 ||| val))
+  defp squeeze_segments(
+         r_k_bin_seg(size: sz, seg: r_k_literal(val: val) = lit) = binSeg,
+         acc,
+         size,
+         1
+       ) do
+    r_k_bin_seg(binSeg,
+      size: r_k_literal(sz, val: size + 8),
+      seg: r_k_literal(lit, val: acc <<< 8 ||| val)
+    )
   end
 
-  defp squeeze_segments(r_k_bin_seg(seg: r_k_literal(val: val), next: next), acc, size,
-            count) do
-    squeeze_segments(next, acc <<< 8 ||| val, size + 8,
-                       count - 1)
+  defp squeeze_segments(r_k_bin_seg(seg: r_k_literal(val: val), next: next), acc, size, count) do
+    squeeze_segments(next, acc <<< 8 ||| val, size + 8, count - 1)
   end
 
   defp squeeze_segments(r_k_bin_end(), acc, size, count) do
@@ -2235,31 +2818,42 @@ defmodule :m_v3_kernel do
   end
 
   defp arg_con(arg) do
-    case (arg_arg(arg)) do
+    case arg_arg(arg) do
       r_k_cons() ->
         :k_cons
+
       r_k_tuple() ->
         :k_tuple
+
       r_k_map() ->
         :k_map
+
       r_k_binary() ->
         :k_binary
+
       r_k_bin_end() ->
         :k_bin_end
+
       r_k_bin_seg() ->
         :k_bin_seg
+
       r_k_var() ->
         :k_var
+
       r_k_literal(val: []) ->
         :k_nil
+
       r_k_literal(val: val) ->
         cond do
           is_atom(val) ->
             :k_atom
+
           is_integer(val) ->
             :k_int
+
           is_float(val) ->
             :k_float
+
           true ->
             :k_literal
         end
@@ -2267,37 +2861,41 @@ defmodule :m_v3_kernel do
   end
 
   defp arg_val(arg, c) do
-    case (arg_arg(arg)) do
+    case arg_arg(arg) do
       r_k_literal(val: lit) ->
         lit
+
       r_k_tuple(es: es) ->
         length(es)
+
       r_k_bin_seg(size: s, unit: u, type: t, flags: fs) ->
-        case (s) do
+        case s do
           r_k_var(name: v) ->
             r_iclause(isub: isub) = c
             {r_k_var(name: get_vsub(v, isub)), u, t, fs}
+
           _ ->
             {set_kanno(s, []), u, t, fs}
         end
+
       r_k_map(op: :exact, es: es) ->
-        sort(fn a, b ->
-                  :erts_internal.cmp_term(a, b) < 0
-             end,
-               for r_k_map_pair(key: key) <- es do
-                 map_key_clean(key)
-               end)
+        sort(
+          fn a, b ->
+            :erts_internal.cmp_term(a, b) < 0
+          end,
+          for r_k_map_pair(key: key) <- es do
+            map_key_clean(key)
+          end
+        )
     end
   end
 
   defp ubody_used_vars(expr, st) do
-    {_, used, _} = ubody(expr, :return,
-                           r_kern(st, funs: :ignore))
+    {_, used, _} = ubody(expr, :return, r_kern(st, funs: :ignore))
     used
   end
 
-  defp ubody(r_iset(vars: [], arg: r_iletrec() = let, body: b0), br,
-            st0) do
+  defp ubody(r_iset(vars: [], arg: r_iletrec() = let, body: b0), br, st0) do
     st = iletrec_funs(let, st0)
     ubody(b0, br, st)
   end
@@ -2306,8 +2904,7 @@ defmodule :m_v3_kernel do
     ubody(b0, br, st0)
   end
 
-  defp ubody(r_iset(anno: a, vars: vs, arg: e0, body: b0), br,
-            st0) do
+  defp ubody(r_iset(anno: a, vars: vs, arg: e0, body: b0), br, st0) do
     {e1, eu, st1} = uexpr(e0, {:break, vs}, st0)
     {b1, bu, st2} = ubody(b0, br, st1)
     ns = lit_list_vars(vs)
@@ -2331,9 +2928,10 @@ defmodule :m_v3_kernel do
   end
 
   defp ubody(e, :return, st0) do
-    case (is_enter_expr(e)) do
+    case is_enter_expr(e) do
       true ->
         uexpr(e, :return, st0)
+
       false ->
         {ea, pa, st1} = force_atomic(e, st0)
         ubody(pre_seq(pa, r_ivalues(args: [ea])), :return, st1)
@@ -2353,18 +2951,29 @@ defmodule :m_v3_kernel do
   end
 
   defp iletrec_funs(r_iletrec(defs: fs), st0) do
-    free = foldl(fn {_, r_ifun(vars: vs, body: fb0)}, free0 ->
-                      fbu = ubody_used_vars(fb0, st0)
-                      ns = lit_list_vars(vs)
-                      free1 = subtract(fbu, ns)
-                      union(free1, free0)
-                 end,
-                   [], fs)
+    free =
+      foldl(
+        fn {_, r_ifun(vars: vs, body: fb0)}, free0 ->
+          fbu = ubody_used_vars(fb0, st0)
+          ns = lit_list_vars(vs)
+          free1 = subtract(fbu, ns)
+          union(free1, free0)
+        end,
+        [],
+        fs
+      )
+
     freeVs = make_vars(free)
-    st1 = foldl(fn {n, r_ifun(vars: vs)}, lst ->
-                     store_free(n, length(vs), freeVs, lst)
-                end,
-                  st0, fs)
+
+    st1 =
+      foldl(
+        fn {n, r_ifun(vars: vs)}, lst ->
+          store_free(n, length(vs), freeVs, lst)
+        end,
+        st0,
+        fs
+      )
+
     iletrec_funs_gen(fs, freeVs, st1)
   end
 
@@ -2373,14 +2982,17 @@ defmodule :m_v3_kernel do
   end
 
   defp iletrec_funs_gen(fs, freeVs, st) do
-    foldl(fn {n, r_ifun(anno: fa, vars: vs, body: fb0)}, lst0 ->
-               arity0 = length(vs)
-               {fb1, _, lst1} = ubody(fb0, :return, lst0)
-               arity = arity0 + length(freeVs)
-               fun = make_fdef(fa, n, arity, vs ++ freeVs, fb1)
-               r_kern(lst1, funs: [fun | r_kern(lst1, :funs)])
-          end,
-            st, fs)
+    foldl(
+      fn {n, r_ifun(anno: fa, vars: vs, body: fb0)}, lst0 ->
+        arity0 = length(vs)
+        {fb1, _, lst1} = ubody(fb0, :return, lst0)
+        arity = arity0 + length(freeVs)
+        fun = make_fdef(fa, n, arity, vs ++ freeVs, fb1)
+        r_kern(lst1, funs: [fun | r_kern(lst1, :funs)])
+      end,
+      st,
+      fs
+    )
   end
 
   defp is_enter_expr(r_k_try()) do
@@ -2403,15 +3015,13 @@ defmodule :m_v3_kernel do
     false
   end
 
-  defp uexpr(r_k_test(anno: a, op: op, args: as) = test,
-            {:break, rs}, st) do
+  defp uexpr(r_k_test(anno: a, op: op, args: as) = test, {:break, rs}, st) do
     [] = rs
     used = union(op_vars(op), lit_list_vars(as))
     {r_k_test(test, anno: a), used, st}
   end
 
-  defp uexpr(r_iset(anno: a, vars: vs, arg: e0, body: b0),
-            {:break, _} = br, st0) do
+  defp uexpr(r_iset(anno: a, vars: vs, arg: e0, body: b0), {:break, _} = br, st0) do
     ns = lit_list_vars(vs)
     {e1, eu, st1} = uexpr(e0, {:break, vs}, st0)
     {b1, bu, st2} = uexpr(b0, br, st1)
@@ -2419,27 +3029,23 @@ defmodule :m_v3_kernel do
     {r_k_seq(anno: a, arg: e1, body: b1), used, st2}
   end
 
-  defp uexpr(r_k_call(anno: a, op: r_k_local(name: f, arity: ar) = op,
-              args: as0) = call,
-            br, st) do
+  defp uexpr(r_k_call(anno: a, op: r_k_local(name: f, arity: ar) = op, args: as0) = call, br, st) do
     free = get_free(f, ar, st)
     as1 = as0 ++ free
     used = lit_list_vars(as1)
-    {case (br) do
+
+    {case br do
        {:break, rs} ->
-         r_k_call(call, anno: a,  op: r_k_local(op, arity: ar + length(free)), 
-                   args: as1,  ret: rs)
+         r_k_call(call, anno: a, op: r_k_local(op, arity: ar + length(free)), args: as1, ret: rs)
+
        :return ->
-         r_k_enter(anno: a, op: r_k_local(op, arity: ar + length(free)),
-             args: as1)
-     end,
-       used, st}
+         r_k_enter(anno: a, op: r_k_local(op, arity: ar + length(free)), args: as1)
+     end, used, st}
   end
 
-  defp uexpr(r_k_call(anno: a, op: op, args: as) = call,
-            {:break, rs}, st) do
+  defp uexpr(r_k_call(anno: a, op: op, args: as) = call, {:break, rs}, st) do
     used = union(op_vars(op), lit_list_vars(as))
-    {r_k_call(call, anno: a,  ret: rs), used, st}
+    {r_k_call(call, anno: a, ret: rs), used, st}
   end
 
   defp uexpr(r_k_call(anno: a, op: op, args: as), :return, st) do
@@ -2447,11 +3053,10 @@ defmodule :m_v3_kernel do
     {r_k_enter(anno: a, op: op, args: as), used, st}
   end
 
-  defp uexpr(r_k_bif(anno: a, op: op, args: as) = bif,
-            {:break, rs}, st0) do
+  defp uexpr(r_k_bif(anno: a, op: op, args: as) = bif, {:break, rs}, st0) do
     used = union(op_vars(op), lit_list_vars(as))
     {brs, st1} = bif_returns(op, rs, st0)
-    {r_k_bif(bif, anno: a,  ret: brs), used, st1}
+    {r_k_bif(bif, anno: a, ret: brs), used, st1}
   end
 
   defp uexpr(r_k_match(anno: a, body: b0), br, st0) do
@@ -2460,40 +3065,44 @@ defmodule :m_v3_kernel do
     {r_k_match(anno: a, body: b1, ret: rs), bu, st1}
   end
 
-  defp uexpr(r_k_try(anno: a, arg: a0, vars: vs, body: b0,
-              evars: evs, handler: h0),
-            {:break, rs0} = br, st0) do
-    case ({vs, b0, h0, rs0}) do
+  defp uexpr(
+         r_k_try(anno: a, arg: a0, vars: vs, body: b0, evars: evs, handler: h0),
+         {:break, rs0} = br,
+         st0
+       ) do
+    case {vs, b0, h0, rs0} do
       {[r_k_var(name: x)], r_k_var(name: x), r_k_literal(), []} ->
         {a1, bu, st} = ubody(a0, {:break, []}, st0)
-        {r_k_try(anno: a, arg: a1, vars: [], body: r_k_break(), evars: [],
-             handler: r_k_break(), ret: rs0),
-           bu, st}
+
+        {r_k_try(
+           anno: a,
+           arg: a1,
+           vars: [],
+           body: r_k_break(),
+           evars: [],
+           handler: r_k_break(),
+           ret: rs0
+         ), bu, st}
+
       {_, _, _, _} ->
         {avs, st1} = new_vars(length(vs), st0)
         {a1, au, st2} = ubody(a0, {:break, avs}, st1)
         {b1, bu, st3} = ubody(b0, br, st2)
         {h1, hu, st4} = ubody(h0, br, st3)
-        used = union([au, subtract(bu, lit_list_vars(vs)),
-                              subtract(hu, lit_list_vars(evs))])
-        {r_k_try(anno: a, arg: a1, vars: vs, body: b1, evars: evs,
-             handler: h1, ret: rs0),
-           used, st4}
+        used = union([au, subtract(bu, lit_list_vars(vs)), subtract(hu, lit_list_vars(evs))])
+
+        {r_k_try(anno: a, arg: a1, vars: vs, body: b1, evars: evs, handler: h1, ret: rs0), used,
+         st4}
     end
   end
 
-  defp uexpr(r_k_try(anno: a, arg: a0, vars: vs, body: b0,
-              evars: evs, handler: h0),
-            :return, st0) do
+  defp uexpr(r_k_try(anno: a, arg: a0, vars: vs, body: b0, evars: evs, handler: h0), :return, st0) do
     {avs, st1} = new_vars(length(vs), st0)
     {a1, au, st2} = ubody(a0, {:break, avs}, st1)
     {b1, bu, st3} = ubody(b0, :return, st2)
     {h1, hu, st4} = ubody(h0, :return, st3)
-    used = union([au, subtract(bu, lit_list_vars(vs)),
-                          subtract(hu, lit_list_vars(evs))])
-    {r_k_try_enter(anno: a, arg: a1, vars: vs, body: b1, evars: evs,
-         handler: h1),
-       used, st4}
+    used = union([au, subtract(bu, lit_list_vars(vs)), subtract(hu, lit_list_vars(evs))])
+    {r_k_try_enter(anno: a, arg: a1, vars: vs, body: b1, evars: evs, handler: h1), used, st4}
   end
 
   defp uexpr(r_k_catch(anno: a, body: b0), {:break, rs0}, st0) do
@@ -2504,49 +3113,56 @@ defmodule :m_v3_kernel do
     {r_k_catch(anno: a, body: b1, ret: rs1), bu, st3}
   end
 
-  defp uexpr(r_ifun(anno: a, vars: vs, body: b0), {:break, rs},
-            st0) do
+  defp uexpr(r_ifun(anno: a, vars: vs, body: b0), {:break, rs}, st0) do
     {b1, bu, st1} = ubody(b0, :return, st0)
     ns = lit_list_vars(vs)
     free = subtract(bu, ns)
     fvs = make_vars(free)
     arity = length(vs) + length(free)
-    {fname, st} = (case (keyfind(:id, 1, a)) do
-                     {:id, {_, _, fname0}} ->
-                       {fname0, st1}
-                     false ->
-                       new_fun_name(st1)
-                   end)
+
+    {fname, st} =
+      case keyfind(:id, 1, a) do
+        {:id, {_, _, fname0}} ->
+          {fname0, st1}
+
+        false ->
+          new_fun_name(st1)
+      end
+
     fun = make_fdef(a, fname, arity, vs ++ fvs, b1)
     local = r_k_local(name: fname, arity: arity)
-    {r_k_bif(anno: a,
-         op: r_k_internal(name: :make_fun, arity: length(free) + 2),
-         args: [local | fvs], ret: rs),
-       free, add_local_function(fun, st)}
+
+    {r_k_bif(
+       anno: a,
+       op: r_k_internal(name: :make_fun, arity: length(free) + 2),
+       args: [local | fvs],
+       ret: rs
+     ), free, add_local_function(fun, st)}
   end
 
-  defp uexpr(r_k_local(anno: a, name: name, arity: arity),
-            {:break, rs}, st) do
+  defp uexpr(r_k_local(anno: a, name: name, arity: arity), {:break, rs}, st) do
     free = lit_list_vars(get_free(name, arity, st))
     fvs = make_vars(free)
     freeCount = length(fvs)
-    bif = r_k_bif(anno: a,
-              op: r_k_internal(name: :make_fun, arity: freeCount + 1),
-              args: [r_k_local(name: name, arity: arity + freeCount) | fvs],
-              ret: rs)
+
+    bif =
+      r_k_bif(
+        anno: a,
+        op: r_k_internal(name: :make_fun, arity: freeCount + 1),
+        args: [r_k_local(name: name, arity: arity + freeCount) | fvs],
+        ret: rs
+      )
+
     {bif, free, st}
   end
 
-  defp uexpr(r_k_letrec_goto(anno: a, vars: vs, first: f0,
-              then: t0) = matchAlt,
-            br, st0) do
+  defp uexpr(r_k_letrec_goto(anno: a, vars: vs, first: f0, then: t0) = matchAlt, br, st0) do
     rs = break_rets(br)
     ns = lit_list_vars(vs)
     {f1, fu, st1} = ubody(f0, br, st0)
     {t1, tu, st2} = ubody(t0, br, st1)
     used = subtract(union(fu, tu), ns)
-    {r_k_letrec_goto(matchAlt, anno: a,  first: f1,  then: t1,  ret: rs),
-       used, st2}
+    {r_k_letrec_goto(matchAlt, anno: a, first: f1, then: t1, ret: rs), used, st2}
   end
 
   defp uexpr(r_k_opaque() = o, _, st) do
@@ -2563,18 +3179,20 @@ defmodule :m_v3_kernel do
     st
   end
 
-  defp add_local_function(r_k_fdef(func: name, arity: arity) = f,
-            r_kern(funs: funs) = st) do
-    case (is_defined(name, arity, funs)) do
+  defp add_local_function(
+         r_k_fdef(func: name, arity: arity) = f,
+         r_kern(funs: funs) = st
+       ) do
+    case is_defined(name, arity, funs) do
       false ->
         r_kern(st, funs: [f | funs])
+
       true ->
         st
     end
   end
 
-  defp is_defined(name, arity,
-            [r_k_fdef(func: name, arity: arity) | _]) do
+  defp is_defined(name, arity, [r_k_fdef(func: name, arity: arity) | _]) do
     true
   end
 
@@ -2587,22 +3205,22 @@ defmodule :m_v3_kernel do
   end
 
   defp make_fdef(anno, name, arity, vs, r_k_match() = body) do
-    r_k_fdef(anno: anno, func: name, arity: arity, vars: vs,
-        body: body)
+    r_k_fdef(anno: anno, func: name, arity: arity, vars: vs, body: body)
   end
 
   defp make_fdef(anno, name, arity, vs, body) do
     ka = get_kanno(body)
     match = r_k_match(anno: ka, body: body, ret: [])
-    r_k_fdef(anno: anno, func: name, arity: arity, vars: vs,
-        body: match)
+    r_k_fdef(anno: anno, func: name, arity: arity, vars: vs, body: match)
   end
 
   defp get_free(f, a, r_kern(free: freeMap)) do
     key = {f, a}
-    case (freeMap) do
+
+    case freeMap do
       %{^key => val} ->
         val
+
       _ ->
         []
     end
@@ -2632,8 +3250,12 @@ defmodule :m_v3_kernel do
   end
 
   defp bif_returns(r_k_remote(mod: m, name: n, arity: ar), rs, st0) do
-    {ns, st1} = new_vars(bif_vals(m, n, ar) - length(rs),
-                           st0)
+    {ns, st1} =
+      new_vars(
+        bif_vals(m, n, ar) - length(rs),
+        st0
+      )
+
     {rs ++ ns, st1}
   end
 
@@ -2688,23 +3310,30 @@ defmodule :m_v3_kernel do
   end
 
   defp umatch_list(ms0, br, st) do
-    foldr(fn m0, {ms1, us, sta} ->
-               {m1, mu, stb} = umatch(m0, br, sta)
-               {[m1 | ms1], union(mu, us), stb}
-          end,
-            {[], [], st}, ms0)
+    foldr(
+      fn m0, {ms1, us, sta} ->
+        {m1, mu, stb} = umatch(m0, br, sta)
+        {[m1 | ms1], union(mu, us), stb}
+      end,
+      {[], [], st},
+      ms0
+    )
   end
 
   defp pat_anno_unused(r_k_tuple(es: es0) = p, used0, ps) do
     used = intersection(used0, ps)
-    es = (for (r_k_var(name: v) = var) <- es0 do
-            case (member(v, used)) do
-              true ->
-                var
-              false ->
-                set_kanno(var, [:unused | get_kanno(var)])
-            end
-          end)
+
+    es =
+      for r_k_var(name: v) = var <- es0 do
+        case member(v, used) do
+          true ->
+            var
+
+          false ->
+            set_kanno(var, [:unused | get_kanno(var)])
+        end
+      end
+
     r_k_tuple(p, es: es)
   end
 
@@ -2713,9 +3342,11 @@ defmodule :m_v3_kernel do
   end
 
   defp op_vars(r_k_remote(mod: mod, name: name)) do
-    :ordsets.from_list(for r_k_var(name: v) <- [mod, name] do
-                         v
-                       end)
+    :ordsets.from_list(
+      for r_k_var(name: v) <- [mod, name] do
+        v
+      end
+    )
   end
 
   defp op_vars(r_k_internal()) do
@@ -2767,10 +3398,13 @@ defmodule :m_v3_kernel do
   end
 
   defp lit_list_vars(ps) do
-    foldl(fn p, vs ->
-               union(lit_vars(p), vs)
-          end,
-            [], ps)
+    foldl(
+      fn p, vs ->
+        union(lit_vars(p), vs)
+      end,
+      [],
+      ps
+    )
   end
 
   defp pat_vars(r_k_var(name: n)) do
@@ -2820,11 +3454,14 @@ defmodule :m_v3_kernel do
   end
 
   defp pat_list_vars(ps) do
-    foldl(fn p, {used0, new0} ->
-               {used, new} = pat_vars(p)
-               {union(used0, used), union(new0, new)}
-          end,
-            {[], []}, ps)
+    foldl(
+      fn p, {used0, new0} ->
+        {used, new} = pat_vars(p)
+        {union(used0, used), union(new0, new)}
+      end,
+      {[], []},
+      ps
+    )
   end
 
   defp integers(n, m) when n <= m do
@@ -2836,20 +3473,25 @@ defmodule :m_v3_kernel do
   end
 
   def format_error({:nomatch, {:shadow, line}}) do
-    m = :io_lib.format('this clause cannot match because a previous clause at line ~p always matches', [line])
+    m =
+      :io_lib.format(
+        ~c"this clause cannot match because a previous clause at line ~p always matches",
+        [line]
+      )
+
     flatten(m)
   end
 
   def format_error({:nomatch, :shadow}) do
-    'this clause cannot match because a previous clause always matches'
+    ~c"this clause cannot match because a previous clause always matches"
   end
 
   def format_error({:failed, :bad_call}) do
-    'invalid module and/or function name; this call will always fail'
+    ~c"invalid module and/or function name; this call will always fail"
   end
 
   def format_error({:failed, :bad_segment_size}) do
-    'binary construction will fail because the size of a segment is invalid'
+    ~c"binary construction will fail because the size of a segment is invalid"
   end
 
   defp add_warning(:none, term, anno, r_kern(ws: ws) = st) do
@@ -2866,5 +3508,4 @@ defmodule :m_v3_kernel do
     anno = get_kanno(ke)
     member(:compiler_generated, anno)
   end
-
 end

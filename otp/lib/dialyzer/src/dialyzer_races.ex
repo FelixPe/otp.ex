@@ -16,7 +16,7 @@ defmodule :m_dialyzer_races do
     behaviours_chk: false,
     timing: false,
     timing_server: :none,
-    callgraph_file: '',
+    callgraph_file: ~c"",
     solvers: :undefined
   )
 
@@ -39,7 +39,7 @@ defmodule :m_dialyzer_races do
     output_format: :formatted,
     filename_opt: :basename,
     indent_opt: true,
-    callgraph_file: '',
+    callgraph_file: ~c"",
     check_plt: true,
     solvers: [],
     native: :maybe,
@@ -238,9 +238,9 @@ defmodule :m_dialyzer_races do
               [varArgs1, varArgs2, _, options] = varArgs
 
               newTable1 =
-                case :lists.member('\'public\'', options) do
+                case :lists.member(~c"'public'", options) do
                   true ->
-                    case :lists.member('\'named_table\'', options) do
+                    case :lists.member(~c"'named_table'", options) do
                       true ->
                         {:named, varArgs1, varArgs2}
 
@@ -2171,7 +2171,7 @@ defmodule :m_dialyzer_races do
 
       [head | tail] ->
         newHead =
-          case :string.find(head, '()', :trailing) do
+          case :string.find(head, ~c"()", :trailing) do
             :nomatch ->
               [head]
 
@@ -2659,7 +2659,7 @@ defmodule :m_dialyzer_races do
         false
 
       [head | tail] ->
-        case :string.find(head, '()', :trailing) do
+        case :string.find(head, ~c"()", :trailing) do
           :nomatch ->
             any_args(tail)
 
@@ -2975,8 +2975,8 @@ defmodule :m_dialyzer_races do
   end
 
   defp ets_list_argtypes(listStr) do
-    listStr1 = :string.trim(listStr, :leading, '$[')
-    :string.trim(listStr1, :trailing, '$]$.$,')
+    listStr1 = :string.trim(listStr, :leading, ~c"$[")
+    :string.trim(listStr1, :trailing, ~c"$]$.$,")
   end
 
   defp ets_tuple_args(maybeTuple) do
@@ -3040,7 +3040,7 @@ defmodule :m_dialyzer_races do
 
         case return do
           true ->
-            :string.lexemes(newElemStr, ' |')
+            :string.lexemes(newElemStr, ~c" |")
 
           false ->
             ets_tuple_argtypes2_helper(t, newElemStr, newNestingLevel)
@@ -3163,13 +3163,13 @@ defmodule :m_dialyzer_races do
   defp format_args_2(strArgList, call) do
     case call do
       :whereis ->
-        lists_key_replace(2, strArgList, :string.lexemes(:lists.nth(2, strArgList), ' |'))
+        lists_key_replace(2, strArgList, :string.lexemes(:lists.nth(2, strArgList), ~c" |"))
 
       :register ->
-        lists_key_replace(2, strArgList, :string.lexemes(:lists.nth(2, strArgList), ' |'))
+        lists_key_replace(2, strArgList, :string.lexemes(:lists.nth(2, strArgList), ~c" |"))
 
       :unregister ->
-        lists_key_replace(2, strArgList, :string.lexemes(:lists.nth(2, strArgList), ' |'))
+        lists_key_replace(2, strArgList, :string.lexemes(:lists.nth(2, strArgList), ~c" |"))
 
       :ets_new ->
         strArgList1 =
@@ -3181,7 +3181,7 @@ defmodule :m_dialyzer_races do
                 2,
                 strArgList
               ),
-              ' |'
+              ~c" |"
             )
           )
 
@@ -3195,7 +3195,7 @@ defmodule :m_dialyzer_races do
                 strArgList1
               )
             ),
-            ' |'
+            ~c" |"
           )
         )
 
@@ -3209,11 +3209,11 @@ defmodule :m_dialyzer_races do
                 2,
                 strArgList
               ),
-              ' |'
+              ~c" |"
             )
           )
 
-        lists_key_replace(4, strArgList1, :string.lexemes(:lists.nth(4, strArgList1), ' |'))
+        lists_key_replace(4, strArgList1, :string.lexemes(:lists.nth(4, strArgList1), ~c" |"))
 
       :ets_insert ->
         strArgList1 =
@@ -3225,7 +3225,7 @@ defmodule :m_dialyzer_races do
                 2,
                 strArgList
               ),
-              ' |'
+              ~c" |"
             )
           )
 
@@ -3253,14 +3253,14 @@ defmodule :m_dialyzer_races do
           for t <-
                 :string.lexemes(
                   :lists.nth(2, strArgList),
-                  ' |'
+                  ~c" |"
                 ) do
             mnesia_tuple_argtypes(t)
           end
         )
 
       :mnesia_dirty_read2 ->
-        lists_key_replace(2, strArgList, :string.lexemes(:lists.nth(2, strArgList), ' |'))
+        lists_key_replace(2, strArgList, :string.lexemes(:lists.nth(2, strArgList), ~c" |"))
 
       :mnesia_dirty_write1 ->
         lists_key_replace(
@@ -3269,14 +3269,14 @@ defmodule :m_dialyzer_races do
           for r <-
                 :string.lexemes(
                   :lists.nth(2, strArgList),
-                  ' |'
+                  ~c" |"
                 ) do
             mnesia_record_tab(r)
           end
         )
 
       :mnesia_dirty_write2 ->
-        lists_key_replace(2, strArgList, :string.lexemes(:lists.nth(2, strArgList), ' |'))
+        lists_key_replace(2, strArgList, :string.lexemes(:lists.nth(2, strArgList), ~c" |"))
 
       :function_call ->
         strArgList
@@ -3306,9 +3306,9 @@ defmodule :m_dialyzer_races do
   end
 
   defp mnesia_tuple_argtypes(tupleStr) do
-    tupleStr1 = :string.trim(tupleStr, :leading, '${')
-    [tupleStr2 | _T] = :string.lexemes(tupleStr1, ' ,')
-    :lists.flatten(:string.lexemes(tupleStr2, ' |'))
+    tupleStr1 = :string.trim(tupleStr, :leading, ~c"${")
+    [tupleStr2 | _T] = :string.lexemes(tupleStr1, ~c" ,")
+    :lists.flatten(:string.lexemes(tupleStr2, ~c" |"))
   end
 
   defp race_var_map(vars1, vars2, raceVarMap, op) do
@@ -3755,7 +3755,7 @@ defmodule :m_dialyzer_races do
             newWVA2 =
               :string.lexemes(
                 :lists.nth(n + 1, funVarArgs),
-                ' |'
+                ~c" |"
               )
 
             [vars, newWVA2, wVA3, wVA4]
@@ -3773,7 +3773,7 @@ defmodule :m_dialyzer_races do
             newWVA2 =
               :string.lexemes(
                 :lists.nth(n + 1, funVarArgs),
-                ' |'
+                ~c" |"
               )
 
             [vars, newWVA2]
@@ -3798,7 +3798,7 @@ defmodule :m_dialyzer_races do
                     n1 + 1,
                     funVarArgs
                   ),
-                  ' |'
+                  ~c" |"
                 )
 
               [vars1, newWVA2]
@@ -3858,13 +3858,13 @@ defmodule :m_dialyzer_races do
                   for r <-
                         :string.lexemes(
                           :lists.nth(2, funVarArgs),
-                          ' |'
+                          ~c" |"
                         ) do
                     mnesia_record_tab(r)
                   end
 
                 2 ->
-                  :string.lexemes(:lists.nth(n + 1, funVarArgs), ' |')
+                  :string.lexemes(:lists.nth(n + 1, funVarArgs), ~c" |")
               end
 
             [vars, newWVA2 | t]
@@ -3905,27 +3905,27 @@ defmodule :m_dialyzer_races do
             :warn_whereis_register ->
               get_reason(
                 :lists.keysort(7, depList),
-                'might fail due to a possible race condition caused by its combination with '
+                ~c"might fail due to a possible race condition caused by its combination with "
               )
 
             :warn_whereis_unregister ->
               get_reason(
                 :lists.keysort(7, depList),
-                'might fail due to a possible race condition caused by its combination with '
+                ~c"might fail due to a possible race condition caused by its combination with "
               )
 
             :warn_ets_lookup_insert ->
               get_reason(
                 :lists.keysort(7, depList),
-                'might have an unintended effect due to ' ++
-                  'a possible race condition ' ++ 'caused by its combination with '
+                ~c"might have an unintended effect due to " ++
+                  ~c"a possible race condition " ++ ~c"caused by its combination with "
               )
 
             :warn_mnesia_dirty_read_write ->
               get_reason(
                 :lists.keysort(7, depList),
-                'might have an unintended effect due to ' ++
-                  'a possible race condition ' ++ 'caused by its combination with '
+                ~c"might have an unintended effect due to " ++
+                  ~c"a possible race condition " ++ ~c"caused by its combination with "
               )
           end
 
@@ -3946,7 +3946,7 @@ defmodule :m_dialyzer_races do
   defp get_reason(dependencyList, reason) do
     case dependencyList do
       [] ->
-        ''
+        ~c""
 
       [
         r_dep_call(
@@ -3962,24 +3962,24 @@ defmodule :m_dialyzer_races do
           reason ++
             case call do
               :whereis ->
-                'the erlang:whereis'
+                ~c"the erlang:whereis"
 
               :ets_lookup ->
-                'the ets:lookup'
+                ~c"the ets:lookup"
 
               :mnesia_dirty_read ->
-                'the mnesia:dirty_read'
+                ~c"the mnesia:dirty_read"
             end ++
             :dialyzer_dataflow.format_args(args, argTypes, state) ++
-            ' call in ' ++
-            :filename.basename(file) ++ ' on line ' ++ :lists.flatten(:io_lib.write(line))
+            ~c" call in " ++
+            :filename.basename(file) ++ ~c" on line " ++ :lists.flatten(:io_lib.write(line))
 
         case t do
           [] ->
             r
 
           _ ->
-            get_reason(t, r ++ ', ')
+            get_reason(t, r ++ ~c", ")
         end
     end
   end

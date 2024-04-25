@@ -1202,7 +1202,9 @@ defmodule :m_ssl_connection do
 
   Record.defrecord(:r_finished, :finished, verify_data: :undefined)
 
-  Record.defrecord(:r_renegotiation_info, :renegotiation_info, renegotiated_connection: :undefined)
+  Record.defrecord(:r_renegotiation_info, :renegotiation_info,
+    renegotiated_connection: :undefined
+  )
 
   Record.defrecord(:r_srp, :srp, username: :undefined)
   Record.defrecord(:r_hash_sign_algos, :hash_sign_algos, hash_sign_algos: :undefined)
@@ -1372,7 +1374,7 @@ defmodule :m_ssl_connection do
 
   def handshake(connection, port, socket, opts, user, cbInfo, timeout) do
     try do
-      connection.start_fsm(:server, 'localhost', port, socket, opts, user, cbInfo, timeout)
+      connection.start_fsm(:server, ~c"localhost", port, socket, opts, user, cbInfo, timeout)
     catch
       :exit, {:noproc, _} ->
         {:error, :ssl_not_started}
@@ -2447,7 +2449,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :user_hello, 4},
           line: 881,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         },
         reason: :user_canceled
       ),
@@ -2719,7 +2721,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :certify, 4},
           line: 1013,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         },
         reason: :no_client_certificate_provided
       )
@@ -2760,7 +2762,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :certify, 4},
           line: 1026,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         },
         reason: :unrequested_certificate
       )
@@ -2896,7 +2898,7 @@ defmodule :m_ssl_connection do
                 where: %{
                   mfa: {:ssl_connection, :certify, 4},
                   line: 1093,
-                  file: 'otp/lib/ssl/src/ssl_connection.erl'
+                  file: ~c"otp/lib/ssl/src/ssl_connection.erl"
                 }
               ),
               version,
@@ -2929,7 +2931,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :certify, 4},
           line: 1110,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         }
       ),
       version,
@@ -3240,7 +3242,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :cipher, 4},
           line: 1264,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         }
       ),
       version,
@@ -3587,7 +3589,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :handle_common_event, 5},
           line: 1410,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         }
       ),
       version,
@@ -3646,7 +3648,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :handle_common_event, 5},
           line: 1425,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         },
         reason: {:unexpected_msg, {type, msg}}
       )
@@ -3693,7 +3695,7 @@ defmodule :m_ssl_connection do
           where: %{
             mfa: {:ssl_connection, :handle_call, 5},
             line: 1442,
-            file: 'otp/lib/ssl/src/ssl_connection.erl'
+            file: ~c"otp/lib/ssl/src/ssl_connection.erl"
           }
         ),
         stateName,
@@ -3937,7 +3939,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :handle_info, 3},
           line: 1558,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         }
       ),
       role,
@@ -3959,11 +3961,11 @@ defmodule :m_ssl_connection do
     :ssl_logger.log(
       :info,
       level,
-      %{description: 'Socket error', reason: [{:error_tag, errorTag}, {:description, reason}]},
+      %{description: ~c"Socket error", reason: [{:error_tag, errorTag}, {:description, reason}]},
       %{
         mfa: {:ssl_connection, :handle_info, 3},
         line: 1567,
-        file: 'otp/lib/ssl/src/ssl_connection.erl'
+        file: ~c"otp/lib/ssl/src/ssl_connection.erl"
       }
     )
 
@@ -3974,7 +3976,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :handle_info, 3},
           line: 1568,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         },
         reason: {:transport_error, reason}
       )
@@ -4047,13 +4049,13 @@ defmodule :m_ssl_connection do
       :notice,
       level,
       %{
-        description: 'Unexpected INFO message',
+        description: ~c"Unexpected INFO message",
         reason: [{:message, msg}, {:socket, socket}, {:error_tag, errorTag}]
       },
       %{
         mfa: {:ssl_connection, :handle_info, 3},
         line: 1600,
-        file: 'otp/lib/ssl/src/ssl_connection.erl'
+        file: ~c"otp/lib/ssl/src/ssl_connection.erl"
       }
     )
 
@@ -4152,7 +4154,7 @@ defmodule :m_ssl_connection do
   end
 
   def format_status(:normal, [_, stateName, state]) do
-    [{:data, [{'State', {stateName, state}}]}]
+    [{:data, [{~c"State", {stateName, state}}]}]
   end
 
   def format_status(:terminate, [_, stateName, state]) do
@@ -4160,29 +4162,29 @@ defmodule :m_ssl_connection do
 
     newOptions =
       Map.merge(sslOptions, %{
-        password: '***',
-        cert: '***',
-        cacerts: '***',
-        key: '***',
-        dh: '***',
-        psk_identity: '***',
-        srp_identity: '***'
+        password: ~c"***",
+        cert: ~c"***",
+        cacerts: ~c"***",
+        key: ~c"***",
+        dh: ~c"***",
+        psk_identity: ~c"***",
+        srp_identity: ~c"***"
       })
 
     [
       {:data,
        [
-         {'State',
+         {~c"State",
           {stateName,
            r_state(state,
-             connection_states: '***',
-             protocol_buffers: '***',
-             user_data_buffer: '***',
-             handshake_env: '***',
-             connection_env: '***',
-             session: '***',
+             connection_states: ~c"***",
+             protocol_buffers: ~c"***",
+             user_data_buffer: ~c"***",
+             handshake_env: ~c"***",
+             connection_env: ~c"***",
+             session: ~c"***",
              ssl_options: newOptions,
-             flight_buffer: '***'
+             flight_buffer: ~c"***"
            )}}
        ]}
     ]
@@ -5386,7 +5388,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :rsa_key_exchange, 3},
           line: 2288,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         },
         reason: :pub_key_is_not_rsa
       )
@@ -5422,7 +5424,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :rsa_psk_key_exchange, 4},
           line: 2305,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         },
         reason: :pub_key_is_not_rsa
       )
@@ -5793,7 +5795,7 @@ defmodule :m_ssl_connection do
       where: %{
         mfa: {:ssl_connection, :generate_srp_server_keys, 2},
         line: 2484,
-        file: 'otp/lib/ssl/src/ssl_connection.erl'
+        file: ~c"otp/lib/ssl/src/ssl_connection.erl"
       }
     )
   end
@@ -5823,7 +5825,7 @@ defmodule :m_ssl_connection do
       where: %{
         mfa: {:ssl_connection, :generate_srp_client_keys, 3},
         line: 2497,
-        file: 'otp/lib/ssl/src/ssl_connection.erl'
+        file: ~c"otp/lib/ssl/src/ssl_connection.erl"
       }
     )
   end
@@ -5863,7 +5865,7 @@ defmodule :m_ssl_connection do
             where: %{
               mfa: {:ssl_connection, :handle_srp_identity, 2},
               line: 2519,
-              file: 'otp/lib/ssl/src/ssl_connection.erl'
+              file: ~c"otp/lib/ssl/src/ssl_connection.erl"
             }
           )
         )
@@ -6218,7 +6220,7 @@ defmodule :m_ssl_connection do
       where: %{
         mfa: {:ssl_connection, :terminate_alert, 1},
         line: 2701,
-        file: 'otp/lib/ssl/src/ssl_connection.erl'
+        file: ~c"otp/lib/ssl/src/ssl_connection.erl"
       }
     )
   end
@@ -6232,7 +6234,7 @@ defmodule :m_ssl_connection do
       where: %{
         mfa: {:ssl_connection, :terminate_alert, 1},
         line: 2704,
-        file: 'otp/lib/ssl/src/ssl_connection.erl'
+        file: ~c"otp/lib/ssl/src/ssl_connection.erl"
       }
     )
   end
@@ -6244,7 +6246,7 @@ defmodule :m_ssl_connection do
       where: %{
         mfa: {:ssl_connection, :terminate_alert, 1},
         line: 2706,
-        file: 'otp/lib/ssl/src/ssl_connection.erl'
+        file: ~c"otp/lib/ssl/src/ssl_connection.erl"
       }
     )
   end
@@ -6579,7 +6581,7 @@ defmodule :m_ssl_connection do
         where: %{
           mfa: {:ssl_connection, :handle_active_option, 5},
           line: 2875,
-          file: 'otp/lib/ssl/src/ssl_connection.erl'
+          file: ~c"otp/lib/ssl/src/ssl_connection.erl"
         },
         reason: :all_data_deliverd
       )
@@ -7036,7 +7038,7 @@ defmodule :m_ssl_connection do
           where: %{
             mfa: {:ssl_connection, :check_hostname, 2},
             line: 3123,
-            file: 'otp/lib/ssl/src/ssl_connection.erl'
+            file: ~c"otp/lib/ssl/src/ssl_connection.erl"
           },
           reason: {:sni_included_trailing_dot, hostname}
         )
@@ -7095,7 +7097,7 @@ defmodule :m_ssl_connection do
           where: %{
             mfa: {:ssl_connection, :do_handle_sni_extension, 2},
             line: 3163,
-            file: 'otp/lib/ssl/src/ssl_connection.erl'
+            file: ~c"otp/lib/ssl/src/ssl_connection.erl"
           },
           reason: {:sni_included_trailing_dot, hostname}
         )
