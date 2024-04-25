@@ -1,34 +1,26 @@
 defmodule :m_sasl_report_file_h do
   use Bitwise
-
   def init({file, modes0, type}) when is_list(modes0) do
     :erlang.process_flag(:trap_exit, true)
-
-    modes1 =
-      case :lists.keymember(:encoding, 1, modes0) do
-        true ->
-          modes0
-
-        false ->
-          [{:encoding, :utf8} | modes0]
-      end
-
-    modes =
-      case (for m <- modes1,
-                :lists.member(m, [:write, :append, :exclusive]) do
-              m
-            end) do
-        [] ->
-          [:write | modes1]
-
-        _ ->
-          modes1
-      end
-
-    case :file.open(file, modes) do
+    modes1 = (case (:lists.keymember(:encoding, 1,
+                                       modes0)) do
+                true ->
+                  modes0
+                false ->
+                  [{:encoding, :utf8} | modes0]
+              end)
+    modes = (case (for m <- modes1,
+                         :lists.member(m, [:write, :append, :exclusive]) do
+                     m
+                   end) do
+               [] ->
+                 [:write | modes1]
+               _ ->
+                 modes1
+             end)
+    case (:file.open(file, modes)) do
       {:ok, fd} ->
         {:ok, {fd, file, type}}
-
       what ->
         what
     end
@@ -40,7 +32,8 @@ defmodule :m_sasl_report_file_h do
   end
 
   def handle_event(event, {fd, file, type}) do
-    _ = :sasl_report.write_report(fd, type, tag_event(event))
+    _ = :sasl_report.write_report(fd, type,
+                                    tag_event(event))
     {:ok, {fd, file, type}}
   end
 
@@ -68,4 +61,5 @@ defmodule :m_sasl_report_file_h do
   defp tag_event(event) do
     {:calendar.local_time(), event}
   end
+
 end

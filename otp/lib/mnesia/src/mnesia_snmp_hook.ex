@@ -1,70 +1,38 @@
 defmodule :m_mnesia_snmp_hook do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_tid, :tid,
-    counter: :undefined,
-    pid: :undefined
-  )
-
-  Record.defrecord(:r_tidstore, :tidstore, store: :undefined, up_stores: [], level: 1)
-
-  Record.defrecord(:r_cstruct, :cstruct,
-    name: :undefined,
-    type: :set,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    external_copies: [],
-    load_order: 0,
-    access_mode: :read_write,
-    majority: false,
-    index: [],
-    snmp: [],
-    local_content: false,
-    record_name: {:bad_record_name},
-    attributes: [:key, :val],
-    user_properties: [],
-    frag_properties: [],
-    storage_properties: [],
-    cookie:
-      {{:erlang.monotonic_time() + :erlang.time_offset(), :erlang.unique_integer(), 1}, node()},
-    version: {{2, 0}, []}
-  )
-
-  Record.defrecord(:r_log_header, :log_header,
-    log_kind: :undefined,
-    log_version: :undefined,
-    mnesia_version: :undefined,
-    node: :undefined,
-    now: :undefined
-  )
-
-  Record.defrecord(:r_commit, :commit,
-    node: :undefined,
-    decision: :undefined,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    ext: [],
-    schema_ops: []
-  )
-
-  Record.defrecord(:r_decision, :decision,
-    tid: :undefined,
-    outcome: :undefined,
-    disc_nodes: :undefined,
-    ram_nodes: :undefined
-  )
-
-  Record.defrecord(:r_cyclic, :cyclic,
-    node: node(),
-    oid: :undefined,
-    op: :undefined,
-    lock: :undefined,
-    lucky: :undefined
-  )
-
+  Record.defrecord(:r_tid, :tid, counter: :undefined,
+                               pid: :undefined)
+  Record.defrecord(:r_tidstore, :tidstore, store: :undefined,
+                                    up_stores: [], level: 1)
+  Record.defrecord(:r_cstruct, :cstruct, name: :undefined,
+                                   type: :set, ram_copies: [], disc_copies: [],
+                                   disc_only_copies: [], external_copies: [],
+                                   load_order: 0, access_mode: :read_write,
+                                   majority: false, index: [], snmp: [],
+                                   local_content: false,
+                                   record_name: {:bad_record_name},
+                                   attributes: [:key, :val],
+                                   user_properties: [], frag_properties: [],
+                                   storage_properties: [],
+                                   cookie: {{:erlang.monotonic_time() + :erlang.time_offset(),
+                                               :erlang.unique_integer(), 1},
+                                              node()},
+                                   version: {{2, 0}, []})
+  Record.defrecord(:r_log_header, :log_header, log_kind: :undefined,
+                                      log_version: :undefined,
+                                      mnesia_version: :undefined,
+                                      node: :undefined, now: :undefined)
+  Record.defrecord(:r_commit, :commit, node: :undefined,
+                                  decision: :undefined, ram_copies: [],
+                                  disc_copies: [], disc_only_copies: [],
+                                  ext: [], schema_ops: [])
+  Record.defrecord(:r_decision, :decision, tid: :undefined,
+                                    outcome: :undefined, disc_nodes: :undefined,
+                                    ram_nodes: :undefined)
+  Record.defrecord(:r_cyclic, :cyclic, node: node(),
+                                  oid: :undefined, op: :undefined,
+                                  lock: :undefined, lucky: :undefined)
   def check_ustruct([]) do
     true
   end
@@ -106,7 +74,8 @@ defmodule :m_mnesia_snmp_hook do
   end
 
   def create_table([], mnesiaTab, _Storage) do
-    :mnesia.abort({:badarg, mnesiaTab, {:snmp, :empty_snmpstruct}})
+    :mnesia.abort({:badarg, mnesiaTab,
+                     {:snmp, :empty_snmpstruct}})
   end
 
   def create_table([{:key, us}], mnesiaTab, storage) do
@@ -119,10 +88,11 @@ defmodule :m_mnesia_snmp_hook do
   end
 
   defp build_table(mnesiaKey, mnesiaTab, tree, us, storage)
-       when mnesiaKey != :"$end_of_table" do
+      when mnesiaKey != :"$end_of_table" do
     snmpKey = key_to_oid_i(mnesiaKey, us)
     b_insert(tree, snmpKey, mnesiaKey)
-    next = :mnesia_lib.db_next_key(storage, mnesiaTab, mnesiaKey)
+    next = :mnesia_lib.db_next_key(storage, mnesiaTab,
+                                     mnesiaKey)
     build_table(next, mnesiaTab, tree, us, storage)
   end
 
@@ -147,20 +117,16 @@ defmodule :m_mnesia_snmp_hook do
   end
 
   defp update(op, tree, mnesiaKey, snmpKey) do
-    case op do
+    case (op) do
       :write ->
         b_insert(tree, snmpKey, mnesiaKey)
-
       :update_counter ->
         :ignore
-
       :delete ->
         b_delete(tree, snmpKey)
-
       :delete_object ->
         b_delete(tree, snmpKey)
     end
-
     :ok
   end
 
@@ -190,8 +156,8 @@ defmodule :m_mnesia_snmp_hook do
     [length(key) | key]
   end
 
-  def key_to_oid_i(key, types) do
-    keys_to_oid(:erlang.size(key), key, [], types)
+  def key_to_oid_i(key, types) when is_tuple(key) do
+    keys_to_oid(tuple_size(key), key, [], types)
   end
 
   defp keys_to_oid(0, _Key, oid, _Types) do
@@ -199,18 +165,10 @@ defmodule :m_mnesia_snmp_hook do
   end
 
   defp keys_to_oid(n, key, oid, types) do
-    oid2 =
-      :lists.append(
-        key_to_oid_i(
-          :erlang.element(
-            n,
-            key
-          ),
-          :erlang.element(n, types)
-        ),
-        oid
-      )
-
+    oid2 = :lists.append(key_to_oid_i(:erlang.element(n,
+                                                        key),
+                                        :erlang.element(n, types)),
+                           oid)
     keys_to_oid(n - 1, key, oid2, types)
   end
 
@@ -233,7 +191,7 @@ defmodule :m_mnesia_snmp_hook do
 
   def oid_to_key_1(tuple, oid) do
     try do
-      list = oid_to_key_2(1, :erlang.size(tuple), tuple, oid)
+      list = oid_to_key_2(1, tuple_size(tuple), tuple, oid)
       :erlang.list_to_tuple(list)
     catch
       _, _ ->
@@ -242,17 +200,14 @@ defmodule :m_mnesia_snmp_hook do
   end
 
   defp oid_to_key_2(n, sz, tuple, oid0) when n <= sz do
-    case :erlang.element(n, tuple) do
+    case (:erlang.element(n, tuple)) do
       :integer ->
         [key | oid] = oid0
         [key | oid_to_key_2(n + 1, sz, tuple, oid)]
-
       :fix_string when n === sz ->
         [oid0]
-
       :fix_string ->
         throw(:fix_string)
-
       :string ->
         [len | oid1] = oid0
         {str, oid} = :lists.split(len, oid1)
@@ -266,12 +221,10 @@ defmodule :m_mnesia_snmp_hook do
 
   def get_row(name, rowIndex) do
     tree = :mnesia_lib.val({name, {:index, :snmp}})
-
-    case b_lookup(tree, rowIndex) do
+    case (b_lookup(tree, rowIndex)) do
       {:ok, {_RowIndex, key}} ->
         [row] = :mnesia.dirty_read({name, key})
         {:ok, row}
-
       _ ->
         :undefined
     end
@@ -279,11 +232,9 @@ defmodule :m_mnesia_snmp_hook do
 
   def get_next_index(name, rowIndex) do
     tree = :mnesia_lib.val({name, {:index, :snmp}})
-
-    case b_lookup_next(tree, rowIndex) do
+    case (b_lookup_next(tree, rowIndex)) do
       {:ok, r} ->
         r
-
       _ ->
         {:endOfTable, :undefined}
     end
@@ -291,21 +242,17 @@ defmodule :m_mnesia_snmp_hook do
 
   def get_mnesia_key(name, rowIndex) do
     tree = :mnesia_lib.val({name, {:index, :snmp}})
-
-    case b_lookup(tree, rowIndex) do
+    case (b_lookup(tree, rowIndex)) do
       {:ok, {_RowIndex, key}} ->
         {:ok, key}
-
       _ ->
         :undefined
     end
   end
 
   defp b_new(_Tab, _Us) do
-    :mnesia_monitor.unsafe_mktab(
-      :mnesia_snmp_hook,
-      [:public, :ordered_set]
-    )
+    :mnesia_monitor.unsafe_mktab(:mnesia_snmp_hook,
+                                   [:public, :ordered_set])
   end
 
   defp b_delete_tree(tree) do
@@ -325,22 +272,21 @@ defmodule :m_mnesia_snmp_hook do
   end
 
   defp b_lookup(tree, rowIndex) do
-    case :ets.lookup(tree, rowIndex) do
+    case (:ets.lookup(tree, rowIndex)) do
       [x] ->
         {:ok, x}
-
       _ ->
         :undefined
     end
   end
 
   defp b_lookup_next(tree, rowIndex) do
-    case :ets.next(tree, rowIndex) do
+    case (:ets.next(tree, rowIndex)) do
       :"$end_of_table" ->
         :undefined
-
       key ->
         b_lookup(tree, key)
     end
   end
+
 end

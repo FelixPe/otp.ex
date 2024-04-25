@@ -1,19 +1,16 @@
 defmodule :m_asn1rtt_per do
   use Bitwise
-
   def skipextensions(bytes0, nr, extensionBitstr)
       when is_bitstring(extensionBitstr) do
     prev = nr - 1
-
-    case extensionBitstr do
-      <<_::size(prev), 1::size(1), _::bitstring>> ->
+    case (extensionBitstr) do
+      <<_ :: size(prev), 1 :: size(1), _ :: bitstring>> ->
         {len, bytes1} = decode_length(bytes0)
-        <<_::size(len)-binary, bytes2::bitstring>> = bytes1
+        <<_ :: size(len) - binary,
+            bytes2 :: bitstring>> = bytes1
         skipextensions(bytes2, nr + 1, extensionBitstr)
-
-      <<_::size(prev), 0::size(1), _::bitstring>> ->
+      <<_ :: size(prev), 0 :: size(1), _ :: bitstring>> ->
         skipextensions(bytes0, nr + 1, extensionBitstr)
-
       _ ->
         bytes0
     end
@@ -25,30 +22,27 @@ defmodule :m_asn1rtt_per do
 
   defp align(bitStr) when is_bitstring(bitStr) do
     alignBits = rem(bit_size(bitStr), 8)
-    <<_::size(alignBits), rest::binary>> = bitStr
+    <<_ :: size(alignBits), rest :: binary>> = bitStr
     rest
   end
 
   defp decode_length(buffer) do
-    case align(buffer) do
-      <<0::size(1), oct::size(7), rest::binary>> ->
+    case (align(buffer)) do
+      <<0 :: size(1), oct :: size(7), rest :: binary>> ->
         {oct, rest}
-
-      <<2::size(2), val::size(14), rest::binary>> ->
+      <<2 :: size(2), val :: size(14), rest :: binary>> ->
         {val, rest}
-
-      <<3::size(2), _Val::size(14), _Rest::binary>> ->
-        exit({:error, {:asn1, {:decode_length, {:nyi, :above_16k}}}})
+      <<3 :: size(2), _Val :: size(14), _Rest :: binary>> ->
+        exit({:error,
+                {:asn1, {:decode_length, {:nyi, :above_16k}}}})
     end
   end
 
   def complete(l0) do
     l = complete(l0, [])
-
-    case :erlang.list_to_bitstring(l) do
+    case (:erlang.list_to_bitstring(l)) do
       <<>> ->
         <<0>>
-
       bin ->
         bin
     end
@@ -78,9 +72,8 @@ defmodule :m_asn1rtt_per do
     complete(h, [t | more])
   end
 
-  defp complete([h | t], more)
-       when is_integer(h) or
-              is_binary(h) do
+  defp complete([h | t], more) when is_integer(h) or
+                                is_binary(h) do
     [h | complete(t, more)]
   end
 
@@ -97,12 +90,11 @@ defmodule :m_asn1rtt_per do
   end
 
   defp complete([], bits, []) do
-    case bits &&& 7 do
+    case (bits &&& 7) do
       0 ->
         []
-
       n ->
-        [<<0::size(8 - n)>>]
+        [<<0 :: size(8 - n)>>]
     end
   end
 
@@ -111,30 +103,23 @@ defmodule :m_asn1rtt_per do
   end
 
   defp complete([:align | t], bits, more) do
-    case bits &&& 7 do
+    case (bits &&& 7) do
       0 ->
         complete(t, more)
-
       1 ->
-        [<<0::size(7)>> | complete(t, more)]
-
+        [<<0 :: size(7)>> | complete(t, more)]
       2 ->
-        [<<0::size(6)>> | complete(t, more)]
-
+        [<<0 :: size(6)>> | complete(t, more)]
       3 ->
-        [<<0::size(5)>> | complete(t, more)]
-
+        [<<0 :: size(5)>> | complete(t, more)]
       4 ->
-        [<<0::size(4)>> | complete(t, more)]
-
+        [<<0 :: size(4)>> | complete(t, more)]
       5 ->
-        [<<0::size(3)>> | complete(t, more)]
-
+        [<<0 :: size(3)>> | complete(t, more)]
       6 ->
-        [<<0::size(2)>> | complete(t, more)]
-
+        [<<0 :: size(2)>> | complete(t, more)]
       7 ->
-        [<<0::size(1)>> | complete(t, more)]
+        [<<0 :: size(1)>> | complete(t, more)]
     end
   end
 
@@ -150,9 +135,8 @@ defmodule :m_asn1rtt_per do
     complete(h, bits, [t | more])
   end
 
-  defp complete([h | t], bits, more)
-       when is_integer(h) or
-              is_binary(h) do
+  defp complete([h | t], bits, more) when is_integer(h) or
+                                      is_binary(h) do
     [h | complete(t, bits, more)]
   end
 
@@ -167,4 +151,41 @@ defmodule :m_asn1rtt_per do
   defp complete(bin, bits, more) do
     [bin | complete([], bits + bit_size(bin), more)]
   end
+
+  def encode_fragmented_sof(fun, comps, len) do
+    encode_fragmented_sof_1(fun, comps, len, 4)
+  end
+
+  defp encode_fragmented_sof_1(encoder, comps0, len0, n) do
+    segSz = n * 16384
+    cond do
+      len0 >= segSz ->
+        {comps, b} = encode_components(comps0, encoder, segSz,
+                                         [])
+        len = len0 - segSz
+        [:align, <<3 :: size(2), n :: size(6)>>, b |
+                                                     encode_fragmented_sof_1(encoder,
+                                                                               comps,
+                                                                               len,
+                                                                               n)]
+      n > 1 ->
+        encode_fragmented_sof_1(encoder, comps0, len0, n - 1)
+      len0 < 128 ->
+        {[], b} = encode_components(comps0, encoder, len0, [])
+        [:align, len0 | b]
+      len0 < 16384 ->
+        {[], b} = encode_components(comps0, encoder, len0, [])
+        [:align, <<2 :: size(2), len0 :: size(14)>> | b]
+    end
+  end
+
+  defp encode_components(cs, _Encoder, 0, acc) do
+    {cs, :lists.reverse(acc)}
+  end
+
+  defp encode_components([c | cs], encoder, size, acc) do
+    b = encoder.(c)
+    encode_components(cs, encoder, size - 1, [b | acc])
+  end
+
 end

@@ -1,105 +1,118 @@
 defmodule :m_ssh_info do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_ssh_msg_global_request, :ssh_msg_global_request,
-    name: :undefined,
-    want_reply: :undefined,
-    data: :undefined
-  )
-
+  Record.defrecord(:r_address, :address, address: :undefined,
+                                   port: :undefined, profile: :undefined)
+  Record.defrecord(:r_ssh, :ssh, role: :undefined,
+                               peer: :undefined, local: :undefined,
+                               c_vsn: :undefined, s_vsn: :undefined,
+                               c_version: :undefined, s_version: :undefined,
+                               c_keyinit: :undefined, s_keyinit: :undefined,
+                               send_ext_info: :undefined,
+                               recv_ext_info: :undefined,
+                               kex_strict_negotiated: false,
+                               algorithms: :undefined, send_mac: :none,
+                               send_mac_key: :undefined, send_mac_size: 0,
+                               recv_mac: :none, recv_mac_key: :undefined,
+                               recv_mac_size: 0, encrypt: :none,
+                               encrypt_cipher: :undefined,
+                               encrypt_keys: :undefined, encrypt_block_size: 8,
+                               encrypt_ctx: :undefined, decrypt: :none,
+                               decrypt_cipher: :undefined,
+                               decrypt_keys: :undefined, decrypt_block_size: 8,
+                               decrypt_ctx: :undefined, compress: :none,
+                               compress_ctx: :undefined, decompress: :none,
+                               decompress_ctx: :undefined, c_lng: :none,
+                               s_lng: :none, user_ack: true, timeout: :infinity,
+                               shared_secret: :undefined,
+                               exchanged_hash: :undefined,
+                               session_id: :undefined, opts: [],
+                               send_sequence: 0, recv_sequence: 0,
+                               keyex_key: :undefined, keyex_info: :undefined,
+                               random_length_padding: 15, user: :undefined,
+                               service: :undefined,
+                               userauth_quiet_mode: :undefined,
+                               userauth_methods: :undefined,
+                               userauth_supported_methods: :undefined,
+                               userauth_pubkeys: :undefined, kb_tries_left: 0,
+                               userauth_preference: :undefined,
+                               available_host_keys: :undefined,
+                               pwdfun_user_state: :undefined,
+                               authenticated: false)
+  Record.defrecord(:r_alg, :alg, kex: :undefined,
+                               hkey: :undefined, send_mac: :undefined,
+                               recv_mac: :undefined, encrypt: :undefined,
+                               decrypt: :undefined, compress: :undefined,
+                               decompress: :undefined, c_lng: :undefined,
+                               s_lng: :undefined, send_ext_info: :undefined,
+                               recv_ext_info: :undefined,
+                               kex_strict_negotiated: false)
+  Record.defrecord(:r_ssh_pty, :ssh_pty, c_version: '', term: '',
+                                   width: 80, height: 25, pixel_width: 1024,
+                                   pixel_height: 768, modes: <<>>)
+  Record.defrecord(:r_circ_buf_entry, :circ_buf_entry, module: :undefined,
+                                          line: :undefined,
+                                          function: :undefined, pid: self(),
+                                          value: :undefined)
+  Record.defrecord(:r_ssh_msg_global_request, :ssh_msg_global_request, name: :undefined,
+                                                  want_reply: :undefined,
+                                                  data: :undefined)
   Record.defrecord(:r_ssh_msg_request_success, :ssh_msg_request_success, data: :undefined)
   Record.defrecord(:r_ssh_msg_request_failure, :ssh_msg_request_failure, [])
-
-  Record.defrecord(:r_ssh_msg_channel_open, :ssh_msg_channel_open,
-    channel_type: :undefined,
-    sender_channel: :undefined,
-    initial_window_size: :undefined,
-    maximum_packet_size: :undefined,
-    data: :undefined
-  )
-
-  Record.defrecord(:r_ssh_msg_channel_open_confirmation, :ssh_msg_channel_open_confirmation,
-    recipient_channel: :undefined,
-    sender_channel: :undefined,
-    initial_window_size: :undefined,
-    maximum_packet_size: :undefined,
-    data: :undefined
-  )
-
-  Record.defrecord(:r_ssh_msg_channel_open_failure, :ssh_msg_channel_open_failure,
-    recipient_channel: :undefined,
-    reason: :undefined,
-    description: :undefined,
-    lang: :undefined
-  )
-
-  Record.defrecord(:r_ssh_msg_channel_window_adjust, :ssh_msg_channel_window_adjust,
-    recipient_channel: :undefined,
-    bytes_to_add: :undefined
-  )
-
-  Record.defrecord(:r_ssh_msg_channel_data, :ssh_msg_channel_data,
-    recipient_channel: :undefined,
-    data: :undefined
-  )
-
-  Record.defrecord(:r_ssh_msg_channel_extended_data, :ssh_msg_channel_extended_data,
-    recipient_channel: :undefined,
-    data_type_code: :undefined,
-    data: :undefined
-  )
-
+  Record.defrecord(:r_ssh_msg_channel_open, :ssh_msg_channel_open, channel_type: :undefined,
+                                                sender_channel: :undefined,
+                                                initial_window_size: :undefined,
+                                                maximum_packet_size: :undefined,
+                                                data: :undefined)
+  Record.defrecord(:r_ssh_msg_channel_open_confirmation, :ssh_msg_channel_open_confirmation, recipient_channel: :undefined,
+                                                             sender_channel: :undefined,
+                                                             initial_window_size: :undefined,
+                                                             maximum_packet_size: :undefined,
+                                                             data: :undefined)
+  Record.defrecord(:r_ssh_msg_channel_open_failure, :ssh_msg_channel_open_failure, recipient_channel: :undefined,
+                                                        reason: :undefined,
+                                                        description: :undefined,
+                                                        lang: :undefined)
+  Record.defrecord(:r_ssh_msg_channel_window_adjust, :ssh_msg_channel_window_adjust, recipient_channel: :undefined,
+                                                         bytes_to_add: :undefined)
+  Record.defrecord(:r_ssh_msg_channel_data, :ssh_msg_channel_data, recipient_channel: :undefined,
+                                                data: :undefined)
+  Record.defrecord(:r_ssh_msg_channel_extended_data, :ssh_msg_channel_extended_data, recipient_channel: :undefined,
+                                                         data_type_code: :undefined,
+                                                         data: :undefined)
   Record.defrecord(:r_ssh_msg_channel_eof, :ssh_msg_channel_eof, recipient_channel: :undefined)
-
   Record.defrecord(:r_ssh_msg_channel_close, :ssh_msg_channel_close, recipient_channel: :undefined)
-
-  Record.defrecord(:r_ssh_msg_channel_request, :ssh_msg_channel_request,
-    recipient_channel: :undefined,
-    request_type: :undefined,
-    want_reply: :undefined,
-    data: :undefined
-  )
-
-  Record.defrecord(:r_ssh_msg_channel_success, :ssh_msg_channel_success,
-    recipient_channel: :undefined
-  )
-
-  Record.defrecord(:r_ssh_msg_channel_failure, :ssh_msg_channel_failure,
-    recipient_channel: :undefined
-  )
-
-  Record.defrecord(:r_channel, :channel,
-    type: :undefined,
-    sys: :undefined,
-    user: :undefined,
-    flow_control: :undefined,
-    local_id: :undefined,
-    recv_window_size: :undefined,
-    recv_window_pending: 0,
-    recv_packet_size: :undefined,
-    recv_close: false,
-    remote_id: :undefined,
-    send_window_size: :undefined,
-    send_packet_size: :undefined,
-    sent_close: false,
-    send_buf: []
-  )
-
-  Record.defrecord(:r_connection, :connection,
-    requests: [],
-    channel_cache: :undefined,
-    channel_id_seed: :undefined,
-    cli_spec: :undefined,
-    options: :undefined,
-    exec: :undefined,
-    system_supervisor: :undefined,
-    sub_system_supervisor: :undefined,
-    connection_supervisor: :undefined
-  )
-
+  Record.defrecord(:r_ssh_msg_channel_request, :ssh_msg_channel_request, recipient_channel: :undefined,
+                                                   request_type: :undefined,
+                                                   want_reply: :undefined,
+                                                   data: :undefined)
+  Record.defrecord(:r_ssh_msg_channel_success, :ssh_msg_channel_success, recipient_channel: :undefined)
+  Record.defrecord(:r_ssh_msg_channel_failure, :ssh_msg_channel_failure, recipient_channel: :undefined)
+  Record.defrecord(:r_channel, :channel, type: :undefined,
+                                   sys: :undefined, user: :undefined,
+                                   flow_control: :undefined,
+                                   local_id: :undefined,
+                                   recv_window_size: :undefined,
+                                   recv_window_pending: 0,
+                                   recv_packet_size: :undefined,
+                                   recv_close: false, remote_id: :undefined,
+                                   send_window_size: :undefined,
+                                   send_packet_size: :undefined,
+                                   sent_close: false, send_buf: [])
+  Record.defrecord(:r_connection, :connection, requests: [],
+                                      channel_cache: :undefined,
+                                      channel_id_seed: :undefined,
+                                      cli_spec: :undefined, options: :undefined,
+                                      suggest_window_size: :undefined,
+                                      suggest_packet_size: :undefined,
+                                      exec: :undefined,
+                                      sub_system_supervisor: :undefined)
   def print() do
-    :io.format('~s', [string()])
+    print(&:io.format/2)
+  end
+
+  def print(f) when is_function(f, 2) do
+    f.('~s', [string()])
   end
 
   def print(file) when is_list(file) do
@@ -120,247 +133,317 @@ defmodule :m_ssh_info do
         :io_lib.format('Ssh not found~n', [])
     else
       _ ->
-        [
-          :io_lib.nl(),
-          print_general(),
-          :io_lib.nl(),
-          underline('Client part', ?=),
-          print_clients(),
-          :io_lib.nl(),
-          underline(
-            'Server part',
-            ?=
-          ),
-          print_servers(),
-          :io_lib.nl(),
-          underline(
-            'Supervisors',
-            ?=
-          ),
-          walk_sups(:ssh_sup),
-          :io_lib.nl()
-        ]
+        [:io_lib.nl(), print_general(), :io_lib.nl(),
+                                            underline('Client(s)', ?-),
+                                                print_sups(:client, :sshc_sup),
+                                                    :io_lib.nl(), underline('Daemon(s)',
+                                                                              ?-),
+                                                                      print_sups(:server,
+                                                                                   :sshd_sup),
+                                                                          :io_lib.nl()]
     end
   end
 
   defp print_general() do
-    {_Name, slogan, ver} = :lists.keyfind(:ssh, 1, :application.which_applications())
-
-    [
-      underline(:io_lib.format('~s  ~s', [slogan, ver]), ?=),
-      :io_lib.format(:"This printout is generated ~s. ~n", [datetime()])
-    ]
+    {_Name, slogan, ver} = :lists.keyfind(:ssh, 1,
+                                            :application.which_applications())
+    [underline(:io_lib.format('~s  ~s', [slogan, ver]), ?=),
+         :io_lib.format(:"This printout is generated ~s. ~n", [datetime()])]
   end
 
-  defp print_clients() do
+  defp print_sups(role, startPid) do
+    walk_tree(role, get_subs_tree(startPid))
+  end
+
+  defp get_subs_tree(startPid) do
+    :lists.foldl(fn {id, _, :worker, _} = c, acc ->
+                      [{c, chspec(startPid, id)} | acc]
+                    {id, pid, :supervisor, _} = c, acc ->
+                      [{c, chspec(startPid, id), get_subs_tree(pid)} | acc]
+                 end,
+                   [], children(startPid))
+  end
+
+  defp chspec(sup, id) do
     try do
-      :lists.map(
-        &print_client/1,
-        :supervisor.which_children(:sshc_sup)
-      )
+      :supervisor.get_childspec(sup, id)
     catch
-      c, e ->
-        :io_lib.format(:"***print_clients FAILED: ~p:~p,~n ~p~n", [c, e, __STACKTRACE__])
+      _, _ ->
+        :undefined
+    else
+      {:ok, spec} ->
+        spec
+      {:error, _} ->
+        :undefined
     end
   end
 
-  defp print_client({:undefined, pid, :supervisor, [:ssh_connection_handler]}) do
-    {{local, remote}, _Str} = :ssh_connection_handler.get_print_info(pid)
-
-    [
-      :io_lib.format(
-        '    Local: ~s  Remote: ~s  ConnectionRef = ~p~n',
-        [fmt_host_port(local), fmt_host_port(remote), pid]
-      ),
-      case channels(pid) do
-        {:ok, channels = [_ | _]} ->
-          for r_channel(user: chPid) <- channels do
-            print_ch(chPid)
-          end
-
-        _ ->
-          :io_lib.format('            No channels~n', [])
-      end
-    ]
+  defp walk_tree(role, tree) do
+    walk_tree(role, tree, _Indent = 0 + 4)
   end
 
-  defp print_client({{:client, :ssh_system_sup, _, _, _}, pid, :supervisor, [:ssh_system_sup]})
-       when is_pid(pid) do
-    :lists.map(
-      &print_system_sup/1,
-      :supervisor.which_children(pid)
-    )
+  defp walk_tree(role, [{{_, _, :supervisor, _}, _, _} = h | t],
+            indent) do
+    [:io_lib.format(:"~s", [format_sup(role, h, indent)]) |
+         walk_tree(role, t, indent)]
   end
 
-  defp print_servers() do
-    try do
-      :lists.map(
-        &print_server/1,
-        :supervisor.which_children(:sshd_sup)
-      )
-    catch
-      c, e ->
-        :io_lib.format(:"***print_servers FAILED: ~p:~p,~n ~p~n", [c, e, __STACKTRACE__])
-    end
+  defp walk_tree(role, [{{_, _, :worker, _}, _} = h | t],
+            indent) do
+    [:io_lib.format(:"~s", [format_wrk(role, h, indent)]) |
+         walk_tree(role, t, indent)]
   end
 
-  defp print_server(
-         {{:server, :ssh_system_sup, localHost, localPort, profile}, pid, :supervisor,
-          [:ssh_system_sup]}
-       )
-       when is_pid(pid) do
-    children = :supervisor.which_children(pid)
-
-    [
-      :io_lib.format(
-        '    Listen: ~s (~p children) Profile ~p',
-        [fmt_host_port({localHost, localPort}), :ssh_acceptor.number_of_connections(pid), profile]
-      ),
-      case (for {{:ssh_acceptor_sup, _LocalHost, _LocalPort, _Profile}, accPid, :supervisor,
-                 [:ssh_acceptor_sup]} <- children do
-              accPid
-            end) do
-        acceptorPids = [_ | _] ->
-          [
-            :io_lib.format('  [Acceptor Pid', []),
-            for accPid <- acceptorPids do
-              :io_lib.format(' ~p', [accPid])
-            end,
-            :io_lib.format(']~n', [])
-          ]
-
-        [] ->
-          :io_lib.nl()
-      end,
-      :lists.map(
-        &print_system_sup/1,
-        :supervisor.which_children(pid)
-      )
-    ]
-  end
-
-  defp print_system_sup({ref, pid, :supervisor, [:ssh_subsystem_sup]})
-       when is_reference(ref) and is_pid(pid) do
-    :lists.map(
-      &print_channels/1,
-      :supervisor.which_children(pid)
-    )
-  end
-
-  defp print_system_sup(
-         {{:ssh_acceptor_sup, _LocalHost, _LocalPort, _Profile}, pid, :supervisor,
-          [:ssh_acceptor_sup]}
-       )
-       when is_pid(pid) do
-    []
-  end
-
-  defp print_channels({{role, :ssh_channel_sup, _, _}, pid, :supervisor, [:ssh_channel_sup]})
-       when is_pid(pid) do
-    chanBehaviour =
-      case role do
-        :server ->
-          :ssh_server_channel
-
-        :client ->
-          :ssh_client_channel
-      end
-
-    children = :supervisor.which_children(pid)
-
-    channelPids =
-      for {r, p, :worker, [mod]} <- children, chanBehaviour == mod, is_pid(p), is_reference(r) do
-        p
-      end
-
-    case channelPids do
-      [] ->
-        :io_lib.format('        No channels~n', [])
-
-      [ch1Pid | _] ->
-        {{connManager, _}, _Str} = chanBehaviour.get_print_info(ch1Pid)
-        {{_, remote}, _} = :ssh_connection_handler.get_print_info(connManager)
-
-        [
-          :io_lib.format(
-            '        Remote: ~s ConnectionRef = ~p~n',
-            [fmt_host_port(remote), connManager]
-          ),
-          :lists.map(&print_ch/1, channelPids)
-        ]
-    end
-  end
-
-  defp print_channels(
-         {{_Role, :ssh_connection_sup, _, _}, pid, :supervisor, [:ssh_connection_sup]}
-       )
-       when is_pid(pid) do
-    []
-  end
-
-  defp print_channels({ref, pid, :supervisor, [:ssh_tcpip_forward_acceptor_sup]})
-       when is_pid(pid) and is_reference(ref) do
-    []
-  end
-
-  defp print_ch(pid) do
-    try do
-      {{connManager, channelID}, str} = :ssh_server_channel.get_print_info(pid)
-      {_LocalRemote, strM} = :ssh_connection_handler.get_print_info(connManager)
-      :io_lib.format('            ch ~p ~p: ~s ~s~n', [channelID, pid, strM, str])
-    catch
-      c, e ->
-        :io_lib.format(:"****print_ch FAILED for ChanPid ~p: ~p:~p~n", [pid, c, e])
-    end
-  end
-
-  defp walk_sups(startPid) do
-    :io_lib.format('Start at ~p, ~s.~n', [startPid, dead_or_alive(startPid)])
-    walk_sups(children(startPid), _Indent = 0 + 4)
-  end
-
-  defp walk_sups([h = {_, pid, _, _} | t], indent) do
-    [
-      indent(indent),
-      :io_lib.format(
-        :"~200p  ~p is ~s~n",
-        [h, pid, dead_or_alive(pid)]
-      ),
-      case h do
-        {_, _, :supervisor, [:ssh_connection_handler]} ->
-          ''
-
-        {_, ^pid, :supervisor, _} ->
-          walk_sups(children(pid), indent + 4)
-
-        _ ->
-          ''
-      end,
-      walk_sups(t, indent)
-    ]
-  end
-
-  defp walk_sups([], _) do
+  defp walk_tree(_Role, [], _) do
     ''
   end
 
-  defp dead_or_alive(name) when is_atom(name) do
-    case :erlang.whereis(name) do
-      :undefined ->
-        '**UNDEFINED**'
+  defp format_sup(:server,
+            {{{:ssh_system_sup, localAddress}, pid, :supervisor,
+                [:ssh_system_sup]},
+               _Spec,
+               [{{{:ssh_acceptor_sup, address}, accSupPid, :supervisor,
+                    [:ssh_acceptor_sup]},
+                   _AccSupSpec,
+                   [{{{:ssh_acceptor_sup, address}, accPid, :worker,
+                        [:ssh_acceptor]},
+                       _AccSpec}]} |
+                    children]},
+            indent) do
+    [indent(indent), :io_lib.format('Local listen: ~s, Daemon_ref = ~s~n~ssys_sup=~s, acc_sup=~s, acc=~s~n',
+                                      [format_address(localAddress),
+                                           print_pid(pid), indent(indent),
+                                                               print_pid(pid),
+                                                                   print_pid(accSupPid),
+                                                                       print_pid(accPid)]),
+                         walk_tree(:server, children, indent + 4), :io_lib.nl()]
+  end
 
+  defp format_sup(:server,
+            {{{:ssh_system_sup, localAddress}, pid, :supervisor,
+                [:ssh_system_sup]},
+               _Spec, children},
+            indent) do
+    [indent(indent), :io_lib.format('Local listen: none (was: ~s), Daemon_ref = ~s~n~ssys_sup=~s~n',
+                                      [format_address(localAddress),
+                                           print_pid(pid), indent(indent),
+                                                               print_pid(pid)]),
+                         walk_tree(:server, children, indent + 4), :io_lib.nl()]
+  end
+
+  defp format_sup(:client,
+            {{{:ssh_system_sup, localAddress}, pid, :supervisor,
+                [:ssh_system_sup]},
+               _Spec, children},
+            indent) do
+    [indent(indent), :io_lib.format('Local:  ~s sys_sup=~s~n',
+                                      [format_address(localAddress),
+                                           print_pid(pid)]),
+                         walk_tree(:client, children, indent + 4), :io_lib.nl()]
+  end
+
+  defp format_sup(role,
+            {{ref, subSysSup, :supervisor, [:ssh_subsystem_sup]},
+               _SubSysSpec,
+               [{{:connection, connPid, :worker,
+                    [:ssh_connection_handler]},
+                   _ConnSpec} |
+                    children]},
+            indent)
+      when is_reference(ref) do
+    [:io_lib.format('~sRemote: ~s (Version: ~s)~n~sConnectionRef=~s, subsys_sup=~s~n',
+                      [indent(indent), peer_addr(connPid), peer_version(role,
+                                                                          connPid),
+                                                               indent(indent),
+                                                                   print_pid(connPid),
+                                                                       print_pid(subSysSup)]),
+         walk_tree(role,
+                     for {h, _, cs} <- children do
+                       {h, {:connref, connPid}, cs}
+                     end,
+                     indent + 4),
+             :io_lib.nl()]
+  end
+
+  defp format_sup(role,
+            {{:channel_sup, pid, :supervisor, [:ssh_channel_sup]},
+               {:connref, connPid}, children},
+            indent) do
+    [indent(indent), case (children) do
+                       [] ->
+                         :io_lib.format('No open channels (chan_sup=~s).~n', [print_pid(pid)])
+                       _ ->
+                         cinfo = (try do
+                                    {:ok,
+                                       l} = :ssh_connection_handler.info(connPid)
+                                    l
+                                  catch
+                                    _, _ ->
+                                      []
+                                  end)
+                         [:io_lib.format('Open channels (chan_sup=~s):~n', [print_pid(pid)]), walk_tree(role,
+                                                                           for {chH = {_,
+                                                                                         chPid,
+                                                                                         _,
+                                                                                         _},
+                                                                                  _} <- children do
+                                                                             {chH,
+                                                                                :lists.keyfind(chPid,
+                                                                                                 r_channel(:user),
+                                                                                                 cinfo)}
+                                                                           end,
+                                                                           indent + 4)]
+                     end]
+  end
+
+  defp format_sup(role,
+            {{:tcpip_forward_acceptor_sup, pid, :supervisor,
+                [:ssh_tcpip_forward_acceptor_sup]},
+               {:connref, _ConnPid}, children},
+            indent) do
+    [indent(indent), case (children) do
+                       [] ->
+                         :io_lib.format('TCP/IP forwarding not started (fwd_sup=~s)~n', [print_pid(pid)])
+                       _ ->
+                         [:io_lib.format('TCP/IP forwarding (fwd_sup=~s):~n', [print_pid(pid)]), walk_tree(role,
+                                                                           children,
+                                                                           indent + 4)]
+                     end]
+  end
+
+  defp format_sup(role, {h, spec, children}, indent) do
+    [indent(indent), :io_lib.format('?: ~200p ~s ~n',
+                                      [h, print_spec(spec)]),
+                         walk_tree(role, children, indent + 4)]
+  end
+
+  defp format_wrk(_Role,
+            {{{:ssh_acceptor_sup, address}, pid, :worker,
+                [:ssh_acceptor]},
+               _Spec},
+            indent) do
+    [indent(indent), :io_lib.format('acceptor: ~s ~s~n',
+                                      [format_address(address),
+                                           print_pid(pid)])]
+  end
+
+  defp format_wrk(_Role,
+            {{{from, to}, pid, :worker,
+                [:ssh_tcpip_forward_acceptor]},
+               _Spec},
+            indent) do
+    :io_lib.format('~sssh_tcpip_forward_acceptor ~s From: ~s, To: ~s~n',
+                     [indent(indent), print_pid(pid), format_address(from),
+                                                          format_address(to)])
+  end
+
+  defp format_wrk(_Role, {{ref, pid, :worker, [cb]}, c}, indent)
+      when is_reference(ref) do
+    str = (try do
+             :io_lib.format('~p: (remote ~p)~s~s',
+                              [r_channel(c, :local_id), r_channel(c, :remote_id),
+                                                    if_true(r_channel(c, :sent_close),
+                                                              ' sent_close'),
+                                                        if_true(r_channel(c, :recv_close),
+                                                                  ' recv_close')])
+           catch
+             _, _ ->
+               '?:'
+           end)
+    chCb = (try do
+              case (cb) do
+                :ssh_server_channel ->
+                  :io_lib.format(' ~s', [cb.get_print_info(pid, :channel_cb)])
+                :ssh_client_channel ->
+                  :io_lib.format(' ~s', [cb.get_print_info(pid, :channel_cb)])
+                _ ->
+                  ''
+              end
+            catch
+              _, _ ->
+                ''
+            end)
+    [indent(indent), :io_lib.format('ch ~s ~p~s ~s~n',
+                                      [str, cb, chCb, print_pid(pid)])]
+  end
+
+  defp format_wrk(_Role, {h, spec}, indent) do
+    [indent(indent), :io_lib.format('?: ~200p ~s~n',
+                                      [h, print_spec(spec)])]
+  end
+
+  defp if_true(true, str) do
+    str
+  end
+
+  defp if_true(_, _) do
+    ''
+  end
+
+  defp peer_version(role, pid) do
+    try do
+      key = (case (role) do
+               :client ->
+                 :server_version
+               :server ->
+                 :client_version
+             end)
+      [{^key,
+          {{_, _},
+             v}}] = :ssh_connection_handler.connection_info(pid,
+                                                              [key])
+      v
+    catch
+      _, _ ->
+        '?'
+    end
+  end
+
+  defp peer_addr(pid) do
+    try do
+      [{:peer,
+          {_,
+             addrPort}}] = :ssh_connection_handler.connection_info(pid,
+                                                                     [:peer])
+      :ssh_lib.format_address_port(addrPort)
+    catch
+      _, _ ->
+        '?'
+    end
+  end
+
+  defp format_address(r_address(address: addr, port: port, profile: prof)) do
+    :io_lib.format('~s (profile ~p)',
+                     [:ssh_lib.format_address_port({addr, port}), prof])
+  end
+
+  defp format_address(a) do
+    :io_lib.format('~p', [a])
+  end
+
+  defp print_pid(pid) do
+    :io_lib.format('~p~s', [pid, dead_or_alive(pid)])
+  end
+
+  defp dead_or_alive(name) when is_atom(name) do
+    case (:erlang.whereis(name)) do
+      :undefined ->
+        ' **UNDEFINED**'
       pid ->
         dead_or_alive(pid)
     end
   end
 
   defp dead_or_alive(pid) when is_pid(pid) do
-    case :erlang.process_info(pid) do
+    case (:erlang.process_info(pid, :message_queue_len)) do
       :undefined ->
-        '**DEAD**'
-
+        ' ***DEAD***'
+      {:message_queue_len, n} when n > 10 ->
+        :io_lib.format(' ***msg_queue_len: ~p***', [n])
+      {:message_queue_len, n} when n > 0 ->
+        :io_lib.format(' (msg_queue_len: ~p)', [n])
       _ ->
-        'alive'
+        ''
     end
   end
 
@@ -370,207 +453,39 @@ defmodule :m_ssh_info do
 
   defp children(pid) do
     parent = self()
-
-    helper =
-      spawn(fn ->
-        send(parent, {self(), :supervisor.which_children(pid)})
-      end)
-
+    helper = spawn(fn () ->
+                        send(parent, {self(), :supervisor.which_children(pid)})
+                   end)
     receive do
       {^helper, l} when is_list(l) ->
         l
-    after
-      2000 ->
-        try do
-          :erlang.exit(helper, :kill)
-        catch
-          :error, e -> {:EXIT, {e, __STACKTRACE__}}
-          :exit, e -> {:EXIT, e}
-          e -> e
-        end
-
-        []
+    after 2000 ->
+      (try do
+        :erlang.exit(helper, :kill)
+      catch
+        :error, e -> {:EXIT, {e, __STACKTRACE__}}
+        :exit, e -> {:EXIT, e}
+        e -> e
+      end)
+      []
     end
   end
 
-  defp is_connection_handler(pid) do
-    try do
-      {:ssh_connection_handler, :init, _} =
-        :proplists.get_value(
-          :"$initial_call",
-          :proplists.get_value(
-            :dictionary,
-            :erlang.process_info(
-              pid,
-              [:dictionary]
-            )
-          )
-        )
-    catch
-      _, _ ->
-        false
-    else
-      _ ->
-        true
-    end
-  end
-
-  defp channels(pid) do
-    case is_connection_handler(pid) do
-      true ->
-        :ssh_connection_handler.info(pid, :all)
-
-      false ->
-        false
-    end
+  defp print_spec(_Spec) do
+    ''
   end
 
   defp underline(str, lineChar) do
-    :io_lib.format(
-      :"~s~n~*c~n",
-      [str, :lists.flatlength(str), lineChar]
-    )
+    :io_lib.format(:"~s~n~*c~n",
+                     [str, :lists.flatlength(str), lineChar])
   end
 
   defp datetime() do
-    {{yYYY, mM, dD}, {h, m, s}} = :calendar.now_to_universal_time(:erlang.timestamp())
-
-    :lists.flatten(
-      :io_lib.format(
-        :"~4w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w UTC",
-        [yYYY, mM, dD, h, m, s]
-      )
-    )
+    {{yYYY, mM, dD},
+       {h, m,
+          s}} = :calendar.now_to_universal_time(:erlang.timestamp())
+    :lists.flatten(:io_lib.format(:"~4w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w UTC",
+                                    [yYYY, mM, dD, h, m, s]))
   end
 
-  defp fmt_host_port({{a, b, c, d}, port}) do
-    :io_lib.format(:"~p.~p.~p.~p:~p", [a, b, c, d, port])
-  end
-
-  defp fmt_host_port({host, port}) do
-    :io_lib.format(:"~s:~p", [host, port])
-  end
-
-  def collect_pids() do
-    collect_pids(:ssh_sup)
-  end
-
-  defp collect_pids(p) do
-    collector = pcollect_pids(p, spawn(&init_collector/0))
-    send(collector, {:get_values, self()})
-
-    receive do
-      {:values, values} ->
-        values
-    end
-  end
-
-  defp pcollect_pids(:undefined, collector) do
-    collector
-  end
-
-  defp pcollect_pids(a, collector) when is_atom(a) do
-    pcollect_pids(:erlang.whereis(a), collector)
-  end
-
-  defp pcollect_pids(pid, collector) when is_pid(pid) do
-    send(collector, {:expect, pid})
-
-    spawn(fn ->
-      :lists.foreach(
-        fn p2 ->
-          pcollect_pids(p2, collector)
-        end,
-        children(pid)
-      )
-
-      send(collector, {:value, pid, pid})
-    end)
-
-    collector
-  end
-
-  defp pcollect_pids({ref, pid, :supervisor, _}, collector)
-       when is_pid(pid) and is_reference(ref) do
-    pcollect_pids(pid, collector)
-  end
-
-  defp pcollect_pids({:sshc_sup, pid, :supervisor, _}, collector)
-       when is_pid(pid) do
-    pcollect_pids(pid, collector)
-  end
-
-  defp pcollect_pids({:sshd_sup, pid, :supervisor, _}, collector)
-       when is_pid(pid) do
-    pcollect_pids(pid, collector)
-  end
-
-  defp pcollect_pids(
-         {{:ssh_acceptor_sup, _, _, _}, pid, :supervisor, _},
-         collector
-       )
-       when is_pid(pid) do
-    pcollect_pids(pid, collector)
-  end
-
-  defp pcollect_pids(
-         {{:server, _, _, _}, pid, :supervisor, _},
-         collector
-       )
-       when is_pid(pid) do
-    pcollect_pids(pid, collector)
-  end
-
-  defp pcollect_pids(
-         {{:server, _, _, _, _}, pid, :supervisor, _},
-         collector
-       )
-       when is_pid(pid) do
-    pcollect_pids(pid, collector)
-  end
-
-  defp pcollect_pids(
-         {:undefined, pid, :supervisor, [:ssh_connection_handler]},
-         collector
-       ) do
-    send(collector, {:value, pid, pid})
-
-    case channels(pid) do
-      {:ok, l} ->
-        for r_channel(user: p) <- l do
-          send(collector, {:value, p, p})
-        end
-
-      _ ->
-        :ok
-    end
-
-    collector
-  end
-
-  defp pcollect_pids({_, pid, _, _}, collector) when is_pid(pid) do
-    send(collector, {:value, pid, pid})
-    collector
-  end
-
-  defp pcollect_pids(_, collector) do
-    collector
-  end
-
-  defp init_collector() do
-    loop_collector([], [])
-  end
-
-  defp loop_collector(expects, values) do
-    receive do
-      {:expect, ref} ->
-        loop_collector([ref | expects], values)
-
-      {:value, ref, val} ->
-        loop_collector(expects -- [ref], [val | values])
-
-      {:get_values, from} when expects == [] ->
-        send(from, {:values, values})
-    end
-  end
 end

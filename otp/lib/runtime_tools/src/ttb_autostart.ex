@@ -10,10 +10,9 @@ defmodule :m_ttb_autostart do
   end
 
   def read_config() do
-    case :file.read_file('ttb_autostart.bin') do
+    case (:file.read_file('ttb_autostart.bin')) do
       {:ok, data} ->
         {:ok, :erlang.binary_to_term(data)}
-
       error ->
         error
     end
@@ -24,17 +23,14 @@ defmodule :m_ttb_autostart do
   end
 
   def init(:no_args) do
-    case :application.get_env(
-           :runtime_tools,
-           :ttb_autostart_module
-         ) do
+    case (:application.get_env(:runtime_tools,
+                                 :ttb_autostart_module)) do
       {:ok, _} ->
         :ok
-
       :undefined ->
-        :application.set_env(:runtime_tools, :ttb_autostart_module, :ttb_autostart)
+        :application.set_env(:runtime_tools,
+                               :ttb_autostart_module, :ttb_autostart)
     end
-
     :observer_backend.ttb_resume_trace()
     {:ok, :no_args, 10000}
   end
@@ -58,4 +54,5 @@ defmodule :m_ttb_autostart do
   def code_change(_, _, _) do
     {:ok, :no_args}
   end
+
 end

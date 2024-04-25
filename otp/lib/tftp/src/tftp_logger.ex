@@ -1,6 +1,5 @@
 defmodule :m_tftp_logger do
   use Bitwise
-
   def behaviour_info(:callbacks) do
     [{:error_msg, 2}, {:warning_msg, 2}, {:info_msg, 2}]
   end
@@ -26,17 +25,18 @@ defmodule :m_tftp_logger do
 
   defp add_timestamp(format, data) do
     time = :erlang.timestamp()
-    {{_Y, _Mo, _D}, {h, mi, s}} = :calendar.now_to_universal_time(time)
+    {{_Y, _Mo, _D},
+       {h, mi, s}} = :calendar.now_to_universal_time(time)
     {'~s:~s:~s tftp: ' ++ format, [t(h), t(mi), t(s) | data]}
   end
 
   defp t(int) do
-    case :erlang.integer_to_list(int) do
+    case (:erlang.integer_to_list(int)) do
       [single] ->
         [?0, single]
-
       multi ->
         multi
     end
   end
+
 end

@@ -68,4 +68,5 @@ defmodule :m_ssh_sftpd_file do
   def write_file_info(path, info, state) do
     {:file.write_file_info(path, info), state}
   end
+
 end

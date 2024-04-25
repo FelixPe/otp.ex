@@ -1,146 +1,93 @@
 defmodule :m_mnesia_checkpoint do
   use Bitwise
-  import :mnesia_lib, only: [add: 2, dbg_out: 2, del: 2, set: 2, unset: 1]
+  import :mnesia_lib, only: [add: 2, dbg_out: 2, del: 2,
+                               set: 2, unset: 1]
   require Record
-
-  Record.defrecord(:r_tid, :tid,
-    counter: :undefined,
-    pid: :undefined
-  )
-
-  Record.defrecord(:r_tidstore, :tidstore, store: :undefined, up_stores: [], level: 1)
-
-  Record.defrecord(:r_cstruct, :cstruct,
-    name: :undefined,
-    type: :set,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    external_copies: [],
-    load_order: 0,
-    access_mode: :read_write,
-    majority: false,
-    index: [],
-    snmp: [],
-    local_content: false,
-    record_name: {:bad_record_name},
-    attributes: [:key, :val],
-    user_properties: [],
-    frag_properties: [],
-    storage_properties: [],
-    cookie:
-      {{:erlang.monotonic_time() + :erlang.time_offset(), :erlang.unique_integer(), 1}, node()},
-    version: {{2, 0}, []}
-  )
-
-  Record.defrecord(:r_log_header, :log_header,
-    log_kind: :undefined,
-    log_version: :undefined,
-    mnesia_version: :undefined,
-    node: :undefined,
-    now: :undefined
-  )
-
-  Record.defrecord(:r_commit, :commit,
-    node: :undefined,
-    decision: :undefined,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    ext: [],
-    schema_ops: []
-  )
-
-  Record.defrecord(:r_decision, :decision,
-    tid: :undefined,
-    outcome: :undefined,
-    disc_nodes: :undefined,
-    ram_nodes: :undefined
-  )
-
-  Record.defrecord(:r_cyclic, :cyclic,
-    node: node(),
-    oid: :undefined,
-    op: :undefined,
-    lock: :undefined,
-    lucky: :undefined
-  )
-
-  Record.defrecord(:r_checkpoint_args, :checkpoint_args,
-    name: {:erlang.unique_integer([:positive]), node()},
-    allow_remote: true,
-    ram_overrides_dump: false,
-    nodes: [],
-    node: node(),
-    now: :undefined,
-    cookie:
-      {{:erlang.monotonic_time() + :erlang.time_offset(), :erlang.unique_integer(), 1}, node()},
-    min: [],
-    max: [],
-    pending_tab: :undefined,
-    wait_for_old: :undefined,
-    is_activated: false,
-    ignore_new: [],
-    retainers: [],
-    iterators: [],
-    supervisor: :undefined,
-    pid: :undefined
-  )
-
-  Record.defrecord(:r_retainer, :retainer,
-    cp_name: :undefined,
-    tab_name: :undefined,
-    store: :undefined,
-    writers: [],
-    really_retain: true
-  )
-
-  Record.defrecord(:r_iter, :iter,
-    tab_name: :undefined,
-    oid_tab: :undefined,
-    main_tab: :undefined,
-    retainer_tab: :undefined,
-    source: :undefined,
-    val: :undefined,
-    pid: :undefined
-  )
-
-  Record.defrecord(:r_pending, :pending, tid: :undefined, disc_nodes: [], ram_nodes: [])
-
+  Record.defrecord(:r_tid, :tid, counter: :undefined,
+                               pid: :undefined)
+  Record.defrecord(:r_tidstore, :tidstore, store: :undefined,
+                                    up_stores: [], level: 1)
+  Record.defrecord(:r_cstruct, :cstruct, name: :undefined,
+                                   type: :set, ram_copies: [], disc_copies: [],
+                                   disc_only_copies: [], external_copies: [],
+                                   load_order: 0, access_mode: :read_write,
+                                   majority: false, index: [], snmp: [],
+                                   local_content: false,
+                                   record_name: {:bad_record_name},
+                                   attributes: [:key, :val],
+                                   user_properties: [], frag_properties: [],
+                                   storage_properties: [],
+                                   cookie: {{:erlang.monotonic_time() + :erlang.time_offset(),
+                                               :erlang.unique_integer(), 1},
+                                              node()},
+                                   version: {{2, 0}, []})
+  Record.defrecord(:r_log_header, :log_header, log_kind: :undefined,
+                                      log_version: :undefined,
+                                      mnesia_version: :undefined,
+                                      node: :undefined, now: :undefined)
+  Record.defrecord(:r_commit, :commit, node: :undefined,
+                                  decision: :undefined, ram_copies: [],
+                                  disc_copies: [], disc_only_copies: [],
+                                  ext: [], schema_ops: [])
+  Record.defrecord(:r_decision, :decision, tid: :undefined,
+                                    outcome: :undefined, disc_nodes: :undefined,
+                                    ram_nodes: :undefined)
+  Record.defrecord(:r_cyclic, :cyclic, node: node(),
+                                  oid: :undefined, op: :undefined,
+                                  lock: :undefined, lucky: :undefined)
+  Record.defrecord(:r_checkpoint_args, :checkpoint_args, name: {:erlang.unique_integer([:positive]),
+                                                  node()},
+                                           allow_remote: true,
+                                           ram_overrides_dump: false, nodes: [],
+                                           node: node(), now: :undefined,
+                                           cookie: {{:erlang.monotonic_time() + :erlang.time_offset(),
+                                                       :erlang.unique_integer(),
+                                                       1},
+                                                      node()},
+                                           min: [], max: [],
+                                           pending_tab: :undefined,
+                                           wait_for_old: :undefined,
+                                           is_activated: false, ignore_new: [],
+                                           retainers: [], iterators: [],
+                                           supervisor: :undefined,
+                                           pid: :undefined)
+  Record.defrecord(:r_retainer, :retainer, cp_name: :undefined,
+                                    tab_name: :undefined, store: :undefined,
+                                    writers: [], really_retain: true)
+  Record.defrecord(:r_iter, :iter, tab_name: :undefined,
+                                oid_tab: :undefined, main_tab: :undefined,
+                                retainer_tab: :undefined, source: :undefined,
+                                val: :undefined, pid: :undefined)
+  Record.defrecord(:r_pending, :pending, tid: :undefined,
+                                   disc_nodes: [], ram_nodes: [])
   def stop() do
-    :lists.foreach(
-      fn name ->
-        call(name, :stop)
-      end,
-      checkpoints()
-    )
-
+    :lists.foreach(fn name ->
+                        call(name, :stop)
+                   end,
+                     checkpoints())
     :ok
   end
 
   def tm_prepare(cp) when elem(cp, 0) === :checkpoint_args do
     name = r_checkpoint_args(cp, :name)
-
-    case :lists.member(name, checkpoints()) do
+    case (:lists.member(name, checkpoints())) do
       false ->
         start_retainer(cp)
-
       true ->
         {:error, {:already_exists, name, node()}}
     end
   end
 
   def tm_mnesia_down(node) do
-    :lists.foreach(
-      fn name ->
-        cast(name, {:mnesia_down, node})
-      end,
-      checkpoints()
-    )
+    :lists.foreach(fn name ->
+                        cast(name, {:mnesia_down, node})
+                   end,
+                     checkpoints())
   end
 
   def tm_enter_pending(tid, discNs, ramNs) do
-    pending = r_pending(tid: tid, disc_nodes: discNs, ram_nodes: ramNs)
+    pending = r_pending(tid: tid, disc_nodes: discNs,
+                  ram_nodes: ramNs)
     tm_enter_pending(pending)
   end
 
@@ -160,7 +107,6 @@ defmodule :m_mnesia_checkpoint do
       :error, _ ->
         :ok
     end
-
     tm_enter_pending(tabs, pending)
   end
 
@@ -188,64 +134,50 @@ defmodule :m_mnesia_checkpoint do
   end
 
   def tm_retain(tid, tab, key, op) do
-    case val({tab, :commit_work}) do
+    case (val({tab, :commit_work})) do
       [{:checkpoints, checkpoints} | _] ->
         tm_retain(tid, tab, key, op, checkpoints)
-
       _ ->
         :undefined
     end
   end
 
   def tm_retain(tid, tab, key, op, checkpoints) do
-    case op do
+    case (op) do
       :clear_table ->
         oldRecs = :mnesia_lib.db_match_object(tab, :_)
         send_group_retain(oldRecs, checkpoints, tid, tab, [])
         oldRecs
-
       _ ->
         oldRecs = :mnesia_lib.db_get(tab, key)
-
-        send_retain(
-          checkpoints,
-          {:retain, tid, tab, key, oldRecs}
-        )
-
+        send_retain(checkpoints,
+                      {:retain, tid, tab, key, oldRecs})
         oldRecs
     end
   end
 
-  defp send_group_retain([rec | recs], checkpoints, tid, tab, [prevRec | prevRecs])
-       when :erlang.element(2, rec) !=
-              :erlang.element(
-                2,
-                prevRec
-              ) do
+  defp send_group_retain([rec | recs], checkpoints, tid, tab,
+            [prevRec | prevRecs])
+      when :erlang.element(2, rec) != :erlang.element(2,
+                                                        prevRec) do
     key = :erlang.element(2, prevRec)
     oldRecs = :lists.reverse([prevRec | prevRecs])
-
-    send_retain(
-      checkpoints,
-      {:retain, tid, tab, key, oldRecs}
-    )
-
+    send_retain(checkpoints,
+                  {:retain, tid, tab, key, oldRecs})
     send_group_retain(recs, checkpoints, tid, tab, [rec])
   end
 
   defp send_group_retain([rec | recs], checkpoints, tid, tab, acc) do
-    send_group_retain(recs, checkpoints, tid, tab, [rec | acc])
+    send_group_retain(recs, checkpoints, tid, tab,
+                        [rec | acc])
   end
 
-  defp send_group_retain([], checkpoints, tid, tab, [prevRec | prevRecs]) do
+  defp send_group_retain([], checkpoints, tid, tab,
+            [prevRec | prevRecs]) do
     key = :erlang.element(2, prevRec)
     oldRecs = :lists.reverse([prevRec | prevRecs])
-
-    send_retain(
-      checkpoints,
-      {:retain, tid, tab, key, oldRecs}
-    )
-
+    send_retain(checkpoints,
+                  {:retain, tid, tab, key, oldRecs})
     :ok
   end
 
@@ -263,14 +195,12 @@ defmodule :m_mnesia_checkpoint do
   end
 
   def tm_add_copy(tab, node) when node != node() do
-    case val({tab, :commit_work}) do
+    case (val({tab, :commit_work})) do
       [{:checkpoints, checkpoints} | _] ->
         fun = fn name ->
-          call(name, {:add_copy, tab, node})
-        end
-
+                   call(name, {:add_copy, tab, node})
+              end
         map_call(fun, checkpoints, :ok)
-
       _ ->
         :ok
     end
@@ -278,42 +208,35 @@ defmodule :m_mnesia_checkpoint do
 
   def tm_del_copy(tab, node) when node == node() do
     :mnesia_subscr.unsubscribe_table(tab)
-
-    case val({tab, :commit_work}) do
+    case (val({tab, :commit_work})) do
       [{:checkpoints, checkpoints} | _] ->
         fun = fn name ->
-          call(name, {:del_copy, tab, node})
-        end
-
+                   call(name, {:del_copy, tab, node})
+              end
         map_call(fun, checkpoints, :ok)
-
       _ ->
         :ok
     end
   end
 
   def tm_change_table_copy_type(tab, from, to) do
-    case val({tab, :commit_work}) do
+    case (val({tab, :commit_work})) do
       [{:checkpoints, checkpoints} | _] ->
         fun = fn name ->
-          call(name, {:change_copy, tab, from, to})
-        end
-
+                   call(name, {:change_copy, tab, from, to})
+              end
         map_call(fun, checkpoints, :ok)
-
       _ ->
         :ok
     end
   end
 
   defp map_call(fun, [name | names], res) do
-    case fun.(name) do
+    case (fun.(name)) do
       :ok ->
         map_call(fun, names, res)
-
       {:error, {:no_exists, ^name}} ->
         map_call(fun, names, res)
-
       {:error, reason} ->
         map_call(fun, names, {:error, reason})
     end
@@ -324,17 +247,17 @@ defmodule :m_mnesia_checkpoint do
   end
 
   def deactivate(name) do
-    case call(name, :get_checkpoint) do
+    case (call(name, :get_checkpoint)) do
       {:error, reason} ->
         {:error, reason}
-
       cp ->
         deactivate(r_checkpoint_args(cp, :nodes), name)
     end
   end
 
   def deactivate(nodes, name) do
-    :rpc.multicall(nodes, :mnesia_checkpoint, :remote_deactivate, [name])
+    :rpc.multicall(nodes, :mnesia_checkpoint,
+                     :remote_deactivate, [name])
     :ok
   end
 
@@ -347,10 +270,9 @@ defmodule :m_mnesia_checkpoint do
   end
 
   def tables_and_cookie(name) do
-    case call(name, :get_checkpoint) do
+    case (call(name, :get_checkpoint)) do
       {:error, reason} ->
         {:error, reason}
-
       cp ->
         tabs = r_checkpoint_args(cp, :min) ++ r_checkpoint_args(cp, :max)
         cookie = r_checkpoint_args(cp, :cookie)
@@ -360,25 +282,22 @@ defmodule :m_mnesia_checkpoint do
 
   def most_local_node(name, tab) do
     case (try do
-            :ets.lookup_element(:mnesia_gvar, {tab, {:retainer, name}}, 2)
+            :ets.lookup_element(:mnesia_gvar,
+                                  {tab, {:retainer, name}}, 2)
           catch
             :error, _ ->
               {:EXIT, {:badarg, []}}
           end) do
       {:EXIT, _} ->
         {:error, {'No retainer attached to table', [tab, name]}}
-
       r ->
         writers = r_retainer(r, :writers)
         localWriter = :lists.member(node(), writers)
-
         cond do
           localWriter == true ->
             {:ok, node()}
-
           writers != [] ->
             {:ok, hd(writers)}
-
           true ->
             {:error, {'No retainer attached to table', [tab, name]}}
         end
@@ -391,10 +310,9 @@ defmodule :m_mnesia_checkpoint do
   end
 
   def activate(args) do
-    case args2cp(args) do
+    case (args2cp(args)) do
       {:ok, cp} ->
         do_activate(cp)
-
       {:error, reason} ->
         {:error, reason}
     end
@@ -406,15 +324,13 @@ defmodule :m_mnesia_checkpoint do
     catch
       :exit, reason ->
         {:error, reason}
-
       :error, reason ->
         {:error, reason}
     else
       cp ->
-        case check_tables(cp) do
+        case (check_tables(cp)) do
           {:error, reason} ->
             {:error, reason}
-
           {:ok, overriders, allTabs} ->
             arrange_retainers(cp, overriders, allTabs)
         end
@@ -426,10 +342,9 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp check_arg({:name, name}, cp) do
-    case :lists.member(name, checkpoints()) do
+    case (:lists.member(name, checkpoints())) do
       true ->
         exit({:already_exists, name})
-
       false ->
         try do
           [_ | _] = tab2retainer({:foo, name})
@@ -458,7 +373,7 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp check_arg({:ram_overrides_dump, tabs}, cp)
-       when is_list(tabs) do
+      when is_list(tabs) do
     r_checkpoint_args(cp, ram_overrides_dump: tabs)
   end
 
@@ -482,28 +397,23 @@ defmodule :m_mnesia_checkpoint do
     min = r_checkpoint_args(cp, :min)
     max = r_checkpoint_args(cp, :max)
     allTabs = min ++ max
-
-    doubleTabs =
-      for t <- min, :lists.member(t, max) do
-        t
-      end
-
+    doubleTabs = (for t <- min, :lists.member(t, max) do
+                    t
+                  end)
     overriders = r_checkpoint_args(cp, :ram_overrides_dump)
-
     cond do
       doubleTabs != [] ->
         {:error,
-         {:combine_error, r_checkpoint_args(cp, :name), [{:min, doubleTabs}, {:max, doubleTabs}]}}
-
-      min == [] and max == [] ->
-        {:error, {:combine_error, r_checkpoint_args(cp, :name), [{:min, min}, {:max, max}]}}
-
+           {:combine_error, r_checkpoint_args(cp, :name),
+              [{:min, doubleTabs}, {:max, doubleTabs}]}}
+      (min == [] and max == []) ->
+        {:error,
+           {:combine_error, r_checkpoint_args(cp, :name),
+              [{:min, min}, {:max, max}]}}
       overriders == false ->
         {:ok, [], allTabs}
-
       overriders == true ->
         {:ok, allTabs, allTabs}
-
       is_list(overriders) ->
         case (for t <- overriders, not :lists.member(t, min) do
                 t
@@ -514,27 +424,24 @@ defmodule :m_mnesia_checkpoint do
                   end) do
               [] ->
                 {:ok, overriders, allTabs}
-
               outsiders ->
                 {:error,
-                 {:combine_error, r_checkpoint_args(cp, :name),
-                  [{:ram_overrides_dump, outsiders}, {:max, outsiders}]}}
+                   {:combine_error, r_checkpoint_args(cp, :name),
+                      [{:ram_overrides_dump, outsiders}, {:max, outsiders}]}}
             end
-
           outsiders ->
             {:error,
-             {:combine_error, r_checkpoint_args(cp, :name),
-              [{:ram_overrides_dump, outsiders}, {:min, outsiders}]}}
+               {:combine_error, r_checkpoint_args(cp, :name),
+                  [{:ram_overrides_dump, outsiders}, {:min, outsiders}]}}
         end
     end
   end
 
   defp arrange_retainers(cp, overriders, allTabs) do
     r = r_retainer(cp_name: r_checkpoint_args(cp, :name))
-
     try do
       for tab <- allTabs do
-        r_retainer(r, tab_name: tab, writers: select_writers(cp, tab))
+        r_retainer(r, tab_name: tab,  writers: select_writers(cp, tab))
       end
     catch
       reason ->
@@ -542,35 +449,24 @@ defmodule :m_mnesia_checkpoint do
     else
       retainers ->
         {:ok,
-         r_checkpoint_args(cp,
-           ram_overrides_dump: overriders,
-           retainers: retainers,
-           nodes: writers(retainers)
-         )}
+           r_checkpoint_args(cp, ram_overrides_dump: overriders, 
+                   retainers: retainers,  nodes: writers(retainers))}
     end
   end
 
   defp select_writers(cp, tab) do
-    case filter_remote(
-           cp,
-           val({tab, :active_replicas})
-         ) do
+    case (filter_remote(cp,
+                          val({tab, :active_replicas}))) do
       [] ->
-        throw(
-          {'Cannot prepare checkpoint (replica not available)',
-           [tab, r_checkpoint_args(cp, :name)]}
-        )
-
+        throw({'Cannot prepare checkpoint (replica not available)', [tab, r_checkpoint_args(cp, :name)]})
       writers ->
         this = node()
-
-        case {:lists.member(tab, r_checkpoint_args(cp, :max)), :lists.member(this, writers)} do
+        case ({:lists.member(tab, r_checkpoint_args(cp, :max)),
+                 :lists.member(this, writers)}) do
           {true, _} ->
             writers
-
           {false, true} ->
             [this]
-
           {false, false} ->
             [hd(writers)]
         end
@@ -578,17 +474,15 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp filter_remote(cp, writers)
-       when r_checkpoint_args(cp, :allow_remote) == true do
+      when r_checkpoint_args(cp, :allow_remote) == true do
     writers
   end
 
   defp filter_remote(_Cp, writers) do
     this = node()
-
-    case :lists.member(this, writers) do
+    case (:lists.member(this, writers)) do
       true ->
         [this]
-
       false ->
         []
     end
@@ -596,9 +490,8 @@ defmodule :m_mnesia_checkpoint do
 
   defp writers(retainers) do
     fun = fn r, acc ->
-      r_retainer(r, :writers) ++ acc
-    end
-
+               r_retainer(r, :writers) ++ acc
+          end
     writers = :lists.foldl(fun, [], retainers)
     :mnesia_lib.uniq(writers)
   end
@@ -606,25 +499,26 @@ defmodule :m_mnesia_checkpoint do
   defp do_activate(cp) do
     name = r_checkpoint_args(cp, :name)
     nodes = r_checkpoint_args(cp, :nodes)
-
-    case :mnesia_tm.prepare_checkpoint(nodes, cp) do
+    case (:mnesia_tm.prepare_checkpoint(nodes, cp)) do
       {replies, []} ->
         check_prep(replies, name, nodes, r_checkpoint_args(cp, :ignore_new))
-
       {_, badNodes} ->
         {:error, {'Cannot prepare checkpoint (bad nodes)', [name, badNodes]}}
     end
   end
 
-  defp check_prep([{:ok, name, ignoreNew, _Node} | replies], name, nodes, ignoreNew) do
+  defp check_prep([{:ok, name, ignoreNew, _Node} | replies], name,
+            nodes, ignoreNew) do
     check_prep(replies, name, nodes, ignoreNew)
   end
 
-  defp check_prep([{:error, reason} | _Replies], name, _Nodes, _IgnoreNew) do
+  defp check_prep([{:error, reason} | _Replies], name, _Nodes,
+            _IgnoreNew) do
     {:error, {'Cannot prepare checkpoint (bad reply)', [name, reason]}}
   end
 
-  defp check_prep([{:badrpc, reason} | _Replies], name, _Nodes, _IgnoreNew) do
+  defp check_prep([{:badrpc, reason} | _Replies], name, _Nodes,
+            _IgnoreNew) do
     {:error, {'Cannot prepare checkpoint (badrpc)', [name, reason]}}
   end
 
@@ -633,35 +527,38 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp collect_pending(name, nodes, ignoreNew) do
-    case :rpc.multicall(nodes, :mnesia_checkpoint, :call, [name, :collect_pending]) do
+    case (:rpc.multicall(nodes, :mnesia_checkpoint, :call,
+                           [name, :collect_pending])) do
       {replies, []} ->
         try do
-          unionTab = _ = :ets.new(:mnesia_union, [:bag])
+          unionTab = (_ = :ets.new(:mnesia_union, [:bag]))
           compute_union(replies, nodes, name, unionTab, ignoreNew)
         catch
           :error, reason ->
             msg = 'Cannot create an ets table pending union'
             {:error, {:system_limit, msg, reason}}
         end
-
       {_, badNodes} ->
         deactivate(nodes, name)
         {:error, {'Cannot collect from pending checkpoint', name, badNodes}}
     end
   end
 
-  defp compute_union([{:ok, pending} | replies], nodes, name, unionTab, ignoreNew) do
+  defp compute_union([{:ok, pending} | replies], nodes, name,
+            unionTab, ignoreNew) do
     add_pending(pending, unionTab)
     compute_union(replies, nodes, name, unionTab, ignoreNew)
   end
 
-  defp compute_union([{:error, reason} | _Replies], nodes, name, unionTab, _IgnoreNew) do
+  defp compute_union([{:error, reason} | _Replies], nodes, name,
+            unionTab, _IgnoreNew) do
     deactivate(nodes, name)
     :ets.delete(unionTab)
     {:error, reason}
   end
 
-  defp compute_union([{:badrpc, reason} | _Replies], nodes, name, unionTab, _IgnoreNew) do
+  defp compute_union([{:badrpc, reason} | _Replies], nodes, name,
+            unionTab, _IgnoreNew) do
     deactivate(nodes, name)
     :ets.delete(unionTab)
     {:error, {:badrpc, reason}}
@@ -672,7 +569,8 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp add_pending([p | pending], unionTab) do
-    add_pending_node(r_pending(p, :disc_nodes), r_pending(p, :tid), unionTab)
+    add_pending_node(r_pending(p, :disc_nodes), r_pending(p, :tid),
+                       unionTab)
     add_pending_node(r_pending(p, :ram_nodes), r_pending(p, :tid), unionTab)
     add_pending(pending, unionTab)
   end
@@ -690,22 +588,21 @@ defmodule :m_mnesia_checkpoint do
     :ok
   end
 
-  defp send_activate([node | nodes], allNodes, name, unionTab, ignoreNew) do
-    pending =
-      for {_, tid} <- :ets.lookup(unionTab, node),
-          not :lists.member(tid, ignoreNew) do
-        tid
-      end
-
-    case :rpc.call(node, :mnesia_checkpoint, :call, [name, {:activate, pending}]) do
+  defp send_activate([node | nodes], allNodes, name, unionTab,
+            ignoreNew) do
+    pending = (for {_, tid} <- :ets.lookup(unionTab, node),
+                     not :lists.member(tid, ignoreNew) do
+                 tid
+               end)
+    case (:rpc.call(node, :mnesia_checkpoint, :call,
+                      [name, {:activate, pending}])) do
       :activated ->
-        send_activate(nodes, allNodes, name, unionTab, ignoreNew)
-
+        send_activate(nodes, allNodes, name, unionTab,
+                        ignoreNew)
       {:badrpc, reason} ->
         deactivate(nodes, name)
         :ets.delete(unionTab)
         {:error, {'Activation failed (bad node)', name, node, reason}}
-
       {:error, reason} ->
         deactivate(nodes, name)
         :ets.delete(unionTab)
@@ -720,14 +617,14 @@ defmodule :m_mnesia_checkpoint do
 
   def cast(name, msg) do
     case (try do
-            :ets.lookup_element(:mnesia_gvar, {:checkpoint, name}, 2)
+            :ets.lookup_element(:mnesia_gvar, {:checkpoint, name},
+                                  2)
           catch
             :error, _ ->
               {:EXIT, {:badarg, []}}
           end) do
       {:EXIT, _} ->
         {:error, {:no_exists, name}}
-
       pid when is_pid(pid) ->
         send(pid, {self(), msg})
         {:ok, pid}
@@ -736,38 +633,35 @@ defmodule :m_mnesia_checkpoint do
 
   def call(name, msg) do
     case (try do
-            :ets.lookup_element(:mnesia_gvar, {:checkpoint, name}, 2)
+            :ets.lookup_element(:mnesia_gvar, {:checkpoint, name},
+                                  2)
           catch
             :error, _ ->
               {:EXIT, {:badarg, []}}
           end) do
       {:EXIT, _} ->
         {:error, {:no_exists, name}}
-
       pid when is_pid(pid) ->
         monitor = :erlang.monitor(:process, pid)
         send(pid, {self(), msg})
         self = self()
-
         receive do
           {:EXIT, ^pid, reason} ->
             {:error, {'Got exit', [name, reason]}}
-
           {:DOWN, ^monitor, _, ^pid, reason} ->
             {:error, {'Got exit', [name, reason]}}
-
           {^name, ^self, reply} ->
-            :erlang.demonitor(monitor)
+            :erlang.demonitor(monitor, [:flush])
             reply
         end
-
       error ->
         error
     end
   end
 
   defp abcast(nodes, name, msg) do
-    :rpc.eval_everywhere(nodes, :mnesia_checkpoint, :cast, [name, msg])
+    :rpc.eval_everywhere(nodes, :mnesia_checkpoint, :cast,
+                           [name, msg])
   end
 
   defp reply(:nopid, _Name, _Reply) do
@@ -780,14 +674,10 @@ defmodule :m_mnesia_checkpoint do
 
   defp start_retainer(cp) do
     name = r_checkpoint_args(cp, :name)
-
-    case :supervisor.start_child(
-           :mnesia_checkpoint_sup,
-           [cp]
-         ) do
+    case (:supervisor.start_child(:mnesia_checkpoint_sup,
+                                    [cp])) do
       {:ok, _Pid} ->
         {:ok, name, r_checkpoint_args(cp, :ignore_new), node()}
-
       {:error, reason} ->
         {:error, {'Cannot create checkpoint retainer', name, node(), reason}}
     end
@@ -796,7 +686,8 @@ defmodule :m_mnesia_checkpoint do
   def start(cp) do
     name = r_checkpoint_args(cp, :name)
     args = [r_checkpoint_args(cp, supervisor: self())]
-    :mnesia_monitor.start_proc({:mnesia_checkpoint, name}, :mnesia_checkpoint, :init, args)
+    :mnesia_monitor.start_proc({:mnesia_checkpoint, name},
+                                 :mnesia_checkpoint, :init, args)
   end
 
   def init(cp) do
@@ -804,22 +695,21 @@ defmodule :m_mnesia_checkpoint do
     :erlang.process_flag(:priority, :high)
     name = r_checkpoint_args(cp, :name)
     props = [:set, :public, {:keypos, 2}]
-
     try do
       _ = :ets.new(:mnesia_pending_checkpoint, props)
     catch
       :error, reason ->
         msg = 'Cannot create an ets table for pending transactions'
         error = {:error, {:system_limit, name, msg, reason}}
-        :proc_lib.init_ack(r_checkpoint_args(cp, :supervisor), error)
+        :proc_lib.init_fail(r_checkpoint_args(cp, :supervisor), error,
+                              {:exit, :normal})
     else
       pendingTab ->
-        rs =
-          for r <- r_checkpoint_args(cp, :retainers) do
-            prepare_tab(cp, r)
-          end
-
-        cp2 = r_checkpoint_args(cp, retainers: rs, pid: self(), pending_tab: pendingTab)
+        rs = (for r <- r_checkpoint_args(cp, :retainers) do
+                prepare_tab(cp, r)
+              end)
+        cp2 = r_checkpoint_args(cp, retainers: rs,  pid: self(), 
+                      pending_tab: pendingTab)
         add(:pending_checkpoint_pids, self())
         add(:pending_checkpoints, pendingTab)
         set({:checkpoint, name}, self())
@@ -838,15 +728,13 @@ defmodule :m_mnesia_checkpoint do
   defp prepare_tab(cp, r, storage) do
     tab = r_retainer(r, :tab_name)
     name = r_retainer(r, :cp_name)
-
-    case :lists.member(node(), r_retainer(r, :writers)) do
+    case (:lists.member(node(), r_retainer(r, :writers))) do
       true ->
         r2 = retainer_create(cp, r, tab, name, storage)
         set({tab, {:retainer, name}}, r2)
         add({tab, :checkpoints}, name)
         add_chkp_info(tab, name)
         r2
-
       false ->
         set({tab, {:retainer, name}}, r_retainer(r, store: :undefined))
         r
@@ -854,30 +742,27 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp add_chkp_info(tab, name) do
-    case val({tab, :commit_work}) do
+    case (val({tab, :commit_work})) do
       [{:checkpoints, oldList} | commitList] ->
-        case :lists.member(name, oldList) do
+        case (:lists.member(name, oldList)) do
           true ->
             :ok
-
           false ->
             newC = [{:checkpoints, [name | oldList]} | commitList]
             :mnesia_lib.set({tab, :commit_work}, newC)
         end
-
       commitList ->
         chkp = {:checkpoints, [name]}
-
-        :mnesia_lib.set(
-          {tab, :commit_work},
-          [chkp | commitList]
-        )
+        :mnesia_lib.set({tab, :commit_work},
+                          [chkp | commitList])
     end
   end
 
   defp tab2retainer({tab, name}) do
     flatName = :lists.flatten(:io_lib.write(name))
-    :mnesia_lib.dir(:lists.concat([:mnesia_checkpoint, '_', tab, '_', flatName, '.RET']))
+    :mnesia_lib.dir(:lists.concat([:mnesia_checkpoint, '_',
+                                                           tab, '_', flatName,
+                                                                       '.RET']))
   end
 
   defp retainer_create(_Cp, r, tab, name, ext = {:ext, alias, mod}) do
@@ -886,74 +771,59 @@ defmodule :m_mnesia_checkpoint do
     mod.delete_table(alias, t)
     :ok = mod.create_table(alias, t, p)
     cs = val({tab, :cstruct})
-    mod.load_table(alias, t, {:retainer, :create_table}, :mnesia_schema.cs2list(cs))
+    mod.load_table(alias, t, {:retainer, :create_table},
+                     :mnesia_schema.cs2list(cs))
     dbg_out('Checkpoint retainer created ~p ~tp~n', [name, tab])
-    r_retainer(r, store: {ext, t}, really_retain: true)
+    r_retainer(r, store: {ext, t},  really_retain: true)
   end
 
   defp retainer_create(_Cp, r, tab, name, :disc_only_copies) do
     fname = tab2retainer({tab, name})
     :file.delete(fname)
-    args = [{:file, fname}, {:type, :set}, {:keypos, 2}, {:repair, false}]
+    args = [{:file, fname}, {:type, :set}, {:keypos, 2},
+                                               {:repair, false}]
     {:ok, _} = :mnesia_lib.dets_sync_open({tab, name}, args)
     dbg_out('Checkpoint retainer created ~p ~tp~n', [name, tab])
-    r_retainer(r, store: {:dets, {tab, name}}, really_retain: true)
+    r_retainer(r, store: {:dets, {tab, name}},  really_retain: true)
   end
 
   defp retainer_create(cp, r, tab, name, storage) do
-    t =
-      _ =
-      :ets.new(
-        :mnesia_retainer,
-        [:set, :public, {:keypos, 2}]
-      )
-
+    t = (_ = :ets.new(:mnesia_retainer,
+                        [:set, :public, {:keypos, 2}]))
     overriders = r_checkpoint_args(cp, :ram_overrides_dump)
     reallyR = r_retainer(r, :really_retain)
     reallyCp = :lists.member(tab, overriders)
-    reallyR2 = prepare_ram_tab(tab, t, storage, reallyR, reallyCp)
+    reallyR2 = prepare_ram_tab(tab, t, storage, reallyR,
+                                 reallyCp)
     dbg_out('Checkpoint retainer created ~p ~tp~n', [name, tab])
-    r_retainer(r, store: {:ets, t}, really_retain: reallyR2)
+    r_retainer(r, store: {:ets, t},  really_retain: reallyR2)
   end
 
   defp prepare_ram_tab(tab, t, :ram_copies, true, false) do
     fname = :mnesia_lib.tab2dcd(tab)
-
-    case :mnesia_lib.exists(fname) do
+    case (:mnesia_lib.exists(fname)) do
       true ->
-        log =
-          :mnesia_log.open_log(
-            :prepare_ram_tab,
-            :mnesia_log.dcd_log_header(),
-            fname,
-            true,
-            :mnesia_monitor.get_env(:auto_repair),
-            :read_only
-          )
-
+        log = :mnesia_log.open_log(:prepare_ram_tab,
+                                     :mnesia_log.dcd_log_header(), fname, true,
+                                     :mnesia_monitor.get_env(:auto_repair),
+                                     :read_only)
         add = fn rec ->
-          key = :erlang.element(2, rec)
-
-          recs =
-            case :ets.lookup(t, key) do
-              [] ->
-                []
-
-              [{_, _, old}] ->
-                old
-            end
-
-          :ets.insert(t, {tab, key, [rec | recs]})
-          :continue
-        end
-
-        traverse_dcd(:mnesia_log.chunk_log(log, :start), log, add)
+                   key = :erlang.element(2, rec)
+                   recs = (case (:ets.lookup(t, key)) do
+                             [] ->
+                               []
+                             [{_, _, old}] ->
+                               old
+                           end)
+                   :ets.insert(t, {tab, key, [rec | recs]})
+                   :continue
+              end
+        traverse_dcd(:mnesia_log.chunk_log(log, :start), log,
+                       add)
         :mnesia_log.close_log(log)
-
       false ->
         :ok
     end
-
     false
   end
 
@@ -962,9 +832,9 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp traverse_dcd({cont, [logH | rest]}, log, fun)
-       when elem(logH, 0) === :log_header and
+      when (elem(logH, 0) === :log_header and
               r_log_header(logH, :log_kind) == :dcd_log and
-              r_log_header(logH, :log_version) >= '1.0' do
+              r_log_header(logH, :log_version) >= '1.0') do
     traverse_dcd({cont, rest}, log, fun)
   end
 
@@ -1026,7 +896,8 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp retainer_fixtable(tab, bool) when is_atom(tab) do
-    :mnesia_lib.db_fixtable(val({tab, :storage_type}), tab, bool)
+    :mnesia_lib.db_fixtable(val({tab, :storage_type}), tab,
+                              bool)
   end
 
   defp retainer_fixtable({ext = {:ext, _, _}, tab}, bool) do
@@ -1061,150 +932,112 @@ defmodule :m_mnesia_checkpoint do
       {from, {:activate, pending}} ->
         stillPending = :mnesia_recover.still_pending(pending)
         enter_still_pending(stillPending, r_checkpoint_args(cp, :pending_tab))
-
-        local =
-          for r_tid(pid: pid) = tid <- stillPending,
-              node(pid) !== node() do
-            tid
-          end
-
+        local = (for (r_tid(pid: pid) = tid) <- stillPending,
+                       node(pid) !== node() do
+                   tid
+                 end)
         cp2 = maybe_activate(r_checkpoint_args(cp, wait_for_old: local))
         reply(from, name, :activated)
         retainer_loop(cp2)
-
       {_From, {:exit_pending, tid}}
-      when is_list(r_checkpoint_args(cp, :wait_for_old)) ->
+          when is_list(r_checkpoint_args(cp, :wait_for_old)) ->
         stillPending = :lists.delete(tid, r_checkpoint_args(cp, :wait_for_old))
         cp2 = r_checkpoint_args(cp, wait_for_old: stillPending)
         cp3 = maybe_activate(cp2)
         retainer_loop(cp3)
-
       {from, :deactivate} ->
         do_stop(cp)
         reply(from, name, :deactivated)
-        :erlang.unlink(from)
         exit(:shutdown)
-
       {from, :get_checkpoint} ->
         reply(from, name, cp)
         retainer_loop(cp)
-
       {_From, {:add_retainer, r, node}} ->
         cp2 = do_add_retainer(cp, r, node)
         retainer_loop(cp2)
-
       {from, :collect_pending} ->
         pendingTab = r_checkpoint_args(cp, :pending_tab)
         del(:pending_checkpoints, pendingTab)
         pending = :ets.match_object(pendingTab, :_)
         reply(from, name, {:ok, pending})
         retainer_loop(cp)
-
       {_From, {:mnesia_down, node}} ->
         cp2 = do_del_retainers(cp, node)
         retainer_loop(cp2)
-
       {:EXIT, parent, _} when parent == r_checkpoint_args(cp, :supervisor) ->
         exit(:shutdown)
-
       {:EXIT, from, _Reason} ->
-        iters =
-          for iter <- r_checkpoint_args(cp, :iterators),
-              check_iter(from, iter) do
-            iter
-          end
-
+        iters = (for iter <- r_checkpoint_args(cp, :iterators),
+                       check_iter(from, iter) do
+                   iter
+                 end)
         retainer_loop(r_checkpoint_args(cp, iterators: iters))
-
       {:system, from, msg} ->
         dbg_out('~p got {system, ~p, ~tp}~n', [:mnesia_checkpoint, from, msg])
-
-        :sys.handle_system_msg(
-          msg,
-          from,
-          r_checkpoint_args(cp, :supervisor),
-          :mnesia_checkpoint,
-          [],
-          cp
-        )
+        :sys.handle_system_msg(msg, from, r_checkpoint_args(cp, :supervisor),
+                                 :mnesia_checkpoint, [], cp)
     end
   end
 
   defp retainer_loop(cp = r_checkpoint_args(name: name)) do
     receive do
       {_From, {:retain, tid, tab, key, oldRecs}} ->
-        r =
-          try do
-            :ets.lookup_element(:mnesia_gvar, {tab, {:retainer, name}}, 2)
-          catch
-            :error, _ ->
-              {:EXIT, {:badarg, []}}
-          end
-
+        r = (try do
+               :ets.lookup_element(:mnesia_gvar,
+                                     {tab, {:retainer, name}}, 2)
+             catch
+               :error, _ ->
+                 {:EXIT, {:badarg, []}}
+             end)
         pendingTab = r_checkpoint_args(cp, :pending_tab)
-
-        case elem(r, 0) === :retainer and r_retainer(r, :really_retain) do
+        case (elem(r, 0) === :retainer and r_retainer(r, :really_retain)) do
           true ->
             store = r_retainer(r, :store)
-
             try do
               true = :ets.member(pendingTab, tid)
-
-              case retainer_get(store, key) do
+              case (retainer_get(store, key)) do
                 [] ->
                   :ignore
-
                 _ ->
                   :ets.delete(:erlang.element(2, store), key)
               end
             catch
               _, _ ->
-                case retainer_get(store, key) do
+                case (retainer_get(store, key)) do
                   [] ->
                     retainer_put(store, {tab, key, oldRecs})
-
                   _ ->
                     :already_retained
                 end
             end
-
           false ->
             :ignore
         end
-
         retainer_loop(cp)
-
       {from, :get_checkpoint} ->
         reply(from, name, cp)
         retainer_loop(cp)
-
       {from, {:add_copy, tab, node}} ->
         {res, cp2} = do_add_copy(cp, tab, node)
         reply(from, name, res)
         retainer_loop(cp2)
-
       {from, {:del_copy, tab, node}} ->
         cp2 = do_del_copy(cp, tab, node)
         reply(from, name, :ok)
         retainer_loop(cp2)
-
       {from, {:change_copy, tab, from, to}} ->
         cp2 = do_change_copy(cp, tab, from, to)
         reply(from, name, :ok)
         retainer_loop(cp2)
-
       {_From, {:add_retainer, r, node}} ->
         cp2 = do_add_retainer(cp, r, node)
         retainer_loop(cp2)
-
       {_From, {:del_retainer, r, node}} ->
         cp2 = do_del_retainer(cp, r, node)
         retainer_loop(cp2)
-
       {from, {:iter_begin, iter}} ->
         cp2 = iter_begin(cp, from, iter)
         retainer_loop(cp2)
-
       {from, {:iter_end, iter}} ->
         try do
           retainer_fixtable(r_iter(iter, :oid_tab), false)
@@ -1212,56 +1045,37 @@ defmodule :m_mnesia_checkpoint do
           :error, _ ->
             :ok
         end
-
         iters = r_checkpoint_args(cp, :iterators) -- [iter]
         reply(from, name, :ok)
         retainer_loop(r_checkpoint_args(cp, iterators: iters))
-
       {_From, {:exit_pending, _Tid}} ->
         retainer_loop(cp)
-
       {from, :deactivate} ->
         do_stop(cp)
         reply(from, name, :deactivated)
-        :erlang.unlink(from)
         exit(:shutdown)
-
       {_From, {:mnesia_down, node}} ->
         cp2 = do_del_retainers(cp, node)
         retainer_loop(cp2)
-
       {:EXIT, parent, _} when parent == r_checkpoint_args(cp, :supervisor) ->
         exit(:shutdown)
-
       {:EXIT, from, _Reason} ->
-        iters =
-          for iter <- r_checkpoint_args(cp, :iterators),
-              check_iter(from, iter) do
-            iter
-          end
-
+        iters = (for iter <- r_checkpoint_args(cp, :iterators),
+                       check_iter(from, iter) do
+                   iter
+                 end)
         retainer_loop(r_checkpoint_args(cp, iterators: iters))
-
       {:system, from, msg} ->
         dbg_out('~p got {system, ~p, ~tp}~n', [:mnesia_checkpoint, from, msg])
-
-        :sys.handle_system_msg(
-          msg,
-          from,
-          r_checkpoint_args(cp, :supervisor),
-          :mnesia_checkpoint,
-          [],
-          cp
-        )
-
+        :sys.handle_system_msg(msg, from, r_checkpoint_args(cp, :supervisor),
+                                 :mnesia_checkpoint, [], cp)
       msg ->
         dbg_out('~p got ~tp~n', [:mnesia_checkpoint, msg])
     end
   end
 
-  defp maybe_activate(cp)
-       when r_checkpoint_args(cp, :wait_for_old) == [] and
-              r_checkpoint_args(cp, :is_activated) == false do
+  defp maybe_activate(cp) when (r_checkpoint_args(cp, :wait_for_old) == [] and
+                      r_checkpoint_args(cp, :is_activated) == false) do
     r_checkpoint_args(cp, is_activated: true)
   end
 
@@ -1288,7 +1102,6 @@ defmodule :m_mnesia_checkpoint do
     unset({:checkpoint, name})
     :lists.foreach(&deactivate_tab/1, r_checkpoint_args(cp, :retainers))
     iters = r_checkpoint_args(cp, :iterators)
-
     for r_iter(main_tab: tab) <- iters do
       try do
         retainer_fixtable(tab, false)
@@ -1297,28 +1110,22 @@ defmodule :m_mnesia_checkpoint do
           :ok
       end
     end
-
     :ok
   end
 
   defp deactivate_tab(r) do
     name = r_retainer(r, :cp_name)
     tab = r_retainer(r, :tab_name)
-
     try do
       active = :lists.member(node(), r_retainer(r, :writers))
-
-      case r_retainer(r, :store) do
+      case (r_retainer(r, :store)) do
         :undefined ->
           :ignore
-
         store when active == true ->
           retainer_delete(store)
-
         _ ->
           :ignore
       end
-
       unset({tab, {:retainer, name}})
       del({tab, :checkpoints}, name)
       del_chkp_info(tab, name)
@@ -1329,59 +1136,43 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp del_chkp_info(tab, name) do
-    case val({tab, :commit_work}) do
+    case (val({tab, :commit_work})) do
       [{:checkpoints, chkList} | rest] ->
-        case :lists.delete(name, chkList) do
+        case (:lists.delete(name, chkList)) do
           [] ->
             :mnesia_lib.set({tab, :commit_work}, rest)
-
           newList ->
-            :mnesia_lib.set(
-              {tab, :commit_work},
-              [{:checkpoints, newList} | rest]
-            )
+            :mnesia_lib.set({tab, :commit_work},
+                              [{:checkpoints, newList} | rest])
         end
-
       _ ->
         :ignore
     end
   end
 
   defp do_del_retainers(cp, node) do
-    rs =
-      for r <- r_checkpoint_args(cp, :retainers) do
-        do_del_retainer2(cp, r, node)
-      end
-
-    r_checkpoint_args(cp, retainers: rs, nodes: writers(rs))
+    rs = (for r <- r_checkpoint_args(cp, :retainers) do
+            do_del_retainer2(cp, r, node)
+          end)
+    r_checkpoint_args(cp, retainers: rs,  nodes: writers(rs))
   end
 
   defp do_del_retainer2(cp, r, node) do
     writers = r_retainer(r, :writers) -- [node]
     r2 = r_retainer(r, writers: writers)
-
-    set(
-      {r_retainer(r2, :tab_name), {:retainer, r_retainer(r2, :cp_name)}},
-      r2
-    )
-
+    set({r_retainer(r2, :tab_name), {:retainer, r_retainer(r2, :cp_name)}},
+          r2)
     cond do
       writers == [] ->
         event = {:mnesia_checkpoint_deactivated, r_checkpoint_args(cp, :name)}
         :mnesia_lib.report_system_event(event)
         do_stop(cp)
         exit(:shutdown)
-
       node == node() ->
         deactivate_tab(r)
-
-        set(
-          {r_retainer(r2, :tab_name), {:retainer, r_retainer(r2, :cp_name)}},
-          r2
-        )
-
+        set({r_retainer(r2, :tab_name), {:retainer, r_retainer(r2, :cp_name)}},
+              r2)
         r2
-
       true ->
         r2
     end
@@ -1391,7 +1182,7 @@ defmodule :m_mnesia_checkpoint do
     {r, rest} = find_retainer(r0, r_checkpoint_args(cp, :retainers), [])
     r2 = do_del_retainer2(cp, r, node)
     rs = [r2 | rest]
-    r_checkpoint_args(cp, retainers: rs, nodes: writers(rs))
+    r_checkpoint_args(cp, retainers: rs,  nodes: writers(rs))
   end
 
   defp do_del_copy(cp, tab, thisNode) when thisNode == node() do
@@ -1403,38 +1194,32 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp do_add_copy(cp, tab, node) when node != node() do
-    case :lists.member(tab, r_checkpoint_args(cp, :max)) do
+    case (:lists.member(tab, r_checkpoint_args(cp, :max))) do
       false ->
         {:ok, cp}
-
       true ->
         name = r_checkpoint_args(cp, :name)
         r0 = val({tab, {:retainer, name}})
         w = r_retainer(r0, :writers)
         r = r_retainer(r0, writers: w ++ [node])
-
-        case :lists.member(node, r_checkpoint_args(cp, :nodes)) do
+        case (:lists.member(node, r_checkpoint_args(cp, :nodes))) do
           true ->
             send_retainer(cp, r, node)
-
           false ->
-            case tm_remote_prepare(node, cp) do
+            case (tm_remote_prepare(node, cp)) do
               {:ok, ^name, _IgnoreNew, ^node} ->
-                case :lists.member(:schema, r_checkpoint_args(cp, :max)) do
+                case (:lists.member(:schema, r_checkpoint_args(cp, :max))) do
                   true ->
                     rS0 = val({:schema, {:retainer, name}})
                     wS = r_retainer(rS0, :writers)
                     rS1 = r_retainer(rS0, writers: wS ++ [node])
                     {:ok, cp1} = send_retainer(cp, rS1, node)
                     send_retainer(cp1, r, node)
-
                   false ->
                     send_retainer(cp, r, node)
                 end
-
               {:badrpc, reason} ->
                 {{:error, {:badrpc, reason}}, cp}
-
               {:error, reason} ->
                 {{:error, reason}, cp}
             end
@@ -1449,31 +1234,21 @@ defmodule :m_mnesia_checkpoint do
   defp do_add_retainer(cp, r0, node) do
     writers = r_retainer(r0, :writers)
     {r, rest} = find_retainer(r0, r_checkpoint_args(cp, :retainers), [])
-
-    newRet =
-      cond do
-        node == node() ->
-          prepare_tab(cp, r_retainer(r, writers: writers))
-
-        true ->
-          r_retainer(r, writers: writers)
-      end
-
+    newRet = (cond do
+                node == node() ->
+                  prepare_tab(cp, r_retainer(r, writers: writers))
+                true ->
+                  r_retainer(r, writers: writers)
+              end)
     rs = [newRet | rest]
-
-    set(
-      {r_retainer(newRet, :tab_name), {:retainer, r_retainer(newRet, :cp_name)}},
-      newRet
-    )
-
-    r_checkpoint_args(cp, retainers: rs, nodes: writers(rs))
+    set({r_retainer(newRet, :tab_name),
+           {:retainer, r_retainer(newRet, :cp_name)}},
+          newRet)
+    r_checkpoint_args(cp, retainers: rs,  nodes: writers(rs))
   end
 
-  defp find_retainer(
-         r_retainer(cp_name: cP, tab_name: tab),
-         [ret = r_retainer(cp_name: cP, tab_name: tab) | r],
-         acc
-       ) do
+  defp find_retainer(r_retainer(cp_name: cP, tab_name: tab),
+            [ret = r_retainer(cp_name: cP, tab_name: tab) | r], acc) do
     {ret, r ++ acc}
   end
 
@@ -1487,7 +1262,8 @@ defmodule :m_mnesia_checkpoint do
     nodes = nodes0 -- [node()]
     msg = {:add_retainer, r, node}
     abcast(nodes, name, msg)
-    {:ok, _} = :rpc.call(node, :mnesia_checkpoint, :cast, [name, msg])
+    {:ok, _} = :rpc.call(node, :mnesia_checkpoint, :cast,
+                           [name, msg])
     store = r_retainer(r, :store)
     send_retainer2(node, name, store, retainer_first(store))
     cp2 = do_add_retainer(cp, r, node)
@@ -1500,8 +1276,10 @@ defmodule :m_mnesia_checkpoint do
 
   defp send_retainer2(node, name, store, key) do
     [{tab, _, records}] = retainer_get(store, key)
-    abcast([node], name, {:retain, {:dirty, :send_retainer}, tab, key, records})
-    send_retainer2(node, name, store, retainer_next(store, key))
+    abcast([node], name,
+             {:retain, {:dirty, :send_retainer}, tab, key, records})
+    send_retainer2(node, name, store,
+                     retainer_next(store, key))
   end
 
   defp do_change_copy(cp, tab, fromType, toType) do
@@ -1511,35 +1289,27 @@ defmodule :m_mnesia_checkpoint do
     {_, old} = r_retainer(r, :store)
     {_, new} = r_retainer(r2, :store)
     fname = tab2retainer({tab, name})
-
     cond do
       fromType == :disc_only_copies ->
         :mnesia_lib.dets_sync_close(old)
-        :loaded = :mnesia_lib.dets_to_ets(old, new, fname, :set, :no, :yes)
+        :loaded = :mnesia_lib.dets_to_ets(old, new, fname, :set,
+                                            :no, :yes)
         :ok = :file.delete(fname)
-
       toType == :disc_only_copies ->
         tabSize = :ets.info(old, :size)
-
-        props = [
-          {:file, fname},
-          {:type, :set},
-          {:keypos, 2},
-          {:estimated_no_objects, tabSize + 256},
-          {:repair, false}
-        ]
-
+        props = [{:file, fname}, {:type, :set}, {:keypos, 2},
+                                                    {:estimated_no_objects,
+                                                       tabSize + 256},
+                                                        {:repair, false}]
         {:ok, _} = :mnesia_lib.dets_sync_open(new, props)
         :ok = :mnesia_dumper.raw_dump_table(new, old)
         :ets.delete(old)
-
       true ->
         :ignore
     end
-
     pos = r_retainer(:tab_name)
     rs = :lists.keyreplace(tab, pos, r_checkpoint_args(cp, :retainers), r2)
-    r_checkpoint_args(cp, retainers: rs, nodes: writers(rs))
+    r_checkpoint_args(cp, retainers: rs,  nodes: writers(rs))
   end
 
   defp check_iter(from, iter) when r_iter(iter, :pid) == from do
@@ -1549,7 +1319,6 @@ defmodule :m_mnesia_checkpoint do
       :error, _ ->
         :ok
     end
-
     false
   end
 
@@ -1558,15 +1327,13 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp init_tabs(r, iter) do
-    {kind, _} = store = r_retainer(r, :store)
+    {kind, _} = (store = r_retainer(r, :store))
     main = {kind, r_iter(iter, :tab_name)}
     ret = store
-    iter2 = r_iter(iter, main_tab: main, retainer_tab: ret)
-
-    case r_iter(iter, :source) do
+    iter2 = r_iter(iter, main_tab: main,  retainer_tab: ret)
+    case (r_iter(iter, :source)) do
       :table ->
         r_iter(iter2, oid_tab: main)
-
       :retainer ->
         r_iter(iter2, oid_tab: ret)
     end
@@ -1574,32 +1341,24 @@ defmodule :m_mnesia_checkpoint do
 
   def iterate(name, tab, fun, acc, source, val) do
     iter0 = r_iter(tab_name: tab, source: source, val: val)
-
-    case call(name, {:iter_begin, iter0}) do
+    case (call(name, {:iter_begin, iter0})) do
       {:error, reason} ->
         {:error, reason}
-
       {:ok, iter, pid} ->
         :erlang.link(pid)
-
-        res =
-          try do
-            iter(fun, acc, iter)
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-
+        res = (try do
+                 iter(fun, acc, iter)
+               catch
+                 _, _Reason ->
+                   {:EXIT, _Reason}
+               end)
         :erlang.unlink(pid)
         call(name, {:iter_end, iter})
-
-        case res do
+        case (res) do
           {:EXIT, reason} ->
             {:error, reason}
-
           {:error, reason} ->
             {:error, reason}
-
           acc2 ->
             {:ok, acc2}
         end
@@ -1611,14 +1370,12 @@ defmodule :m_mnesia_checkpoint do
   end
 
   defp iter(fun, acc, iter, key) do
-    case get_records(iter, key) do
+    case (get_records(iter, key)) do
       {:"$end_of_table", []} ->
         fun.([], acc)
-
       {:"$end_of_table", records} ->
         acc2 = fun.(records, acc)
         fun.([], acc2)
-
       {next, records} ->
         acc2 = fun.(records, acc)
         iter(fun, acc2, iter, next)
@@ -1670,11 +1427,9 @@ defmodule :m_mnesia_checkpoint do
 
   defp get_checkpoint_val(iter, key) when r_iter(iter, :source) == :retainer do
     deleteOid = {r_iter(iter, :tab_name), key}
-
-    case retainer_get(r_iter(iter, :retainer_tab), key) do
+    case (retainer_get(r_iter(iter, :retainer_tab), key)) do
       [{_, _, []}] ->
         [deleteOid]
-
       [{_, _, records}] ->
         [deleteOid | records]
     end
@@ -1701,9 +1456,9 @@ defmodule :m_mnesia_checkpoint do
           end) do
       {:EXIT, stacktrace} ->
         :mnesia_lib.other_val(var, stacktrace)
-
       value ->
         value
     end
   end
+
 end

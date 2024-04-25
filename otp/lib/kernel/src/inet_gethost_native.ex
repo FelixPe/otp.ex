@@ -2,169 +2,131 @@ defmodule :m_inet_gethost_native do
   use Bitwise
   @behaviour :supervisor_bridge
   require Record
-
-  Record.defrecord(:r_hostent, :hostent,
-    h_name: :undefined,
-    h_aliases: [],
-    h_addrtype: :undefined,
-    h_length: :undefined,
-    h_addr_list: []
-  )
-
-  Record.defrecord(:r_request, :request,
-    rid: :undefined,
-    op: :undefined,
-    proto: :undefined,
-    rdata: :undefined,
-    clients: []
-  )
-
-  Record.defrecord(:r_statistics, :statistics,
-    netdb_timeout: 0,
-    netdb_internal: 0,
-    port_crash: 0,
-    notsup: 0,
-    host_not_found: 0,
-    try_again: 0,
-    no_recovery: 0,
-    no_data: 0
-  )
-
-  Record.defrecord(:r_state, :state,
-    port: :noport,
-    timeout: 8000,
-    requests: :undefined,
-    req_index: :undefined,
-    parent: :undefined,
-    pool_size: 4,
-    statistics: :undefined
-  )
-
+  Record.defrecord(:r_hostent, :hostent, h_name: :undefined,
+                                   h_aliases: [], h_addrtype: :undefined,
+                                   h_length: :undefined, h_addr_list: [])
+  Record.defrecord(:r_statistics, :statistics, netdb_timeout: 0,
+                                      netdb_internal: 0, port_crash: 0,
+                                      notsup: 0, host_not_found: 0,
+                                      try_again: 0, no_recovery: 0, no_data: 0)
+  Record.defrecord(:r_request, :request, rid: :undefined,
+                                   req: :undefined, timer_ref: :undefined,
+                                   req_ts: :undefined)
+  Record.defrecord(:r_state, :state, port: :noport,
+                                 timeout: 8000, requests: :undefined,
+                                 req_index: :undefined, req_clients: :undefined,
+                                 parent: :undefined, pool_size: 4,
+                                 statistics: :undefined)
   def init([]) do
     ref = make_ref()
     saveTE = :erlang.process_flag(:trap_exit, true)
-    pid = spawn_link(:inet_gethost_native, :server_init, [self(), ref])
-
+    pid = spawn_link(:inet_gethost_native, :server_init,
+                       [self(), ref])
     receive do
       ^ref ->
         :erlang.process_flag(:trap_exit, saveTE)
         {:ok, pid, pid}
-
       {:EXIT, ^pid, message} ->
         :erlang.process_flag(:trap_exit, saveTE)
         {:error, message}
-    after
-      10000 ->
-        :erlang.process_flag(:trap_exit, saveTE)
-        {:error, {:timeout, :inet_gethost_native}}
+    after 10000 ->
+      :erlang.process_flag(:trap_exit, saveTE)
+      {:error, {:timeout, :inet_gethost_native}}
     end
   end
 
   def start_link() do
-    :supervisor_bridge.start_link({:local, :inet_gethost_native_sup}, :inet_gethost_native, [])
-  end
-
-  def start_raw() do
-    spawn(:inet_gethost_native, :run_once, [])
-  end
-
-  def run_once() do
-    port = do_open_port(get_poolsize(), get_extra_args())
-    timeout = :inet_db.res_option(:timeout) * 4
-
-    {pid, r, request} =
-      receive do
-        {{pid0, r0}, {1, proto0, name0}} ->
-          {pid0, r0, [<<1::size(32), 1::size(8), proto0::size(8)>>, name0, 0]}
-
-        {{pid1, r1}, {2, proto1, data1}} ->
-          {pid1, r1, <<1::size(32), 2::size(8), proto1::size(8), data1::binary>>}
-      after
-        timeout ->
-          exit(:normal)
-      end
-
-    try do
-      :erlang.port_command(port, request)
-    catch
-      :error, e -> {:EXIT, {e, __STACKTRACE__}}
-      :exit, e -> {:EXIT, e}
-      e -> e
-    end
-
-    receive do
-      {^port, {:data, <<1::size(32), binReply::binary>>}} ->
-        send(pid, {r, {:ok, binReply}})
-    after
-      timeout ->
-        send(pid, {r, {:error, :timeout}})
-    end
+    :supervisor_bridge.start_link({:local,
+                                     :inet_gethost_native_sup},
+                                    :inet_gethost_native, [])
   end
 
   def terminate(_Reason, pid) do
-    try do
+    (try do
       :erlang.exit(pid, :kill)
     catch
       :error, e -> {:EXIT, {e, __STACKTRACE__}}
       :exit, e -> {:EXIT, e}
       e -> e
-    end
-
+    end)
     :ok
   end
 
-  def server_init(starter, ref) do
-    :erlang.process_flag(:trap_exit, true)
+  defp run_once() do
+    port = do_open_port(get_poolsize(), get_extra_args())
+    timeout = :inet_db.res_option(:timeout) * 4
+    :persistent_term.put({:inet_gethost_native, :timeout},
+                           timeout)
+    rID = 1
+    {clientHandle, request} = (receive do
+                                 {reqH, {1, proto0, name0}}
+                                     when is_reference(reqH) ->
+                                   {reqH,
+                                      [<<rID :: size(32), 1 :: size(8),
+                                           proto0 :: size(8)>>,
+                                           name0, 0]}
+                                 {reqH, {2, proto1, data1}}
+                                     when is_reference(reqH) ->
+                                   {reqH,
+                                      <<rID :: size(32), 2 :: size(8),
+                                          proto1 :: size(8), data1 :: binary>>}
+                               after timeout ->
+                                 exit(:normal)
+                               end)
+    _ = ((try do
+           :erlang.port_command(port, request)
+         catch
+           :error, e -> {:EXIT, {e, __STACKTRACE__}}
+           :exit, e -> {:EXIT, e}
+           e -> e
+         end))
+    receive do
+      {^port,
+         {:data, <<^rID :: size(32), binReply :: binary>>}} ->
+        send(clientHandle, {clientHandle, {:ok, binReply}})
+    after timeout ->
+      send(clientHandle, {clientHandle, {:error, :timeout}})
+    end
+  end
 
-    case :erlang.whereis(:inet_gethost_native) do
+  def server_init(starter, ref) do
+    _ = :erlang.process_flag(:trap_exit, true)
+    case (:erlang.whereis(:inet_gethost_native)) do
       :undefined ->
-        case (try do
+        case ((try do
                 :erlang.register(:inet_gethost_native, self())
               catch
                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
                 :exit, e -> {:EXIT, e}
                 e -> e
-              end) do
+              end)) do
           true ->
             send(starter, ref)
-
           _ ->
-            exit({:already_started, :erlang.whereis(:inet_gethost_native)})
+            exit({:already_started,
+                    :erlang.whereis(:inet_gethost_native)})
         end
-
       winner ->
         exit({:already_started, winner})
     end
-
+    _ = :erlang.process_flag(:message_queue_data, :off_heap)
     poolsize = get_poolsize()
     port = do_open_port(poolsize, get_extra_args())
     timeout = :inet_db.res_option(:timeout) * 4
+    :persistent_term.put({:inet_gethost_native, :timeout},
+                           timeout)
     :erlang.put(:rid, 0)
     :erlang.put(:num_requests, 0)
-
-    requestTab =
-      :ets.new(
-        :ign_requests,
-        [{:keypos, r_request(:rid)}, :set, :protected]
-      )
-
-    requestIndex =
-      :ets.new(
-        :ign_req_index,
-        [:set, :protected]
-      )
-
-    state =
-      r_state(
-        port: port,
-        timeout: timeout,
-        requests: requestTab,
-        req_index: requestIndex,
-        pool_size: poolsize,
-        statistics: r_statistics(),
-        parent: starter
-      )
-
+    requestTab = :ets.new(:ign_requests,
+                            [:set, :protected, {:keypos, r_request(:rid)}])
+    requestIndex = :ets.new(:ign_req_index,
+                              [:set, :protected])
+    requestClients = :ets.new(:ign_req_clients,
+                                [:bag, :protected])
+    state = r_state(port: port, timeout: timeout,
+                requests: requestTab, req_index: requestIndex,
+                req_clients: requestClients, pool_size: poolsize,
+                statistics: r_statistics(), parent: starter)
     main_loop(state)
   end
 
@@ -175,89 +137,82 @@ defmodule :m_inet_gethost_native do
     end
   end
 
-  defp handle_message(
-         {{pid, _} = client, {1, proto, name} = r},
-         state
-       )
-       when is_pid(pid) do
-    newState = do_handle_call(r, client, state, [<<1::size(8), proto::size(8)>>, name, 0])
-    main_loop(newState)
-  end
-
-  defp handle_message(
-         {{pid, _} = client, {2, proto, data} = r},
-         state
-       )
-       when is_pid(pid) do
-    newState = do_handle_call(r, client, state, <<2::size(8), proto::size(8), data::binary>>)
-    main_loop(newState)
-  end
-
-  defp handle_message({{pid, ref}, {4, ctl, data}}, state)
-       when is_pid(pid) do
-    try do
-      :erlang.port_command(
-        r_state(state, :port),
-        <<4_294_967_295::size(32), 4::size(8), ctl::size(8), data::binary>>
-      )
-    catch
-      :error, e -> {:EXIT, {e, __STACKTRACE__}}
-      :exit, e -> {:EXIT, e}
-      e -> e
-    end
-
-    send(pid, {ref, :ok})
+  defp handle_message({clientHandle, {1, proto, name} = req}, state)
+      when is_reference(clientHandle) do
+    do_handle_call(clientHandle, req,
+                     [<<1 :: size(8), proto :: size(8)>>, name, 0], state)
     main_loop(state)
   end
 
-  defp handle_message({{pid, ref}, :restart_port}, state)
-       when is_pid(pid) do
+  defp handle_message({clientHandle, {2, proto, data} = req}, state)
+      when is_reference(clientHandle) do
+    do_handle_call(clientHandle, req,
+                     <<2 :: size(8), proto :: size(8), data :: binary>>,
+                     state)
+    main_loop(state)
+  end
+
+  defp handle_message({clientHandle, {4, ctl, data}}, state)
+      when is_reference(clientHandle) do
+    _ = ((try do
+           :erlang.port_command(r_state(state, :port),
+                                  <<4294967295 :: size(32), 4 :: size(8),
+                                      ctl :: size(8), data :: binary>>)
+         catch
+           :error, e -> {:EXIT, {e, __STACKTRACE__}}
+           :exit, e -> {:EXIT, e}
+           e -> e
+         end))
+    send(clientHandle, {clientHandle, :ok})
+    main_loop(state)
+  end
+
+  defp handle_message({clientHandle, :restart_port}, state)
+      when is_reference(clientHandle) do
     newPort = restart_port(state)
-    send(pid, {ref, :ok})
+    send(clientHandle, {clientHandle, :ok})
     main_loop(r_state(state, port: newPort))
   end
 
   defp handle_message({port, {:data, data}}, state = r_state(port: port)) do
-    newState =
-      case data do
-        <<rID::size(32), binReply::binary>> ->
-          case binReply do
-            <<unit, _::binary>>
-            when unit === 0 or unit === 4 or
-                   unit === 16 ->
-              case pick_request(state, rID) do
-                false ->
-                  state
-
-                req ->
-                  :lists.foreach(
-                    fn {p, r, tR} ->
-                      _ = :erlang.cancel_timer(tR)
-                      send(p, {r, {:ok, binReply}})
-                    end,
-                    r_request(req, :clients)
-                  )
-
-                  state
-              end
-
-            _UnitError ->
-              newPort = restart_port(state)
-              r_state(state, port: newPort)
-          end
-
-        _BasicFormatError ->
-          newPort = restart_port(state)
-          r_state(state, port: newPort)
-      end
-
+    newState = (case (data) do
+                  <<rID :: size(32), binReply :: binary>> ->
+                    case (binReply) do
+                      <<unit, _ :: binary>> when unit === 0 or unit === 4 or
+                                                   unit === 16
+                                                 ->
+                        case (:ets.take(r_state(state, :requests), rID)) do
+                          [] ->
+                            state
+                          [r_request(timer_ref: timerRef, req: req)] ->
+                            _ = :erlang.cancel_timer(timerRef,
+                                                       [{:async, true}, {:info,
+                                                                           false}])
+                            :ets.delete(r_state(state, :req_index), req)
+                            :lists.foreach(fn {_, clientHandle} ->
+                                                send(clientHandle, {clientHandle,
+                                                                      {:ok,
+                                                                         binReply}})
+                                           end,
+                                             :ets.take(r_state(state, :req_clients),
+                                                         rID))
+                            :erlang.put(:num_requests,
+                                          :erlang.get(:num_requests) - 1)
+                            state
+                        end
+                      _UnitError ->
+                        newPort = restart_port(state)
+                        r_state(state, port: newPort)
+                    end
+                  _BasicFormatError ->
+                    newPort = restart_port(state)
+                    r_state(state, port: newPort)
+                end)
     main_loop(newState)
   end
 
-  defp handle_message(
-         {:EXIT, port, _Reason},
-         state = r_state(port: port)
-       ) do
+  defp handle_message({:EXIT, port, _Reason},
+            state = r_state(port: port)) do
     :noop
     newPort = restart_port(state)
     main_loop(r_state(state, port: newPort))
@@ -269,140 +224,78 @@ defmodule :m_inet_gethost_native do
     main_loop(r_state(state, port: newPort))
   end
 
-  defp handle_message({:timeout, pid, rID}, state) do
-    case pick_client(state, rID, pid) do
-      false ->
-        false
-
-      {:more, {p, r, _}} ->
-        send(p, {r, {:error, :timeout}})
-
-      {:last, {lP, lR, _}} ->
-        send(lP, {lR, {:error, :timeout}})
-        _ = pick_request(state, rID)
-
-        try do
-          :erlang.port_command(
-            r_state(state, :port),
-            <<rID::size(32), 3>>
-          )
-        catch
-          :error, e -> {:EXIT, {e, __STACKTRACE__}}
-          :exit, e -> {:EXIT, e}
-          e -> e
-        end
+  defp handle_message({:timeout, timerRef, rID}, state) do
+    case (:ets.lookup(r_state(state, :requests), rID)) do
+      [] ->
+        :ok
+      [r_request(timer_ref: ^timerRef, req: req,
+           req_ts: :undefined)] ->
+        :ets.delete(r_state(state, :requests), rID)
+        :ets.delete(r_state(state, :req_index), req)
+        :ets.delete(r_state(state, :req_clients), rID)
+        :erlang.put(:num_requests,
+                      :erlang.get(:num_requests) - 1)
+        _ = ((try do
+               :erlang.port_command(r_state(state, :port),
+                                      <<rID :: size(32), 3>>)
+             catch
+               :error, e -> {:EXIT, {e, __STACKTRACE__}}
+               :exit, e -> {:EXIT, e}
+               e -> e
+             end))
+        :ok
+      [r_request(timer_ref: ^timerRef, req_ts: reqTs)] ->
+        timeoutTime = :erlang.convert_time_unit(reqTs, :native,
+                                                  :millisecond) + r_state(state, :timeout)
+        newTimerRef = :erlang.start_timer(timeoutTime, self(),
+                                            rID, [{:abs, true}])
+        true = :ets.update_element(r_state(state, :requests), rID,
+                                     [{r_request(:timer_ref), newTimerRef}, {r_request(:req_ts),
+                                                                       :undefined}])
+        :ok
+      [r_request()] ->
+        :ok
     end
-
     main_loop(state)
   end
 
   defp handle_message({:system, from, req}, state) do
-    :sys.handle_system_msg(req, from, r_state(state, :parent), :inet_gethost_native, [], state)
+    :sys.handle_system_msg(req, from, r_state(state, :parent),
+                             :inet_gethost_native, [], state)
   end
 
   defp handle_message(_, state) do
     main_loop(state)
   end
 
-  defp do_handle_call(r, client0, state, rData) do
-    req = find_request(state, r)
-    timeout = r_state(state, :timeout)
-    {p, ref} = client0
-    tR = :erlang.send_after(timeout, self(), {:timeout, p, r_request(req, :rid)})
-    client = {p, ref, tR}
-
-    case r_request(req, :clients) do
+  defp do_handle_call(clientHandle, req, rData, state) do
+    case (:ets.lookup(r_state(state, :req_index), req)) do
+      [{_, rID}] ->
+        true = :ets.update_element(r_state(state, :requests), rID,
+                                     {r_request(:req_ts), :erlang.monotonic_time()})
+        :ok
       [] ->
-        realRData = [<<r_request(req, :rid)::size(32)>> | rData]
-
-        try do
-          :erlang.port_command(r_state(state, :port), realRData)
-        catch
-          :error, e -> {:EXIT, {e, __STACKTRACE__}}
-          :exit, e -> {:EXIT, e}
-          e -> e
-        end
-
-        :ets.insert(
-          r_state(state, :requests),
-          r_request(req, clients: [client])
-        )
-
-      tail ->
-        :ets.insert(
-          r_state(state, :requests),
-          r_request(req, clients: [client | tail])
-        )
+        rID = get_rid()
+        _ = ((try do
+               :erlang.port_command(r_state(state, :port),
+                                      [<<rID :: size(32)>> | rData])
+             catch
+               :error, e -> {:EXIT, {e, __STACKTRACE__}}
+               :exit, e -> {:EXIT, e}
+               e -> e
+             end))
+        timeout = r_state(state, :timeout)
+        timerRef = :erlang.start_timer(timeout, self(), rID)
+        :ets.insert(r_state(state, :requests),
+                      r_request(rid: rID, req: req, timer_ref: timerRef))
+        :ets.insert(r_state(state, :req_index), {req, rID})
     end
-
-    state
-  end
-
-  defp find_request(state, r = {op, proto, data}) do
-    case :ets.lookup(r_state(state, :req_index), r) do
-      [{^r, rid}] ->
-        [ret] = :ets.lookup(r_state(state, :requests), rid)
-        ret
-
-      [] ->
-        nRid = get_rid()
-        req = r_request(rid: nRid, op: op, proto: proto, rdata: data)
-        :ets.insert(r_state(state, :requests), req)
-        :ets.insert(r_state(state, :req_index), {r, nRid})
-
-        :erlang.put(
-          :num_requests,
-          :erlang.get(:num_requests) + 1
-        )
-
-        req
-    end
-  end
-
-  defp pick_request(state, rID) do
-    case :ets.lookup(r_state(state, :requests), rID) do
-      [] ->
-        false
-
-      [r_request(rid: ^rID, op: op, proto: proto, rdata: data) = r] ->
-        :ets.delete(r_state(state, :requests), rID)
-        :ets.delete(r_state(state, :req_index), {op, proto, data})
-
-        :erlang.put(
-          :num_requests,
-          :erlang.get(:num_requests) - 1
-        )
-
-        r
-    end
-  end
-
-  defp pick_client(state, rID, clid) do
-    case :ets.lookup(r_state(state, :requests), rID) do
-      [] ->
-        false
-
-      [r] ->
-        case r_request(r, :clients) do
-          [soleClient] ->
-            {:last, soleClient}
-
-          cList ->
-            case :lists.keyfind(clid, 1, cList) do
-              false ->
-                false
-
-              client ->
-                nCList = :lists.keydelete(clid, 1, cList)
-                :ets.insert(r_state(state, :requests), r_request(r, clients: nCList))
-                {:more, client}
-            end
-        end
-    end
+    :ets.insert(r_state(state, :req_clients), {rID, clientHandle})
+    :ok
   end
 
   defp get_rid() do
-    new = rem(:erlang.get(:rid) + 1, 134_217_727)
+    new = rem(:erlang.get(:rid) + 1, 134217727)
     :erlang.put(:rid, new)
     new
   end
@@ -422,87 +315,77 @@ defmodule :m_inet_gethost_native do
   end
 
   defp restart_port(r_state(port: port, requests: requests)) do
-    try do
-      :erlang.port_close(port)
-    catch
-      :error, e -> {:EXIT, {e, __STACKTRACE__}}
-      :exit, e -> {:EXIT, e}
-      e -> e
-    end
-
+    _ = ((try do
+           :erlang.port_close(port)
+         catch
+           :error, e -> {:EXIT, {e, __STACKTRACE__}}
+           :exit, e -> {:EXIT, e}
+           e -> e
+         end))
     newPort = do_open_port(get_poolsize(), get_extra_args())
-
-    foreach(
-      fn r_request(rid: rid, op: op, proto: proto, rdata: rdata) ->
-        case op do
-          1 ->
-            :erlang.port_command(
-              newPort,
-              [<<rid::size(32), 1::size(8), proto::size(8)>>, rdata, 0]
-            )
-
-          2 ->
-            :erlang.port_command(
-              newPort,
-              <<rid::size(32), 2::size(8), proto::size(8), rdata::binary>>
-            )
-        end
-      end,
-      requests
-    )
-
+    foreach(fn r_request(rid: rID, req: {op, proto, rdata}) ->
+                 case (op) do
+                   1 ->
+                     :erlang.port_command(newPort,
+                                            [<<rID :: size(32), 1 :: size(8),
+                                                 proto :: size(8)>>,
+                                                 rdata, 0])
+                   2 ->
+                     :erlang.port_command(newPort,
+                                            <<rID :: size(32), 2 :: size(8),
+                                                proto :: size(8),
+                                                rdata :: binary>>)
+                 end
+            end,
+              requests)
     newPort
   end
 
   defp do_open_port(poolsize, extraArgs) do
+    args = [:erlang.integer_to_list(poolsize)] ++ extraArgs
+    opts = [:overlapped_io, {:args, args}, {:packet, 4},
+                                               :eof, :binary]
+    {:ok, [binDir]} = :init.get_argument(:bindir)
+    prog = :filename.join(binDir, 'inet_gethost')
+    open_executable(prog, opts)
+  end
+
+  defp open_executable(prog, opts) do
     try do
-      :erlang.open_port(
-        {:spawn, 'inet_gethost' ++ ' ' ++ :erlang.integer_to_list(poolsize) ++ ' ' ++ extraArgs},
-        [{:packet, 4}, :eof, :binary, :overlapped_io]
-      )
+      :erlang.open_port({:spawn_executable, prog}, opts)
     catch
-      :error, _ ->
-        :erlang.open_port(
-          {:spawn,
-           'inet_gethost' ++ ' ' ++ :erlang.integer_to_list(poolsize) ++ ' ' ++ extraArgs},
-          [{:packet, 4}, :eof, :binary]
-        )
+      :error, :badarg when hd(opts) === :overlapped_io ->
+        open_executable(prog, tl(opts))
+      :error, reason ->
+        :erlang.halt('Can not execute ' ++ prog ++ ' : ' ++ term2string(reason))
     end
+  end
+
+  defp term2string(term) do
+    :unicode.characters_to_list(:io_lib.format('~tw', [term]))
   end
 
   defp get_extra_args() do
-    firstPart =
-      case :application.get_env(
-             :kernel,
-             :gethost_prioritize
-           ) do
-        {:ok, false} ->
-          ' -ng'
-
-        _ ->
-          ''
-      end
-
-    case :application.get_env(
-           :kernel,
-           :gethost_extra_args
-         ) do
-      {:ok, l} when is_list(l) ->
-        firstPart ++ ' ' ++ l
-
-      _ ->
-        firstPart ++ ''
-    end
+    (case (:application.get_env(:kernel,
+                                  :gethost_prioritize)) do
+       {:ok, false} ->
+         ['-ng']
+       _ ->
+         []
+     end) ++ (case (:application.get_env(:kernel,
+                                           :gethost_extra_args)) do
+                {:ok, l} when is_list(l) ->
+                  :string.tokens(l, ' ')
+                _ ->
+                  []
+              end)
   end
 
   defp get_poolsize() do
-    case :application.get_env(
-           :kernel,
-           :gethost_poolsize
-         ) do
+    case (:application.get_env(:kernel,
+                                 :gethost_poolsize)) do
       {:ok, i} when is_integer(i) ->
         i
-
       _ ->
         4
     end
@@ -540,35 +423,31 @@ defmodule :m_inet_gethost_native do
     {:error, :formerr}
   end
 
-  def gethostbyaddr({a, b, c, d} = addr)
-      when is_integer(a) and
-             a < 256 and is_integer(b) and b < 256 and
-             is_integer(c) and c < 256 and
-             is_integer(d) and d < 256 do
+  def gethostbyaddr({a, b, c, d} = addr) when (is_integer(a) and
+                                      a < 256 and is_integer(b) and b < 256 and
+                                      is_integer(c) and c < 256 and
+                                      is_integer(d) and d < 256) do
     getit(2, 1, <<a, b, c, d>>, addr)
   end
 
   def gethostbyaddr({a, b, c, d, e, f, g, h} = addr)
-      when is_integer(a) and a < 65536 and is_integer(b) and
-             b < 65536 and is_integer(c) and c < 65536 and
-             is_integer(d) and d < 65536 and is_integer(e) and
-             e < 65536 and is_integer(f) and f < 65536 and
-             is_integer(g) and g < 65536 and is_integer(h) and
-             h < 65536 do
-    getit(
-      2,
-      2,
-      <<a::size(16), b::size(16), c::size(16), d::size(16), e::size(16), f::size(16), g::size(16),
-        h::size(16)>>,
-      addr
-    )
+      when (is_integer(a) and a < 65536 and is_integer(b) and
+              b < 65536 and is_integer(c) and c < 65536 and
+              is_integer(d) and d < 65536 and is_integer(e) and
+              e < 65536 and is_integer(f) and f < 65536 and
+              is_integer(g) and g < 65536 and is_integer(h) and
+              h < 65536) do
+    getit(2, 2,
+            <<a :: size(16), b :: size(16), c :: size(16),
+                d :: size(16), e :: size(16), f :: size(16),
+                g :: size(16), h :: size(16)>>,
+            addr)
   end
 
   def gethostbyaddr(addr) when is_list(addr) do
-    case :inet_parse.address(addr) do
+    case (:inet_parse.address(addr)) do
       {:ok, iP} ->
         gethostbyaddr(iP)
-
       _Error ->
         {:error, :formerr}
     end
@@ -583,7 +462,7 @@ defmodule :m_inet_gethost_native do
   end
 
   def control({:debug_level, level}) when is_integer(level) do
-    getit(4, 0, <<level::size(32)>>, :undefined)
+    getit(4, 0, <<level :: size(32)>>, :undefined)
   end
 
   def control(:soft_restart) do
@@ -600,160 +479,141 @@ defmodule :m_inet_gethost_native do
 
   defp getit(req, defaultName) do
     pid = ensure_started()
-    ref = make_ref()
-    send(pid, {{self(), ref}, req})
-
-    receive do
-      {^ref, {:ok, binHostent}} ->
+    defaultTimeout = r_state(r_state(), :timeout)
+    timeout = :persistent_term.get({:inet_gethost_native,
+                                      :timeout},
+                                     defaultTimeout)
+    case (call(pid, req, timeout)) do
+      {:ok, binHostent} ->
         parse_address(binHostent, defaultName)
-
-      {^ref, result} ->
+      :ok ->
+        :ok
+      {:error, _} = result ->
         result
-    after
-      5000 ->
-        ref2 = :erlang.monitor(:process, pid)
-
-        res2 =
-          receive do
-            {^ref, {:ok, binHostent}} ->
-              parse_address(binHostent, defaultName)
-
-            {^ref, result} ->
-              result
-
-            {:DOWN, ^ref2, :process, ^pid, reason} ->
-              {:error, reason}
-          end
-
-        try do
-          :erlang.demonitor(ref2, [:flush])
-        catch
-          :error, e -> {:EXIT, {e, __STACKTRACE__}}
-          :exit, e -> {:EXIT, e}
-          e -> e
-        end
-
-        res2
     end
+  end
+
+  defp call(pid, req, timeout) do
+    reqHandle = monitor(:process, pid,
+                          [{:alias, :reply_demonitor}])
+    send(pid, {reqHandle, req})
+    wait_reply(reqHandle, timeout)
+  end
+
+  defp wait_reply(reqHandle, timeout) do
+    receive do
+      {^reqHandle, result} ->
+        result
+      {:DOWN, ^reqHandle, :process, _, reason} ->
+        {:error, reason}
+    after timeout ->
+      case (unalias(reqHandle)) do
+        true ->
+          :erlang.demonitor(reqHandle, [:flush])
+          {:error, :timeout}
+        false ->
+          wait_reply(reqHandle, :infinity)
+      end
+    end
+  end
+
+  defp ensure_started() do
+    case (:erlang.whereis(:inet_gethost_native)) do
+      :undefined ->
+        childSpec = {:inet_gethost_native_sup,
+                       {:inet_gethost_native, :start_link, []}, :temporary,
+                       1000, :worker, [:inet_gethost_native]}
+        ensure_started([:kernel_safe_sup, :net_sup], childSpec)
+      pid ->
+        pid
+    end
+  end
+
+  defp ensure_started([supervisor | supervisors], childSpec) do
+    case (:erlang.whereis(supervisor)) do
+      :undefined ->
+        ensure_started(supervisors, childSpec)
+      _ ->
+        do_start(supervisor, childSpec)
+        case (:erlang.whereis(:inet_gethost_native)) do
+          :undefined ->
+            exit({:could_not_start_server, :inet_gethost_native})
+          pid ->
+            pid
+        end
+    end
+  end
+
+  defp ensure_started([], _ChildSpec) do
+    spawn(&run_once/0)
   end
 
   defp do_start(sup, c) do
     {child, _, _, _, _, _} = c
-
-    case :supervisor.start_child(sup, c) do
+    case (:supervisor.start_child(sup, c)) do
       {:ok, _} ->
         :ok
-
       {:error, {:already_started, pid}} when is_pid(pid) ->
         :ok
-
       {:error, {{:already_started, pid}, _Child}}
-      when is_pid(pid) ->
+          when is_pid(pid) ->
         :ok
-
       {:error, :already_present} ->
         _ = :supervisor.delete_child(sup, child)
         do_start(sup, c)
     end
   end
 
-  defp ensure_started() do
-    case :erlang.whereis(:inet_gethost_native) do
-      :undefined ->
-        c =
-          {:inet_gethost_native_sup, {:inet_gethost_native, :start_link, []}, :temporary, 1000,
-           :worker, [:inet_gethost_native]}
-
-        case :erlang.whereis(:kernel_safe_sup) do
-          :undefined ->
-            case :erlang.whereis(:net_sup) do
-              :undefined ->
-                start_raw()
-
-              _ ->
-                do_start(:net_sup, c)
-
-                case :erlang.whereis(:inet_gethost_native) do
-                  :undefined ->
-                    exit({:could_not_start_server, :inet_gethost_native})
-
-                  pid0 ->
-                    pid0
-                end
-            end
-
-          _ ->
-            do_start(:kernel_safe_sup, c)
-
-            case :erlang.whereis(:inet_gethost_native) do
-              :undefined ->
-                exit({:could_not_start_server, :inet_gethost_native})
-
-              pid1 ->
-                pid1
-            end
-        end
-
-      pid ->
-        pid
-    end
-  end
-
   defp parse_address(binHostent, defaultName) do
-    case (try do
-            case binHostent do
-              <<0, errstring::binary>> ->
-                {:error, :erlang.list_to_atom(listify(errstring))}
-
-              <<4, naddr::size(32), t0::binary>> ->
-                {t1, addresses} = pick_addresses_v4(naddr, t0)
-
-                {name, names} =
-                  expand_default_name(
-                    pick_names(t1),
-                    defaultName
-                  )
-
-                {:ok,
-                 r_hostent(
-                   h_addr_list: addresses,
-                   h_addrtype: :inet,
-                   h_aliases: names,
-                   h_length: 4,
-                   h_name: name
-                 )}
-
-              <<16, naddr::size(32), t0::binary>> ->
-                {t1, addresses} = pick_addresses_v6(naddr, t0)
-
-                {name, names} =
-                  expand_default_name(
-                    pick_names(t1),
-                    defaultName
-                  )
-
-                {:ok,
-                 r_hostent(
-                   h_addr_list: addresses,
-                   h_addrtype: :inet6,
-                   h_aliases: names,
-                   h_length: 16,
-                   h_name: name
-                 )}
-
-              _Else ->
-                {:error, {:internal_error, {:malformed_response, binHostent}}}
-            end
+    case ((try do
+            (
+              case (binHostent) do
+                <<0, errstring :: binary>> ->
+                  {:error, :erlang.list_to_atom(listify(errstring))}
+                <<length, naddr :: size(32), t0 :: binary>>
+                    when length === 4 ->
+                  {t1, addresses} = pick_addresses_v4(naddr, t0)
+                  {name, names} = expand_default_name(pick_names(t1),
+                                                        defaultName)
+                  return_hostent(length, addresses, name, names)
+                <<length, naddr :: size(32), t0 :: binary>>
+                    when length === 16 ->
+                  {t1, addresses} = pick_addresses_v6(naddr, t0)
+                  {name, names} = expand_default_name(pick_names(t1),
+                                                        defaultName)
+                  return_hostent(length, addresses, name, names)
+                _Else ->
+                  {:error,
+                     {:internal_error, {:malformed_response, binHostent}}}
+              end
+            )
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       {:EXIT, reason} ->
         reason
-
       normal ->
         normal
+    end
+  end
+
+  defp return_hostent(length, addresses, name, aliases) do
+    case (addresses) do
+      [] ->
+        {:error, :nxdomain}
+      [_ | _] ->
+        addrtype = (case (length) do
+                      4 ->
+                        :inet
+                      16 ->
+                        :inet6
+                    end)
+        hostent = r_hostent(h_length: length, h_addrtype: addrtype,
+                      h_name: name, h_aliases: aliases,
+                      h_addr_list: addresses)
+        {:ok, hostent}
     end
   end
 
@@ -766,18 +626,16 @@ defmodule :m_inet_gethost_native do
   end
 
   defp expand_default_name([name | names], defaultName)
-       when is_list(defaultName) or is_tuple(defaultName) do
+      when is_list(defaultName) or is_tuple(defaultName) do
     {name, names}
   end
 
   defp listify(bin) do
     n = byte_size(bin) - 1
-    <<bin2::size(n)-binary, ch>> = bin
-
-    case ch do
+    <<bin2 :: size(n) - binary, ch>> = bin
+    case (ch) do
       0 ->
         listify(bin2)
-
       _ ->
         :erlang.binary_to_list(bin)
     end
@@ -787,7 +645,7 @@ defmodule :m_inet_gethost_native do
     {tail, []}
   end
 
-  defp pick_addresses_v4(n, <<a, b, c, d, tail::binary>>) do
+  defp pick_addresses_v4(n, <<a, b, c, d, tail :: binary>>) do
     {nTail, oList} = pick_addresses_v4(n - 1, tail)
     {nTail, [{a, b, c, d} | oList]}
   end
@@ -796,11 +654,10 @@ defmodule :m_inet_gethost_native do
     {tail, []}
   end
 
-  defp pick_addresses_v6(
-         num,
-         <<a::size(16), b::size(16), c::size(16), d::size(16), e::size(16), f::size(16),
-           g::size(16), h::size(16), tail::binary>>
-       ) do
+  defp pick_addresses_v6(num,
+            <<a :: size(16), b :: size(16), c :: size(16),
+                d :: size(16), e :: size(16), f :: size(16),
+                g :: size(16), h :: size(16), tail :: binary>>) do
     {nTail, oList} = pick_addresses_v6(num - 1, tail)
     {nTail, [{a, b, c, d, e, f, g, h} | oList]}
   end
@@ -814,16 +671,15 @@ defmodule :m_inet_gethost_native do
   end
 
   defp ndx(ch, i, n, bin) do
-    case bin do
-      <<_::size(i)-binary, ^ch, _::binary>> ->
+    case (bin) do
+      <<_ :: size(i) - binary, ^ch, _ :: binary>> ->
         i
-
       _ ->
         ndx(ch, i + 1, n, bin)
     end
   end
 
-  defp pick_names(<<length::size(32), namelist::binary>>) do
+  defp pick_names(<<length :: size(32), namelist :: binary>>) do
     pick_names(length, namelist)
   end
 
@@ -841,7 +697,8 @@ defmodule :m_inet_gethost_native do
 
   defp pick_names(n, bin) do
     ndx = ndx(0, bin)
-    <<str::size(ndx)-binary, 0, rest::binary>> = bin
+    <<str :: size(ndx) - binary, 0, rest :: binary>> = bin
     [:erlang.binary_to_list(str) | pick_names(n - 1, rest)]
   end
+
 end

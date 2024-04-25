@@ -1,54 +1,37 @@
 defmodule :m_dialyzer_dot do
   use Bitwise
-
   def translate_digraph(g, fileName, gName) do
-    translate_digraph(
-      g,
-      fileName,
-      gName,
-      fn x ->
-        :io_lib.format('~p', [x])
-      end,
-      []
-    )
+    translate_digraph(g, fileName, gName,
+                        fn x ->
+                             :io_lib.format('~p', [x])
+                        end,
+                        [])
   end
 
   def translate_digraph(g, fileName, gName, fun, opts) do
-    edges =
-      for x <- :digraph.edges(g) do
-        :digraph.edge(g, x)
-      end
-
-    edgeList =
-      for {_, x, y, _} <- edges do
-        {x, y}
-      end
-
+    edges = (for x <- :digraph.edges(g) do
+               :digraph.edge(g, x)
+             end)
+    edgeList = (for {_, x, y, _} <- edges do
+                  {x, y}
+                end)
     translate_list(edgeList, fileName, gName, fun, opts)
   end
 
   def translate_list(list, fileName, gName) do
-    translate_list(
-      list,
-      fileName,
-      gName,
-      fn x ->
-        :lists.flatten(:io_lib.format('~p', [x]))
-      end,
-      []
-    )
+    translate_list(list, fileName, gName,
+                     fn x ->
+                          :lists.flatten(:io_lib.format('~p', [x]))
+                     end,
+                     [])
   end
 
   def translate_list(list, fileName, gName, opts) do
-    translate_list(
-      list,
-      fileName,
-      gName,
-      fn x ->
-        :lists.flatten(:io_lib.format('~p', [x]))
-      end,
-      opts
-    )
+    translate_list(list, fileName, gName,
+                     fn x ->
+                          :lists.flatten(:io_lib.format('~p', [x]))
+                     end,
+                     opts)
   end
 
   def translate_list(list, fileName, gName, fun, opts) do
@@ -56,51 +39,40 @@ defmodule :m_dialyzer_dot do
     nodeList = nodeList1 ++ nodeList2
     nodeSet = :ordsets.from_list(nodeList)
     start = ['digraph ', gName, ' {']
-
-    vertexList =
-      for v <- nodeSet do
-        node_format(opts, fun, v)
-      end
-
+    vertexList = (for v <- nodeSet do
+                    node_format(opts, fun, v)
+                  end)
     end__ = ['graph [', gName, '=', gName, ']}']
-
-    edgeList =
-      for {x, y} <- list do
-        edge_format(opts, fun, x, y)
-      end
-
+    edgeList = (for {x, y} <- list do
+                  edge_format(opts, fun, x, y)
+                end)
     string = [start, vertexList, edgeList, end__]
-
-    :ok =
-      :file.write_file(
-        fileName,
-        :erlang.list_to_binary(string)
-      )
+    :ok = :file.write_file(fileName,
+                             :erlang.list_to_binary(string))
   end
 
   defp node_format(opt, fun, v) do
     optText = nodeoptions(opt, fun, v)
     tmp = :io_lib.format('~p', [fun.(v)])
     string = :lists.flatten(tmp)
-    {width, heigth} = calc_dim(string)
+    {width, height} = calc_dim(string)
     w = (div(width, 7) + 1) * 0.55
-    h = heigth * 0.4
+    h = height * 0.4
     sL = :io_lib.format('~f', [w])
     sH = :io_lib.format('~f', [h])
-    [string, ' [width=', sL, ' heigth=', sH, ' ', optText, '];\n']
+    [string, ' [width=', sL, ' height=', sH, ' ', optText, '];\n']
   end
 
   defp edge_format(opt, fun, v1, v2) do
-    optText =
-      case :lists.flatten(edgeoptions(opt, fun, v1, v2)) do
-        [] ->
-          []
-
-        [_ | x] ->
-          x
-      end
-
-    string = [:io_lib.format('~p', [fun.(v1)]), ' -> ', :io_lib.format('~p', [fun.(v2)])]
+    optText = (case (:lists.flatten(edgeoptions(opt, fun,
+                                                  v1, v2))) do
+                 [] ->
+                   []
+                 [_ | x] ->
+                   x
+               end)
+    string = [:io_lib.format('~p', [fun.(v1)]), ' -> ',
+                                                 :io_lib.format('~p', [fun.(v2)])]
     [string, ' [', optText, '];\n']
   end
 
@@ -120,18 +92,21 @@ defmodule :m_dialyzer_dot do
     {:erlang.max(tmpW, maxW), h}
   end
 
-  defp edgeoptions([{:all_edges, {optName, optVal}} | t], fun, v1, v2) do
-    case legal_edgeoption(optName) do
+  defp edgeoptions([{:all_edges, {optName, optVal}} | t], fun, v1,
+            v2) do
+    case (legal_edgeoption(optName)) do
       true ->
-        [:io_lib.format(',~p=~p ', [optName, optVal]) | edgeoptions(t, fun, v1, v2)]
+        [:io_lib.format(',~p=~p ', [optName, optVal]) | edgeoptions(t,
+                                                              fun, v1, v2)]
     end
   end
 
-  defp edgeoptions([{n1, n2, {optName, optVal}} | t], fun, v1, v2) do
-    case fun.(n1) === fun.(v1) and fun.(n2) === fun.(v2) do
+  defp edgeoptions([{n1, n2, {optName, optVal}} | t], fun, v1,
+            v2) do
+    case (fun.(n1) === fun.(v1) and fun.(n2) === fun.(v2)) do
       true ->
-        [:io_lib.format(',~p=~p ', [optName, optVal]) | edgeoptions(t, fun, v1, v2)]
-
+        [:io_lib.format(',~p=~p ', [optName, optVal]) | edgeoptions(t,
+                                                              fun, v1, v2)]
       false ->
         edgeoptions(t, fun, v1, v2)
     end
@@ -145,21 +120,22 @@ defmodule :m_dialyzer_dot do
     []
   end
 
-  defp nodeoptions([{:all_nodes, {optName, optVal}} | t], fun, v) do
-    case legal_nodeoption(optName) do
+  defp nodeoptions([{:all_nodes, {optName, optVal}} | t], fun,
+            v) do
+    case (legal_nodeoption(optName)) do
       true ->
-        [:io_lib.format(',~p=~p ', [optName, optVal]) | nodeoptions(t, fun, v)]
-
+        [:io_lib.format(',~p=~p ', [optName, optVal]) | nodeoptions(t,
+                                                              fun, v)]
       false ->
         nodeoptions(t, fun, v)
     end
   end
 
   defp nodeoptions([{node, {optName, optVal}} | t], fun, v) do
-    case fun.(node) === fun.(v) and legal_nodeoption(optName) do
+    case (fun.(node) === fun.(v) and legal_nodeoption(optName)) do
       true ->
-        [:io_lib.format('~p=~p ', [optName, optVal]) | nodeoptions(t, fun, v)]
-
+        [:io_lib.format('~p=~p ', [optName, optVal]) | nodeoptions(t,
+                                                              fun, v)]
       false ->
         nodeoptions(t, fun, v)
     end
@@ -276,4 +252,5 @@ defmodule :m_dialyzer_dot do
   defp legal_edgeoption(option) when is_atom(option) do
     true
   end
+
 end

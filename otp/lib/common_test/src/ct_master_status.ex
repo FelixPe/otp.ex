@@ -2,9 +2,9 @@ defmodule :m_ct_master_status do
   use Bitwise
   @behaviour :gen_event
   require Record
-  Record.defrecord(:r_event, :event, name: :undefined, node: :undefined, data: :undefined)
+  Record.defrecord(:r_event, :event, name: :undefined,
+                                 node: :undefined, data: :undefined)
   Record.defrecord(:r_state, :state, status: [])
-
   def init(_) do
     {:ok, r_state()}
   end
@@ -35,4 +35,5 @@ defmodule :m_ct_master_status do
   defp print(_Str, _Args) do
     :ok
   end
+
 end

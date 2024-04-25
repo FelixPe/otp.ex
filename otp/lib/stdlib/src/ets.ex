@@ -1,9 +1,9 @@
 defmodule :m_ets do
   use Bitwise
   import Kernel, except: [to_string: 1]
-
   def all() do
-    receive_all(:ets.internal_request_all(), :erlang.system_info(:schedulers), [])
+    receive_all(:ets.internal_request_all(),
+                  :erlang.system_info(:schedulers), [])
   end
 
   defp receive_all(_Ref, 0, all) do
@@ -29,8 +29,8 @@ defmodule :m_ets do
     :erlang.nif_error(:undef)
   end
 
-  def delete_all_objects(tab) do
-    _ = :ets.internal_delete_all(tab, :undefined)
+  def delete_all_objects(table) do
+    _ = :ets.internal_delete_all(table, :undefined)
     true
   end
 
@@ -79,6 +79,10 @@ defmodule :m_ets do
   end
 
   def lookup_element(_, _, _) do
+    :erlang.nif_error(:undef)
+  end
+
+  def lookup_element(_, _, _, _) do
     :erlang.nif_error(:undef)
   end
 
@@ -154,12 +158,12 @@ defmodule :m_ets do
     :erlang.nif_error(:undef)
   end
 
-  def select_delete(tab, [{:_, [], [true]}]) do
-    :ets.internal_delete_all(tab, :undefined)
+  def select_delete(table, [{:_, [], [true]}]) do
+    :ets.internal_delete_all(table, :undefined)
   end
 
-  def select_delete(tab, matchSpec) do
-    :ets.internal_select_delete(tab, matchSpec)
+  def select_delete(table, matchSpec) do
+    :ets.internal_select_delete(table, matchSpec)
   end
 
   def internal_select_delete(_, _) do
@@ -211,85 +215,72 @@ defmodule :m_ets do
   end
 
   def match_spec_run(list, compiledMS) do
-    :lists.reverse(:ets.match_spec_run_r(list, compiledMS, []))
+    :lists.reverse(:ets.match_spec_run_r(list, compiledMS,
+                                           []))
   end
 
   def repair_continuation(:"$end_of_table", _) do
     :"$end_of_table"
   end
 
-  def repair_continuation(
-        untouched = {table, lastkey, endCondition, n2, mSRef, l2, n3, n4},
-        mS
-      )
-      when is_integer(n2) and is_list(l2) and
-             is_integer(n3) and is_integer(n4) do
-    case :ets.is_compiled_ms(mSRef) do
+  def repair_continuation(untouched = {table, lastkey, endCondition, n2,
+                        mSRef, l2, n3, n4},
+           mS)
+      when (is_integer(n2) and is_list(l2) and
+              is_integer(n3) and is_integer(n4)) do
+    case (:ets.is_compiled_ms(mSRef)) do
       true ->
         untouched
-
       false ->
-        {table, lastkey, endCondition, n2, :ets.match_spec_compile(mS), l2, n3, n4}
+        {table, lastkey, endCondition, n2,
+           :ets.match_spec_compile(mS), l2, n3, n4}
     end
   end
 
   def repair_continuation(untouched = {table, n1, n2, mSRef, l, n3}, mS)
-      when is_integer(n1) and is_integer(n2) and
-             is_list(l) and is_integer(n3) do
-    case :ets.is_compiled_ms(mSRef) do
+      when (is_integer(n1) and is_integer(n2) and
+              is_list(l) and is_integer(n3)) do
+    case (:ets.is_compiled_ms(mSRef)) do
       true ->
         untouched
-
       false ->
         {table, n1, n2, :ets.match_spec_compile(mS), l, n3}
     end
   end
 
   def fun2ms(shellFun) when is_function(shellFun) do
-    case :erl_eval.fun_data(shellFun) do
+    case (:erl_eval.fun_data(shellFun)) do
       {:fun_data, importList, clauses} ->
-        case :ms_transform.transform_from_shell(:ets, clauses, importList) do
+        case (:ms_transform.transform_from_shell(:ets, clauses,
+                                                   importList)) do
           {:error, [{_, [{_, _, code} | _]} | _], _} ->
             :io.format('Error: ~ts~n', [:ms_transform.format_error(code)])
             {:error, :transform_error}
-
           else__ ->
             else__
         end
-
       _ ->
-        exit(
-          {:badarg,
-           {:ets, :fun2ms,
-            [
-              :function,
-              :called,
-              :with,
-              :real,
-              :fun,
-              :should,
-              :be,
-              :transformed,
-              :with,
-              :parse_transform,
-              :or,
-              :called,
-              :with,
-              :a,
-              :fun,
-              :generated,
-              :in,
-              :the,
-              :shell
-            ]}}
-        )
+        exit({:badarg,
+                {:ets, :fun2ms,
+                   [:function, :called, :with, :real, :fun, :should, :be,
+                                                                         :transformed,
+                                                                             :with,
+                                                                                 :parse_transform,
+                                                                                     :or,
+                                                                                         :called,
+                                                                                             :with,
+                                                                                                 :a,
+                                                                                                     :fun,
+                                                                                                         :generated,
+                                                                                                             :in,
+                                                                                                                 :the,
+                                                                                                                     :shell]}})
     end
   end
 
   def foldl(f, accu, t) do
     :ets.safe_fixtable(t, true)
     first = :ets.first(t)
-
     try do
       do_foldl(f, accu, first, t)
     after
@@ -298,19 +289,18 @@ defmodule :m_ets do
   end
 
   defp do_foldl(f, accu0, key, t) do
-    case key do
+    case (key) do
       :"$end_of_table" ->
         accu0
-
       _ ->
-        do_foldl(f, :lists.foldl(f, accu0, :ets.lookup(t, key)), :ets.next(t, key), t)
+        do_foldl(f, :lists.foldl(f, accu0, :ets.lookup(t, key)),
+                   :ets.next(t, key), t)
     end
   end
 
   def foldr(f, accu, t) do
     :ets.safe_fixtable(t, true)
     last = :ets.last(t)
-
     try do
       do_foldr(f, accu, last, t)
     after
@@ -319,70 +309,61 @@ defmodule :m_ets do
   end
 
   defp do_foldr(f, accu0, key, t) do
-    case key do
+    case (key) do
       :"$end_of_table" ->
         accu0
-
       _ ->
-        do_foldr(f, :lists.foldr(f, accu0, :ets.lookup(t, key)), :ets.prev(t, key), t)
+        do_foldr(f, :lists.foldr(f, accu0, :ets.lookup(t, key)),
+                   :ets.prev(t, key), t)
     end
   end
 
   def from_dets(etsTable, detsTable) do
-    case (try do
+    case ((try do
             :dets.to_ets(detsTable, etsTable)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       {:error, reason} ->
         :erlang.error(reason, [etsTable, detsTable])
-
       {:EXIT, {reason1, _Stack1}} ->
         :erlang.error(reason1, [etsTable, detsTable])
-
       {:EXIT, eReason} ->
         :erlang.error(eReason, [etsTable, detsTable])
-
       ^etsTable ->
         true
-
       unexpected ->
         :erlang.error(unexpected, [etsTable, detsTable])
     end
   end
 
   def to_dets(etsTable, detsTable) do
-    case (try do
+    case ((try do
             :dets.from_ets(detsTable, etsTable)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       {:error, reason} ->
         :erlang.error(reason, [etsTable, detsTable])
-
       {:EXIT, {reason1, _Stack1}} ->
         :erlang.error(reason1, [etsTable, detsTable])
-
       {:EXIT, eReason} ->
         :erlang.error(eReason, [etsTable, detsTable])
-
       :ok ->
         detsTable
-
       unexpected ->
         :erlang.error(unexpected, [etsTable, detsTable])
     end
   end
 
   def test_ms(term, mS) do
-    case :erlang.match_spec_test(term, mS, :table) do
+    case (:erlang.match_spec_test(term, mS, :table)) do
       {:ok, result, _Flags, _Messages} ->
         {:ok, result}
-
       {:error, _Errors} = error ->
         error
     end
@@ -397,27 +378,24 @@ defmodule :m_ets do
     true
   end
 
-  defp init_table_continue(table, {list, fun})
-       when is_list(list) and
-              is_function(fun) do
-    case (try do
+  defp init_table_continue(table, {list, fun}) when (is_list(list) and
+                                      is_function(fun)) do
+    case ((try do
             init_table_sub(table, list)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       {:EXIT, reason} ->
-        try do
+        (try do
           fun.(:close)
         catch
           :error, e -> {:EXIT, {e, __STACKTRACE__}}
           :exit, e -> {:EXIT, e}
           e -> e
-        end
-
+        end)
         exit(reason)
-
       true ->
         init_table_continue(table, fun.(:read))
     end
@@ -445,187 +423,123 @@ defmodule :m_ets do
     :ets.match_object(t, :_)
   end
 
-  def filter(tn, f, a) when is_atom(tn) or is_integer(tn) do
-    do_filter(tn, :ets.first(tn), f, a, [])
-  end
-
-  defp do_filter(_Tab, :"$end_of_table", _, _, ack) do
-    ack
-  end
-
-  defp do_filter(tab, key, f, a, ack) do
-    case apply(f, [:ets.lookup(tab, key) | a]) do
-      false ->
-        do_filter(tab, :ets.next(tab, key), f, a, ack)
-
-      true ->
-        ack2 = :ets.lookup(tab, key) ++ ack
-        do_filter(tab, :ets.next(tab, key), f, a, ack2)
-
-      {true, value} ->
-        do_filter(tab, :ets.next(tab, key), f, a, [value | ack])
-    end
-  end
-
   require Record
-
-  Record.defrecord(:r_filetab_options, :filetab_options,
-    object_count: false,
-    md5sum: false,
-    sync: false
-  )
-
-  def tab2file(tab, file) do
-    tab2file(tab, file, [])
+  Record.defrecord(:r_filetab_options, :filetab_options, object_count: false,
+                                           md5sum: false, sync: false)
+  def tab2file(table, file) do
+    tab2file(table, file, [])
   end
 
-  def tab2file(tab, file, options) do
+  def tab2file(table, file, options) do
     try do
       {:ok, ftOptions} = parse_ft_options(options)
       _ = :file.delete(file)
-
-      case :file.read_file_info(file) do
+      case (:file.read_file_info(file)) do
         {:error, :enoent} ->
           :ok
-
         _ ->
           throw(:eaccess)
       end
-
       name = make_ref()
-
-      case :disk_log.open([{:name, name}, {:file, file}]) do
+      case (:disk_log.open([{:name, name}, {:file, file},
+                                               {:repair, :truncate}])) do
         {:ok, ^name} ->
           :ok
-
         {:error, reason} ->
           throw(reason)
       end
-
       try do
-        info0 =
-          case :ets.info(tab) do
-            :undefined ->
-              throw(:badtab)
-
-            i ->
-              i
-          end
-
-        info = [
-          :erlang.list_to_tuple(
-            info0 ++
-              [
-                {:major_version, 1},
-                {:minor_version, 0},
-                {:extended_info, ft_options_to_list(ftOptions)}
-              ]
-          )
-        ]
-
-        {logFun, initState} =
-          case r_filetab_options(ftOptions, :md5sum) do
-            true ->
-              {fn oldstate, termlist ->
-                 {newState, binList} =
-                   md5terms(
-                     oldstate,
-                     termlist
-                   )
-
-                 case :disk_log.blog_terms(
-                        name,
-                        binList
-                      ) do
-                   :ok ->
-                     newState
-
-                   {:error, reason2} ->
-                     throw(reason2)
-                 end
-               end, :erlang.md5_init()}
-
-            false ->
-              {fn _, termlist ->
-                 case :disk_log.log_terms(
-                        name,
-                        termlist
-                      ) do
-                   :ok ->
-                     true
-
-                   {:error, reason2} ->
-                     throw(reason2)
-                 end
-               end, true}
-          end
-
-        :ets.safe_fixtable(tab, true)
-
-        {newState1, num} =
-          try do
-            newState = logFun.(initState, info)
-            dump_file(:ets.select(tab, [{:_, [], [:"$_"]}], 100), logFun, newState, 0)
-          after
-            try do
-              :ets.safe_fixtable(tab, false)
-            catch
-              :error, e -> {:EXIT, {e, __STACKTRACE__}}
-              :exit, e -> {:EXIT, e}
-              e -> e
-            end
-          end
-
-        endInfo =
-          case r_filetab_options(ftOptions, :object_count) do
-            true ->
-              [{:count, num}]
-
-            false ->
-              []
-          end ++
-            case r_filetab_options(ftOptions, :md5sum) do
-              true ->
-                [{:md5, :erlang.md5_final(newState1)}]
-
-              false ->
-                []
-            end
-
-        case endInfo do
+        info0 = (case (:ets.info(table)) do
+                   :undefined ->
+                     throw(:badtab)
+                   i ->
+                     i
+                 end)
+        info = [:erlang.list_to_tuple(info0 ++ [{:major_version,
+                                                   1},
+                                                    {:minor_version, 0},
+                                                        {:extended_info,
+                                                           ft_options_to_list(ftOptions)}])]
+        {logFun, initState} = (case (r_filetab_options(ftOptions, :md5sum)) do
+                                 true ->
+                                   {fn oldstate, termlist ->
+                                         {newState,
+                                            binList} = md5terms(oldstate,
+                                                                  termlist)
+                                         case (:disk_log.blog_terms(name,
+                                                                      binList)) do
+                                           :ok ->
+                                             newState
+                                           {:error, reason2} ->
+                                             throw(reason2)
+                                         end
+                                    end,
+                                      :erlang.md5_init()}
+                                 false ->
+                                   {fn _, termlist ->
+                                         case (:disk_log.log_terms(name,
+                                                                     termlist)) do
+                                           :ok ->
+                                             true
+                                           {:error, reason2} ->
+                                             throw(reason2)
+                                         end
+                                    end,
+                                      true}
+                               end)
+        :ets.safe_fixtable(table, true)
+        {newState1, num} = (try do
+                              newState = logFun.(initState, info)
+                              dump_file(:ets.select(table, [{:_, [], [:"$_"]}],
+                                                      100),
+                                          logFun, newState, 0)
+                            after
+                              (try do
+                                :ets.safe_fixtable(table, false)
+                              catch
+                                :error, e -> {:EXIT, {e, __STACKTRACE__}}
+                                :exit, e -> {:EXIT, e}
+                                e -> e
+                              end)
+                            end)
+        endInfo = (case (r_filetab_options(ftOptions, :object_count)) do
+                     true ->
+                       [{:count, num}]
+                     false ->
+                       []
+                   end) ++ (case (r_filetab_options(ftOptions, :md5sum)) do
+                              true ->
+                                [{:md5, :erlang.md5_final(newState1)}]
+                              false ->
+                                []
+                            end)
+        case (endInfo) do
           [] ->
             :ok
-
           list ->
             logFun.(newState1, [[:"$end_of_table", list]])
         end
-
-        case r_filetab_options(ftOptions, :sync) do
+        case (r_filetab_options(ftOptions, :sync)) do
           true ->
-            case :disk_log.sync(name) do
+            case (:disk_log.sync(name)) do
               :ok ->
                 :ok
-
               {:error, reason2} ->
                 throw(reason2)
             end
-
           false ->
             :ok
         end
-
         :disk_log.close(name)
       catch
         tReason ->
           _ = :disk_log.close(name)
           _ = :file.delete(file)
           throw(tReason)
-
         :exit, exReason ->
           _ = :disk_log.close(name)
           _ = :file.delete(file)
           exit(exReason)
-
         :error, erReason ->
           _ = :disk_log.close(name)
           _ = :file.delete(file)
@@ -634,7 +548,6 @@ defmodule :m_ets do
     catch
       tReason2 ->
         {:error, tReason2}
-
       :exit, exReason2 ->
         {:error, exReason2}
     end
@@ -647,24 +560,22 @@ defmodule :m_ets do
   defp dump_file({terms, context}, logFun, state, num) do
     count = length(terms)
     newState = logFun.(state, terms)
-    dump_file(:ets.select(context), logFun, newState, num + count)
+    dump_file(:ets.select(context), logFun, newState,
+                num + count)
   end
 
   defp ft_options_to_list(r_filetab_options(md5sum: mD5, object_count: pS)) do
-    case pS do
-      true ->
-        [:object_count]
-
-      _ ->
-        []
-    end ++
-      case mD5 do
-        true ->
-          [:md5sum]
-
-        _ ->
-          []
-      end
+    (case (pS) do
+       true ->
+         [:object_count]
+       _ ->
+         []
+     end) ++ (case (mD5) do
+                true ->
+                  [:md5sum]
+                _ ->
+                  []
+              end)
   end
 
   defp md5terms(state, []) do
@@ -720,7 +631,8 @@ defmodule :m_ets do
   end
 
   defp parse_ft_info_options(_, [unexpected | _]) do
-    throw({:unknown_option, [{:extended_info, [unexpected]}]})
+    throw({:unknown_option,
+             [{:extended_info, [unexpected]}]})
   end
 
   defp parse_ft_info_options(_, malformed) do
@@ -733,111 +645,98 @@ defmodule :m_ets do
 
   def file2tab(file, opts) do
     try do
-      {:ok, verify, tabArg} = parse_f2t_opts(opts, false, [])
+      {:ok, verify, tableArg} = parse_f2t_opts(opts, false,
+                                                 [])
       name = make_ref()
-
-      {:ok, ^name} =
-        case :disk_log.open([{:name, name}, {:file, file}, {:mode, :read_only}]) do
-          {:ok, ^name} ->
-            {:ok, name}
-
-          {:repaired, ^name, _, _} ->
-            case verify do
-              true ->
-                _ = :disk_log.close(name)
-                throw(:badfile)
-
-              false ->
-                {:ok, name}
-            end
-
-          {:error, other1} ->
-            throw({:read_error, other1})
-
-          other2 ->
-            throw(other2)
-        end
-
-      {:ok, major, minor, ftOptions, mD5State, fullHeader, dLContext} =
-        try do
-          get_header_data(name, verify)
-        catch
-          :badfile ->
-            _ = :disk_log.close(name)
-            throw(:badfile)
-        end
-
+      {:ok, ^name} = (case (:disk_log.open([{:name, name},
+                                                {:file, file}, {:mode,
+                                                                  :read_only}])) do
+                        {:ok, ^name} ->
+                          {:ok, name}
+                        {:repaired, ^name, _, _} ->
+                          case (verify) do
+                            true ->
+                              _ = :disk_log.close(name)
+                              throw(:badfile)
+                            false ->
+                              {:ok, name}
+                          end
+                        {:error, other1} ->
+                          throw({:read_error, other1})
+                        other2 ->
+                          throw(other2)
+                      end)
+      {:ok, major, minor, ftOptions, mD5State, fullHeader,
+         dLContext} = (try do
+                         get_header_data(name, verify)
+                       catch
+                         :badfile ->
+                           _ = :disk_log.close(name)
+                           throw(:badfile)
+                       end)
       try do
         cond do
           major > 1 ->
             throw({:unsupported_file_version, {major, minor}})
-
           true ->
             :ok
         end
-
-        {:ok, tab, headCount} = create_tab(fullHeader, tabArg)
-
-        strippedOptions =
-          case verify do
-            true ->
-              ftOptions
-
-            false ->
-              r_filetab_options()
-          end
-
-        {readFun, initState} =
-          case r_filetab_options(strippedOptions, :md5sum) do
-            true ->
-              {fn {oldMD5State, oldCount, _OL, oDLContext} = oS ->
-                 case wrap_bchunk(name, oDLContext, 100, verify) do
-                   :eof ->
-                     {oS, []}
-
-                   {nDLContext, blist} ->
-                     {termlist, newMD5State, newCount, newLast} =
-                       md5_and_convert(
-                         blist,
-                         oldMD5State,
-                         oldCount
-                       )
-
-                     {{newMD5State, newCount, newLast, nDLContext}, termlist}
-                 end
-               end, {mD5State, 0, [], dLContext}}
-
-            false ->
-              {fn {_, oldCount, _OL, oDLContext} = oS ->
-                 case wrap_chunk(name, oDLContext, 100, verify) do
-                   :eof ->
-                     {oS, []}
-
-                   {nDLContext, list} ->
-                     {newLast, newCount, newList} =
-                       scan_for_endinfo(
-                         list,
-                         oldCount
-                       )
-
-                     {{false, newCount, newLast, nDLContext}, newList}
-                 end
-               end, {false, 0, [], dLContext}}
-          end
-
+        {:ok, table, headCount} = create_tab(fullHeader,
+                                               tableArg)
+        strippedOptions = (case (verify) do
+                             true ->
+                               ftOptions
+                             false ->
+                               r_filetab_options()
+                           end)
+        {readFun,
+           initState} = (case (r_filetab_options(strippedOptions, :md5sum)) do
+                           true ->
+                             {fn {oldMD5State, oldCount, _OL,
+                                    oDLContext} = oS ->
+                                   case (wrap_bchunk(name, oDLContext, 100,
+                                                       verify)) do
+                                     :eof ->
+                                       {oS, []}
+                                     {nDLContext, blist} ->
+                                       {termlist, newMD5State, newCount,
+                                          newLast} = md5_and_convert(blist,
+                                                                       oldMD5State,
+                                                                       oldCount)
+                                       {{newMD5State, newCount, newLast,
+                                           nDLContext},
+                                          termlist}
+                                   end
+                              end,
+                                {mD5State, 0, [], dLContext}}
+                           false ->
+                             {fn {_, oldCount, _OL, oDLContext} = oS ->
+                                   case (wrap_chunk(name, oDLContext, 100,
+                                                      verify)) do
+                                     :eof ->
+                                       {oS, []}
+                                     {nDLContext, list} ->
+                                       {newLast, newCount,
+                                          newList} = scan_for_endinfo(list,
+                                                                        oldCount)
+                                       {{false, newCount, newLast, nDLContext},
+                                          newList}
+                                   end
+                              end,
+                                {false, 0, [], dLContext}}
+                         end)
         try do
-          do_read_and_verify(readFun, initState, tab, strippedOptions, headCount, verify)
+          do_read_and_verify(readFun, initState, table,
+                               strippedOptions, headCount, verify)
         catch
           tReason ->
-            :ets.delete(tab)
+            :ets.delete(table)
             throw(tReason)
-
           :exit, exReason ->
-            :ets.delete(tab)
+            :ets.delete(table)
             exit(exReason)
-
           :error, erReason ->
-            :ets.delete(tab)
+            :ets.delete(table)
             :erlang.raise(:error, erReason, __STACKTRACE__)
         end
       after
@@ -846,114 +745,96 @@ defmodule :m_ets do
     catch
       tReason2 ->
         {:error, tReason2}
-
       :exit, exReason2 ->
         {:error, exReason2}
     end
   end
 
-  defp do_read_and_verify(readFun, initState, tab, ftOptions, headCount, verify) do
-    case load_table(readFun, initState, tab) do
+  defp do_read_and_verify(readFun, initState, table, ftOptions, headCount,
+            verify) do
+    case (load_table(readFun, initState, table)) do
       {:ok, {_, finalCount, [], _}} ->
-        case {r_filetab_options(ftOptions, :md5sum), r_filetab_options(ftOptions, :object_count)} do
+        case ({r_filetab_options(ftOptions, :md5sum),
+                 r_filetab_options(ftOptions, :object_count)}) do
           {false, false} ->
-            case verify do
+            case (verify) do
               false ->
                 :ok
-
               true ->
-                case finalCount do
+                case (finalCount) do
                   ^headCount ->
                     :ok
-
                   _ ->
                     throw(:invalid_object_count)
                 end
             end
-
           _ ->
             throw(:badfile)
         end
-
-        {:ok, tab}
-
+        {:ok, table}
       {:ok, {finalMD5State, finalCount, [:"$end_of_table", lastInfo], _}} ->
-        eCount =
-          case :lists.keyfind(:count, 1, lastInfo) do
-            {:count, n} ->
-              n
-
-            _ ->
-              false
-          end
-
-        eMD5 =
-          case :lists.keyfind(:md5, 1, lastInfo) do
-            {:md5, m} ->
-              m
-
-            _ ->
-              false
-          end
-
-        case r_filetab_options(ftOptions, :md5sum) do
+        eCount = (case (:lists.keyfind(:count, 1, lastInfo)) do
+                    {:count, n} ->
+                      n
+                    _ ->
+                      false
+                  end)
+        eMD5 = (case (:lists.keyfind(:md5, 1, lastInfo)) do
+                  {:md5, m} ->
+                    m
+                  _ ->
+                    false
+                end)
+        case (r_filetab_options(ftOptions, :md5sum)) do
           true ->
-            case :erlang.md5_final(finalMD5State) do
+            case (:erlang.md5_final(finalMD5State)) do
               ^eMD5 ->
                 :ok
-
               _MD5MisM ->
                 throw(:checksum_error)
             end
-
           false ->
             :ok
         end
-
-        case r_filetab_options(ftOptions, :object_count) do
+        case (r_filetab_options(ftOptions, :object_count)) do
           true ->
-            case finalCount do
+            case (finalCount) do
               ^eCount ->
                 :ok
-
               _Other ->
                 throw(:invalid_object_count)
             end
-
           false ->
-            case {verify, r_filetab_options(ftOptions, :md5sum)} do
+            case ({verify, r_filetab_options(ftOptions, :md5sum)}) do
               {true, false} ->
-                case finalCount do
+                case (finalCount) do
                   ^headCount ->
                     :ok
-
                   _Other2 ->
                     throw(:invalid_object_count)
                 end
-
               _ ->
                 :ok
             end
         end
-
-        {:ok, tab}
+        {:ok, table}
     end
   end
 
-  defp parse_f2t_opts([], verify, tab) do
-    {:ok, verify, tab}
+  defp parse_f2t_opts([], verify, table) do
+    {:ok, verify, table}
   end
 
-  defp parse_f2t_opts([{:verify, true} | t], _OV, tab) do
-    parse_f2t_opts(t, true, tab)
+  defp parse_f2t_opts([{:verify, true} | t], _OV, table) do
+    parse_f2t_opts(t, true, table)
   end
 
-  defp parse_f2t_opts([{:verify, false} | t], oV, tab) do
-    parse_f2t_opts(t, oV, tab)
+  defp parse_f2t_opts([{:verify, false} | t], oV, table) do
+    parse_f2t_opts(t, oV, table)
   end
 
-  defp parse_f2t_opts([{:table, tab} | t], oV, []) do
-    parse_f2t_opts(t, oV, tab)
+  defp parse_f2t_opts([{:table, table} | t], oV, []) do
+    parse_f2t_opts(t, oV, table)
   end
 
   defp parse_f2t_opts([unexpected | _], _, _) do
@@ -968,11 +849,10 @@ defmodule :m_ets do
     0
   end
 
-  defp count_mandatory([{tag, _} | t])
-       when tag === :name or
-              tag === :type or tag === :protection or
-              tag === :named_table or tag === :keypos or
-              tag === :size do
+  defp count_mandatory([{tag, _} | t]) when tag === :name or
+                                 tag === :type or tag === :protection or
+                                 tag === :named_table or tag === :keypos or
+                                 tag === :size do
     1 + count_mandatory(t)
   end
 
@@ -985,164 +865,124 @@ defmodule :m_ets do
   end
 
   defp wrap_bchunk(name, c, n, true) do
-    case :disk_log.bchunk(name, c, n) do
+    case (:disk_log.bchunk(name, c, n)) do
       {_, _, x} when x > 0 ->
         throw(:badfile)
-
       {nC, bin, _} ->
         {nC, bin}
-
       y ->
         y
     end
   end
 
   defp wrap_bchunk(name, c, n, false) do
-    case :disk_log.bchunk(name, c, n) do
+    case (:disk_log.bchunk(name, c, n)) do
       {nC, bin, _} ->
         {nC, bin}
-
       y ->
         y
     end
   end
 
   defp wrap_chunk(name, c, n, true) do
-    case :disk_log.chunk(name, c, n) do
+    case (:disk_log.chunk(name, c, n)) do
       {_, _, x} when x > 0 ->
         throw(:badfile)
-
       {nC, tL, _} ->
         {nC, tL}
-
       y ->
         y
     end
   end
 
   defp wrap_chunk(name, c, n, false) do
-    case :disk_log.chunk(name, c, n) do
+    case (:disk_log.chunk(name, c, n)) do
       {nC, tL, _} ->
         {nC, tL}
-
       y ->
         y
     end
   end
 
   defp get_header_data(name, true) do
-    case wrap_bchunk(name, :start, 1, true) do
+    case (wrap_bchunk(name, :start, 1, true)) do
       {c, [bin]} when is_binary(bin) ->
         t = :erlang.binary_to_term(bin)
-
-        case t do
+        case (t) do
           tup when is_tuple(tup) ->
             l = :erlang.tuple_to_list(tup)
-
-            case verify_header_mandatory(l) do
+            case (verify_header_mandatory(l)) do
               false ->
                 throw(:badfile)
-
               true ->
-                major =
-                  case :lists.keyfind(:major, 1, l) do
-                    {:major, maj} ->
-                      maj
-
-                    _ ->
-                      0
-                  end
-
-                minor =
-                  case :lists.keyfind(:minor, 1, l) do
-                    {:minor, min} ->
-                      min
-
-                    _ ->
-                      0
-                  end
-
-                ftOptions =
-                  case :lists.keyfind(:extended_info, 1, l) do
-                    {:extended_info, i} when is_list(i) ->
-                      r_filetab_options(
-                        object_count:
-                          :lists.member(
-                            :object_count,
-                            i
-                          ),
-                        md5sum: :lists.member(:md5sum, i)
-                      )
-
-                    _ ->
-                      r_filetab_options()
-                  end
-
-                mD5Initial =
-                  case r_filetab_options(ftOptions, :md5sum) do
-                    true ->
-                      x = :erlang.md5_init()
-                      :erlang.md5_update(x, bin)
-
-                    false ->
-                      false
-                  end
-
+                major = (case (:lists.keyfind(:major, 1, l)) do
+                           {:major, maj} ->
+                             maj
+                           _ ->
+                             0
+                         end)
+                minor = (case (:lists.keyfind(:minor, 1, l)) do
+                           {:minor, min} ->
+                             min
+                           _ ->
+                             0
+                         end)
+                ftOptions = (case (:lists.keyfind(:extended_info, 1,
+                                                    l)) do
+                               {:extended_info, i} when is_list(i) ->
+                                 r_filetab_options(object_count: :lists.member(:object_count,
+                                                                 i),
+                                     md5sum: :lists.member(:md5sum, i))
+                               _ ->
+                                 r_filetab_options()
+                             end)
+                mD5Initial = (case (r_filetab_options(ftOptions, :md5sum)) do
+                                true ->
+                                  x = :erlang.md5_init()
+                                  :erlang.md5_update(x, bin)
+                                false ->
+                                  false
+                              end)
                 {:ok, major, minor, ftOptions, mD5Initial, l, c}
             end
-
           _X ->
             throw(:badfile)
         end
-
       _Y ->
         throw(:badfile)
     end
   end
 
   defp get_header_data(name, false) do
-    case wrap_chunk(name, :start, 1, false) do
+    case (wrap_chunk(name, :start, 1, false)) do
       {c, [tup]} when is_tuple(tup) ->
         l = :erlang.tuple_to_list(tup)
-
-        case verify_header_mandatory(l) do
+        case (verify_header_mandatory(l)) do
           false ->
             throw(:badfile)
-
           true ->
-            major =
-              case :lists.keyfind(:major_version, 1, l) do
-                {:major_version, maj} ->
-                  maj
-
-                _ ->
-                  0
-              end
-
-            minor =
-              case :lists.keyfind(:minor_version, 1, l) do
-                {:minor_version, min} ->
-                  min
-
-                _ ->
-                  0
-              end
-
-            ftOptions =
-              case :lists.keyfind(:extended_info, 1, l) do
-                {:extended_info, i} when is_list(i) ->
-                  r_filetab_options(
-                    object_count: :lists.member(:object_count, i),
-                    md5sum: :lists.member(:md5sum, i)
-                  )
-
-                _ ->
-                  r_filetab_options()
-              end
-
+            major = (case (:lists.keyfind(:major_version, 1, l)) do
+                       {:major_version, maj} ->
+                         maj
+                       _ ->
+                         0
+                     end)
+            minor = (case (:lists.keyfind(:minor_version, 1, l)) do
+                       {:minor_version, min} ->
+                         min
+                       _ ->
+                         0
+                     end)
+            ftOptions = (case (:lists.keyfind(:extended_info, 1,
+                                                l)) do
+                           {:extended_info, i} when is_list(i) ->
+                             r_filetab_options(object_count: :lists.member(:object_count, i),
+                                 md5sum: :lists.member(:md5sum, i))
+                           _ ->
+                             r_filetab_options()
+                         end)
             {:ok, major, minor, ftOptions, false, l, c}
         end
-
       _ ->
         throw(:badfile)
     end
@@ -1153,22 +993,21 @@ defmodule :m_ets do
   end
 
   defp md5_and_convert([h | t], mD5State, count) when is_binary(h) do
-    case (try do
+    case ((try do
             :erlang.binary_to_term(h)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       {:EXIT, _} ->
         md5_and_convert(t, mD5State, count)
-
       [:"$end_of_table", _Dat] = l ->
         {[], mD5State, count, l}
-
       term ->
         x = :erlang.md5_update(mD5State, h)
-        {rest, newMD5, newCount, newLast} = md5_and_convert(t, x, count + 1)
+        {rest, newMD5, newCount, newLast} = md5_and_convert(t,
+                                                              x, count + 1)
         {[term | rest], newMD5, newCount, newLast}
     end
   end
@@ -1186,297 +1025,242 @@ defmodule :m_ets do
     {newLast, nCount, [term | rest]}
   end
 
-  defp load_table(readFun, state, tab) do
+  defp load_table(readFun, state, table) do
     {newState, newData} = readFun.(state)
-
-    case newData do
+    case (newData) do
       [] ->
         {:ok, newState}
-
       list ->
-        :ets.insert(tab, list)
-        load_table(readFun, newState, tab)
+        :ets.insert(table, list)
+        load_table(readFun, newState, table)
     end
   end
 
-  defp create_tab(i, tabArg) do
+  defp create_tab(i, tableArg) do
     {:name, name} = :lists.keyfind(:name, 1, i)
     {:type, type} = :lists.keyfind(:type, 1, i)
     {:protection, p} = :lists.keyfind(:protection, 1, i)
-    {:keypos, _Kp} = keypos = :lists.keyfind(:keypos, 1, i)
+    {:keypos, _Kp} = (keypos = :lists.keyfind(:keypos, 1,
+                                                i))
     {:size, sz} = :lists.keyfind(:size, 1, i)
     l1 = [type, p, keypos]
-
-    l2 =
-      case :lists.keyfind(:named_table, 1, i) do
-        {:named_table, true} ->
-          [:named_table | l1]
-
-        {:named_table, false} ->
-          l1
-      end
-
-    l3 =
-      case :lists.keyfind(:compressed, 1, i) do
-        {:compressed, true} ->
-          [:compressed | l2]
-
-        {:compressed, false} ->
-          l2
-
-        false ->
-          l2
-      end
-
-    l4 =
-      case :lists.keyfind(:write_concurrency, 1, i) do
-        {:write_concurrency, _} = wcc ->
-          [wcc | l3]
-
-        _ ->
-          l3
-      end
-
-    l5 =
-      case :lists.keyfind(:read_concurrency, 1, i) do
-        {:read_concurrency, _} = rcc ->
-          [rcc | l4]
-
-        false ->
-          l4
-      end
-
-    case tabArg do
+    l2 = (case (:lists.keyfind(:named_table, 1, i)) do
+            {:named_table, true} ->
+              [:named_table | l1]
+            {:named_table, false} ->
+              l1
+          end)
+    l3 = (case (:lists.keyfind(:compressed, 1, i)) do
+            {:compressed, true} ->
+              [:compressed | l2]
+            {:compressed, false} ->
+              l2
+            false ->
+              l2
+          end)
+    l4 = (case (:lists.keyfind(:write_concurrency, 1, i)) do
+            {:write_concurrency, _} = wcc ->
+              [wcc | l3]
+            _ ->
+              l3
+          end)
+    l5 = (case (:lists.keyfind(:read_concurrency, 1, i)) do
+            {:read_concurrency, _} = rcc ->
+              [rcc | l4]
+            false ->
+              l4
+          end)
+    case (tableArg) do
       [] ->
         try do
-          tab = :ets.new(name, l5)
-          {:ok, tab, sz}
+          table = :ets.new(name, l5)
+          {:ok, table, sz}
         catch
           _, _ ->
             throw(:cannot_create_table)
         end
-
       _ ->
-        {:ok, tabArg, sz}
+        {:ok, tableArg, sz}
     end
   end
 
   def tabfile_info(file) when is_list(file) or is_atom(file) do
     try do
       name = make_ref()
-
-      {:ok, ^name} =
-        case :disk_log.open([{:name, name}, {:file, file}, {:mode, :read_only}]) do
-          {:ok, ^name} ->
-            {:ok, name}
-
-          {:repaired, ^name, _, _} ->
-            {:ok, name}
-
-          {:error, other1} ->
-            throw({:read_error, other1})
-
-          other2 ->
-            throw(other2)
-        end
-
-      {:ok, major, minor, _FtOptions, _MD5State, fullHeader, _DLContext} =
-        try do
-          get_header_data(name, false)
-        catch
-          :badfile ->
-            _ = :disk_log.close(name)
-            throw(:badfile)
-        end
-
-      case :disk_log.close(name) do
+      {:ok, ^name} = (case (:disk_log.open([{:name, name},
+                                                {:file, file}, {:mode,
+                                                                  :read_only}])) do
+                        {:ok, ^name} ->
+                          {:ok, name}
+                        {:repaired, ^name, _, _} ->
+                          {:ok, name}
+                        {:error, other1} ->
+                          throw({:read_error, other1})
+                        other2 ->
+                          throw(other2)
+                      end)
+      {:ok, major, minor, _FtOptions, _MD5State, fullHeader,
+         _DLContext} = (try do
+                          get_header_data(name, false)
+                        catch
+                          :badfile ->
+                            _ = :disk_log.close(name)
+                            throw(:badfile)
+                        end)
+      case (:disk_log.close(name)) do
         :ok ->
           :ok
-
         {:error, reason} ->
           throw(reason)
       end
-
       {:value, n} = :lists.keysearch(:name, 1, fullHeader)
       {:value, type} = :lists.keysearch(:type, 1, fullHeader)
-      {:value, p} = :lists.keysearch(:protection, 1, fullHeader)
-      {:value, val} = :lists.keysearch(:named_table, 1, fullHeader)
+      {:value, p} = :lists.keysearch(:protection, 1,
+                                       fullHeader)
+      {:value, val} = :lists.keysearch(:named_table, 1,
+                                         fullHeader)
       {:value, kp} = :lists.keysearch(:keypos, 1, fullHeader)
       {:value, sz} = :lists.keysearch(:size, 1, fullHeader)
-
-      ei =
-        case :lists.keyfind(:extended_info, 1, fullHeader) do
-          false ->
-            {:extended_info, []}
-
-          ei0 ->
-            ei0
-        end
-
-      {:ok, [n, type, p, val, kp, sz, ei, {:version, {major, minor}}]}
+      ei = (case (:lists.keyfind(:extended_info, 1,
+                                   fullHeader)) do
+              false ->
+                {:extended_info, []}
+              ei0 ->
+                ei0
+            end)
+      {:ok,
+         [n, type, p, val, kp, sz, ei, {:version,
+                                          {major, minor}}]}
     catch
       tReason ->
         {:error, tReason}
-
       :exit, exReason ->
         {:error, exReason}
     end
   end
 
-  def table(tab) do
-    table(tab, [])
+  def table(table) do
+    table(table, [])
   end
 
-  def table(tab, opts) do
-    case options(opts, [:traverse, :n_objects]) do
+  def table(table, opts) do
+    case (options(opts, [:traverse, :n_objects])) do
       {:badarg, _} ->
-        :erlang.error(:badarg, [tab, opts])
-
+        :erlang.error(:badarg, [table, opts])
       [[traverse, nObjs], qlcOptions] ->
-        tF =
-          case traverse do
-            :first_next ->
-              fn ->
-                qlc_next(tab, :ets.first(tab))
-              end
-
-            :last_prev ->
-              fn ->
-                qlc_prev(tab, :ets.last(tab))
-              end
-
-            :select ->
-              fn mS ->
-                qlc_select(:ets.select(tab, mS, nObjs))
-              end
-
-            {:select, mS} ->
-              fn ->
-                qlc_select(:ets.select(tab, mS, nObjs))
-              end
-          end
-
+        tF = (case (traverse) do
+                :first_next ->
+                  fn () ->
+                       qlc_next(table, :ets.first(table))
+                  end
+                :last_prev ->
+                  fn () ->
+                       qlc_prev(table, :ets.last(table))
+                  end
+                :select ->
+                  fn mS ->
+                       qlc_select(:ets.select(table, mS, nObjs))
+                  end
+                {:select, mS} ->
+                  fn () ->
+                       qlc_select(:ets.select(table, mS, nObjs))
+                  end
+              end)
         preFun = fn _ ->
-          :ets.safe_fixtable(tab, true)
-        end
-
-        postFun = fn ->
-          :ets.safe_fixtable(tab, false)
-        end
-
+                      :ets.safe_fixtable(table, true)
+                 end
+        postFun = fn () ->
+                       :ets.safe_fixtable(table, false)
+                  end
         infoFun = fn tag ->
-          table_info(tab, tag)
-        end
-
-        keyEquality =
-          case :ets.info(tab, :type) do
-            :ordered_set ->
-              :==
-
-            _ ->
-              :"=:="
-          end
-
-        lookupFun =
-          case traverse do
-            {:select, _MS} ->
-              :undefined
-
-            _ ->
-              fn
-                _Pos, [k] ->
-                  :ets.lookup(tab, k)
-
-                _Pos, ks ->
-                  :lists.flatmap(
-                    fn k ->
-                      :ets.lookup(tab, k)
-                    end,
-                    ks
-                  )
-              end
-          end
-
-        formatFun = fn
-          {:all, _NElements, _ElementFun} ->
-            as = [
-              tab
-              | for _ <- [[]], opts !== [] do
-                  opts
-                end
-            ]
-
-            {:ets, :table, as}
-
-          {:match_spec, mS} ->
-            {:ets, :table, [tab, [{:traverse, {:select, mS}} | listify(opts)]]}
-
-          {:lookup, _KeyPos, [value], _NElements, elementFun} ->
-            :io_lib.format('~w:lookup(~w, ~w)', [:ets, tab, elementFun.(value)])
-
-          {:lookup, _KeyPos, values, _NElements, elementFun} ->
-            vals =
-              for v <- values do
-                elementFun.(v)
-              end
-
-            :io_lib.format('lists:flatmap(fun(V) -> ~w:lookup(~w, V) end, ~w)', [:ets, tab, vals])
-        end
-
-        :qlc.table(
-          tF,
-          [
-            {:pre_fun, preFun},
-            {:post_fun, postFun},
-            {:info_fun, infoFun},
-            {:format_fun, formatFun},
-            {:key_equality, keyEquality},
-            {:lookup_fun, lookupFun}
-          ] ++ qlcOptions
-        )
+                       table_info(table, tag)
+                  end
+        keyEquality = (case (:ets.info(table, :type)) do
+                         :ordered_set ->
+                           :"=="
+                         _ ->
+                           :"=:="
+                       end)
+        lookupFun = (case (traverse) do
+                       {:select, _MS} ->
+                         :undefined
+                       _ ->
+                         fn _Pos, [k] ->
+                              :ets.lookup(table, k)
+                            _Pos, ks ->
+                              :lists.flatmap(fn k ->
+                                                  :ets.lookup(table, k)
+                                             end,
+                                               ks)
+                         end
+                     end)
+        formatFun = fn {:all, _NElements, _ElementFun} ->
+                         as = [table | for _ <- [[]], opts !== [] do
+                                         opts
+                                       end]
+                         {:ets, :table, as}
+                       {:match_spec, mS} ->
+                         {:ets, :table,
+                            [table, [{:traverse, {:select, mS}} |
+                                         listify(opts)]]}
+                       {:lookup, _KeyPos, [value], _NElements, elementFun} ->
+                         :io_lib.format('~w:lookup(~w, ~w)', [:ets, table, elementFun.(value)])
+                       {:lookup, _KeyPos, values, _NElements, elementFun} ->
+                         vals = (for v <- values do
+                                   elementFun.(v)
+                                 end)
+                         :io_lib.format('lists:flatmap(fun(V) -> ~w:lookup(~w, V) end, ~w)', [:ets, table, vals])
+                    end
+        :qlc.table(tF,
+                     [{:pre_fun, preFun}, {:post_fun, postFun}, {:info_fun,
+                                                                   infoFun},
+                                                                    {:format_fun,
+                                                                       formatFun},
+                                                                        {:key_equality,
+                                                                           keyEquality},
+                                                                            {:lookup_fun,
+                                                                               lookupFun}] ++ qlcOptions)
     end
   end
 
-  defp table_info(tab, :num_of_objects) do
-    :ets.info(tab, :size)
+  defp table_info(table, :num_of_objects) do
+    :ets.info(table, :size)
   end
 
-  defp table_info(tab, :keypos) do
-    :ets.info(tab, :keypos)
+  defp table_info(table, :keypos) do
+    :ets.info(table, :keypos)
   end
 
-  defp table_info(tab, :is_unique_objects) do
-    :ets.info(tab, :type) !== :duplicate_bag
+  defp table_info(table, :is_unique_objects) do
+    :ets.info(table, :type) !== :duplicate_bag
   end
 
-  defp table_info(tab, :is_sorted_key) do
-    :ets.info(tab, :type) === :ordered_set
+  defp table_info(table, :is_sorted_key) do
+    :ets.info(table, :type) === :ordered_set
   end
 
-  defp table_info(_Tab, _) do
+  defp table_info(_Table, _) do
     :undefined
   end
 
-  defp qlc_next(_Tab, :"$end_of_table") do
+  defp qlc_next(_Table, :"$end_of_table") do
     []
   end
 
-  defp qlc_next(tab, key) do
-    :ets.lookup(tab, key) ++
-      fn ->
-        qlc_next(tab, :ets.next(tab, key))
-      end
+  defp qlc_next(table, key) do
+    :ets.lookup(table, key) ++ fn () ->
+                                    qlc_next(table, :ets.next(table, key))
+                               end
   end
 
-  defp qlc_prev(_Tab, :"$end_of_table") do
+  defp qlc_prev(_Table, :"$end_of_table") do
     []
   end
 
-  defp qlc_prev(tab, key) do
-    :ets.lookup(tab, key) ++
-      fn ->
-        qlc_prev(tab, :ets.prev(tab, key))
-      end
+  defp qlc_prev(table, key) do
+    :ets.lookup(table, key) ++ fn () ->
+                                    qlc_prev(table, :ets.prev(table, key))
+                               end
   end
 
   defp qlc_select(:"$end_of_table") do
@@ -1484,10 +1268,9 @@ defmodule :m_ets do
   end
 
   defp qlc_select({objects, cont}) do
-    objects ++
-      fn ->
-        qlc_select(:ets.select(cont))
-      end
+    objects ++ fn () ->
+                    qlc_select(:ets.select(cont))
+               end
   end
 
   defp options(options, keys) when is_list(options) do
@@ -1499,41 +1282,31 @@ defmodule :m_ets do
   end
 
   defp options(options, [key | keys], l)
-       when is_list(options) do
-    v =
-      case :lists.keyfind(key, 1, options) do
-        {:n_objects, :default} ->
-          {:ok, default_option(key)}
-
-        {:n_objects, nObjs}
-        when is_integer(nObjs) and
-               nObjs >= 1 ->
-          {:ok, nObjs}
-
-        {:traverse, :select} ->
-          {:ok, :select}
-
-        {:traverse, {:select, _MS} = select} ->
-          {:ok, select}
-
-        {:traverse, :first_next} ->
-          {:ok, :first_next}
-
-        {:traverse, :last_prev} ->
-          {:ok, :last_prev}
-
-        {^key, _} ->
-          :badarg
-
-        false ->
-          default = default_option(key)
-          {:ok, default}
-      end
-
-    case v do
+      when is_list(options) do
+    v = (case (:lists.keyfind(key, 1, options)) do
+           {:n_objects, :default} ->
+             {:ok, default_option(key)}
+           {:n_objects, nObjs} when (is_integer(nObjs) and
+                                       nObjs >= 1)
+                                    ->
+             {:ok, nObjs}
+           {:traverse, :select} ->
+             {:ok, :select}
+           {:traverse, {:select, _MS} = select} ->
+             {:ok, select}
+           {:traverse, :first_next} ->
+             {:ok, :first_next}
+           {:traverse, :last_prev} ->
+             {:ok, :last_prev}
+           {^key, _} ->
+             :badarg
+           false ->
+             default = default_option(key)
+             {:ok, default}
+         end)
+    case (v) do
       :badarg ->
         {:badarg, key}
-
       {:ok, value} ->
         newOptions = :lists.keydelete(key, 1, options)
         options(newOptions, keys, [value | l])
@@ -1571,47 +1344,44 @@ defmodule :m_ets do
     :lists.sort(:ets.all())
   end
 
-  defp prinfo(tab) do
-    case (try do
-            prinfo2(tab)
+  defp prinfo(table) do
+    case ((try do
+            prinfo2(table)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       {:EXIT, _} ->
-        :io.format('~-10s ... unreadable \n', [to_string(tab)])
-
+        :io.format('~-10s ... unreadable \n', [to_string(table)])
       :ok ->
         :ok
     end
   end
 
-  defp prinfo2(tab) do
-    name = :ets.info(tab, :name)
-    type = :ets.info(tab, :type)
-    size = :ets.info(tab, :size)
-    mem = :ets.info(tab, :memory)
-    owner = :ets.info(tab, :owner)
-    hform(tab, name, type, size, mem, is_reg(owner))
+  defp prinfo2(table) do
+    name = :ets.info(table, :name)
+    type = :ets.info(table, :type)
+    size = :ets.info(table, :size)
+    mem = :ets.info(table, :memory)
+    owner = :ets.info(table, :owner)
+    hform(table, name, type, size, mem, is_reg(owner))
   end
 
   defp is_reg(owner) do
-    case :erlang.process_info(owner, :registered_name) do
+    case (:erlang.process_info(owner, :registered_name)) do
       {:registered_name, name} ->
         name
-
       _ ->
         owner
     end
   end
 
   defp hform(a0, b0, c0, d0, e0, f0) do
-    [a, b, c, d, e, f] =
-      for t <- [a0, b0, c0, d0, e0, f0] do
-        to_string(t)
-      end
-
+    [a, b, c, d, e, f] = (for t <- [a0, b0, c0, d0, e0,
+                                                        f0] do
+                            to_string(t)
+                          end)
     a1 = pad_right(a, 15)
     b1 = pad_right(b, 17)
     c1 = pad_right(c, 5)
@@ -1624,7 +1394,6 @@ defmodule :m_ets do
     cond do
       length(string) >= len ->
         string
-
       true ->
         [space] = ' '
         string ++ :lists.duplicate(len - length(string), space)
@@ -1635,106 +1404,96 @@ defmodule :m_ets do
     :lists.flatten(:io_lib.format('~p', [x]))
   end
 
-  def i(tab) do
-    i(tab, 40)
+  def i(table) do
+    i(table, 40)
   end
 
-  def i(tab, height) do
-    i(tab, height, 80)
+  def i(table, height) do
+    i(table, height, 80)
   end
 
-  def i(tab, height, width) do
-    first = :ets.first(tab)
-    display_items(height, width, tab, first, 1, 1)
+  def i(table, height, width) do
+    first = :ets.first(table)
+    display_items(height, width, table, first, 1, 1)
   end
 
-  defp display_items(height, width, tab, :"$end_of_table", turn, opos) do
+  defp display_items(height, width, table, :"$end_of_table", turn, opos) do
     p = :"EOT  (q)uit (p)Digits (k)ill /Regexp -->"
-    choice(height, width, p, :eot, tab, :"$end_of_table", turn, opos)
+    choice(height, width, p, :eot, table, :"$end_of_table", turn, opos)
   end
 
-  defp display_items(height, width, tab, key, turn, opos)
-       when turn < height do
-    do_display(height, width, tab, key, turn, opos)
+  defp display_items(height, width, table, key, turn, opos)
+      when turn < height do
+    do_display(height, width, table, key, turn, opos)
   end
 
-  defp display_items(height, width, tab, key, turn, opos)
-       when turn >= height do
+  defp display_items(height, width, table, key, turn, opos)
+      when turn >= height do
     p = :"(c)ontinue (q)uit (p)Digits (k)ill /Regexp -->"
-    choice(height, width, p, :normal, tab, key, turn, opos)
+    choice(height, width, p, :normal, table, key, turn,
+             opos)
   end
 
-  defp choice(height, width, p, mode, tab, key, turn, opos) do
-    case get_line(p, 'c\n') do
+  defp choice(height, width, p, mode, table, key, turn,
+            opos) do
+    case (get_line(p, 'c\n')) do
       'c\n' when mode === :normal ->
-        do_display(height, width, tab, key, 1, opos)
-
-      'c\n'
-      when is_tuple(mode) and
-             :erlang.element(1, mode) === :re ->
+        do_display(height, width, table, key, 1, opos)
+      'c\n' when (is_tuple(mode) and
+                :erlang.element(1, mode) === :re)
+             ->
         {:re, re} = mode
-        re_search(height, width, tab, key, re, 1, opos)
-
+        re_search(height, width, table, key, re, 1, opos)
       'q\n' ->
         :ok
-
       'k\n' ->
-        :ets.delete(tab)
+        :ets.delete(table)
         :ok
-
       [?p | digs] ->
-        try do
-          case (try do
+        (try do
+          case ((try do
                   :erlang.list_to_integer(nonl(digs))
                 catch
                   :error, e -> {:EXIT, {e, __STACKTRACE__}}
                   :exit, e -> {:EXIT, e}
                   e -> e
-                end) do
+                end)) do
             {:EXIT, _} ->
               :io.put_chars('Bad digits\n')
-
             number when mode === :normal ->
-              print_number(tab, :ets.first(tab), number)
-
+              print_number(table, :ets.first(table), number)
             number when mode === :eot ->
-              print_number(tab, :ets.first(tab), number)
-
+              print_number(table, :ets.first(table), number)
             number ->
               {:re, re} = mode
-              print_re_num(tab, :ets.first(tab), number, re)
+              print_re_num(table, :ets.first(table), number, re)
           end
         catch
           :error, e -> {:EXIT, {e, __STACKTRACE__}}
           :exit, e -> {:EXIT, e}
           e -> e
-        end
-
-        choice(height, width, p, mode, tab, key, turn, opos)
-
+        end)
+        choice(height, width, p, mode, table, key, turn, opos)
       [?/ | regexp] ->
-        case :re.compile(nonl(regexp), [:unicode]) do
+        case (:re.compile(nonl(regexp), [:unicode])) do
           {:ok, re} ->
-            re_search(height, width, tab, :ets.first(tab), re, 1, 1)
-
+            re_search(height, width, table, :ets.first(table), re,
+                        1, 1)
           {:error, {errorString, _Pos}} ->
             :io.format('~ts\n', [errorString])
-            choice(height, width, p, mode, tab, key, turn, opos)
+            choice(height, width, p, mode, table, key, turn, opos)
         end
-
       :eof ->
         :ok
-
       _ ->
-        choice(height, width, p, mode, tab, key, turn, opos)
+        choice(height, width, p, mode, table, key, turn, opos)
     end
   end
 
   defp get_line(p, default) do
-    case line_string(:io.get_line(p)) do
+    case (line_string(:io.get_line(p))) do
       '\n' ->
         default
-
       l ->
         l
     end
@@ -1752,25 +1511,24 @@ defmodule :m_ets do
     :string.trim(s, :trailing, '$\n')
   end
 
-  defp print_number(tab, key, num) do
-    os = :ets.lookup(tab, key)
+  defp print_number(table, key, num) do
+    os = :ets.lookup(table, key)
     len = length(os)
-
     cond do
       num - len < 1 ->
         o = :lists.nth(num, os)
         :io.format('~p~n', [o])
-
       true ->
-        print_number(tab, :ets.next(tab, key), num - len)
+        print_number(table, :ets.next(table, key), num - len)
     end
   end
 
-  defp do_display(height, width, tab, key, turn, opos) do
-    objs = :ets.lookup(tab, key)
+  defp do_display(height, width, table, key, turn, opos) do
+    objs = :ets.lookup(table, key)
     do_display_items(height, width, objs, opos)
     len = length(objs)
-    display_items(height, width, tab, :ets.next(tab, key), turn + len, opos + len)
+    display_items(height, width, table,
+                    :ets.next(table, key), turn + len, opos + len)
   end
 
   defp do_display_items(height, width, [obj | tail], opos) do
@@ -1784,48 +1542,49 @@ defmodule :m_ets do
 
   defp do_display_item(_Height, width, i, opos) do
     l = to_string(i)
-
-    l2 =
-      cond do
-        length(l) > width - 8 ->
-          :string.slice(l, 0, width - 13) ++ '  ...'
-
-        true ->
-          l
-      end
-
+    l2 = (cond do
+            length(l) > width - 8 ->
+              :string.slice(l, 0, width - 13) ++ '  ...'
+            true ->
+              l
+          end)
     :io.format('<~-4w> ~s~n', [opos, l2])
   end
 
-  defp re_search(height, width, tab, :"$end_of_table", re, turn, opos) do
+  defp re_search(height, width, table, :"$end_of_table", re, turn, opos) do
     p = :"EOT  (q)uit (p)Digits (k)ill /Regexp -->"
-    choice(height, width, p, {:re, re}, tab, :"$end_of_table", turn, opos)
+    choice(height, width, p, {:re, re}, table, :"$end_of_table", turn,
+             opos)
   end
 
-  defp re_search(height, width, tab, key, re, turn, opos)
-       when turn < height do
-    re_display(height, width, tab, key, :ets.lookup(tab, key), re, turn, opos)
+  defp re_search(height, width, table, key, re, turn, opos)
+      when turn < height do
+    re_display(height, width, table, key,
+                 :ets.lookup(table, key), re, turn, opos)
   end
 
-  defp re_search(height, width, tab, key, re, turn, opos) do
+  defp re_search(height, width, table, key, re, turn, opos) do
     p = :"(c)ontinue (q)uit (p)Digits (k)ill /Regexp -->"
-    choice(height, width, p, {:re, re}, tab, key, turn, opos)
+    choice(height, width, p, {:re, re}, table, key, turn,
+             opos)
   end
 
-  defp re_display(height, width, tab, key, [], re, turn, opos) do
-    re_search(height, width, tab, :ets.next(tab, key), re, turn, opos)
+  defp re_display(height, width, table, key, [], re, turn,
+            opos) do
+    re_search(height, width, table, :ets.next(table, key),
+                re, turn, opos)
   end
 
-  defp re_display(height, width, tab, key, [h | t], re, turn, opos) do
+  defp re_display(height, width, table, key, [h | t], re, turn,
+            opos) do
     str = to_string(h)
-
-    case :re.run(str, re, [{:capture, :none}]) do
+    case (:re.run(str, re, [{:capture, :none}])) do
       :match ->
         do_display_item(height, width, h, opos)
-        re_display(height, width, tab, key, t, re, turn + 1, opos + 1)
-
+        re_display(height, width, table, key, t, re, turn + 1,
+                     opos + 1)
       :nomatch ->
-        re_display(height, width, tab, key, t, re, turn, opos)
+        re_display(height, width, table, key, t, re, turn, opos)
     end
   end
 
@@ -1833,17 +1592,16 @@ defmodule :m_ets do
     :ok
   end
 
-  defp print_re_num(tab, key, num, re) do
-    os = re_match(:ets.lookup(tab, key), re)
+  defp print_re_num(table, key, num, re) do
+    os = re_match(:ets.lookup(table, key), re)
     len = length(os)
-
     cond do
       num - len < 1 ->
         o = :lists.nth(num, os)
         :io.format('~p~n', [o])
-
       true ->
-        print_re_num(tab, :ets.next(tab, key), num - len, re)
+        print_re_num(table, :ets.next(table, key), num - len,
+                       re)
     end
   end
 
@@ -1852,12 +1610,12 @@ defmodule :m_ets do
   end
 
   defp re_match([h | t], re) do
-    case :re.run(to_string(h), re, [{:capture, :none}]) do
+    case (:re.run(to_string(h), re, [{:capture, :none}])) do
       :match ->
         [h | re_match(t, re)]
-
       :nomatch ->
         re_match(t, re)
     end
   end
+
 end

@@ -2,22 +2,16 @@ defmodule :m_i do
   use Bitwise
   import :io, only: [format: 1, format: 2]
   import :lists, only: [foreach: 2, sort: 1]
-
   def iv() do
-    vsn =
-      :string.slice(
-        :filename.basename(:code.lib_dir(:debugger)),
-        9
-      )
-
+    vsn = :string.slice(:filename.basename(:code.lib_dir(:debugger)),
+                          9)
     :erlang.list_to_atom(vsn)
   end
 
   def im() do
-    case :debugger.start() do
+    case (:debugger.start()) do
       {:ok, pid} ->
         pid
-
       {:error, {:already_started, pid}} ->
         pid
     end
@@ -59,13 +53,10 @@ defmodule :m_i do
     breaks1 = :int.all_breaks(module)
     :ok = :int.break_in(module, function, arity)
     breaks2 = :int.all_breaks(module)
-
-    :lists.foreach(
-      fn {mod, line} ->
-        :int.test_at_break(mod, line, cond__)
-      end,
-      breaks2 -- breaks1
-    )
+    :lists.foreach(fn {mod, line} ->
+                        :int.test_at_break(mod, line, cond__)
+                   end,
+                     breaks2 -- breaks1)
   end
 
   def ibd(mod, line) do
@@ -103,20 +94,16 @@ defmodule :m_i do
   def il() do
     mods = sort(:int.interpreted())
     ilformat('Module', 'File')
-
-    foreach(
-      fn mod ->
-        ilformat(:erlang.atom_to_list(mod), get_file(mod))
-      end,
-      mods
-    )
+    foreach(fn mod ->
+                 ilformat(:erlang.atom_to_list(mod), get_file(mod))
+            end,
+              mods)
   end
 
   defp get_file(mod) do
-    case :int.file(mod) do
+    case (:int.file(mod)) do
       {:error, :not_loaded} ->
         'not loaded'
-
       file ->
         file
     end
@@ -146,19 +133,17 @@ defmodule :m_i do
     pb_print(bps)
   end
 
-  defp pb_print([
-         {{mod, line}, [status, action, _, :null | _]}
-         | bps
-       ]) do
+  defp pb_print([{{mod, line}, [status, action, _, :null | _]} |
+               bps]) do
     bformat(mod, line, status, action, '')
     pb_print(bps)
   end
 
-  defp pb_print([
-         {{mod, line}, [status, action, _, cond__ | _]}
-         | bps
-       ]) do
-    bformat(mod, line, status, action, :io_lib.format('~w', [cond__]))
+  defp pb_print([{{mod, line},
+              [status, action, _, cond__ | _]} |
+               bps]) do
+    bformat(mod, line, status, action,
+              :io_lib.format('~w', [cond__]))
     pb_print(bps)
   end
 
@@ -197,10 +182,9 @@ defmodule :m_i do
   end
 
   def ia(pid, fnk) do
-    case :lists.keymember(pid, 1, :int.snapshot()) do
+    case (:lists.keymember(pid, 1, :int.snapshot())) do
       false ->
         :no_proc
-
       true ->
         :int.attach(pid, fnk)
     end
@@ -217,24 +201,16 @@ defmodule :m_i do
   end
 
   defp ip([{pid, {m, f, a}, status, {}} | stats]) do
-    hformat(
-      :io_lib.format('~w', [pid]),
-      :io_lib.format('~w:~tw/~w', [m, f, length(a)]),
-      :io_lib.format('~w', [status]),
-      ''
-    )
-
+    hformat(:io_lib.format('~w', [pid]),
+              :io_lib.format('~w:~tw/~w', [m, f, length(a)]),
+              :io_lib.format('~w', [status]), '')
     ip(stats)
   end
 
   defp ip([{pid, {m, f, a}, status, info} | stats]) do
-    hformat(
-      :io_lib.format('~w', [pid]),
-      :io_lib.format('~w:~tw/~w', [m, f, length(a)]),
-      :io_lib.format('~w', [status]),
-      :io_lib.format('~w', [info])
-    )
-
+    hformat(:io_lib.format('~w', [pid]),
+              :io_lib.format('~w:~tw/~w', [m, f, length(a)]),
+              :io_lib.format('~w', [status]), :io_lib.format('~w', [info]))
     ip(stats)
   end
 
@@ -286,4 +262,5 @@ defmodule :m_i do
     format('                Flag is all (true),no_tail or false~n')
     :ok
   end
+
 end

@@ -1,6 +1,5 @@
 defmodule :m_inet6_tcp_dist do
   use Bitwise
-
   def select(node) do
     :inet_tcp_dist.gen_select(:inet6_tcp, node)
   end
@@ -18,18 +17,15 @@ defmodule :m_inet6_tcp_dist do
   end
 
   def accept_connection(acceptPid, socket, myNode, allowed, setupTime) do
-    :inet_tcp_dist.gen_accept_connection(
-      :inet6_tcp,
-      acceptPid,
-      socket,
-      myNode,
-      allowed,
-      setupTime
-    )
+    :inet_tcp_dist.gen_accept_connection(:inet6_tcp,
+                                           acceptPid, socket, myNode, allowed,
+                                           setupTime)
   end
 
-  def setup(node, type, myNode, longOrShortNames, setupTime) do
-    :inet_tcp_dist.gen_setup(:inet6_tcp, node, type, myNode, longOrShortNames, setupTime)
+  def setup(node, type, myNode, longOrShortNames,
+           setupTime) do
+    :inet_tcp_dist.gen_setup(:inet6_tcp, node, type, myNode,
+                               longOrShortNames, setupTime)
   end
 
   def close(socket) do
@@ -47,4 +43,5 @@ defmodule :m_inet6_tcp_dist do
   def getopts(s, opts) do
     :inet_tcp_dist.getopts(s, opts)
   end
+
 end

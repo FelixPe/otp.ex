@@ -1,26 +1,15 @@
 defmodule :m_eunit do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_test, :test,
-    f: :undefined,
-    desc: :undefined,
-    timeout: :undefined,
-    location: :undefined,
-    line: 0
-  )
-
-  Record.defrecord(:r_group, :group,
-    desc: :undefined,
-    order: :undefined,
-    timeout: :undefined,
-    context: :undefined,
-    spawn: :undefined,
-    tests: :undefined
-  )
-
-  Record.defrecord(:r_context, :context, setup: :undefined, cleanup: :undefined, process: :local)
-
+  Record.defrecord(:r_test, :test, f: :undefined,
+                                desc: :undefined, timeout: :undefined,
+                                location: :undefined, line: 0)
+  Record.defrecord(:r_group, :group, desc: :undefined,
+                                 options: :undefined, order: :undefined,
+                                 timeout: :undefined, context: :undefined,
+                                 spawn: :undefined, tests: :undefined)
+  Record.defrecord(:r_context, :context, setup: :undefined,
+                                   cleanup: :undefined, process: :local)
   def start() do
     start(:eunit_server)
   end
@@ -82,10 +71,9 @@ defmodule :m_eunit do
   end
 
   def watch_app(server, name, options) do
-    case :code.lib_dir(name) do
+    case (:code.lib_dir(name)) do
       path when is_list(path) ->
         watch_path(server, :filename.join(path, 'ebin'), options)
-
       _ ->
         :error
     end
@@ -102,11 +90,10 @@ defmodule :m_eunit do
   def test(server, tests, options) do
     listeners = listeners(options)
     serial = :eunit_serial.start(listeners)
-
-    case :eunit_server.start_test(server, serial, tests, options) do
+    case (:eunit_server.start_test(server, serial, tests,
+                                     options)) do
       {:ok, reference} ->
         test_run(reference, listeners)
-
       {:error, r} ->
         {:error, r}
     end
@@ -117,12 +104,10 @@ defmodule :m_eunit do
       {:start, ^reference} ->
         cast(listeners, {:start, reference})
     end
-
     receive do
       {:done, ^reference} ->
         cast(listeners, {:stop, reference, self()})
         wait_until_listeners_have_terminated(listeners)
-
         receive do
           {:result, ^reference, result} ->
             result
@@ -141,7 +126,6 @@ defmodule :m_eunit do
 
   defp wait_until_listeners_have_terminated([p | ps]) do
     mRef = :erlang.monitor(:process, p)
-
     receive do
       {:DOWN, ^mRef, :process, ^p, _} ->
         wait_until_listeners_have_terminated(ps)
@@ -166,33 +150,23 @@ defmodule :m_eunit do
   end
 
   defp listeners(options) do
-    ls = [
-      {:eunit_tty, options}
-      | :proplists.get_all_values(:report, options)
-    ]
-
+    ls = [{:eunit_tty, options} |
+              :proplists.get_all_values(:report, options)]
     ps = start_listeners(ls)
-
-    case :proplists.get_value(:event_log, options) do
+    case (:proplists.get_value(:event_log, options)) do
       :undefined ->
         ps
-
       x ->
-        logFile =
-          cond do
-            is_list(x) ->
-              x
-
-            true ->
-              'eunit-events.log'
-          end
-
-        [
-          spawn_link(fn ->
-            event_logger(logFile)
-          end)
-          | ps
-        ]
+        logFile = (cond do
+                     is_list(x) ->
+                       x
+                     true ->
+                       'eunit-events.log'
+                   end)
+        [spawn_link(fn () ->
+                         event_logger(logFile)
+                    end) |
+             ps]
     end
   end
 
@@ -209,13 +183,12 @@ defmodule :m_eunit do
   end
 
   defp event_logger(logFile) do
-    case :file.open(logFile, [:write]) do
+    case (:file.open(logFile, [:write])) do
       {:ok, fD} ->
         receive do
           {:start, reference} ->
             event_logger_loop(reference, fD)
         end
-
       error ->
         exit(error)
     end
@@ -226,7 +199,6 @@ defmodule :m_eunit do
       {:status, _Id, _Info} = msg ->
         :io.fwrite(fD, '~tp.\n', [msg])
         event_logger_loop(reference, fD)
-
       {:stop, ^reference, _ReplyTo} ->
         :file.close(fD)
         exit(:normal)
@@ -249,18 +221,17 @@ defmodule :m_eunit do
     else
       false ->
         opts
-
       s ->
         {:ok, ts, _} = :erl_scan.string(s)
-        {:ok, v} = :erl_parse.parse_term(ts ++ [{:dot, :erl_anno.new(1)}])
-
+        {:ok, v} = :erl_parse.parse_term(ts ++ [{:dot,
+                                                   :erl_anno.new(1)}])
         cond do
           is_list(v) ->
             opts ++ v
-
           true ->
             opts ++ [v]
         end
     end
   end
+
 end

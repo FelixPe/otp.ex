@@ -6,26 +6,25 @@ defmodule :m_ssl_sup do
   end
 
   def init([]) do
-    {:ok, {{:rest_for_one, 10, 3600}, [ssl_admin_child_spec(), ssl_connection_sup()]}}
+    supFlags = %{strategy: :rest_for_one, intensity: 10,
+                   period: 3600}
+    childSpecs = [ssl_admin_child_spec(),
+                      ssl_connection_sup()]
+    {:ok, {supFlags, childSpecs}}
   end
 
   defp ssl_admin_child_spec() do
-    name = :ssl_admin_sup
-    startFunc = {:ssl_admin_sup, :start_link, []}
-    restart = :permanent
-    shutdown = 4000
-    modules = [:ssl_admin_sup]
-    type = :supervisor
-    {name, startFunc, restart, shutdown, type, modules}
+    %{id: :ssl_admin_sup,
+        start: {:ssl_admin_sup, :start_link, []},
+        restart: :permanent, shutdown: 4000,
+        modules: [:ssl_admin_sup], type: :supervisor}
   end
 
   defp ssl_connection_sup() do
-    name = :ssl_connection_sup
-    startFunc = {:ssl_connection_sup, :start_link, []}
-    restart = :permanent
-    shutdown = 4000
-    modules = [:ssl_connection_sup]
-    type = :supervisor
-    {name, startFunc, restart, shutdown, type, modules}
+    %{id: :ssl_connection_sup,
+        start: {:ssl_connection_sup, :start_link, []},
+        restart: :permanent, shutdown: 4000,
+        modules: [:ssl_connection_sup], type: :supervisor}
   end
+
 end

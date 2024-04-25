@@ -1,7 +1,6 @@
 defmodule :m_shell_default do
   use Bitwise
   import :io, only: [format: 1]
-
   def help() do
     format('** shell internal commands **~n')
     format('b()        -- display all variable bindings\n')
@@ -329,4 +328,15 @@ defmodule :m_shell_default do
   defp calli(f, args) do
     :c.appcall(:debugger, :i, f, args)
   end
+
+  def unquote(:"$handle_undefined_function")(func, args) do
+    case (:shell.get_function(func, length(args))) do
+      :undefined ->
+        :error_handler.raise_undef_exception(:shell_default,
+                                               func, args)
+      fun when is_function(fun, length(args)) ->
+        apply(fun, args)
+    end
+  end
+
 end

@@ -1,15 +1,14 @@
 defmodule :m_ssl_server_session_cache_db do
   use Bitwise
-
+  @behaviour :ssl_session_cache_api
   def init(_Options) do
     :gb_trees.empty()
   end
 
   def lookup(cache, key) do
-    case :gb_trees.lookup(key, cache) do
+    case (:gb_trees.lookup(key, cache)) do
       {:value, session} ->
         session
-
       :none ->
         :undefined
     end
@@ -20,14 +19,15 @@ defmodule :m_ssl_server_session_cache_db do
   end
 
   def delete(cache, key) do
-    :gb_trees.delete(cache, key)
+    :gb_trees.delete(key, cache)
   end
 
   def size(cache) do
     :gb_trees.size(cache)
   end
 
-  def take_oldest(cache) do
-    :gb_trees.take_smallest(cache)
+  def terminate(_) do
+    :ok
   end
+
 end

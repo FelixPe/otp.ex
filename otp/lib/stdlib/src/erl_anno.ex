@@ -1,26 +1,24 @@
 defmodule :m_erl_anno do
   use Bitwise
-
   def to_term(anno) do
     anno
   end
 
-  def from_term(line) when is_integer(line) and line < 0 do
-    set_generated(true, new(-line))
+  def from_term(line) when (is_integer(line) and line < 0) do
+    set_generated(true, new(- line))
   end
 
   def from_term(term) do
     term
   end
 
-  def new(line) when is_integer(line) and line >= 0 do
+  def new(line) when (is_integer(line) and line >= 0) do
     new_location(line)
   end
 
-  def new({line, column} = loc)
-      when is_integer(line) and
-             line >= 0 and
-             is_integer(column) and column >= 1 do
+  def new({line, column} = loc) when (is_integer(line) and
+                                       line >= 0 and
+                                       is_integer(column) and column >= 1) do
     new_location(loc)
   end
 
@@ -32,19 +30,19 @@ defmodule :m_erl_anno do
     location
   end
 
-  def is_anno(line) when is_integer(line) and line >= 0 do
+  def is_anno(line) when (is_integer(line) and line >= 0) do
     true
   end
 
-  def is_anno({line, column})
-      when is_integer(line) and
-             line >= 0 and
-             is_integer(column) and column >= 1 do
+  def is_anno({line, column}) when (is_integer(line) and
+                                 line >= 0 and
+                                 is_integer(column) and column >= 1) do
     true
   end
 
   def is_anno(anno) do
-    anno !== [] and is_anno1(anno) and :lists.keymember(:location, 1, anno)
+    anno !== [] and is_anno1(anno) and :lists.keymember(:location,
+                                                          1, anno)
   end
 
   defp is_anno1([{item, value} | anno]) do
@@ -55,15 +53,14 @@ defmodule :m_erl_anno do
     a === []
   end
 
-  defp is_anno2(:location, line)
-       when is_integer(line) and
-              line >= 0 do
+  defp is_anno2(:location, line) when (is_integer(line) and
+                                   line >= 0) do
     true
   end
 
   defp is_anno2(:location, {line, column})
-       when is_integer(line) and line >= 0 and
-              is_integer(column) and column >= 1 do
+      when (is_integer(line) and line >= 0 and
+              is_integer(column) and column >= 1) do
     true
   end
 
@@ -95,51 +92,46 @@ defmodule :m_erl_anno do
     is_list(t)
   end
 
-  def column({line, column})
-      when is_integer(line) and
-             line >= 0 and
-             is_integer(column) and column >= 1 do
+  def column({line, column}) when (is_integer(line) and
+                                 line >= 0 and
+                                 is_integer(column) and column >= 1) do
     column
   end
 
-  def column(line) when is_integer(line) and line >= 0 do
+  def column(line) when (is_integer(line) and line >= 0) do
     :undefined
   end
 
   def column(anno) do
-    case location(anno) do
+    case (location(anno)) do
       {_Line, column} ->
         column
-
       _Line ->
         :undefined
     end
   end
 
   def end_location(anno) do
-    case text(anno) do
+    case (text(anno)) do
       :undefined ->
         :undefined
-
       text ->
-        case location(anno) do
+        case (location(anno)) do
           {line, column} ->
             end_location(text, line, column)
-
           line ->
             end_location(text, line)
         end
     end
   end
 
-  def file(line) when is_integer(line) and line >= 0 do
+  def file(line) when (is_integer(line) and line >= 0) do
     :undefined
   end
 
-  def file({line, column})
-      when is_integer(line) and
-             line >= 0 and
-             is_integer(column) and column >= 1 do
+  def file({line, column}) when (is_integer(line) and
+                                 line >= 0 and
+                                 is_integer(column) and column >= 1) do
     :undefined
   end
 
@@ -147,14 +139,13 @@ defmodule :m_erl_anno do
     anno_info(anno, :file)
   end
 
-  def generated(line) when is_integer(line) and line >= 0 do
+  def generated(line) when (is_integer(line) and line >= 0) do
     false
   end
 
-  def generated({line, column})
-      when is_integer(line) and
-             line >= 0 and
-             is_integer(column) and column >= 1 do
+  def generated({line, column}) when (is_integer(line) and
+                                 line >= 0 and
+                                 is_integer(column) and column >= 1) do
     false
   end
 
@@ -163,22 +154,21 @@ defmodule :m_erl_anno do
   end
 
   def line(anno) do
-    case location(anno) do
+    case (location(anno)) do
       {line, _Column} ->
         line
-
       line ->
         line
     end
   end
 
-  def location(line) when is_integer(line) and line >= 0 do
+  def location(line) when (is_integer(line) and line >= 0) do
     line
   end
 
   def location({line, column} = location)
-      when is_integer(line) and line >= 0 and
-             is_integer(column) and column >= 1 do
+      when (is_integer(line) and line >= 0 and
+              is_integer(column) and column >= 1) do
     location
   end
 
@@ -186,14 +176,13 @@ defmodule :m_erl_anno do
     anno_info(anno, :location)
   end
 
-  def record(line) when is_integer(line) and line >= 0 do
+  def record(line) when (is_integer(line) and line >= 0) do
     false
   end
 
-  def record({line, column})
-      when is_integer(line) and
-             line >= 0 and
-             is_integer(column) and column >= 1 do
+  def record({line, column}) when (is_integer(line) and
+                                 line >= 0 and
+                                 is_integer(column) and column >= 1) do
     false
   end
 
@@ -201,14 +190,13 @@ defmodule :m_erl_anno do
     anno_info(anno, :record, false)
   end
 
-  def text(line) when is_integer(line) and line >= 0 do
+  def text(line) when (is_integer(line) and line >= 0) do
     :undefined
   end
 
-  def text({line, column})
-      when is_integer(line) and
-             line >= 0 and
-             is_integer(column) and column >= 1 do
+  def text({line, column}) when (is_integer(line) and
+                                 line >= 0 and
+                                 is_integer(column) and column >= 1) do
     :undefined
   end
 
@@ -225,40 +213,36 @@ defmodule :m_erl_anno do
   end
 
   def set_line(line, anno) do
-    case location(anno) do
+    case (location(anno)) do
       {_Line, column} ->
         set_location({line, column}, anno)
-
       _Line ->
         set_location(line, anno)
     end
   end
 
-  def set_location(line, l)
-      when is_integer(l) and l >= 0 and
-             is_integer(line) and line >= 0 do
+  def set_location(line, l) when (is_integer(l) and l >= 0 and
+                          is_integer(line) and line >= 0) do
     new_location(line)
   end
 
-  def set_location(line, {l, column})
-      when is_integer(l) and
-             l >= 0 and
-             is_integer(column) and column >= 1 and
-             is_integer(line) and line >= 0 do
+  def set_location(line, {l, column}) when (is_integer(l) and
+                                    l >= 0 and
+                                    is_integer(column) and column >= 1 and
+                                    is_integer(line) and line >= 0) do
     new_location(line)
   end
 
-  def set_location({l, c} = loc, line)
-      when is_integer(line) and
-             line >= 0 and is_integer(l) and l >= 0 and
-             is_integer(c) and c >= 1 do
+  def set_location({l, c} = loc, line) when (is_integer(line) and
+                                     line >= 0 and is_integer(l) and l >= 0 and
+                                     is_integer(c) and c >= 1) do
     new_location(loc)
   end
 
   def set_location({l, c} = loc, {line, column})
-      when is_integer(line) and line >= 0 and
-             is_integer(column) and column >= 1 and is_integer(l) and
-             l >= 0 and is_integer(c) and c >= 1 do
+      when (is_integer(line) and line >= 0 and
+              is_integer(column) and column >= 1 and is_integer(l) and
+              l >= 0 and is_integer(c) and c >= 1) do
     new_location(loc)
   end
 
@@ -275,38 +259,31 @@ defmodule :m_erl_anno do
   end
 
   defp set(item, value, anno) do
-    case {is_settable(item, value), anno} do
-      {true, line} when is_integer(line) and line >= 0 ->
+    case ({is_settable(item, value), anno}) do
+      {true, line} when (is_integer(line) and line >= 0) ->
         set_anno(item, value, [{:location, line}])
-
-      {true, {l, c} = location}
-      when is_integer(l) and
-             l >= 0 and is_integer(c) and c >= 1 ->
+      {true, {l, c} = location} when (is_integer(l) and
+                                        l >= 0 and is_integer(c) and c >= 1)
+                                     ->
         set_anno(item, value, [{:location, location}])
-
-      {true, a} when is_list(a) and a !== [] ->
+      {true, a} when (is_list(a) and a !== []) ->
         set_anno(item, value, anno)
-
       _ ->
         :erlang.error(:badarg, [item, value, anno])
     end
   end
 
   defp set_anno(item, value, anno) do
-    case default(item, value) do
+    case (default(item, value)) do
       true ->
         reset(anno, item)
-
       false ->
-        r =
-          case anno_info(anno, item) do
-            :undefined ->
-              [{item, value} | anno]
-
-            _ ->
-              :lists.keyreplace(item, 1, anno, {item, value})
-          end
-
+        r = (case (anno_info(anno, item)) do
+               :undefined ->
+                 [{item, value} | anno]
+               _ ->
+                 :lists.keyreplace(item, 1, anno, {item, value})
+             end)
         reset_simplify(r)
     end
   end
@@ -333,11 +310,10 @@ defmodule :m_erl_anno do
       :lists.keyfind(item, 1, anno)
     catch
       _, _ ->
-        :erlang.error(:badarg, [anno])
+        :erlang.error(:badarg, [anno, item, default])
     else
       false ->
         default
-
       {^item, value} ->
         value
     end
@@ -348,11 +324,10 @@ defmodule :m_erl_anno do
       :lists.keyfind(item, 1, anno)
     catch
       _, _ ->
-        :erlang.error(:badarg, [anno])
+        :erlang.error(:badarg, [anno, item])
     else
       {^item, value} ->
         value
-
       false ->
         :undefined
     end
@@ -386,21 +361,19 @@ defmodule :m_erl_anno do
     is_filename(file)
   end
 
-  defp is_settable(:generated, boolean)
-       when boolean or
-              not boolean do
+  defp is_settable(:generated, boolean) when boolean or
+                                      not boolean do
     true
   end
 
-  defp is_settable(:location, line)
-       when is_integer(line) and
-              line >= 0 do
+  defp is_settable(:location, line) when (is_integer(line) and
+                                   line >= 0) do
     true
   end
 
   defp is_settable(:location, {line, column})
-       when is_integer(line) and line >= 0 and
-              is_integer(column) and column >= 1 do
+      when (is_integer(line) and line >= 0 and
+              is_integer(column) and column >= 1) do
     true
   end
 
@@ -427,4 +400,5 @@ defmodule :m_erl_anno do
   defp default(_, _) do
     false
   end
+
 end

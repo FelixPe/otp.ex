@@ -2,26 +2,19 @@ defmodule :m_memsup do
   use Bitwise
   @behaviour :gen_server
   require Record
-
-  Record.defrecord(:r_state, :state,
-    os: :undefined,
-    port_mode: :undefined,
-    mem_usage: :undefined,
-    worst_mem_user: :undefined,
-    sys_only: :undefined,
-    timeout: :undefined,
-    helper_timeout: :undefined,
-    sys_mem_watermark: :undefined,
-    proc_mem_watermark: :undefined,
-    pid: :undefined,
-    wd_timer: :undefined,
-    ext_wd_timer: :undefined,
-    pending: [],
-    ext_pending: []
-  )
-
+  Record.defrecord(:r_state, :state, os: :undefined,
+                                 port_mode: :undefined, mem_usage: :undefined,
+                                 worst_mem_user: :undefined,
+                                 sys_only: :undefined, timeout: :undefined,
+                                 helper_timeout: :undefined,
+                                 sys_mem_watermark: :undefined,
+                                 proc_mem_watermark: :undefined,
+                                 pid: :undefined, wd_timer: :undefined,
+                                 ext_wd_timer: :undefined, pending: [],
+                                 ext_pending: [])
   def start_link() do
-    :gen_server.start_link({:local, :memsup}, :memsup, [], [])
+    :gen_server.start_link({:local, :memsup}, :memsup, [],
+                             [])
   end
 
   def get_os_wordsize() do
@@ -33,7 +26,8 @@ defmodule :m_memsup do
   end
 
   def get_system_memory_data() do
-    :os_mon.call(:memsup, :get_system_memory_data, :infinity)
+    :os_mon.call(:memsup, :get_system_memory_data,
+                   :infinity)
   end
 
   def get_check_interval() do
@@ -41,45 +35,43 @@ defmodule :m_memsup do
   end
 
   def set_check_interval(minutes) do
-    case param_type(:memory_check_interval, minutes) do
+    case (param_type(:memory_check_interval, minutes)) do
       true ->
         mS = minutes_to_ms(minutes)
-        :os_mon.call(:memsup, {:set_check_interval, mS}, :infinity)
-
+        :os_mon.call(:memsup, {:set_check_interval, mS},
+                       :infinity)
       false ->
         :erlang.error(:badarg)
     end
   end
 
   def get_procmem_high_watermark() do
-    :os_mon.call(:memsup, :get_procmem_high_watermark, :infinity)
+    :os_mon.call(:memsup, :get_procmem_high_watermark,
+                   :infinity)
   end
 
   def set_procmem_high_watermark(float) do
-    case param_type(
-           :process_memory_high_watermark,
-           float
-         ) do
+    case (param_type(:process_memory_high_watermark,
+                       float)) do
       true ->
-        :os_mon.call(:memsup, {:set_procmem_high_watermark, float}, :infinity)
-
+        :os_mon.call(:memsup,
+                       {:set_procmem_high_watermark, float}, :infinity)
       false ->
         :erlang.error(:badarg)
     end
   end
 
   def get_sysmem_high_watermark() do
-    :os_mon.call(:memsup, :get_sysmem_high_watermark, :infinity)
+    :os_mon.call(:memsup, :get_sysmem_high_watermark,
+                   :infinity)
   end
 
   def set_sysmem_high_watermark(float) do
-    case param_type(
-           :system_memory_high_watermark,
-           float
-         ) do
+    case (param_type(:system_memory_high_watermark,
+                       float)) do
       true ->
-        :os_mon.call(:memsup, {:set_sysmem_high_watermark, float}, :infinity)
-
+        :os_mon.call(:memsup,
+                       {:set_sysmem_high_watermark, float}, :infinity)
       false ->
         :erlang.error(:badarg)
     end
@@ -90,20 +82,18 @@ defmodule :m_memsup do
   end
 
   def set_helper_timeout(seconds) do
-    case param_type(:memsup_helper_timeout, seconds) do
+    case (param_type(:memsup_helper_timeout, seconds)) do
       true ->
-        :os_mon.call(:memsup, {:set_helper_timeout, seconds}, :infinity)
-
+        :os_mon.call(:memsup, {:set_helper_timeout, seconds},
+                       :infinity)
       false ->
         :erlang.error(:badarg)
     end
   end
 
   def dummy_reply(:get_memory_data) do
-    dummy_reply(
-      :get_memory_data,
-      :os_mon.get_env(:memsup, :memsup_system_only)
-    )
+    dummy_reply(:get_memory_data,
+                  :os_mon.get_env(:memsup, :memsup_system_only))
   end
 
   def dummy_reply(:get_system_memory_data) do
@@ -115,12 +105,8 @@ defmodule :m_memsup do
   end
 
   def dummy_reply(:get_check_interval) do
-    minutes_to_ms(
-      :os_mon.get_env(
-        :memsup,
-        :memory_check_interval
-      )
-    )
+    minutes_to_ms(:os_mon.get_env(:memsup,
+                                    :memory_check_interval))
   end
 
   def dummy_reply({:set_check_interval, _}) do
@@ -128,13 +114,8 @@ defmodule :m_memsup do
   end
 
   def dummy_reply(:get_procmem_high_watermark) do
-    trunc(
-      100 *
-        :os_mon.get_env(
-          :memsup,
-          :process_memory_high_watermark
-        )
-    )
+    trunc(100 * :os_mon.get_env(:memsup,
+                                  :process_memory_high_watermark))
   end
 
   def dummy_reply({:set_procmem_high_watermark, _}) do
@@ -142,13 +123,8 @@ defmodule :m_memsup do
   end
 
   def dummy_reply(:get_sysmem_high_watermark) do
-    trunc(
-      100 *
-        :os_mon.get_env(
-          :memsup,
-          :system_memory_high_watermark
-        )
-    )
+    trunc(100 * :os_mon.get_env(:memsup,
+                                  :system_memory_high_watermark))
   end
 
   def dummy_reply({:set_sysmem_high_watermark, _}) do
@@ -171,42 +147,32 @@ defmodule :m_memsup do
     {0, 0, {self(), 0}}
   end
 
-  def param_type(:memsup_improved_system_memory_data, val)
-      when val == true or val == false do
-    true
-  end
-
-  def param_type(:memsup_system_only, val)
-      when val == true or
-             val == false do
+  def param_type(:memsup_system_only, val) when val == true or
+                                          val == false do
     true
   end
 
   def param_type(:memory_check_interval, val)
-      when is_integer(val) and val > 0 do
+      when (is_integer(val) and val > 0) do
     true
   end
 
   def param_type(:memsup_helper_timeout, val)
-      when is_integer(val) and val > 0 do
+      when (is_integer(val) and val > 0) do
     true
   end
 
   def param_type(:system_memory_high_watermark, val)
-      when is_number(val) and 0 <= val and val <= 1 do
+      when (is_number(val) and 0 <= val and val <= 1) do
     true
   end
 
   def param_type(:process_memory_high_watermark, val)
-      when is_number(val) and 0 <= val and val <= 1 do
+      when (is_number(val) and 0 <= val and val <= 1) do
     true
   end
 
   def param_type(_Param, _Val) do
-    false
-  end
-
-  def param_default(:memsup_improved_system_memory_data) do
     false
   end
 
@@ -234,117 +200,61 @@ defmodule :m_memsup do
     :erlang.process_flag(:trap_exit, true)
     :erlang.process_flag(:priority, :low)
     oS = :os.type()
-
-    portMode =
-      case oS do
-        {:unix, :darwin} ->
-          true
-
-        {:unix, :freebsd} ->
-          false
-
-        {:unix, :dragonfly} ->
-          false
-
-        {:unix, :linux} ->
-          true
-
-        {:unix, :openbsd} ->
-          true
-
-        {:unix, :netbsd} ->
-          true
-
-        {:unix, :irix64} ->
-          true
-
-        {:unix, :irix} ->
-          true
-
-        {:unix, :sunos} ->
-          true
-
-        {:win32, _OSname} ->
-          false
-
-        _ ->
-          exit({:unsupported_os, oS})
-      end
-
-    iSMD =
-      :os_mon.get_env(
-        :memsup,
-        :memsup_improved_system_memory_data
-      )
-
-    pid =
-      cond do
-        portMode ->
-          spawn_link(fn ->
-            port_init(iSMD)
-          end)
-
-        not portMode ->
-          :undefined
-      end
-
+    portMode = (case (oS) do
+                  {:unix, :darwin} ->
+                    true
+                  {:unix, :freebsd} ->
+                    false
+                  {:unix, :dragonfly} ->
+                    false
+                  {:unix, :linux} ->
+                    true
+                  {:unix, :openbsd} ->
+                    true
+                  {:unix, :netbsd} ->
+                    true
+                  {:unix, :irix64} ->
+                    true
+                  {:unix, :irix} ->
+                    true
+                  {:unix, :sunos} ->
+                    true
+                  {:win32, _OSname} ->
+                    false
+                  _ ->
+                    exit({:unsupported_os, oS})
+                end)
+    pid = (cond do
+             portMode ->
+               spawn_link(fn () ->
+                               port_init()
+                          end)
+             not portMode ->
+               :undefined
+           end)
     sysOnly = :os_mon.get_env(:memsup, :memsup_system_only)
-
-    timeout =
-      :os_mon.get_env(
-        :memsup,
-        :memory_check_interval
-      )
-
-    helperTimeout =
-      :os_mon.get_env(
-        :memsup,
-        :memsup_helper_timeout
-      )
-
-    sysMem =
-      :os_mon.get_env(
-        :memsup,
-        :system_memory_high_watermark
-      )
-
-    procMem =
-      :os_mon.get_env(
-        :memsup,
-        :process_memory_high_watermark
-      )
-
-    :persistent_term.put(
-      :memsup_ext_memory_type_map__,
-      %{
-        1 => :system_total_memory,
-        2 => :total_memory,
-        12 => :available_memory,
-        3 => :free_memory,
-        6 => :buffered_memory,
-        7 => :cached_memory,
-        11 => :cached_memory,
-        8 => :shared_memory,
-        4 => :largest_free,
-        5 => :number_of_free,
-        9 => :total_swap,
-        10 => :free_swap
-      }
-    )
-
+    timeout = :os_mon.get_env(:memsup,
+                                :memory_check_interval)
+    helperTimeout = :os_mon.get_env(:memsup,
+                                      :memsup_helper_timeout)
+    sysMem = :os_mon.get_env(:memsup,
+                               :system_memory_high_watermark)
+    procMem = :os_mon.get_env(:memsup,
+                                :process_memory_high_watermark)
+    :persistent_term.put(:memsup_ext_memory_type_map__,
+                           %{1 => :system_total_memory, 2 => :total_memory,
+                               12 => :available_memory, 3 => :free_memory,
+                               6 => :buffered_memory, 7 => :cached_memory,
+                               11 => :cached_memory, 8 => :shared_memory,
+                               4 => :largest_free, 5 => :number_of_free,
+                               9 => :total_swap, 10 => :free_swap})
     send(self(), :time_to_collect)
-
     {:ok,
-     r_state(
-       os: oS,
-       port_mode: portMode,
-       sys_only: sysOnly,
-       timeout: minutes_to_ms(timeout),
-       helper_timeout: sec_to_ms(helperTimeout),
-       sys_mem_watermark: sysMem,
-       proc_mem_watermark: procMem,
-       pid: pid
-     )}
+       r_state(os: oS, port_mode: portMode, sys_only: sysOnly,
+           timeout: minutes_to_ms(timeout),
+           helper_timeout: sec_to_ms(helperTimeout),
+           sys_mem_watermark: sysMem, proc_mem_watermark: procMem,
+           pid: pid)}
   end
 
   def handle_call(:get_os_wordsize, _From, state) do
@@ -353,37 +263,32 @@ defmodule :m_memsup do
   end
 
   def handle_call(:get_memory_data, from, state) do
-    case r_state(state, :mem_usage) do
+    case (r_state(state, :mem_usage)) do
       {alloc, total} ->
         worst = r_state(state, :worst_mem_user)
         {:reply, {total, alloc, worst}, state}
-
       :undefined ->
-        case r_state(state, :wd_timer) do
+        case (r_state(state, :wd_timer)) do
           :undefined ->
-            wDTimer =
-              :erlang.send_after(r_state(state, :timeout), self(), :reg_collection_timeout)
-
+            wDTimer = :erlang.send_after(r_state(state, :timeout), self(),
+                                           :reg_collection_timeout)
             pending = [{:reg, from}]
-
             cond do
               r_state(state, :port_mode) ->
                 send(r_state(state, :pid), {self(), :collect_sys})
-                {:noreply, r_state(state, wd_timer: wDTimer, pending: pending)}
-
+                {:noreply,
+                   r_state(state, wd_timer: wDTimer,  pending: pending)}
               true ->
                 oS = r_state(state, :os)
                 self = self()
-
-                pid =
-                  spawn_link(fn ->
-                    mU = get_memory_usage(oS)
-                    send(self, {:collected_sys, mU})
-                  end)
-
-                {:noreply, r_state(state, pid: pid, wd_timer: wDTimer, pending: pending)}
+                pid = spawn_link(fn () ->
+                                      mU = get_memory_usage(oS)
+                                      send(self, {:collected_sys, mU})
+                                 end)
+                {:noreply,
+                   r_state(state, pid: pid,  wd_timer: wDTimer, 
+                              pending: pending)}
             end
-
           _TimerRef ->
             pending = [{:reg, from} | r_state(state, :pending)]
             {:noreply, r_state(state, pending: pending)}
@@ -391,20 +296,16 @@ defmodule :m_memsup do
     end
   end
 
-  def handle_call(:get_system_memory_data, from, r_state(port_mode: true) = state) do
-    case r_state(state, :ext_wd_timer) do
+  def handle_call(:get_system_memory_data, from,
+           r_state(port_mode: true) = state) do
+    case (r_state(state, :ext_wd_timer)) do
       :undefined ->
-        wDTimer =
-          :erlang.send_after(r_state(state, :helper_timeout), self(), :ext_collection_timeout)
-
+        wDTimer = :erlang.send_after(r_state(state, :helper_timeout),
+                                       self(), :ext_collection_timeout)
         send(r_state(state, :pid), {self(), :collect_ext_sys})
-
         {:noreply,
-         r_state(state,
-           ext_wd_timer: wDTimer,
-           ext_pending: [{:ext, from}]
-         )}
-
+           r_state(state, ext_wd_timer: wDTimer, 
+                      ext_pending: [{:ext, from}])}
       _TimerRef ->
         pending = [{:ext, from} | r_state(state, :ext_pending)]
         {:noreply, r_state(state, ext_pending: pending)}
@@ -412,22 +313,19 @@ defmodule :m_memsup do
   end
 
   def handle_call(:get_system_memory_data, from, state) do
-    case r_state(state, :wd_timer) do
+    case (r_state(state, :wd_timer)) do
       :undefined ->
-        wDTimer =
-          :erlang.send_after(r_state(state, :helper_timeout), self(), :reg_collection_timeout)
-
+        wDTimer = :erlang.send_after(r_state(state, :helper_timeout),
+                                       self(), :reg_collection_timeout)
         oS = r_state(state, :os)
         self = self()
-
-        pid =
-          spawn_link(fn ->
-            memUsage = get_memory_usage(oS)
-            send(self, {:collected_sys, memUsage})
-          end)
-
-        {:noreply, r_state(state, pid: pid, wd_timer: wDTimer, pending: [{:ext, from}])}
-
+        pid = spawn_link(fn () ->
+                              memUsage = get_memory_usage(oS)
+                              send(self, {:collected_sys, memUsage})
+                         end)
+        {:noreply,
+           r_state(state, pid: pid,  wd_timer: wDTimer, 
+                      pending: [{:ext, from}])}
       _TimerRef ->
         pending = [{:ext, from} | r_state(state, :pending)]
         {:noreply, r_state(state, pending: pending)}
@@ -443,18 +341,22 @@ defmodule :m_memsup do
   end
 
   def handle_call(:get_procmem_high_watermark, _From, state) do
-    {:reply, trunc(100 * r_state(state, :proc_mem_watermark)), state}
+    {:reply, trunc(100 * r_state(state, :proc_mem_watermark)),
+       state}
   end
 
-  def handle_call({:set_procmem_high_watermark, float}, _From, state) do
+  def handle_call({:set_procmem_high_watermark, float}, _From,
+           state) do
     {:reply, :ok, r_state(state, proc_mem_watermark: float)}
   end
 
   def handle_call(:get_sysmem_high_watermark, _From, state) do
-    {:reply, trunc(100 * r_state(state, :sys_mem_watermark)), state}
+    {:reply, trunc(100 * r_state(state, :sys_mem_watermark)),
+       state}
   end
 
-  def handle_call({:set_sysmem_high_watermark, float}, _From, state) do
+  def handle_call({:set_sysmem_high_watermark, float}, _From,
+           state) do
     {:reply, :ok, r_state(state, sys_mem_watermark: float)}
   end
 
@@ -463,7 +365,8 @@ defmodule :m_memsup do
   end
 
   def handle_call({:set_helper_timeout, seconds}, _From, state) do
-    {:reply, :ok, r_state(state, helper_timeout: sec_to_ms(seconds))}
+    {:reply, :ok,
+       r_state(state, helper_timeout: sec_to_ms(seconds))}
   end
 
   def handle_call({:set_sys_hw, hW}, _From, state) do
@@ -483,115 +386,86 @@ defmodule :m_memsup do
   end
 
   def handle_info(:time_to_collect, state) do
-    case r_state(state, :wd_timer) do
+    case (r_state(state, :wd_timer)) do
       :undefined ->
-        wDTimer =
-          :erlang.send_after(r_state(state, :helper_timeout), self(), :reg_collection_timeout)
-
+        wDTimer = :erlang.send_after(r_state(state, :helper_timeout),
+                                       self(), :reg_collection_timeout)
         cond do
           r_state(state, :port_mode) ->
             send(r_state(state, :pid), {self(), :collect_sys})
-            {:noreply, r_state(state, wd_timer: wDTimer, pending: [:reg])}
-
+            {:noreply,
+               r_state(state, wd_timer: wDTimer,  pending: [:reg])}
           true ->
             oS = r_state(state, :os)
             self = self()
-
-            pid =
-              spawn_link(fn ->
-                mU = get_memory_usage(oS)
-                send(self, {:collected_sys, mU})
-              end)
-
-            {:noreply, r_state(state, pid: pid, wd_timer: wDTimer, pending: [:reg])}
+            pid = spawn_link(fn () ->
+                                  mU = get_memory_usage(oS)
+                                  send(self, {:collected_sys, mU})
+                             end)
+            {:noreply,
+               r_state(state, pid: pid,  wd_timer: wDTimer, 
+                          pending: [:reg])}
         end
-
       _TimerRef ->
-        {:noreply, r_state(state, pending: [:reg | r_state(state, :pending)])}
+        {:noreply,
+           r_state(state, pending: [:reg | r_state(state, :pending)])}
     end
   end
 
   def handle_info({:collected_sys, {alloc, total}}, state) do
-    timeSpent =
-      case :erlang.cancel_timer(r_state(state, :wd_timer)) do
-        false ->
-          r_state(state, :helper_timeout)
-
-        timeLeft ->
-          r_state(state, :helper_timeout) - timeLeft
-      end
-
+    timeSpent = (case (:erlang.cancel_timer(r_state(state, :wd_timer))) do
+                   false ->
+                     r_state(state, :helper_timeout)
+                   timeLeft ->
+                     r_state(state, :helper_timeout) - timeLeft
+                 end)
     flush(:reg_collection_timeout)
-
-    state2 =
-      case :lists.member(
-             :reg,
-             r_state(state, :pending)
-           ) do
-        true ->
-          cond do
-            alloc > r_state(state, :sys_mem_watermark) * total ->
-              set_alarm(:system_memory_high_watermark, [])
-
-            true ->
-              clear_alarm(:system_memory_high_watermark)
-          end
-
-          case r_state(state, :sys_only) do
-            false ->
-              {pid, bytes} = get_worst_memory_user()
-              threshold = r_state(state, :proc_mem_watermark) * total
-
-              cond do
-                bytes > threshold ->
-                  set_alarm(:process_memory_high_watermark, pid)
-
+    state2 = (case (:lists.member(:reg,
+                                    r_state(state, :pending))) do
                 true ->
-                  clear_alarm(:process_memory_high_watermark)
-              end
-
-              r_state(state,
-                mem_usage: {alloc, total},
-                worst_mem_user: {pid, bytes}
-              )
-
-            true ->
-              r_state(state, mem_usage: {alloc, total})
-          end
-
-        false ->
-          state
-      end
-
+                  cond do
+                    alloc > r_state(state, :sys_mem_watermark) * total ->
+                      set_alarm(:system_memory_high_watermark, [])
+                    true ->
+                      clear_alarm(:system_memory_high_watermark)
+                  end
+                  case (r_state(state, :sys_only)) do
+                    false ->
+                      {pid, bytes} = get_worst_memory_user()
+                      threshold = r_state(state, :proc_mem_watermark) * total
+                      cond do
+                        bytes > threshold ->
+                          set_alarm(:process_memory_high_watermark, pid)
+                        true ->
+                          clear_alarm(:process_memory_high_watermark)
+                      end
+                      r_state(state, mem_usage: {alloc, total}, 
+                                 worst_mem_user: {pid, bytes})
+                    true ->
+                      r_state(state, mem_usage: {alloc, total})
+                  end
+                false ->
+                  state
+              end)
     worst = r_state(state2, :worst_mem_user)
-
-    sysMemUsage =
-      get_ext_memory_usage(
-        r_state(state2, :os),
-        {alloc, total}
-      )
-
-    reply(r_state(state2, :pending), {total, alloc, worst}, sysMemUsage)
-
-    _ =
-      case :lists.member(:reg, r_state(state, :pending)) do
-        true ->
-          time =
-            case r_state(state2, :timeout) - timeSpent do
-              mS when mS < 0 ->
-                0
-
-              mS ->
-                mS
-            end
-
-          :erlang.send_after(time, self(), :time_to_collect)
-
-        false ->
-          :ignore
-      end
-
-    {:noreply, r_state(state2, wd_timer: :undefined, pending: [])}
+    sysMemUsage = get_ext_memory_usage(r_state(state2, :os),
+                                         {alloc, total})
+    reply(r_state(state2, :pending), {total, alloc, worst},
+            sysMemUsage)
+    _ = (case (:lists.member(:reg, r_state(state, :pending))) do
+           true ->
+             time = (case (r_state(state2, :timeout) - timeSpent) do
+                       mS when mS < 0 ->
+                         0
+                       mS ->
+                         mS
+                     end)
+             :erlang.send_after(time, self(), :time_to_collect)
+           false ->
+             :ignore
+         end)
+    {:noreply,
+       r_state(state2, wd_timer: :undefined,  pending: [])}
   end
 
   def handle_info({:EXIT, pid, :normal}, state) when is_pid(pid) do
@@ -602,40 +476,28 @@ defmodule :m_memsup do
     cond do
       r_state(state, :port_mode) ->
         send(r_state(state, :pid), :cancel)
-
       true ->
         :erlang.exit(r_state(state, :pid), :cancel)
     end
-
     flush(:collected_sys)
     str = 'OS_MON (memsup) timeout, no data collected~n'
     :error_logger.warning_msg(str)
-
-    reply(
-      r_state(state, :pending),
-      dummy_reply(:get_memory_data, r_state(state, :sys_only)),
-      dummy_reply(:get_system_memory_data)
-    )
-
-    _ =
-      case :lists.member(:reg, r_state(state, :pending)) do
-        true ->
-          time =
-            case r_state(state, :timeout) - r_state(state, :helper_timeout) do
-              mS when mS < 0 ->
-                0
-
-              mS ->
-                mS
-            end
-
-          :erlang.send_after(time, self(), :time_to_collect)
-
-        false ->
-          :ignore
-      end
-
-    {:noreply, r_state(state, wd_timer: :undefined, pending: [])}
+    reply(r_state(state, :pending),
+            dummy_reply(:get_memory_data, r_state(state, :sys_only)),
+            dummy_reply(:get_system_memory_data))
+    _ = (case (:lists.member(:reg, r_state(state, :pending))) do
+           true ->
+             time = (case (r_state(state, :timeout) - r_state(state, :helper_timeout)) do
+                       mS when mS < 0 ->
+                         0
+                       mS ->
+                         mS
+                     end)
+             :erlang.send_after(time, self(), :time_to_collect)
+           false ->
+             :ignore
+         end)
+    {:noreply, r_state(state, wd_timer: :undefined,  pending: [])}
   end
 
   def handle_info({:EXIT, pid, :cancel}, state) when is_pid(pid) do
@@ -643,15 +505,12 @@ defmodule :m_memsup do
   end
 
   def handle_info({:collected_ext_sys, sysMemUsage}, state) do
-    :ok =
-      :erlang.cancel_timer(
-        r_state(state, :ext_wd_timer),
-        [{:async, true}]
-      )
-
+    :ok = :erlang.cancel_timer(r_state(state, :ext_wd_timer),
+                                 [{:async, true}])
     flush(:ext_collection_timeout)
     reply(r_state(state, :ext_pending), :undef, sysMemUsage)
-    {:noreply, r_state(state, ext_wd_timer: :undefined, ext_pending: [])}
+    {:noreply,
+       r_state(state, ext_wd_timer: :undefined,  ext_pending: [])}
   end
 
   def handle_info(:ext_collection_timeout, state) do
@@ -661,7 +520,8 @@ defmodule :m_memsup do
     :error_logger.warning_msg(str)
     sysMemUsage = dummy_reply(:get_system_memory_data)
     reply(r_state(state, :ext_pending), :undef, sysMemUsage)
-    {:noreply, r_state(state, ext_wd_timer: :undefined, ext_pending: [])}
+    {:noreply,
+       r_state(state, ext_wd_timer: :undefined,  ext_pending: [])}
   end
 
   def handle_info({:EXIT, pid, reason}, state) when is_pid(pid) do
@@ -676,35 +536,26 @@ defmodule :m_memsup do
     cond do
       r_state(state, :port_mode) ->
         send(r_state(state, :pid), :close)
-
       true ->
         :ok
     end
-
     clear_alarms()
     :ok
   end
 
-  def format_status(
-        _Opt,
-        [_PDict, r_state(timeout: timeout, mem_usage: memUsage, worst_mem_user: worstMemUser)]
-      ) do
+  def format_status(_Opt,
+           [_PDict, r_state(timeout: timeout, mem_usage: memUsage,
+                        worst_mem_user: worstMemUser)]) do
     {allocated, total} = memUsage
-
-    worstMemFormat =
-      case worstMemUser do
-        {pid, mem} ->
-          [{'Pid', pid}, {'Memory', mem}]
-
-        :undefined ->
-          :undefined
-      end
-
-    [
-      {:data, [{'Timeout', timeout}]},
-      {:items, {'Memory Usage', [{'Allocated', allocated}, {'Total', total}]}},
-      {:items, {'Worst Memory User', worstMemFormat}}
-    ]
+    worstMemFormat = (case (worstMemUser) do
+                        {pid, mem} ->
+                          [{'Pid', pid}, {'Memory', mem}]
+                        :undefined ->
+                          :undefined
+                      end)
+    [{:data, [{'Timeout', timeout}]}, {:items,
+                                 {'Memory Usage', [{'Allocated', allocated}, {'Total', total}]}},
+                                  {:items, {'Worst Memory User', worstMemFormat}}]
   end
 
   defp get_os_wordsize({:unix, :sunos}) do
@@ -750,62 +601,46 @@ defmodule :m_memsup do
 
   defp get_os_wordsize_with_uname() do
     string = clean_string(:os.cmd('uname -m'))
-
-    case string do
+    case (string) do
       'x86_64' ->
         64
-
       'sparc64' ->
         64
-
       'amd64' ->
         64
-
       'ppc64' ->
         64
-
       'ppc64le' ->
         64
-
       's390x' ->
         64
-
       'aarch64' ->
         64
-
+      'arm64' ->
+        64
       _ ->
         32
     end
   end
 
   defp clean_string(string) do
-    :lists.flatten(
-      :string.lexemes(
-        string,
-        [[?\r, ?\n] | '\n\t ']
-      )
-    )
+    :lists.flatten(:string.lexemes(string,
+                                     [[?\r, ?\n] | '\n\t ']))
   end
 
   defp reply(pending, memUsage, sysMemUsage) do
-    :lists.foreach(
-      fn
-        :reg ->
-          :ignore
-
-        {:reg, from} ->
-          :gen_server.reply(from, memUsage)
-
-        {:ext, from} ->
-          :gen_server.reply(from, sysMemUsage)
-      end,
-      :lists.reverse(pending)
-    )
+    :lists.foreach(fn :reg ->
+                        :ignore
+                      {:reg, from} ->
+                        :gen_server.reply(from, memUsage)
+                      {:ext, from} ->
+                        :gen_server.reply(from, sysMemUsage)
+                   end,
+                     :lists.reverse(pending))
   end
 
-  defp get_memory_usage({:unix, oSname})
-       when oSname == :freebsd or
-              oSname == :dragonfly do
+  defp get_memory_usage({:unix, oSname}) when oSname == :freebsd or
+                                  oSname == :dragonfly do
     pageSize = freebsd_sysctl('vm.stats.vm.v_page_size')
     pageCount = freebsd_sysctl('vm.stats.vm.v_page_count')
     freeCount = freebsd_sysctl('vm.stats.vm.v_free_count')
@@ -816,122 +651,111 @@ defmodule :m_memsup do
 
   defp get_memory_usage({:win32, _OSname}) do
     [result | _] = :os_mon_sysinfo.get_mem_info()
-
-    {:ok, [_MemLoad, totPhys, availPhys, _TotPage, _AvailPage, _TotV, _AvailV], _RestStr} =
-      :io_lib.fread('~d~d~d~d~d~d~d', result)
-
+    {:ok,
+       [_MemLoad, totPhys, availPhys, _TotPage, _AvailPage,
+                                                    _TotV, _AvailV],
+       _RestStr} = :io_lib.fread('~d~d~d~d~d~d~d', result)
     {totPhys - availPhys, totPhys}
   end
 
   defp freebsd_sysctl(def__) do
-    :erlang.list_to_integer(:os.cmd('/sbin/sysctl -n ' ++ def__) -- '\n')
+    :erlang.list_to_integer(:os.cmd(('/sbin/sysctl -n ' ++ def__)) -- '\n')
   end
 
   defp get_ext_memory_usage(oS, {alloc, total}) do
-    case oS do
+    case (oS) do
       {:win32, _} ->
-        [{:total_memory, total}, {:free_memory, total - alloc}, {:system_total_memory, total}]
-
+        [{:total_memory, total}, {:free_memory, total - alloc},
+                                     {:system_total_memory, total}]
       {:unix, :linux} ->
-        [{:total_memory, total}, {:free_memory, total - alloc}, {:system_total_memory, total}]
-
+        [{:total_memory, total}, {:free_memory, total - alloc},
+                                     {:system_total_memory, total}]
       {:unix, :freebsd} ->
-        [{:total_memory, total}, {:free_memory, total - alloc}, {:system_total_memory, total}]
-
+        [{:total_memory, total}, {:free_memory, total - alloc},
+                                     {:system_total_memory, total}]
       {:unix, :dragonfly} ->
-        [{:total_memory, total}, {:free_memory, total - alloc}, {:system_total_memory, total}]
-
+        [{:total_memory, total}, {:free_memory, total - alloc},
+                                     {:system_total_memory, total}]
       _ ->
         :dummy
     end
   end
 
-  defp port_init(iSMD) do
+  defp port_init() do
     :erlang.process_flag(:trap_exit, true)
     port = start_portprogram()
-    port_idle(port, iSMD)
+    port_idle(port)
   end
 
   defp start_portprogram() do
     :os_mon.open_port('memsup', [{:packet, 1}])
   end
 
-  defp port_idle(port, iSMD) do
+  defp port_shutdown(port) do
+    send(port, {self(), {:command, [3]}})
+    send(port, {self(), :close})
+  end
+
+  defp port_idle(port) do
     receive do
       {memsup, :collect_sys} ->
         send(port, {self(), {:command, [1]}})
-        get_memory_usage(port, :undefined, memsup, iSMD)
-
+        get_memory_usage(port, :undefined, memsup)
       {memsup, :collect_ext_sys} ->
         send(port, {self(), {:command, [2]}})
-        get_ext_memory_usage(port, %{}, memsup, iSMD)
-
+        get_ext_memory_usage(port, %{}, memsup)
       :cancel ->
-        port_idle(port, iSMD)
-
+        port_idle(port)
       :ext_cancel ->
-        port_idle(port, iSMD)
-
+        port_idle(port)
       :close ->
-        :erlang.port_close(port)
-
+        port_shutdown(port)
       {^port, {:data, data}} ->
         exit({:port_error, data})
-
       {:EXIT, ^port, reason} ->
         exit({:port_died, reason})
-
       {:EXIT, _Memsup, _Reason} ->
-        :erlang.port_close(port)
+        port_shutdown(port)
     end
   end
 
-  defp get_memory_usage(port, alloc, memsup, iSMD) do
+  defp get_memory_usage(port, alloc, memsup) do
     receive do
       {^port, {:data, data}} when alloc == :undefined ->
-        get_memory_usage(port, :erlang.list_to_integer(data, 16), memsup, iSMD)
-
+        get_memory_usage(port,
+                           :erlang.list_to_integer(data, 16), memsup)
       {^port, {:data, data}} ->
         total = :erlang.list_to_integer(data, 16)
         send(memsup, {:collected_sys, {alloc, total}})
-        port_idle(port, iSMD)
-
+        port_idle(port)
       :cancel ->
-        get_memory_usage_cancelled(port, alloc, iSMD)
-
+        get_memory_usage_cancelled(port, alloc)
       :close ->
-        :erlang.port_close(port)
-
+        port_shutdown(port)
       {:EXIT, ^port, reason} ->
         exit({:port_died, reason})
-
       {:EXIT, _Memsup, _Reason} ->
-        :erlang.port_close(port)
+        port_shutdown(port)
     end
   end
 
-  defp get_memory_usage_cancelled(port, alloc, iSMD) do
+  defp get_memory_usage_cancelled(port, alloc) do
     receive do
       {^port, {:data, _Data}} when alloc == :undefined ->
-        get_memory_usage_cancelled(port, 0, iSMD)
-
+        get_memory_usage_cancelled(port, 0)
       {^port, {:data, _Data}} ->
-        port_idle(port, iSMD)
-
+        port_idle(port)
       :close ->
-        :erlang.port_close(port)
-
+        port_shutdown(port)
       {:EXIT, ^port, reason} ->
         exit({:port_died, reason})
-
       {:EXIT, _Memsup, _Reason} ->
-        :erlang.port_close(port)
+        port_shutdown(port)
     end
   end
 
   defp tag2atag(port, tag) do
     tab = :persistent_term.get(:memsup_ext_memory_type_map__)
-
     try do
       :maps.get(tag, tab)
     catch
@@ -940,100 +764,73 @@ defmodule :m_memsup do
     end
   end
 
-  defp get_ext_memory_usage(port, accum, memsup, iSMD) do
+  defp get_ext_memory_usage(port, accum, memsup) do
     receive do
       {^port, {:data, [0]}} ->
         send(memsup, {:collected_ext_sys, :maps.to_list(accum)})
-        port_idle(port, iSMD)
-
-      {^port, {:data, [11]}} when iSMD == false ->
-        get_ext_memory_usage(tag2atag(port, 11), port, accum, memsup, iSMD, true)
-
-      {^port, {:data, [12]}} when iSMD == false ->
-        get_ext_memory_usage(tag2atag(port, 12), port, accum, memsup, iSMD, true)
-
+        port_idle(port)
       {^port, {:data, [tag]}} ->
-        get_ext_memory_usage(tag2atag(port, tag), port, accum, memsup, iSMD, false)
-
+        get_ext_memory_usage(tag2atag(port, tag), port, accum,
+                               memsup)
       :ext_cancel ->
-        get_ext_memory_usage_cancelled(port, iSMD)
-
+        get_ext_memory_usage_cancelled(port)
       :close ->
-        :erlang.port_close(port)
-
+        port_shutdown(port)
       {:EXIT, ^port, reason} ->
         exit({:port_died, reason})
-
       {:EXIT, _Memsup, _Reason} ->
-        :erlang.port_close(port)
+        port_shutdown(port)
     end
   end
 
-  defp get_ext_memory_usage_cancelled(port, iSMD) do
+  defp get_ext_memory_usage_cancelled(port) do
     receive do
       {^port, {:data, [0]}} ->
-        port_idle(port, iSMD)
-
+        port_idle(port)
       {^port, {:data, [tag]}} ->
-        get_ext_memory_usage_cancelled(tag2atag(port, tag), port, iSMD)
-
+        get_ext_memory_usage_cancelled(tag2atag(port, tag),
+                                         port)
       :close ->
-        :erlang.port_close(port)
-
+        port_shutdown(port)
       {:EXIT, ^port, reason} ->
         exit({:port_died, reason})
-
       {:EXIT, _Memsup, _Reason} ->
-        :erlang.port_close(port)
+        port_shutdown(port)
     end
   end
 
-  defp get_ext_memory_usage(aTag, port, accum0, memsup, iSMD, drop) do
+  defp get_ext_memory_usage(aTag, port, accum0, memsup) do
     receive do
-      {^port, {:data, _Data}} when drop == true ->
-        get_ext_memory_usage(port, accum0, memsup, iSMD)
-
-      {^port, {:data, data}} when drop == false ->
+      {^port, {:data, data}} ->
         value = :erlang.list_to_integer(data, 16)
-
-        accum =
-          case :maps.get(aTag, accum0, :undefined) do
-            :undefined ->
-              :maps.put(aTag, value, accum0)
-
-            prevValue ->
-              :maps.put(aTag, value + prevValue, accum0)
-          end
-
-        get_ext_memory_usage(port, accum, memsup, iSMD)
-
+        accum = (case (:maps.get(aTag, accum0, :undefined)) do
+                   :undefined ->
+                     :maps.put(aTag, value, accum0)
+                   prevValue ->
+                     :maps.put(aTag, value + prevValue, accum0)
+                 end)
+        get_ext_memory_usage(port, accum, memsup)
       :cancel ->
-        get_ext_memory_usage_cancelled(aTag, port, iSMD)
-
+        get_ext_memory_usage_cancelled(aTag, port)
       :close ->
-        :erlang.port_close(port)
-
+        port_shutdown(port)
       {:EXIT, ^port, reason} ->
         exit({:port_died, reason})
-
       {:EXIT, _Memsup, _Reason} ->
-        :erlang.port_close(port)
+        port_shutdown(port)
     end
   end
 
-  defp get_ext_memory_usage_cancelled(_ATag, port, iSMD) do
+  defp get_ext_memory_usage_cancelled(_ATag, port) do
     receive do
       {^port, {:data, _Data}} ->
-        get_ext_memory_usage_cancelled(port, iSMD)
-
+        get_ext_memory_usage_cancelled(port)
       :close ->
-        :erlang.port_close(port)
-
+        port_shutdown(port)
       {:EXIT, ^port, reason} ->
         exit({:port_died, reason})
-
       {:EXIT, _Memsup, _Reason} ->
-        :erlang.port_close(port)
+        port_shutdown(port)
     end
   end
 
@@ -1042,13 +839,11 @@ defmodule :m_memsup do
   end
 
   defp get_worst_memory_user([pid | pids], maxPid, maxMemBytes) do
-    case process_memory(pid) do
+    case (process_memory(pid)) do
       :undefined ->
         get_worst_memory_user(pids, maxPid, maxMemBytes)
-
       memoryBytes when memoryBytes > maxMemBytes ->
         get_worst_memory_user(pids, pid, memoryBytes)
-
       _MemoryBytes ->
         get_worst_memory_user(pids, maxPid, maxMemBytes)
     end
@@ -1059,20 +854,18 @@ defmodule :m_memsup do
   end
 
   defp process_memory(pid) do
-    case :erlang.process_info(pid, :memory) do
+    case (:erlang.process_info(pid, :memory)) do
       {:memory, bytes} ->
         bytes
-
       :undefined ->
         :undefined
     end
   end
 
   defp set_alarm(alarmId, alarmDescr) do
-    case :erlang.get(alarmId) do
+    case (:erlang.get(alarmId)) do
       :set ->
         :ok
-
       :undefined ->
         :alarm_handler.set_alarm({alarmId, alarmDescr})
         :erlang.put(alarmId, :set)
@@ -1080,30 +873,25 @@ defmodule :m_memsup do
   end
 
   defp clear_alarm(alarmId) do
-    case :erlang.get(alarmId) do
+    case (:erlang.get(alarmId)) do
       :set ->
         :alarm_handler.clear_alarm(alarmId)
         :erlang.erase(alarmId)
-
       _ ->
         :ok
     end
   end
 
   defp clear_alarms() do
-    :lists.foreach(
-      fn
-        {:system_memory_high_watermark = id, :set} ->
-          :alarm_handler.clear_alarm(id)
-
-        {:process_memory_high_watermark = id, :set} ->
-          :alarm_handler.clear_alarm(id)
-
-        _Other ->
-          :ignore
-      end,
-      :erlang.get()
-    )
+    :lists.foreach(fn {:system_memory_high_watermark = id,
+                         :set} ->
+                        :alarm_handler.clear_alarm(id)
+                      {:process_memory_high_watermark = id, :set} ->
+                        :alarm_handler.clear_alarm(id)
+                      _Other ->
+                        :ignore
+                   end,
+                     :erlang.get())
   end
 
   defp minutes_to_ms(minutes) do
@@ -1122,12 +910,11 @@ defmodule :m_memsup do
     receive do
       {^msg, _} ->
         true
-
       ^msg ->
         true
-    after
-      0 ->
-        true
+    after 0 ->
+      true
     end
   end
+
 end

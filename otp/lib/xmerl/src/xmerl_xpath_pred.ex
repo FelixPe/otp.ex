@@ -1,172 +1,94 @@
 defmodule :m_xmerl_xpath_pred do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_xmlDecl, :xmlDecl,
-    vsn: :undefined,
-    encoding: :undefined,
-    standalone: :undefined,
-    attributes: :undefined
-  )
-
-  Record.defrecord(:r_xmlAttribute, :xmlAttribute,
-    name: :undefined,
-    expanded_name: [],
-    nsinfo: [],
-    namespace: [],
-    parents: [],
-    pos: :undefined,
-    language: [],
-    value: :undefined,
-    normalized: :undefined
-  )
-
-  Record.defrecord(:r_xmlNamespace, :xmlNamespace,
-    default: [],
-    nodes: []
-  )
-
-  Record.defrecord(:r_xmlNsNode, :xmlNsNode,
-    parents: [],
-    pos: :undefined,
-    prefix: :undefined,
-    uri: []
-  )
-
-  Record.defrecord(:r_xmlElement, :xmlElement,
-    name: :undefined,
-    expanded_name: [],
-    nsinfo: [],
-    namespace: :EFE_TODO_NESTED_RECORD,
-    parents: [],
-    pos: :undefined,
-    attributes: [],
-    content: [],
-    language: '',
-    xmlbase: '',
-    elementdef: :undeclared
-  )
-
-  Record.defrecord(:r_xmlText, :xmlText,
-    parents: [],
-    pos: :undefined,
-    language: [],
-    value: :undefined,
-    type: :text
-  )
-
-  Record.defrecord(:r_xmlComment, :xmlComment,
-    parents: [],
-    pos: :undefined,
-    language: [],
-    value: :undefined
-  )
-
-  Record.defrecord(:r_xmlPI, :xmlPI,
-    name: :undefined,
-    parents: [],
-    pos: :undefined,
-    value: :undefined
-  )
-
+  Record.defrecord(:r_xmlDecl, :xmlDecl, vsn: :undefined,
+                                   encoding: :undefined, standalone: :undefined,
+                                   attributes: :undefined)
+  Record.defrecord(:r_xmlAttribute, :xmlAttribute, name: :undefined,
+                                        expanded_name: [], nsinfo: [],
+                                        namespace: [], parents: [],
+                                        pos: :undefined, language: [],
+                                        value: :undefined,
+                                        normalized: :undefined)
+  Record.defrecord(:r_xmlNamespace, :xmlNamespace, default: [],
+                                        nodes: [])
+  Record.defrecord(:r_xmlNsNode, :xmlNsNode, parents: [],
+                                     pos: :undefined, prefix: :undefined,
+                                     uri: [])
+  Record.defrecord(:r_xmlElement, :xmlElement, name: :undefined,
+                                      expanded_name: [], nsinfo: [],
+                                      namespace: :EFE_TODO_NESTED_RECORD,
+                                      parents: [], pos: :undefined,
+                                      attributes: [], content: [], language: '',
+                                      xmlbase: '', elementdef: :undeclared)
+  Record.defrecord(:r_xmlText, :xmlText, parents: [],
+                                   pos: :undefined, language: [],
+                                   value: :undefined, type: :text)
+  Record.defrecord(:r_xmlComment, :xmlComment, parents: [],
+                                      pos: :undefined, language: [],
+                                      value: :undefined)
+  Record.defrecord(:r_xmlPI, :xmlPI, name: :undefined,
+                                 parents: [], pos: :undefined,
+                                 value: :undefined)
   Record.defrecord(:r_xmlDocument, :xmlDocument, content: :undefined)
-
-  Record.defrecord(:r_xmlContext, :xmlContext,
-    axis_type: :forward,
-    context_node: :undefined,
-    context_position: 1,
-    nodeset: [],
-    bindings: [],
-    functions: [],
-    namespace: [],
-    whole_document: :undefined
-  )
-
-  Record.defrecord(:r_xmlNode, :xmlNode, type: :element, node: :undefined, parents: [], pos: 1)
-
-  Record.defrecord(:r_xmlObj, :xmlObj,
-    type: :undefined,
-    value: :undefined
-  )
-
-  Record.defrecord(:r_xmerl_fun_states, :xmerl_fun_states,
-    event: :undefined,
-    hook: :undefined,
-    rules: :undefined,
-    fetch: :undefined,
-    cont: :undefined
-  )
-
-  Record.defrecord(:r_xmerl_scanner, :xmerl_scanner,
-    encoding: :undefined,
-    standalone: :no,
-    environment: :prolog,
-    declarations: [],
-    doctype_name: :undefined,
-    doctype_DTD: :internal,
-    comments: true,
-    document: false,
-    default_attrs: false,
-    rules: :undefined,
-    keep_rules: false,
-    namespace_conformant: false,
-    xmlbase: :undefined,
-    xmlbase_cache: :undefined,
-    fetch_path: [],
-    filename: :file_name_unknown,
-    validation: :off,
-    schemaLocation: [],
-    space: :preserve,
-    event_fun: :undefined,
-    hook_fun: :undefined,
-    acc_fun: :undefined,
-    fetch_fun: :undefined,
-    close_fun: :undefined,
-    continuation_fun: :undefined,
-    rules_read_fun: :undefined,
-    rules_write_fun: :undefined,
-    rules_delete_fun: :undefined,
-    user_state: :undefined,
-    fun_states: :EFE_TODO_NESTED_RECORD,
-    entity_references: [],
-    text_decl: false,
-    quiet: false,
-    col: 1,
-    line: 1,
-    common_data: []
-  )
-
-  Record.defrecord(:r_xmerl_event, :xmerl_event,
-    event: :undefined,
-    line: :undefined,
-    col: :undefined,
-    pos: :undefined,
-    data: :undefined
-  )
-
-  Record.defrecord(:r_state, :state,
-    context: :EFE_TODO_NESTED_RECORD,
-    acc: []
-  )
-
+  Record.defrecord(:r_xmlContext, :xmlContext, axis_type: :forward,
+                                      context_node: :undefined,
+                                      context_position: 1, nodeset: [],
+                                      bindings: [], functions: [],
+                                      namespace: [], whole_document: :undefined)
+  Record.defrecord(:r_xmlNode, :xmlNode, type: :element,
+                                   node: :undefined, parents: [], pos: 1)
+  Record.defrecord(:r_xmlObj, :xmlObj, type: :undefined,
+                                  value: :undefined)
+  Record.defrecord(:r_xmerl_fun_states, :xmerl_fun_states, event: :undefined,
+                                            hook: :undefined, rules: :undefined,
+                                            fetch: :undefined, cont: :undefined)
+  Record.defrecord(:r_xmerl_scanner, :xmerl_scanner, encoding: :undefined,
+                                         standalone: :no, environment: :prolog,
+                                         declarations: [],
+                                         doctype_name: :undefined,
+                                         doctype_DTD: :internal, comments: true,
+                                         document: false, default_attrs: false,
+                                         rules: :undefined, keep_rules: false,
+                                         namespace_conformant: false,
+                                         xmlbase: :undefined,
+                                         xmlbase_cache: :undefined,
+                                         fetch_path: [],
+                                         filename: :file_name_unknown,
+                                         validation: :off, schemaLocation: [],
+                                         space: :preserve,
+                                         event_fun: :undefined,
+                                         hook_fun: :undefined,
+                                         acc_fun: :undefined,
+                                         fetch_fun: :undefined,
+                                         close_fun: :undefined,
+                                         continuation_fun: :undefined,
+                                         rules_read_fun: :undefined,
+                                         rules_write_fun: :undefined,
+                                         rules_delete_fun: :undefined,
+                                         user_state: :undefined,
+                                         fun_states: :EFE_TODO_NESTED_RECORD,
+                                         entity_references: [],
+                                         text_decl: false, quiet: false, col: 1,
+                                         line: 1, common_data: [],
+                                         allow_entities: true)
+  Record.defrecord(:r_xmerl_event, :xmerl_event, event: :undefined,
+                                       line: :undefined, col: :undefined,
+                                       pos: :undefined, data: :undefined)
+  Record.defrecord(:r_state, :state, context: :EFE_TODO_NESTED_RECORD,
+                                 acc: [])
   def eval(expr, c = r_xmlContext(context_node: r_xmlNode(pos: pos))) do
     obj = expr(expr, c)
-
-    res =
-      case r_xmlObj(obj, :type) do
-        :number when r_xmlObj(obj, :value) == pos ->
-          true
-
-        :number ->
-          false
-
-        :boolean ->
-          r_xmlObj(obj, :value)
-
-        _ ->
-          mk_boolean(c, obj)
-      end
-
+    res = (case (r_xmlObj(obj, :type)) do
+             :number when r_xmlObj(obj, :value) == pos ->
+               true
+             :number ->
+               false
+             :boolean ->
+               r_xmlObj(obj, :value)
+             _ ->
+               mk_boolean(c, obj)
+           end)
     res
   end
 
@@ -200,7 +122,7 @@ defmodule :m_xmerl_xpath_pred do
 
   defp expr({:negative, e}, c) do
     n = mk_number(c, e)
-    -n
+    - n
   end
 
   defp expr({:number, n}, _C) do
@@ -212,20 +134,19 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   defp expr({:function_call, f, args}, c) do
-    case core_function(f) do
+    case (core_function(f)) do
       {true, f1} ->
         apply(:xmerl_xpath_pred, f1, [c, args])
-
       true ->
         apply(:xmerl_xpath_pred, f, [c, args])
-
       false ->
         exit({:not_a_core_function, f})
     end
   end
 
   defp expr({:path, type, pathExpr}, c) do
-    r_state(context: r_xmlContext(nodeset: nS)) = :xmerl_xpath.eval_path(type, pathExpr, c)
+    r_state(context: r_xmlContext(nodeset: nS)) = :xmerl_xpath.eval_path(type,
+                                                          pathExpr, c)
     r_xmlObj(type: :nodeset, value: nS)
   end
 
@@ -233,131 +154,102 @@ defmodule :m_xmerl_xpath_pred do
     exit({:unknown_expr, expr})
   end
 
-  defp arith_expr(:+, e1, e2, c) do
-    r_xmlObj(
-      type: :number,
-      value: mk_number(c, e1) + mk_number(c, e2)
-    )
+  defp arith_expr(:"+", e1, e2, c) do
+    r_xmlObj(type: :number,
+        value: mk_number(c, e1) + mk_number(c, e2))
   end
 
   defp arith_expr(:-, e1, e2, c) do
-    r_xmlObj(
-      type: :number,
-      value: mk_number(c, e1) - mk_number(c, e2)
-    )
+    r_xmlObj(type: :number,
+        value: mk_number(c, e1) - mk_number(c, e2))
   end
 
-  defp arith_expr(:*, e1, e2, c) do
-    r_xmlObj(
-      type: :number,
-      value: mk_number(c, e1) * mk_number(c, e2)
-    )
+  defp arith_expr(:"*", e1, e2, c) do
+    r_xmlObj(type: :number,
+        value: mk_number(c, e1) * mk_number(c, e2))
   end
 
   defp arith_expr(:div, e1, e2, c) do
-    r_xmlObj(
-      type: :number,
-      value: mk_number(c, e1) / mk_number(c, e2)
-    )
+    r_xmlObj(type: :number,
+        value: mk_number(c, e1) / mk_number(c, e2))
   end
 
   defp arith_expr(:mod, e1, e2, c) do
-    r_xmlObj(
-      type: :number,
-      value: rem(mk_number(c, e1), mk_number(c, e2))
-    )
+    r_xmlObj(type: :number,
+        value: rem(mk_number(c, e1), mk_number(c, e2)))
   end
 
-  defp comp_expr(:>, e1, e2, c) do
+  defp comp_expr(:">", e1, e2, c) do
     n1 = expr(e1, c)
     n2 = expr(e2, c)
-
-    r_xmlObj(
-      type: :boolean,
-      value: compare_ineq_format(n1, n2, c) > compare_ineq_format(n2, n1, c)
-    )
+    r_xmlObj(type: :boolean,
+        value: compare_ineq_format(n1, n2,
+                                     c) > compare_ineq_format(n2, n1, c))
   end
 
-  defp comp_expr(:<, e1, e2, c) do
+  defp comp_expr(:"<", e1, e2, c) do
     n1 = expr(e1, c)
     n2 = expr(e2, c)
-
-    r_xmlObj(
-      type: :boolean,
-      value: compare_ineq_format(n1, n2, c) > compare_ineq_format(n2, n1, c)
-    )
+    r_xmlObj(type: :boolean,
+        value: compare_ineq_format(n1, n2,
+                                     c) > compare_ineq_format(n2, n1, c))
   end
 
-  defp comp_expr(:>=, e1, e2, c) do
+  defp comp_expr(:">=", e1, e2, c) do
     n1 = expr(e1, c)
     n2 = expr(e2, c)
-
-    r_xmlObj(
-      type: :boolean,
-      value: compare_ineq_format(n1, n2, c) > compare_ineq_format(n2, n1, c)
-    )
+    r_xmlObj(type: :boolean,
+        value: compare_ineq_format(n1, n2,
+                                     c) > compare_ineq_format(n2, n1, c))
   end
 
-  defp comp_expr(:<=, e1, e2, c) do
+  defp comp_expr(:"<=", e1, e2, c) do
     n1 = expr(e1, c)
     n2 = expr(e2, c)
-
-    r_xmlObj(
-      type: :boolean,
-      value: compare_ineq_format(n1, n2, c) > compare_ineq_format(n2, n1, c)
-    )
+    r_xmlObj(type: :boolean,
+        value: compare_ineq_format(n1, n2,
+                                     c) > compare_ineq_format(n2, n1, c))
   end
 
-  defp comp_expr(:=, e1, e2, c) do
+  defp comp_expr(:"=", e1, e2, c) do
     n1 = expr(e1, c)
     n2 = expr(e2, c)
-
-    r_xmlObj(
-      type: :boolean,
-      value: compare_eq_format(n1, n2, c) == compare_eq_format(n2, n1, c)
-    )
+    r_xmlObj(type: :boolean,
+        value: compare_eq_format(n1, n2,
+                                   c) == compare_eq_format(n2, n1, c))
   end
 
-  defp comp_expr(:!=, e1, e2, c) do
+  defp comp_expr(:"!=", e1, e2, c) do
     n1 = expr(e1, c)
     n2 = expr(e2, c)
-
-    r_xmlObj(
-      type: :boolean,
-      value: compare_eq_format(n1, n2, c) != compare_eq_format(n2, n1, c)
-    )
+    r_xmlObj(type: :boolean,
+        value: compare_eq_format(n1, n2,
+                                   c) != compare_eq_format(n2, n1, c))
   end
 
   defp bool_expr(:or, e1, e2, c) do
-    r_xmlObj(
-      type: :boolean,
-      value: :erlang.or(mk_boolean(c, e1), mk_boolean(c, e2))
-    )
+    r_xmlObj(type: :boolean,
+        value: :erlang.or(mk_boolean(c, e1), mk_boolean(c, e2)))
   end
 
   defp bool_expr(:and, e1, e2, c) do
-    r_xmlObj(
-      type: :boolean,
-      value:
-        :erlang.and(
-          mk_boolean(c, e1),
-          mk_boolean(c, e2)
-        )
-    )
+    r_xmlObj(type: :boolean,
+        value: :erlang.and(mk_boolean(c, e1),
+                             mk_boolean(c, e2)))
   end
 
   defp compare_eq_format(n1 = r_xmlObj(type: t1), n2 = r_xmlObj(type: t2), c)
-       when t1 == :nodeset or t2 == :nodeset do
+      when t1 == :nodeset or t2 == :nodeset do
     compare_nseq_format(n1, n2, c)
   end
 
   defp compare_eq_format(n1 = r_xmlObj(type: t1), r_xmlObj(type: t2), c)
-       when t1 == :boolean or t2 == :boolean do
+      when t1 == :boolean or t2 == :boolean do
     mk_boolean(c, n1)
   end
 
   defp compare_eq_format(n1 = r_xmlObj(type: t1), r_xmlObj(type: t2), c)
-       when t1 == :number or t2 == :number do
+      when t1 == :number or t2 == :number do
     mk_number(c, n1)
   end
 
@@ -366,7 +258,7 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   defp compare_ineq_format(n1 = r_xmlObj(type: t1), n2 = r_xmlObj(type: t2), c)
-       when t1 == :nodeset or t2 == :nodeset do
+      when t1 == :nodeset or t2 == :nodeset do
     compare_nseq_format(n1, n2, c)
   end
 
@@ -386,11 +278,13 @@ defmodule :m_xmerl_xpath_pred do
     mk_string(c, n1)
   end
 
-  defp compare_nseq_format(n1 = r_xmlObj(type: :nodeset), _N2 = r_xmlObj(type: :number), c) do
+  defp compare_nseq_format(n1 = r_xmlObj(type: :nodeset), _N2 = r_xmlObj(type: :number),
+            c) do
     mk_number(c, string_value(n1))
   end
 
-  defp compare_nseq_format(n1 = r_xmlObj(type: :nodeset), _N2 = r_xmlObj(type: :boolean), c) do
+  defp compare_nseq_format(n1 = r_xmlObj(type: :nodeset), _N2 = r_xmlObj(type: :boolean),
+            c) do
     mk_boolean(c, n1)
   end
 
@@ -522,47 +416,31 @@ defmodule :m_xmerl_xpath_pred do
     wD = r_xmlContext(c, :whole_document)
     nS0 = [wD]
     obj = mk_object(c, arg)
-
-    case r_xmlObj(obj, :type) do
+    case (r_xmlObj(obj, :type)) do
       :nodeset ->
         nodeSet = r_xmlObj(obj, :value)
-
-        idTokens =
-          :lists.foldl(
-            fn n, accX ->
-              strVal = string_value(n)
-              tokensX = id_tokens(strVal)
-              tokensX ++ accX
-            end,
-            [],
-            nodeSet
-          )
-
-        newNodeSet =
-          :xmerl_xpath.axis(
-            :descendant_or_self,
-            fn node ->
-              attribute_test(node, :id, idTokens)
-            end,
-            r_xmlContext(c, nodeset: nS0)
-          )
-
+        idTokens = :lists.foldl(fn n, accX ->
+                                     strVal = string_value(n)
+                                     tokensX = id_tokens(strVal)
+                                     tokensX ++ accX
+                                end,
+                                  [], nodeSet)
+        newNodeSet = :xmerl_xpath.axis(:descendant_or_self,
+                                         fn node ->
+                                              attribute_test(node, :id,
+                                                               idTokens)
+                                         end,
+                                         r_xmlContext(c, nodeset: nS0))
         r_xmlObj(type: :nodeset, value: newNodeSet)
-
       _ ->
         strVal = string_value(r_xmlObj(obj, :value))
         idTokens = id_tokens(strVal)
         nodeSet = [r_xmlDocument(r_xmlNode(wD, :node), :content)]
-
-        newNodeSet =
-          :lists.foldl(
-            fn tok, accX ->
-              select_on_attribute(nodeSet, :id, tok, accX)
-            end,
-            [],
-            idTokens
-          )
-
+        newNodeSet = :lists.foldl(fn tok, accX ->
+                                       select_on_attribute(nodeSet, :id, tok,
+                                                             accX)
+                                  end,
+                                    [], idTokens)
         r_xmlObj(type: :nodeset, value: newNodeSet)
     end
   end
@@ -572,10 +450,9 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   defp attribute_test(r_xmlNode(node: r_xmlElement(attributes: attrs)), key, vals) do
-    case :lists.keysearch(key, r_xmlAttribute(:name), attrs) do
+    case (:lists.keysearch(key, r_xmlAttribute(:name), attrs)) do
       {:value, r_xmlAttribute(value: v)} ->
         :lists.member(v, vals)
-
       _ ->
         false
     end
@@ -617,10 +494,9 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   defp local_name2(name, nSI) do
-    case nSI do
+    case (nSI) do
       {_Prefix, local} ->
         r_xmlObj(type: :string, value: local)
-
       [] ->
         r_xmlObj(type: :string, value: :erlang.atom_to_list(name))
     end
@@ -657,16 +533,14 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   defp ns_uri2(nSI, nS) do
-    case nSI do
+    case (nSI) do
       {prefix, _} ->
-        case :lists.keysearch(prefix, 1, r_xmlNamespace(nS, :nodes)) do
+        case (:lists.keysearch(prefix, 1, r_xmlNamespace(nS, :nodes))) do
           false ->
             r_xmlObj(type: :string, value: [])
-
           {:value, {_K, v}} ->
             string_value(v)
         end
-
       [] ->
         r_xmlObj(type: :string, value: [])
     end
@@ -685,15 +559,12 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   defp name1(nodeSet) do
-    nSVal =
-      case ns_uri(nodeSet) do
-        r_xmlObj(value: nSStr) when nSStr !== [] ->
-          '{' ++ nSStr ++ '}'
-
-        _ ->
-          ''
-      end
-
+    nSVal = (case (ns_uri(nodeSet)) do
+               r_xmlObj(value: nSStr) when nSStr !== [] ->
+                 '{' ++ nSStr ++ '}'
+               _ ->
+                 ''
+             end)
     r_xmlObj(value: localName) = local_name1(nodeSet)
     r_xmlObj(type: :string, value: nSVal ++ localName)
   end
@@ -734,26 +605,18 @@ defmodule :m_xmerl_xpath_pred do
 
   defp string_value(el = r_xmlNode(type: :element)) do
     r_xmlElement(content: c) = r_xmlNode(el, :node)
-
-    textValue = fn
-      r_xmlText(value: t), _Fun ->
-        t
-
-      r_xmlElement(content: cont), fun ->
-        fun.(cont, fun)
-
-      _, _ ->
-        []
-    end
-
+    textValue = fn r_xmlText(value: t), _Fun ->
+                     t
+                   r_xmlElement(content: cont), fun ->
+                     fun.(cont, fun)
+                   _, _ ->
+                     []
+                end
     textDecendants = fn x ->
-      textValue.(x, textValue)
-    end
-
-    r_xmlObj(
-      type: :string,
-      value: :lists.flatten(:lists.map(textDecendants, c))
-    )
+                          textValue.(x, textValue)
+                     end
+    r_xmlObj(type: :string,
+        value: :lists.flatten(:lists.map(textDecendants, c)))
   end
 
   defp string_value(t = r_xmlNode(type: :text)) do
@@ -783,12 +646,9 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   defp string_value(n) when is_float(n) do
-    n1 = round(n * 10_000_000_000_000_000)
-
-    r_xmlObj(
-      type: :string,
-      value: strip_zeroes(:erlang.integer_to_list(n1))
-    )
+    n1 = round(n * 10000000000000000)
+    r_xmlObj(type: :string,
+        value: strip_zeroes(:erlang.integer_to_list(n1)))
   end
 
   defp string_value(str) when is_list(str) do
@@ -820,23 +680,16 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   def concat(c, args = [_, _ | _]) do
-    strings =
-      for a <- args do
-        mk_string(c, a)
-      end
-
+    strings = (for a <- args do
+                 mk_string(c, a)
+               end)
     r_xmlObj(type: :string, value: :lists.concat(strings))
   end
 
   def unquote(:"starts-with")(c, [a1, a2]) do
-    r_xmlObj(
-      type: :boolean,
-      value:
-        :lists.prefix(
-          mk_string(c, a2),
-          mk_string(c, a1)
-        )
-    )
+    r_xmlObj(type: :boolean,
+        value: :lists.prefix(mk_string(c, a2),
+                               mk_string(c, a1)))
   end
 
   def contains(c, [a1, a2]) do
@@ -854,11 +707,9 @@ defmodule :m_xmerl_xpath_pred do
   def unquote(:"substring-after")(c, [a1, a2]) do
     s1 = mk_string(c, a1)
     s2 = mk_string(c, a2)
-
-    case :string.str(s1, s2) do
+    case (:string.str(s1, s2)) do
       0 ->
         r_xmlObj(type: :string, value: [])
-
       pos ->
         r_xmlObj(type: :string, value: :string.substr(s1, pos))
     end
@@ -897,21 +748,16 @@ defmodule :m_xmerl_xpath_pred do
     s1 = mk_string(c, a1)
     s2 = mk_string(c, a2)
     s3 = mk_string(c, a3)
-
-    r_xmlObj(
-      type: :string,
-      value: translate1(s1, translations(s2, s3))
-    )
+    r_xmlObj(type: :string,
+        value: translate1(s1, translations(s2, s3)))
   end
 
   defp translate1([h | t], xls) do
-    case :lists.keysearch(h, 1, xls) do
+    case (:lists.keysearch(h, 1, xls)) do
       {:value, {_, :remove}} ->
         translate1(t, xls)
-
       {:value, {_, :replace, h1}} ->
         [h1 | translate1(t, xls)]
-
       false ->
         [h | translate1(t, xls)]
     end
@@ -953,38 +799,28 @@ defmodule :m_xmerl_xpath_pred do
 
   def lang(c = r_xmlContext(context_node: n), [arg]) do
     s = mk_string(c, arg)
-
-    lang =
-      case n do
-        r_xmlElement(language: l) ->
-          l
-
-        r_xmlAttribute(language: l) ->
-          l
-
-        r_xmlText(language: l) ->
-          l
-
-        r_xmlComment(language: l) ->
-          l
-
-        _ ->
-          []
-      end
-
-    case lang do
+    lang = (case (n) do
+              r_xmlElement(language: l) ->
+                l
+              r_xmlAttribute(language: l) ->
+                l
+              r_xmlText(language: l) ->
+                l
+              r_xmlComment(language: l) ->
+                l
+              _ ->
+                []
+            end)
+    case (lang) do
       [] ->
         r_xmlObj(type: :boolean, value: false)
-
       _ ->
-        r_xmlObj(
-          type: :boolean,
-          value: match_lang(upcase(s), upcase(lang))
-        )
+        r_xmlObj(type: :boolean,
+            value: match_lang(upcase(s), upcase(lang)))
     end
   end
 
-  defp upcase([h | t]) when h >= ?a and h <= ?z do
+  defp upcase([h | t]) when (h >= ?a and h <= ?z) do
     [h + (?A - ?a) | upcase(t)]
   end
 
@@ -1022,23 +858,17 @@ defmodule :m_xmerl_xpath_pred do
 
   def sum(c, [arg]) do
     nS = mk_nodeset(c, arg)
-
-    :lists.foldl(
-      fn n, sum ->
-        sum + mk_number(c, string(c, n))
-      end,
-      0,
-      nS
-    )
+    :lists.foldl(fn n, sum ->
+                      sum + mk_number(c, string(c, n))
+                 end,
+                   0, nS)
   end
 
   def floor(c, [arg]) do
     num = mk_number(c, arg)
-
-    case trunc(num) do
+    case (trunc(num)) do
       num1 when num1 > num ->
         r_xmlObj(type: :number, value: num1 - 1)
-
       num1 ->
         r_xmlObj(type: :number, value: num1)
     end
@@ -1046,35 +876,31 @@ defmodule :m_xmerl_xpath_pred do
 
   def ceiling(c, [arg]) do
     num = mk_number(c, arg)
-
-    case trunc(num) do
+    case (trunc(num)) do
       num1 when num1 < num ->
         r_xmlObj(type: :number, value: num1 + 1)
-
       num1 ->
         r_xmlObj(type: :number, value: num1)
     end
   end
 
   def round(c, [arg]) do
-    case mk_number(c, arg) do
+    case (mk_number(c, arg)) do
       a when is_atom(a) ->
         a
-
       n when is_integer(n) ->
         n
-
       f when is_float(f) ->
         round(f)
     end
   end
 
   defp select_on_attribute([e = r_xmlElement(attributes: attrs) | t], k, v, acc) do
-    case :lists.keysearch(k, r_xmlAttribute(:name), attrs) do
+    case (:lists.keysearch(k, r_xmlAttribute(:name), attrs)) do
       {:value, r_xmlAttribute(value: ^v)} ->
-        acc2 = select_on_attribute(r_xmlElement(e, :content), k, v, [e | acc])
+        acc2 = select_on_attribute(r_xmlElement(e, :content), k, v,
+                                     [e | acc])
         select_on_attribute(t, k, v, acc2)
-
       _ ->
         acc2 = select_on_attribute(r_xmlElement(e, :content), k, v, acc)
         select_on_attribute(t, k, v, acc2)
@@ -1082,7 +908,7 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   defp select_on_attribute([h | t], k, v, acc)
-       when elem(h, 0) === :xmlText do
+      when elem(h, 0) === :xmlText do
     select_on_attribute(t, k, v, acc)
   end
 
@@ -1099,10 +925,9 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   defp mk_nodeset(c0, expr) do
-    case expr(expr, c0) do
+    case (expr(expr, c0)) do
       r_xmlObj(type: :nodeset, value: nS) ->
         nS
-
       other ->
         exit({:expected_nodeset, other})
     end
@@ -1133,12 +958,12 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   defp mk_integer(_C0, r_xmlObj(type: :number, value: v))
-       when is_float(v) do
+      when is_float(v) do
     round(v)
   end
 
   defp mk_integer(_C0, r_xmlObj(type: :number, value: v))
-       when is_integer(v) do
+      when is_integer(v) do
     v
   end
 
@@ -1179,7 +1004,7 @@ defmodule :m_xmerl_xpath_pred do
   end
 
   defp mk_boolean(_C, r_xmlObj(type: :number, value: v))
-       when is_float(v) or is_integer(v) do
+      when is_float(v) or is_integer(v) do
     true
   end
 
@@ -1203,45 +1028,37 @@ defmodule :m_xmerl_xpath_pred do
     mk_boolean(c, expr(expr, c))
   end
 
-  defp normalize([h | t])
-       when h == 32 or h == 13 or h == 10 or
-              h == 9 do
+  defp normalize([h | t]) when h == 32 or h == 13 or h == 10 or
+                          h == 9 do
     normalize(t)
   end
 
   defp normalize(str) do
     contF = fn _ContF, retF, _S ->
-      retF.()
-    end
-
-    normalize(
-      str,
-      r_xmerl_scanner(
-        acc_fun: fn ->
-          exit(:acc_fun)
-        end,
-        event_fun: fn ->
-          exit(:event_fun)
-        end,
-        hook_fun: fn ->
-          exit(:hook_fun)
-        end,
-        continuation_fun: contF
-      ),
-      []
-    )
+                 retF.()
+            end
+    normalize(str,
+                r_xmerl_scanner(acc_fun: fn () ->
+                                exit(:acc_fun)
+                           end,
+                    event_fun: fn () ->
+                                    exit(:event_fun)
+                               end,
+                    hook_fun: fn () ->
+                                   exit(:hook_fun)
+                              end,
+                    continuation_fun: contF),
+                [])
   end
 
-  defp normalize(str = [h | _], s, acc)
-       when h == 32 or
-              h == 13 or h == 10 or h == 9 do
-    case :xmerl_scan.accumulate_whitespace(str, s, :preserve, acc) do
+  defp normalize(str = [h | _], s, acc) when h == 32 or
+                                        h == 13 or h == 10 or h == 9 do
+    case (:xmerl_scan.accumulate_whitespace(str, s,
+                                              :preserve, acc)) do
       {' ' ++ acc1, [], _S1} ->
         :lists.reverse(acc1)
-
       {acc1, [], _S1} ->
         :lists.reverse(acc1)
-
       {acc1, t1, s1} ->
         normalize(t1, s1, acc1)
     end
@@ -1255,59 +1072,53 @@ defmodule :m_xmerl_xpath_pred do
     :lists.reverse(acc)
   end
 
-  defp scan_number([h | t])
-       when h == 32 or h == 13 or h == 10 or
-              h == 9 do
+  defp scan_number([h | t]) when h == 32 or h == 13 or h == 10 or
+                          h == 9 do
     scan_number(t)
   end
 
   defp scan_number('-' ++ t) do
-    case (try do
+    case ((try do
             :xmerl_xpath_scan.scan_number(t)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       {{:number, n}, tail} ->
-        case is_all_white(tail) do
+        case (is_all_white(tail)) do
           true ->
             n
-
           false ->
             :NaN
         end
-
       _Other ->
         :NaN
     end
   end
 
   defp scan_number(t) do
-    case (try do
+    case ((try do
             :xmerl_xpath_scan.scan_number(t)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       {{:number, n}, tail} ->
-        case is_all_white(tail) do
+        case (is_all_white(tail)) do
           true ->
             n
-
           false ->
             :NaN
         end
-
       _Other ->
         :NaN
     end
   end
 
-  defp is_all_white([h | t])
-       when h == 32 or h == 13 or h == 10 or
-              h == 9 do
+  defp is_all_white([h | t]) when h == 32 or h == 13 or h == 10 or
+                          h == 9 do
     is_all_white(t)
   end
 
@@ -1318,4 +1129,5 @@ defmodule :m_xmerl_xpath_pred do
   defp is_all_white([]) do
     true
   end
+
 end

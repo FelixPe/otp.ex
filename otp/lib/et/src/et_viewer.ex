@@ -1,27 +1,15 @@
 defmodule :m_et_viewer do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_event, :event,
-    detail_level: :undefined,
-    trace_ts: :undefined,
-    event_ts: :undefined,
-    from: :undefined,
-    to: :undefined,
-    label: :undefined,
-    contents: :undefined
-  )
-
-  Record.defrecord(:r_filter, :filter,
-    name: :undefined,
-    function: :undefined
-  )
-
+  Record.defrecord(:r_event, :event, detail_level: :undefined,
+                                 trace_ts: :undefined, event_ts: :undefined,
+                                 from: :undefined, to: :undefined,
+                                 label: :undefined, contents: :undefined)
+  Record.defrecord(:r_filter, :filter, name: :undefined,
+                                  function: :undefined)
   def file(fileName) do
-    start_link(
-      [{:trace_client, {:file, fileName}}],
-      :default
-    )
+    start_link([{:trace_client, {:file, fileName}}],
+                 :default)
   end
 
   def start() do
@@ -33,10 +21,8 @@ defmodule :m_et_viewer do
   end
 
   def start(options) do
-    start_link(
-      [{:parent_pid, :undefined} | options],
-      :default
-    )
+    start_link([{:parent_pid, :undefined} | options],
+                 :default)
   end
 
   def start(options, gUI) do
@@ -52,10 +38,9 @@ defmodule :m_et_viewer do
   end
 
   def start_link(options, gUI) do
-    case gUI do
+    case (gUI) do
       :wx ->
         :et_wx_viewer.start_link(options)
-
       :default ->
         start_link(options, which_gui())
     end
@@ -80,4 +65,5 @@ defmodule :m_et_viewer do
   defp call(viewerPid, request) do
     :gen_server.call(viewerPid, request, :infinity)
   end
+
 end

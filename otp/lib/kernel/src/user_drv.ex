@@ -1,915 +1,1154 @@
 defmodule :m_user_drv do
   use Bitwise
-
+  @behaviour :gen_statem
+  require Record
+  Record.defrecord(:r_editor, :editor, port: :undefined,
+                                  file: :undefined, requester: :undefined)
+  Record.defrecord(:r_state, :state, tty: :undefined,
+                                 write: :undefined, read: :undefined,
+                                 shell_started: :new, editor: :undefined,
+                                 user: :undefined, current_group: :undefined,
+                                 groups: :undefined, queue: :undefined)
   def start() do
-    spawn(:user_drv, :server, [:"tty_sl -c -e", {:shell, :start, [:init]}])
-  end
-
-  def start([pname]) do
-    spawn(:user_drv, :server, [pname, {:shell, :start, [:init]}])
-  end
-
-  def start([pname | args]) do
-    spawn(:user_drv, :server, [pname | args])
-  end
-
-  def start(pname) do
-    spawn(:user_drv, :server, [pname, {:shell, :start, [:init]}])
-  end
-
-  def start(pname, shell) do
-    spawn(:user_drv, :server, [pname, shell])
-  end
-
-  def start(iname, oname, shell) do
-    spawn(:user_drv, :server, [iname, oname, shell])
-  end
-
-  def interfaces(userDrv) do
-    case :erlang.process_info(userDrv, :dictionary) do
-      {:dictionary, dict} ->
-        case :lists.keysearch(:current_group, 1, dict) do
-          {:value, gr = {_, group}} when is_pid(group) ->
-            [gr]
-
-          _ ->
-            []
+    case (:init.get_argument(:remsh)) do
+      {:ok, [[node]]} ->
+        start(%{initial_shell: {:remote, node}})
+      {:ok, [[node] | _]} ->
+        case (:logger.allow(:warning, :user_drv)) do
+          true ->
+            :erlang.apply(:logger, :macro_log,
+                            [%{mfa: {:user_drv, :start, 0}, line: 124, file: 'otp/lib/kernel/src/user_drv.erl'},
+                                 :warning, 'Multiple -remsh given to erl, using the first, ~p', [node]])
+          false ->
+            :ok
         end
-
-      _ ->
-        []
+        start(%{initial_shell: {:remote, node}})
+      e when e === :error or e === {:ok, [[]]} ->
+        start(%{})
     end
   end
 
-  def server(pid, shell) when is_pid(pid) do
-    server1(pid, pid, shell)
+  def start_shell() do
+    start_shell(%{})
   end
 
-  def server(pname, shell) do
+  def start_shell(args) do
+    :gen_statem.call(:user_drv, {:start_shell, args})
+  end
+
+  def whereis_group() do
+    {:dictionary,
+       dict} = :erlang.process_info(:erlang.whereis(:user_drv),
+                                      :dictionary)
+    :proplists.get_value(:current_group, dict)
+  end
+
+  def start([:"tty_sl -c -e", shell]) do
+    start(%{initial_shell: shell})
+  end
+
+  def start(args) when is_map(args) do
+    case (:gen_statem.start({:local, :user_drv}, :user_drv,
+                              args, [])) do
+      {:ok, pid} ->
+        pid
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def callback_mode() do
+    :state_functions
+  end
+
+  def init(args) do
     :erlang.process_flag(:trap_exit, true)
-
-    case (try do
-            :erlang.open_port({:spawn, pname}, [:eof])
-          catch
-            :error, e -> {:EXIT, {e, __STACKTRACE__}}
-            :exit, e -> {:EXIT, e}
-            e -> e
-          end) do
-      {:EXIT, _} ->
-        :user.start()
-
-      port ->
-        server1(port, port, shell)
-    end
-  end
-
-  def server(iname, oname, shell) do
-    :erlang.process_flag(:trap_exit, true)
-
-    case (try do
-            :erlang.open_port({:spawn, iname}, [:eof])
-          catch
-            :error, e -> {:EXIT, {e, __STACKTRACE__}}
-            :exit, e -> {:EXIT, e}
-            e -> e
-          end) do
-      {:EXIT, _} ->
-        :user.start()
-
-      iport ->
-        oport = :erlang.open_port({:spawn, oname}, [:eof])
-        server1(iport, oport, shell)
-    end
-  end
-
-  defp server1(iport, oport, shell) do
-    :erlang.put(:eof, false)
-    user = start_user()
-    gr1 = gr_add_cur(gr_new(), user, {})
-
-    {curr, shell1} =
-      case :init.get_argument(:remsh) do
-        {:ok, [[node]]} ->
-          aNode =
-            cond do
-              node() === :nonode@nohost ->
-                _ = :net_kernel.start([:undefined, :shortnames])
-
-                nodeName =
-                  append_hostname(
-                    node,
-                    :net_kernel.nodename()
-                  )
-
-                true = :net_kernel.connect_node(nodeName)
-                nodeName
-
-              true ->
-                append_hostname(node, node())
-            end
-
-          rShell = {aNode, :shell, :start, []}
-          rGr = :group.start(self(), rShell, rem_sh_opts(aNode))
-          {rGr, rShell}
-
-        e when e === :error or e === {:ok, [[]]} ->
-          {:group.start(self(), shell), shell}
+    isTTY = :prim_tty.isatty(:stdin) === true and :prim_tty.isatty(:stdout) === true
+    startShell = :maps.get(:initial_shell, args,
+                             :undefined) !== :noshell
+    oldShell = :maps.get(:initial_shell, args,
+                           :undefined) === :oldshell
+    try do
+      cond do
+        not isTTY and startShell or oldShell ->
+          :erlang.error(:enotsup)
+        (isTTY and startShell) ->
+          tTYState = :prim_tty.init(%{})
+          init_standard_error(tTYState, true)
+          {:ok, :init, {args, r_state(user: start_user())},
+             {:next_event, :internal, tTYState}}
+        true ->
+          tTYState = :prim_tty.init(%{input:
+                                      :maps.get(:input, args, true),
+                                        tty: false})
+          init_standard_error(tTYState, false)
+          {:ok, :init, {args, r_state(user: start_user())},
+             {:next_event, :internal, tTYState}}
       end
-
-    :erlang.put(:current_group, curr)
-    gr = gr_add_cur(gr1, curr, shell1)
-
-    io_request(
-      {:put_chars, :unicode,
-       flatten(
-         :io_lib.format(
-           '~ts\n',
-           [:erlang.system_info(:system_version)]
-         )
-       )},
-      iport,
-      oport
-    )
-
-    server_loop(iport, oport, curr, user, gr, {false, :queue.new()})
-  end
-
-  defp append_hostname(node, localNode) do
-    case :string.find(node, '@') do
-      :nomatch ->
-        :erlang.list_to_atom(
-          node ++
-            :string.find(
-              :erlang.atom_to_list(localNode),
-              '@'
-            )
-        )
-
-      _ ->
-        :erlang.list_to_atom(node)
+    catch
+      :error, :enotsup ->
+        catchTTYState = :prim_tty.init(%{tty: false})
+        init_standard_error(catchTTYState, false)
+        {:ok, :init,
+           {args, r_state(shell_started: :old, user: start_user())},
+           {:next_event, :internal, catchTTYState}}
     end
   end
 
-  defp rem_sh_opts(node) do
-    [
-      {:expand_fun,
-       fn b ->
-         :rpc.call(node, :edlin_expand, :expand, [b])
-       end}
-    ]
+  defp init_standard_error(tTY, newlineCarriageReturn) do
+    encoding = (case (:prim_tty.unicode(tTY)) do
+                  true ->
+                    :unicode
+                  false ->
+                    :latin1
+                end)
+    :ok = :io.setopts(:standard_error,
+                        [{:encoding, encoding}, {:onlcr,
+                                                   newlineCarriageReturn}])
   end
 
-  defp start_user() do
-    case :erlang.whereis(:user_drv) do
-      :undefined ->
-        :erlang.register(:user_drv, self())
+  def init(:internal, tTYState,
+           {args, state = r_state(user: user)}) do
+    :erlang.put(:"$ancestors", [user | :erlang.get(:"$ancestors")])
+    %{read: readHandle,
+        write: writeHandle} = :prim_tty.handles(tTYState)
+    newState = r_state(state, tty: tTYState,  read: readHandle, 
+                          write: writeHandle,  user: user, 
+                          queue: {false, :queue.new()}, 
+                          groups: gr_add_cur(gr_new(), user, {}))
+    case (args) do
+      %{initial_shell: :noshell} ->
+        init_noshell(newState)
+      %{initial_shell: {:remote, node}} ->
+        initialShell = {:shell, :start, []}
+        exit_on_remote_shell_error(node, initialShell,
+                                     init_remote_shell(newState, node,
+                                                         initialShell))
+      %{initial_shell: {:remote, node, initialShell}} ->
+        exit_on_remote_shell_error(node, initialShell,
+                                     init_remote_shell(newState, node,
+                                                         initialShell))
+      %{initial_shell: :oldshell} ->
+        :old = r_state(state, :shell_started)
+        init_local_shell(newState, {:shell, :start, []})
+      %{initial_shell: initialShell} ->
+        init_local_shell(newState, initialShell)
+      _ ->
+        init_local_shell(newState, {:shell, :start, [:init]})
+    end
+  end
 
+  defp exit_on_remote_shell_error(remoteNode, _, {:error, :noconnection}) do
+    :io.format(:standard_error, 'Could not connect to ~p\n', [remoteNode])
+    :erlang.halt(1)
+  end
+
+  defp exit_on_remote_shell_error(remoteNode, {m, _, _}, {:error, reason}) do
+    :io.format(:standard_error, 'Could not load ~p on ~p (~p)\n', [remoteNode, m, reason])
+    :erlang.halt(1)
+  end
+
+  defp exit_on_remote_shell_error(_, _, result) do
+    result
+  end
+
+  defp init_noshell(state) do
+    init_shell(r_state(state, shell_started: false), '')
+  end
+
+  defp init_remote_shell(state, node, {m, f, a}) do
+    case (:net_kernel.get_state()) do
+      %{started: :no} ->
+        {:ok, _} = :net_kernel.start([:undefined, :shortnames])
+        :ok
       _ ->
         :ok
     end
+    localNode = (case (:net_kernel.get_state()) do
+                   %{name_type: :dynamic} ->
+                     :net_kernel.nodename()
+                   %{name_type: :static} ->
+                     node()
+                 end)
+    remoteNode = (case (:string.find(node, '@')) do
+                    :nomatch ->
+                      :erlang.list_to_atom(node ++ :string.find(:erlang.atom_to_list(localNode),
+                                                                  '@'))
+                    _ ->
+                      :erlang.list_to_atom(node)
+                  end)
+    case (:net_kernel.connect_node(remoteNode)) do
+      true ->
+        case (:erpc.call(remoteNode, :code, :ensure_loaded,
+                           [m])) do
+          {:error, reason} when reason !== :embedded ->
+            {:error, reason}
+          _ ->
+            case (:erpc.call(remoteNode, :net_kernel,
+                               :get_net_ticktime, [])) do
+              {:ongoing_change_to, netTickTime} ->
+                _ = :net_kernel.set_net_ticktime(netTickTime)
+                :ok
+              netTickTime ->
+                _ = :net_kernel.set_net_ticktime(netTickTime)
+                :ok
+            end
+            rShell = {remoteNode, m, f, a}
+            slogan = (case (:erpc.call(remoteNode, :application,
+                                         :get_env,
+                                         [:stdlib, :shell_slogan,
+                                                       :erpc.call(remoteNode,
+                                                                    :erlang,
+                                                                    :system_info,
+                                                                    [:system_version])])) do
+                        fun when is_function(fun, 0) ->
+                          :erpc.call(remoteNode, fun)
+                        sloganEnv ->
+                          sloganEnv
+                      end)
+            group = :group.start(self(), rShell,
+                                   [{:echo,
+                                       (r_state(state, :shell_started) === :new)}] ++ group_opts(remoteNode))
+            gr = gr_add_cur(r_state(state, :groups), group, rShell)
+            init_shell(r_state(state, groups: gr), [slogan, ?\n])
+        end
+      false ->
+        {:error, :noconnection}
+    end
+  end
 
-    case :erlang.whereis(:user) do
+  defp init_local_shell(state, initialShell) do
+    slogan = (case (:application.get_env(:stdlib,
+                                           :shell_slogan,
+                                           fn () ->
+                                                :erlang.system_info(:system_version)
+                                           end)) do
+                fun when is_function(fun, 0) ->
+                  fun.()
+                sloganEnv ->
+                  sloganEnv
+              end)
+    gr = gr_add_cur(r_state(state, :groups),
+                      :group.start(self(), initialShell,
+                                     group_opts() ++ [{:echo,
+                                                         (r_state(state, :shell_started) === :new)}]),
+                      initialShell)
+    init_shell(r_state(state, groups: gr), [slogan, ?\n])
+  end
+
+  defp init_shell(state, slogan) do
+    init_standard_error(r_state(state, :tty),
+                          r_state(state, :shell_started) === :new)
+    curr = gr_cur_pid(r_state(state, :groups))
+    :erlang.put(:current_group, curr)
+    {:next_state, :server,
+       r_state(state, current_group: gr_cur_pid(r_state(state, :groups))),
+       {:next_event, :info,
+          {gr_cur_pid(r_state(state, :groups)),
+             {:put_chars, :unicode,
+                :unicode.characters_to_binary(:io_lib.format('~ts',
+                                                               [slogan]))}}}}
+  end
+
+  defp start_user() do
+    case (:erlang.whereis(:user)) do
       :undefined ->
-        user = :group.start(self(), {})
+        user = :group.start(self(), {}, [{:echo, false}])
         :erlang.register(:user, user)
         user
-
       user ->
         user
     end
   end
 
-  defp server_loop(iport, oport, user, gr, iOQueue) do
-    curr = gr_cur_pid(gr)
-    :erlang.put(:current_group, curr)
-    server_loop(iport, oport, curr, user, gr, iOQueue)
+  def server({:call, from}, {:start_shell, args},
+           state = r_state(tty: tTY, shell_started: false)) do
+    isTTY = :prim_tty.isatty(:stdin) === true and :prim_tty.isatty(:stdout) === true
+    startShell = :maps.get(:initial_shell, args,
+                             :undefined) !== :noshell
+    oldShell = :maps.get(:initial_shell, args,
+                           :undefined) === :oldshell
+    newState = (try do
+                  cond do
+                    not isTTY and startShell or oldShell ->
+                      :erlang.error(:enotsup)
+                    (isTTY and startShell) ->
+                      newTTY = :prim_tty.reinit(tTY, %{})
+                      r_state(state, tty: newTTY,  shell_started: :new)
+                    true ->
+                      newTTY = :prim_tty.reinit(tTY, %{tty: false})
+                      r_state(state, tty: newTTY,  shell_started: false)
+                  end
+                catch
+                  :error, :enotsup ->
+                    newTTYState = :prim_tty.reinit(tTY, %{tty: false})
+                    r_state(state, tty: newTTYState,  shell_started: :old)
+                end)
+    %{read: readHandle,
+        write:
+        writeHandle} = :prim_tty.handles(r_state(newState, :tty))
+    newHandleState = r_state(newState, read: readHandle, 
+                                   write: writeHandle)
+    {result, reply} = (case (:maps.get(:initial_shell, args,
+                                         :undefined)) do
+                         :noshell ->
+                           {init_noshell(newHandleState), :ok}
+                         {:remote, node} ->
+                           case (init_remote_shell(newHandleState, node,
+                                                     {:shell, :start, []})) do
+                             {:error, _} = error ->
+                               {init_noshell(newHandleState), error}
+                             r ->
+                               {r, :ok}
+                           end
+                         {:remote, node, initialShell} ->
+                           case (init_remote_shell(newHandleState, node,
+                                                     initialShell)) do
+                             {:error, _} = error ->
+                               {init_noshell(newHandleState), error}
+                             r ->
+                               {r, :ok}
+                           end
+                         :undefined ->
+                           case (r_state(newHandleState, :shell_started)) do
+                             :old ->
+                               {init_local_shell(newHandleState,
+                                                   {:shell, :start, []}),
+                                  :ok}
+                             :new ->
+                               {init_local_shell(newHandleState,
+                                                   {:shell, :start, [:init]}),
+                                  :ok}
+                             false ->
+                               {:keep_state_and_data, :ok}
+                           end
+                         initialShell ->
+                           {init_local_shell(newHandleState, initialShell), :ok}
+                       end)
+    :gen_statem.reply(from, reply)
+    result
   end
 
-  defp server_loop(iport, oport, curr, user, gr, {resp, iOQ} = iOQueue) do
-    receive do
-      {^iport, {:data, bs}} ->
-        bsBin = :erlang.list_to_binary(bs)
-        unicode = :unicode.characters_to_list(bsBin, :utf8)
-        port_bytes(unicode, iport, oport, curr, user, gr, iOQueue)
+  def server({:call, from}, {:start_shell, _Args}, _State) do
+    :gen_statem.reply(from, {:error, :already_started})
+    :keep_state_and_data
+  end
 
-      {^iport, :eof} ->
-        send(curr, {self(), :eof})
-        server_loop(iport, oport, curr, user, gr, iOQueue)
+  def server(:info, {readHandle, {:data, uTF8Binary}},
+           state = r_state(read: readHandle))
+      when r_state(state, :current_group) === r_state(state, :user) do
+    send(r_state(state, :current_group), {self(),
+                                      {:data, uTF8Binary}})
+    :keep_state_and_data
+  end
 
-      {requester, :tty_geometry} ->
-        send(requester, {self(), :tty_geometry, get_tty_geometry(iport)})
-        server_loop(iport, oport, curr, user, gr, iOQueue)
-
-      {requester, :get_unicode_state} ->
-        send(requester, {self(), :get_unicode_state, get_unicode_state(iport)})
-        server_loop(iport, oport, curr, user, gr, iOQueue)
-
-      {requester, :set_unicode_state, bool} ->
-        send(requester, {self(), :set_unicode_state, set_unicode_state(iport, bool)})
-        server_loop(iport, oport, curr, user, gr, iOQueue)
-
-      req
-      when :erlang.element(
-             1,
-             req
-           ) === user or
-             (:erlang.element(
-                1,
-                req
-              ) === curr and
-                tuple_size(req) === 2) or tuple_size(req) === 3 ->
-        newQ = handle_req(req, iport, oport, iOQueue)
-        server_loop(iport, oport, curr, user, gr, newQ)
-
-      {^oport, :ok} ->
-        {origin, reply} = resp
-        send(origin, {:reply, reply})
-        newQ = handle_req(:next, iport, oport, {false, iOQ})
-        server_loop(iport, oport, curr, user, gr, newQ)
-
-      {:EXIT, ^iport, _R} ->
-        server_loop(iport, oport, curr, user, gr, iOQueue)
-
-      {:EXIT, ^oport, _R} ->
-        server_loop(iport, oport, curr, user, gr, iOQueue)
-
-      {:EXIT, ^user, :shutdown} ->
-        server_loop(iport, oport, curr, user, gr, iOQueue)
-
-      {:EXIT, ^user, _R} ->
-        newU = start_user()
-        server_loop(iport, oport, curr, newU, gr_set_num(gr, 1, newU, {}), iOQueue)
-
-      {:EXIT, pid, r} ->
-        case gr_cur_pid(gr) do
-          ^pid when r !== :die and r !== :terminated ->
-            cond do
-              r !== :normal ->
-                io_requests([{:put_chars, :unicode, '*** ERROR: '}], iport, oport)
-
-              true ->
-                io_requests([{:put_chars, :unicode, '*** '}], iport, oport)
-            end
-
-            io_requests([{:put_chars, :unicode, 'Shell process terminated! '}], iport, oport)
-            gr1 = gr_del_pid(gr, pid)
-
-            case gr_get_info(gr, pid) do
-              {ix, {:shell, :start, params}} ->
-                io_requests([{:put_chars, :unicode, '***\n'}], iport, oport)
-                pid1 = :group.start(self(), {:shell, :start, params})
-
-                {:ok, gr2} =
-                  gr_set_cur(
-                    gr_set_num(gr1, ix, pid1, {:shell, :start, params}),
-                    ix
-                  )
-
-                :erlang.put(:current_group, pid1)
-                server_loop(iport, oport, pid1, user, gr2, iOQueue)
-
-              _ ->
-                io_requests([{:put_chars, :unicode, '(^G to start new job) ***\n'}], iport, oport)
-                server_loop(iport, oport, curr, user, gr1, iOQueue)
-            end
-
+  def server(:info, {readHandle, {:data, uTF8Binary}},
+           state = r_state(read: readHandle)) do
+    case (contains_ctrl_g_or_ctrl_c(uTF8Binary)) do
+      :ctrl_g ->
+        {:next_state, :switch_loop, state,
+           {:next_event, :internal, :init}}
+      :ctrl_c ->
+        case (gr_get_info(r_state(state, :groups),
+                            r_state(state, :current_group))) do
+          :undefined ->
+            :ok
           _ ->
-            server_loop(iport, oport, curr, user, gr_del_pid(gr, pid), iOQueue)
+            :erlang.exit(r_state(state, :current_group), :interrupt)
         end
-
-      {requester, {:put_chars_sync, _, _, reply}} ->
-        send(requester, {:reply, reply})
-        server_loop(iport, oport, curr, user, gr, iOQueue)
-
-      _X ->
-        server_loop(iport, oport, curr, user, gr, iOQueue)
+        :keep_state_and_data
+      :none ->
+        send(r_state(state, :current_group), {self(),
+                                          {:data, uTF8Binary}})
+        :keep_state_and_data
     end
   end
 
-  defp handle_req(:next, iport, oport, {false, iOQ} = iOQueue) do
-    case :queue.out(iOQ) do
-      {:empty, _} ->
-        iOQueue
-
-      {{:value, {origin, req}}, execQ} ->
-        case io_request(req, iport, oport) do
-          :ok ->
-            handle_req(:next, iport, oport, {false, execQ})
-
-          reply ->
-            {{origin, reply}, execQ}
-        end
-    end
+  def server(:info, {readHandle, :eof},
+           state = r_state(read: readHandle)) do
+    send(r_state(state, :current_group), {self(), :eof})
+    :keep_state_and_data
   end
 
-  defp handle_req(msg, iport, oport, {false, iOQ} = iOQueue) do
-    :empty = :queue.peek(iOQ)
-    {origin, req} = msg
-
-    case io_request(req, iport, oport) do
-      :ok ->
-        iOQueue
-
-      reply ->
-        {{origin, reply}, iOQ}
-    end
+  def server(:info, {readHandle, {:signal, signal}},
+           state = r_state(tty: tTYState, read: readHandle)) do
+    {:keep_state,
+       r_state(state, tty: :prim_tty.handle_signal(tTYState,
+                                               signal))}
   end
 
-  defp handle_req(msg, _Iport, _Oport, {resp, iOQ}) do
-    {resp, :queue.in(msg, iOQ)}
-  end
-
-  defp port_bytes([?\a | _Bs], iport, oport, _Curr, user, gr, iOQueue) do
-    handle_escape(iport, oport, user, gr, iOQueue)
-  end
-
-  defp port_bytes([3 | _Bs], iport, oport, curr, user, gr, iOQueue) do
-    interrupt_shell(iport, oport, curr, user, gr, iOQueue)
-  end
-
-  defp port_bytes([b], iport, oport, curr, user, gr, iOQueue) do
-    send(curr, {self(), {:data, [b]}})
-    server_loop(iport, oport, curr, user, gr, iOQueue)
-  end
-
-  defp port_bytes(bs, iport, oport, curr, user, gr, iOQueue) do
-    case member(?\a, bs) do
-      true ->
-        handle_escape(iport, oport, user, gr, iOQueue)
-
-      false ->
-        send(curr, {self(), {:data, bs}})
-        server_loop(iport, oport, curr, user, gr, iOQueue)
-    end
-  end
-
-  defp interrupt_shell(iport, oport, curr, user, gr, iOQueue) do
-    case gr_get_info(gr, curr) do
-      :undefined ->
+  def server(:info, {requester, :tty_geometry},
+           r_state(tty: tTYState)) do
+    case (:prim_tty.window_size(tTYState)) do
+      {:ok, geometry} ->
+        send(requester, {self(), :tty_geometry, geometry})
         :ok
-
-      _ ->
-        :erlang.exit(curr, :interrupt)
+      error ->
+        send(requester, {self(), :tty_geometry, error})
+        :ok
     end
-
-    server_loop(iport, oport, curr, user, gr, iOQueue)
+    :keep_state_and_data
   end
 
-  defp handle_escape(iport, oport, user, gr, iOQueue) do
-    case :application.get_env(:stdlib, :shell_esc) do
-      {:ok, :abort} ->
-        pid = gr_cur_pid(gr)
-        :erlang.exit(pid, :die)
-
-        gr1 =
-          case gr_get_info(gr, pid) do
-            {_Ix, {}} ->
-              gr
-
-            _ ->
-              receive do
-                {:EXIT, ^pid, _} ->
-                  gr_del_pid(gr, pid)
-              after
-                1000 ->
-                  gr
-              end
-          end
-
-        pid1 = :group.start(self(), {:shell, :start, []})
-        io_request({:put_chars, :unicode, '\n'}, iport, oport)
-        server_loop(iport, oport, user, gr_add_cur(gr1, pid1, {:shell, :start, []}), iOQueue)
-
-      _ ->
-        io_request({:put_chars, :unicode, '\nUser switch command\n'}, iport, oport)
-        :edlin.init(gr_cur_pid(gr))
-        server_loop(iport, oport, user, switch_loop(iport, oport, gr), iOQueue)
-    end
+  def server(:info, {requester, :get_unicode_state},
+           r_state(tty: tTYState)) do
+    send(requester, {self(), :get_unicode_state,
+                       :prim_tty.unicode(tTYState)})
+    :keep_state_and_data
   end
 
-  defp switch_loop(iport, oport, gr) do
-    line = get_line(:edlin.start(' --> '), iport, oport)
-    switch_cmd(:erl_scan.string(line), iport, oport, gr)
+  def server(:info, {requester, :set_unicode_state, bool},
+           r_state(tty: tTYState) = state) do
+    oldUnicode = :prim_tty.unicode(tTYState)
+    newTTYState = :prim_tty.unicode(tTYState, bool)
+    :ok = :io.setopts(:standard_error,
+                        [{:encoding,
+                            cond do
+                              bool ->
+                                :unicode
+                              true ->
+                                :latin1
+                            end}])
+    send(requester, {self(), :set_unicode_state,
+                       oldUnicode})
+    {:keep_state, r_state(state, tty: newTTYState)}
   end
 
-  defp switch_cmd({:ok, [{:atom, _, :c}, {:integer, _, i}], _}, iport, oport, gr0) do
-    case gr_set_cur(gr0, i) do
-      {:ok, gr} ->
-        gr
+  def server(:info, {requester, :get_terminal_state},
+           _State) do
+    send(requester, {self(), :get_terminal_state,
+                       :prim_tty.isatty(:stdout)})
+    :keep_state_and_data
+  end
 
-      :undefined ->
-        unknown_group(iport, oport, gr0)
+  def server(:info, {requester, {:open_editor, buffer}},
+           r_state(tty: tTYState) = state) do
+    case (open_editor(tTYState, buffer)) do
+      false ->
+        send(requester, {self(), {:editor_data, buffer}})
+        :keep_state_and_data
+      {editorPort, tmpPath} ->
+        {:keep_state,
+           r_state(state, editor: r_editor(port: editorPort, file: tmpPath,
+                                requester: requester))}
     end
   end
 
-  defp switch_cmd({:ok, [{:atom, _, :c}], _}, iport, oport, gr) do
-    case gr_get_info(gr, gr_cur_pid(gr)) do
-      :undefined ->
-        unknown_group(iport, oport, gr)
-
-      _ ->
-        gr
-    end
+  def server(:info, req,
+           state = r_state(user: user, current_group: curr,
+                       editor: :undefined))
+      when (:erlang.element(1,
+                              req) === user or :erlang.element(1,
+                                                                 req) === curr and
+              tuple_size(req) === 2 or tuple_size(req) === 3) do
+    {newTTYState, newQueue} = handle_req(req,
+                                           r_state(state, :tty), r_state(state, :queue))
+    {:keep_state,
+       r_state(state, tty: newTTYState,  queue: newQueue)}
   end
 
-  defp switch_cmd({:ok, [{:atom, _, :i}, {:integer, _, i}], _}, iport, oport, gr) do
-    case gr_get_num(gr, i) do
-      {:pid, pid} ->
-        :erlang.exit(pid, :interrupt)
-        switch_loop(iport, oport, gr)
-
-      :undefined ->
-        unknown_group(iport, oport, gr)
-    end
+  def server(:info, {writeRef, :ok},
+           state = r_state(write: writeRef,
+                       queue: {{origin, monitorRef, reply}, iOQ})) do
+    send(origin, {:reply, reply, :ok})
+    :erlang.demonitor(monitorRef, [:flush])
+    {newTTYState, newQueue} = handle_req(:next,
+                                           r_state(state, :tty), {false, iOQ})
+    {:keep_state,
+       r_state(state, tty: newTTYState,  queue: newQueue)}
   end
 
-  defp switch_cmd({:ok, [{:atom, _, :i}], _}, iport, oport, gr) do
-    pid = gr_cur_pid(gr)
-
-    case gr_get_info(gr, pid) do
-      :undefined ->
-        unknown_group(iport, oport, gr)
-
-      _ ->
-        :erlang.exit(pid, :interrupt)
-        switch_loop(iport, oport, gr)
+  def server(:info, {:DOWN, monitorRef, _, _, reason},
+           r_state(queue: {{origin, monitorRef, reply}, _IOQ})) do
+    send(origin, {:reply, reply, {:error, reason}})
+    case (:logger.allow(:info, :user_drv)) do
+      true ->
+        :erlang.apply(:logger, :macro_log,
+                        [%{mfa: {:user_drv, :server, 3}, line: 500, file: 'otp/lib/kernel/src/user_drv.erl'},
+                             :info, 'Failed to write to standard out (~p)', [reason]])
+      false ->
+        :ok
     end
+    :stop
   end
 
-  defp switch_cmd({:ok, [{:atom, _, :k}, {:integer, _, i}], _}, iport, oport, gr) do
-    case gr_get_num(gr, i) do
-      {:pid, pid} ->
-        :erlang.exit(pid, :die)
+  def server(:info,
+           {requester, {:put_chars_sync, _, _, reply}}, _State) do
+    send(requester, {:reply, reply, :ok})
+    :keep_state_and_data
+  end
 
-        case gr_get_info(gr, pid) do
-          {_Ix, {}} ->
-            switch_loop(iport, oport, gr)
+  def server(:info, {:EXIT, user, :shutdown},
+           r_state(user: user)) do
+    :keep_state_and_data
+  end
 
+  def server(:info, {:EXIT, user, _Reason},
+           state = r_state(user: user)) do
+    newUser = start_user()
+    {:keep_state,
+       r_state(state, user: newUser, 
+                  groups: gr_set_num(r_state(state, :groups), 1, newUser, {}))}
+  end
+
+  def server(:info, {:EXIT, editorPort, _R},
+           state = r_state(tty: tTYState,
+                       editor: r_editor(requester: requester, port: editorPort,
+                                   file: pathTmp))) do
+    {:ok, content} = :file.read_file(pathTmp)
+    _ = :file.del_dir_r(pathTmp)
+    unicode = (case (:unicode.characters_to_list(content,
+                                                   :unicode)) do
+                 {:error, _, _} ->
+                   :unicode.characters_to_list(:unicode.characters_to_list(content,
+                                                                             :latin1),
+                                                 :unicode)
+                 u ->
+                   u
+               end)
+    send(requester, {self(),
+                       {:editor_data, :string.chomp(unicode)}})
+    :ok = :prim_tty.enable_reader(tTYState)
+    {:keep_state, r_state(state, editor: :undefined)}
+  end
+
+  def server(:info, {:EXIT, group, reason}, state) do
+    case (gr_cur_pid(r_state(state, :groups))) do
+      ^group when (reason !== :die and reason !== :terminated)
+                  ->
+        reqs = [cond do
+                  reason !== :normal ->
+                    {:put_chars, :unicode, "*** ERROR: "}
+                  true ->
+                    {:put_chars, :unicode, "*** "}
+                end,
+                    {:put_chars, :unicode, "Shell process terminated! "}]
+        gr1 = gr_del_pid(r_state(state, :groups), group)
+        case (gr_get_info(r_state(state, :groups), group)) do
+          {ix, {:shell, :start, params}} ->
+            newTTyState = io_requests(reqs ++ [{:put_chars,
+                                                  :unicode, "***\n"}],
+                                        r_state(state, :tty))
+            newGroup = :group.start(self(),
+                                      {:shell, :start, params})
+            {:ok, gr2} = gr_set_cur(gr_set_num(gr1, ix, newGroup,
+                                                 {:shell, :start, params}),
+                                      ix)
+            {:keep_state,
+               r_state(state, tty: newTTyState,  current_group: newGroup, 
+                          groups: gr2)}
           _ ->
-            gr1 =
-              receive do
-                {:EXIT, ^pid, _} ->
-                  gr_del_pid(gr, pid)
-              after
-                1000 ->
-                  gr
-              end
-
-            switch_loop(iport, oport, gr1)
+            newTTYState = io_requests(reqs ++ [{:put_chars,
+                                                  :unicode, "(^G to start new job) ***\n"}],
+                                        r_state(state, :tty))
+            {:keep_state, r_state(state, tty: newTTYState,  groups: gr1)}
         end
-
-      :undefined ->
-        unknown_group(iport, oport, gr)
-    end
-  end
-
-  defp switch_cmd({:ok, [{:atom, _, :k}], _}, iport, oport, gr) do
-    pid = gr_cur_pid(gr)
-    info = gr_get_info(gr, pid)
-
-    case info do
-      :undefined ->
-        unknown_group(iport, oport, gr)
-
-      {_Ix, {}} ->
-        switch_loop(iport, oport, gr)
-
       _ ->
-        :erlang.exit(pid, :die)
-
-        gr1 =
-          receive do
-            {:EXIT, ^pid, _} ->
-              gr_del_pid(gr, pid)
-          after
-            1000 ->
-              gr
-          end
-
-        switch_loop(iport, oport, gr1)
+        {:keep_state,
+           r_state(state, groups: gr_del_pid(r_state(state, :groups), group))}
     end
   end
 
-  defp switch_cmd({:ok, [{:atom, _, :j}], _}, iport, oport, gr) do
-    io_requests(gr_list(gr), iport, oport)
-    switch_loop(iport, oport, gr)
+  def server(_, _, _) do
+    :keep_state_and_data
   end
 
-  defp switch_cmd({:ok, [{:atom, _, :s}, {:atom, _, shell}], _}, iport, oport, gr0) do
+  defp contains_ctrl_g_or_ctrl_c(<<?\a, _ :: binary>>) do
+    :ctrl_g
+  end
+
+  defp contains_ctrl_g_or_ctrl_c(<<3, _ :: binary>>) do
+    :ctrl_c
+  end
+
+  defp contains_ctrl_g_or_ctrl_c(<<_ :: utf8, t :: binary>>) do
+    contains_ctrl_g_or_ctrl_c(t)
+  end
+
+  defp contains_ctrl_g_or_ctrl_c(<<>>) do
+    :none
+  end
+
+  def switch_loop(:internal, :init, state) do
+    case (:application.get_env(:stdlib, :shell_esc,
+                                 :jcl)) do
+      :abort ->
+        currGroup = gr_cur_pid(r_state(state, :groups))
+        :erlang.exit(currGroup, :die)
+        gr1 = (case (gr_get_info(r_state(state, :groups),
+                                   currGroup)) do
+                 {_Ix, {}} ->
+                   r_state(state, :groups)
+                 _ ->
+                   receive do
+                     {:EXIT, ^currGroup, _} ->
+                       gr_del_pid(r_state(state, :groups), currGroup)
+                   after 1000 ->
+                     r_state(state, :groups)
+                   end
+               end)
+        newGroup = :group.start(self(), {:shell, :start, []})
+        newTTYState = io_requests([{:insert_chars, :unicode,
+                                      "\n"}],
+                                    r_state(state, :tty))
+        {:next_state, :server,
+           r_state(state, tty: newTTYState, 
+                      groups: gr_add_cur(gr1, newGroup,
+                                           {:shell, :start, []}))}
+      :jcl ->
+        newTTYState = io_requests([{:insert_chars, :unicode,
+                                      "\nUser switch command (type h for help)\n"}],
+                                    r_state(state, :tty))
+        :edlin.init(gr_cur_pid(r_state(state, :groups)))
+        {:keep_state, r_state(state, tty: newTTYState),
+           {:next_event, :internal, :line}}
+    end
+  end
+
+  def switch_loop(:internal, :line, state) do
+    {:more_chars, cont, rs} = :edlin.start(' --> ')
+    {:keep_state,
+       {cont, r_state(state, tty: io_requests(rs, r_state(state, :tty)))}}
+  end
+
+  def switch_loop(:internal, {:line, line}, state) do
+    case (:erl_scan.string(line)) do
+      {:ok, tokens, _} ->
+        case (switch_cmd(tokens, r_state(state, :groups))) do
+          {:ok, groups} ->
+            curr = gr_cur_pid(groups)
+            :erlang.put(:current_group, curr)
+            send(curr, {self(), :activate})
+            {:next_state, :server,
+               r_state(state, current_group: curr,  groups: groups, 
+                          tty: io_requests([{:insert_chars, :unicode, "\n"},
+                                                :new_prompt],
+                                             r_state(state, :tty)))}
+          {:retry, requests} ->
+            {:keep_state,
+               r_state(state, tty: io_requests([{:insert_chars, :unicode, "\n"},
+                                              :new_prompt | requests],
+                                           r_state(state, :tty))),
+               {:next_event, :internal, :line}}
+          {:retry, requests, groups} ->
+            curr = gr_cur_pid(groups)
+            :erlang.put(:current_group, curr)
+            {:keep_state,
+               r_state(state, tty: io_requests([{:insert_chars, :unicode, "\n"},
+                                              :new_prompt | requests],
+                                           r_state(state, :tty)), 
+                          current_group: curr,  groups: groups),
+               {:next_event, :internal, :line}}
+        end
+      {:error, _, _} ->
+        newTTYState = io_requests([{:insert_chars, :unicode,
+                                      "Illegal input\n"}],
+                                    r_state(state, :tty))
+        {:keep_state, r_state(state, tty: newTTYState),
+           {:next_event, :internal, :line}}
+    end
+  end
+
+  def switch_loop(:info, {readHandle, {:data, cs}},
+           {cont, r_state(read: readHandle) = state}) do
+    case (:edlin.edit_line(:unicode.characters_to_list(cs),
+                             cont)) do
+      {:done, {[line], _, _}, _Rest, rs} ->
+        {:keep_state,
+           r_state(state, tty: io_requests(rs, r_state(state, :tty))),
+           {:next_event, :internal, {:line, line}}}
+      {:more_chars, newCont, rs} ->
+        {:keep_state,
+           {newCont,
+              r_state(state, tty: io_requests(rs, r_state(state, :tty)))}}
+      {:blink, newCont, rs} ->
+        {:keep_state,
+           {newCont,
+              r_state(state, tty: io_requests(rs, r_state(state, :tty)))},
+           1000}
+    end
+  end
+
+  def switch_loop(:timeout, _, {_Cont, state}) do
+    {:keep_state_and_data,
+       {:next_event, :info, {r_state(state, :read), {:data, []}}}}
+  end
+
+  def switch_loop(:info, _Unknown, _State) do
+    {:keep_state_and_data, :postpone}
+  end
+
+  defp switch_cmd([{:atom, _, key}, {type, _, value}], gr)
+      when type === :atom or type === :integer do
+    switch_cmd({key, value}, gr)
+  end
+
+  defp switch_cmd([{:atom, _, key}, {:atom, _, v1}, {:atom, _,
+                                               v2}],
+            gr) do
+    switch_cmd({key, v1, v2}, gr)
+  end
+
+  defp switch_cmd([{:atom, _, key}], gr) do
+    switch_cmd(key, gr)
+  end
+
+  defp switch_cmd([{:"?", _}], gr) do
+    switch_cmd(:h, gr)
+  end
+
+  defp switch_cmd(cmd, gr) when cmd === :c or cmd === :i or
+                          cmd === :k do
+    switch_cmd({cmd, gr_cur_index(gr)}, gr)
+  end
+
+  defp switch_cmd({:c, i}, gr0) do
+    case (gr_set_cur(gr0, i)) do
+      {:ok, gr} ->
+        {:ok, gr}
+      :undefined ->
+        unknown_group()
+    end
+  end
+
+  defp switch_cmd({:i, i}, gr) do
+    case (gr_get_num(gr, i)) do
+      {:pid, pid} ->
+        :erlang.exit(pid, :interrupt)
+        {:retry, []}
+      :undefined ->
+        unknown_group()
+    end
+  end
+
+  defp switch_cmd({:k, i}, gr) do
+    case (gr_get_num(gr, i)) do
+      {:pid, pid} ->
+        :erlang.exit(pid, :die)
+        case (gr_get_info(gr, pid)) do
+          {_Ix, {}} ->
+            :retry
+          _ ->
+            receive do
+              {:EXIT, ^pid, _} ->
+                {:retry, [], gr_del_pid(gr, pid)}
+            after 1000 ->
+              {:retry, [], gr}
+            end
+        end
+      :undefined ->
+        unknown_group()
+    end
+  end
+
+  defp switch_cmd(:j, gr) do
+    {:retry, gr_list(gr)}
+  end
+
+  defp switch_cmd({:s, shell}, gr0) when is_atom(shell) do
     pid = :group.start(self(), {shell, :start, []})
     gr = gr_add_cur(gr0, pid, {shell, :start, []})
-    switch_loop(iport, oport, gr)
+    {:retry, [], gr}
   end
 
-  defp switch_cmd({:ok, [{:atom, _, :s}], _}, iport, oport, gr0) do
-    pid = :group.start(self(), {:shell, :start, []})
-    gr = gr_add_cur(gr0, pid, {:shell, :start, []})
-    switch_loop(iport, oport, gr)
+  defp switch_cmd(:s, gr) do
+    switch_cmd({:s, :shell}, gr)
   end
 
-  defp switch_cmd({:ok, [{:atom, _, :r}], _}, iport, oport, gr0) do
-    case :erlang.is_alive() do
+  defp switch_cmd(:r, gr0) do
+    case (:erlang.is_alive()) do
       true ->
         node = :pool.get_node()
-        pid = :group.start(self(), {node, :shell, :start, []})
+        pid = :group.start(self(), {node, :shell, :start, []},
+                             group_opts(node))
         gr = gr_add_cur(gr0, pid, {node, :shell, :start, []})
-        switch_loop(iport, oport, gr)
-
+        {:retry, [], gr}
       false ->
-        io_request({:put_chars, :unicode, 'Not alive\n'}, iport, oport)
-        switch_loop(iport, oport, gr0)
+        {:retry, [{:put_chars, :unicode, "Node is not alive\n"}]}
     end
   end
 
-  defp switch_cmd({:ok, [{:atom, _, :r}, {:atom, _, node}], _}, iport, oport, gr0) do
-    pid = :group.start(self(), {node, :shell, :start, []})
-    gr = gr_add_cur(gr0, pid, {node, :shell, :start, []})
-    switch_loop(iport, oport, gr)
+  defp switch_cmd({:r, node}, gr) when is_atom(node) do
+    switch_cmd({:r, node, :shell}, gr)
   end
 
-  defp switch_cmd(
-         {:ok, [{:atom, _, :r}, {:atom, _, node}, {:atom, _, shell}], _},
-         iport,
-         oport,
-         gr0
-       ) do
-    pid = :group.start(self(), {node, shell, :start, []})
-    gr = gr_add_cur(gr0, pid, {node, shell, :start, []})
-    switch_loop(iport, oport, gr)
-  end
-
-  defp switch_cmd({:ok, [{:atom, _, :q}], _}, iport, oport, gr) do
-    case :erlang.system_info(:break_ignored) do
+  defp switch_cmd({:r, node, shell}, gr0) when (is_atom(node) and
+                                          is_atom(shell)) do
+    case (:erlang.is_alive()) do
       true ->
-        io_request({:put_chars, :unicode, 'Unknown command\n'}, iport, oport)
-        switch_loop(iport, oport, gr)
+        pid = :group.start(self(), {node, shell, :start, []},
+                             group_opts(node))
+        gr = gr_add_cur(gr0, pid, {node, shell, :start, []})
+        {:retry, [], gr}
+      false ->
+        {:retry, [{:put_chars, :unicode, 'Node is not alive\n'}]}
+    end
+  end
 
+  defp switch_cmd(:q, _Gr) do
+    case (:erlang.system_info(:break_ignored)) do
+      true ->
+        {:retry, [{:put_chars, :unicode, "Unknown command\n"}]}
       false ->
         :erlang.halt()
     end
   end
 
-  defp switch_cmd({:ok, [{:atom, _, :h}], _}, iport, oport, gr) do
-    list_commands(iport, oport)
-    switch_loop(iport, oport, gr)
+  defp switch_cmd(:h, _Gr) do
+    {:retry, list_commands()}
   end
 
-  defp switch_cmd({:ok, [{:"?", _}], _}, iport, oport, gr) do
-    list_commands(iport, oport)
-    switch_loop(iport, oport, gr)
+  defp switch_cmd([], _Gr) do
+    {:retry, []}
   end
 
-  defp switch_cmd({:ok, [], _}, iport, oport, gr) do
-    switch_loop(iport, oport, gr)
+  defp switch_cmd(_Ts, _Gr) do
+    {:retry, [{:put_chars, :unicode, "Unknown command\n"}]}
   end
 
-  defp switch_cmd({:ok, _Ts, _}, iport, oport, gr) do
-    io_request({:put_chars, :unicode, 'Unknown command\n'}, iport, oport)
-    switch_loop(iport, oport, gr)
+  defp unknown_group() do
+    {:retry, [{:put_chars, :unicode, "Unknown job\n"}]}
   end
 
-  defp switch_cmd(_Ts, iport, oport, gr) do
-    io_request({:put_chars, :unicode, 'Illegal input\n'}, iport, oport)
-    switch_loop(iport, oport, gr)
+  defp list_commands() do
+    quitReq = (case (:erlang.system_info(:break_ignored)) do
+                 true ->
+                   []
+                 false ->
+                   [{:put_chars, :unicode, "  q                 - quit erlang\n"}]
+               end)
+    [{:put_chars, :unicode, "  c [nn]            - connect to job\n"}, {:put_chars, :unicode, "  i [nn]            - interrupt job\n"},
+                                    {:put_chars, :unicode, "  k [nn]            - kill job\n"}, {:put_chars,
+                                                                  :unicode, "  j                 - list all jobs\n"},
+                                                                   {:put_chars,
+                                                                      :unicode,
+                                                                      "  s [shell]         - start local shell\n"},
+                                                                       {:put_chars,
+                                                                          :unicode,
+                                                                          "  r [node [shell]]  - start remote shell\n"}] ++ quitReq ++ [{:put_chars,
+                                                                                                :unicode,
+                                                                                                "  ? | h             - this message\n"}]
   end
 
-  defp unknown_group(iport, oport, gr) do
-    io_request({:put_chars, :unicode, 'Unknown job\n'}, iport, oport)
-    switch_loop(iport, oport, gr)
+  defp group_opts(node) do
+    versionString = :erpc.call(node, :erlang, :system_info,
+                                 [:otp_release])
+    version = :erlang.list_to_integer(versionString)
+    expandFun = (case (version > 25) do
+                   true ->
+                     [{:expand_fun,
+                         fn b, opts ->
+                              :erpc.call(node, :edlin_expand, :expand,
+                                           [b, opts])
+                         end}]
+                   false ->
+                     [{:expand_fun,
+                         fn b, _ ->
+                              :erpc.call(node, :edlin_expand, :expand, [b])
+                         end}]
+                 end)
+    group_opts() ++ expandFun
   end
 
-  defp list_commands(iport, oport) do
-    quitReq =
-      case :erlang.system_info(:break_ignored) do
-        true ->
-          []
-
-        false ->
-          [{:put_chars, :unicode, '  q                 - quit erlang\n'}]
-      end
-
-    io_requests(
-      [
-        {:put_chars, :unicode, '  c [nn]            - connect to job\n'},
-        {:put_chars, :unicode, '  i [nn]            - interrupt job\n'},
-        {:put_chars, :unicode, '  k [nn]            - kill job\n'},
-        {:put_chars, :unicode, '  j                 - list all jobs\n'},
-        {:put_chars, :unicode, '  s [shell]         - start local shell\n'},
-        {:put_chars, :unicode, '  r [node [shell]]  - start remote shell\n'}
-      ] ++ quitReq ++ [{:put_chars, :unicode, '  ? | h             - this message\n'}],
-      iport,
-      oport
-    )
+  defp group_opts() do
+    [{:expand_below,
+        :application.get_env(:stdlib, :shell_expand_location,
+                               :below) === :below}]
   end
 
-  defp get_line({:done, line, _Rest, rs}, iport, oport) do
-    io_requests(rs, iport, oport)
-    line
+  defp io_request({:requests, rs}, tTY) do
+    {:noreply, io_requests(rs, tTY)}
   end
 
-  defp get_line({:undefined, _Char, cs, cont, rs}, iport, oport) do
-    io_requests(rs, iport, oport)
-    io_request(:beep, iport, oport)
-    get_line(:edlin.edit_line(cs, cont), iport, oport)
+  defp io_request(:redraw_prompt, tTY) do
+    write(:prim_tty.handle_request(tTY, :redraw_prompt))
   end
 
-  defp get_line({what, cont0, rs}, iport, oport) do
-    io_requests(rs, iport, oport)
-
-    receive do
-      {^iport, {:data, cs}} ->
-        get_line(:edlin.edit_line(cs, cont0), iport, oport)
-
-      {^iport, :eof} ->
-        get_line(:edlin.edit_line(:eof, cont0), iport, oport)
-    after
-      get_line_timeout(what) ->
-        get_line(:edlin.edit_line([], cont0), iport, oport)
-    end
+  defp io_request({:redraw_prompt, pbs, pbs2, lineState}, tTY) do
+    write(:prim_tty.handle_request(tTY,
+                                     {:redraw_prompt, pbs, pbs2, lineState}))
   end
 
-  defp get_line_timeout(:blink) do
-    1000
+  defp io_request(:new_prompt, tTY) do
+    write(:prim_tty.handle_request(tTY, :new_prompt))
   end
 
-  defp get_line_timeout(:more_chars) do
-    :infinity
+  defp io_request(:delete_after_cursor, tTY) do
+    write(:prim_tty.handle_request(tTY,
+                                     :delete_after_cursor))
   end
 
-  defp get_tty_geometry(iport) do
-    case (try do
-            :erlang.port_control(iport, 100 + 25_889_024, [])
-          catch
-            :error, e -> {:EXIT, {e, __STACKTRACE__}}
-            :exit, e -> {:EXIT, e}
-            e -> e
-          end) do
-      list when length(list) === 8 ->
-        <<w::size(32)-native, h::size(32)-native>> = :erlang.list_to_binary(list)
-        {w, h}
-
-      _ ->
-        :error
-    end
+  defp io_request(:delete_line, tTY) do
+    write(:prim_tty.handle_request(tTY, :delete_line))
   end
 
-  defp get_unicode_state(iport) do
-    case (try do
-            :erlang.port_control(iport, 101 + 25_889_024, [])
-          catch
-            :error, e -> {:EXIT, {e, __STACKTRACE__}}
-            :exit, e -> {:EXIT, e}
-            e -> e
-          end) do
-      [int] when int > 0 ->
-        true
+  defp io_request({:put_chars, :unicode, chars}, tTY) do
+    write(:prim_tty.handle_request(tTY,
+                                     {:putc,
+                                        :unicode.characters_to_binary(chars)}))
+  end
 
-      [int] when int === 0 ->
+  defp io_request({:put_chars_sync, :unicode, chars, reply},
+            tTY) do
+    {output, newTTY} = :prim_tty.handle_request(tTY,
+                                                  {:putc,
+                                                     :unicode.characters_to_binary(chars)})
+    {:ok, monitorRef} = :prim_tty.write(newTTY, output,
+                                          self())
+    {reply, monitorRef, newTTY}
+  end
+
+  defp io_request({:put_expand, :unicode, chars}, tTY) do
+    write(:prim_tty.handle_request(tTY,
+                                     {:expand_with_trim,
+                                        :unicode.characters_to_binary(chars)}))
+  end
+
+  defp io_request({:put_expand_no_trim, :unicode, chars}, tTY) do
+    write(:prim_tty.handle_request(tTY,
+                                     {:expand,
+                                        :unicode.characters_to_binary(chars)}))
+  end
+
+  defp io_request({:move_rel, n}, tTY) do
+    write(:prim_tty.handle_request(tTY, {:move, n}))
+  end
+
+  defp io_request({:move_line, r}, tTY) do
+    write(:prim_tty.handle_request(tTY, {:move_line, r}))
+  end
+
+  defp io_request({:move_combo, v1, r, v2}, tTY) do
+    write(:prim_tty.handle_request(tTY,
+                                     {:move_combo, v1, r, v2}))
+  end
+
+  defp io_request({:insert_chars, :unicode, chars}, tTY) do
+    write(:prim_tty.handle_request(tTY,
+                                     {:insert,
+                                        :unicode.characters_to_binary(chars)}))
+  end
+
+  defp io_request({:insert_chars_over, :unicode, chars}, tTY) do
+    write(:prim_tty.handle_request(tTY,
+                                     {:insert_over,
+                                        :unicode.characters_to_binary(chars)}))
+  end
+
+  defp io_request({:delete_chars, n}, tTY) do
+    write(:prim_tty.handle_request(tTY, {:delete, n}))
+  end
+
+  defp io_request(:clear, tTY) do
+    write(:prim_tty.handle_request(tTY, :clear))
+  end
+
+  defp io_request(:beep, tTY) do
+    write(:prim_tty.handle_request(tTY, :beep))
+  end
+
+  defp write({output, tTY}) do
+    :ok = :prim_tty.write(tTY, output)
+    {:noreply, tTY}
+  end
+
+  defp io_requests([{:insert_chars, :unicode, c1}, {:insert_chars,
+                                             :unicode, c2} |
+                                              rs],
+            tTY) do
+    io_requests([{:insert_chars, :unicode, [c1, c2]} | rs],
+                  tTY)
+  end
+
+  defp io_requests([{:put_chars, :unicode, c1}, {:put_chars,
+                                          :unicode, c2} |
+                                           rs],
+            tTY) do
+    io_requests([{:put_chars, :unicode, [c1, c2]} | rs],
+                  tTY)
+  end
+
+  defp io_requests([{:move_rel, n}, {:move_line, r}, {:move_rel,
+                                               m} |
+                                                rs],
+            tTY) do
+    io_requests([{:move_combo, n, r, m} | rs], tTY)
+  end
+
+  defp io_requests([{:move_rel, n}, {:move_line, r} | rs], tTY) do
+    io_requests([{:move_combo, n, r, 0} | rs], tTY)
+  end
+
+  defp io_requests([{:move_line, r}, {:move_rel, m} | rs], tTY) do
+    io_requests([{:move_combo, 0, r, m} | rs], tTY)
+  end
+
+  defp io_requests([r | rs], tTY) do
+    {:noreply, newTTY} = io_request(r, tTY)
+    io_requests(rs, newTTY)
+  end
+
+  defp io_requests([], tTY) do
+    tTY
+  end
+
+  defp open_editor(tTY, buffer) do
+    defaultEditor = (case (:os.type()) do
+                       {:win32, _} ->
+                         'notepad'
+                       {:unix, _} ->
+                         'nano'
+                     end)
+    editor = :os.getenv('VISUAL', :os.getenv('EDITOR', defaultEditor))
+    tmpFile = :string.chomp(mktemp()) ++ '.erl'
+    _ = :file.write_file(tmpFile,
+                           :unicode.characters_to_binary(buffer, :unicode))
+    case (:filelib.is_file(tmpFile)) do
+      true ->
+        :ok = :prim_tty.disable_reader(tTY)
+        try do
+          editorPort = (case (:os.type()) do
+                          {:win32, _} ->
+                            [cmd | args] = :string.split(editor, ' ', :all)
+                            :erlang.open_port({:spawn_executable,
+                                                 :os.find_executable(cmd)},
+                                                [{:args, args ++ [tmpFile]},
+                                                     :nouse_stdio])
+                          {:unix, _} ->
+                            :erlang.open_port({:spawn, editor ++ ' ' ++ tmpFile},
+                                                [:nouse_stdio])
+                        end)
+          {editorPort, tmpFile}
+        catch
+          :error, :enoent ->
+            :ok = :prim_tty.enable_reader(tTY)
+            :io.format(:standard_error, 'Could not find EDITOR \'~ts\'.~n', [editor])
+            false
+        end
+      false ->
+        :io.format(:standard_error, 'Could not find create temp file \'~ts\'.~n', [tmpFile])
         false
-
-      _ ->
-        :error
     end
   end
 
-  defp set_unicode_state(iport, bool) do
-    data =
-      case bool do
-        true ->
-          [1]
-
-        false ->
-          [0]
-      end
-
-    case (try do
-            :erlang.port_control(iport, 102 + 25_889_024, data)
-          catch
-            :error, e -> {:EXIT, {e, __STACKTRACE__}}
-            :exit, e -> {:EXIT, e}
-            e -> e
-          end) do
-      [int] when int > 0 ->
-        {:unicode, :utf8}
-
-      [int] when int === 0 ->
-        {:unicode, false}
-
-      _ ->
-        :error
+  defp mktemp() do
+    case (:os.type()) do
+      {:win32, _} ->
+        :os.cmd('powershell "write-host (& New-TemporaryFile | Select-Object -ExpandProperty FullName)"')
+      {:unix, _} ->
+        :os.cmd('mktemp')
     end
   end
 
-  defp io_request({:requests, rs}, iport, oport) do
-    io_requests(rs, iport, oport)
-  end
-
-  defp io_request(request, _Iport, oport) do
-    case io_command(request) do
-      {data, reply} ->
-        true = :erlang.port_command(oport, data)
-        reply
-
-      :unhandled ->
-        :ok
+  defp handle_req(:next, tTYState, {false, iOQ} = iOQueue) do
+    case (:queue.out(iOQ)) do
+      {:empty, _} ->
+        {tTYState, iOQueue}
+      {{:value, {origin, req}}, execQ} ->
+        case (io_request(req, tTYState)) do
+          {:noreply, newTTYState} ->
+            handle_req(:next, newTTYState, {false, execQ})
+          {reply, monitorRef, newTTYState} ->
+            {newTTYState, {{origin, monitorRef, reply}, execQ}}
+        end
     end
   end
 
-  defp io_requests([r | rs], iport, oport) do
-    io_request(r, iport, oport)
-    io_requests(rs, iport, oport)
+  defp handle_req(msg, tTYState, {false, iOQ} = iOQueue) do
+    :empty = :queue.peek(iOQ)
+    {origin, req} = msg
+    case (io_request(req, tTYState)) do
+      {:noreply, newTTYState} ->
+        {newTTYState, iOQueue}
+      {reply, monitorRef, newTTYState} ->
+        {newTTYState, {{origin, monitorRef, reply}, iOQ}}
+    end
   end
 
-  defp io_requests([], _Iport, _Oport) do
-    :ok
+  defp handle_req(msg, tTYState, {resp, iOQ}) do
+    {tTYState, {resp, :queue.in(msg, iOQ)}}
   end
 
-  defp put_int16(n, tail) do
-    [n >>> 8 &&& 255, n &&& 255 | tail]
-  end
-
-  defp io_command({:put_chars_sync, :unicode, cs, reply}) do
-    {[5 | :unicode.characters_to_binary(cs, :utf8)], reply}
-  end
-
-  defp io_command({:put_chars, :unicode, cs}) do
-    {[0 | :unicode.characters_to_binary(cs, :utf8)], :ok}
-  end
-
-  defp io_command({:move_rel, n}) do
-    {[1 | put_int16(n, [])], :ok}
-  end
-
-  defp io_command({:insert_chars, :unicode, cs}) do
-    {[2 | :unicode.characters_to_binary(cs, :utf8)], :ok}
-  end
-
-  defp io_command({:delete_chars, n}) do
-    {[3 | put_int16(n, [])], :ok}
-  end
-
-  defp io_command(:beep) do
-    {[4], :ok}
-  end
-
-  defp io_command(_) do
-    :unhandled
-  end
-
+  Record.defrecord(:r_group, :group, index: :undefined,
+                                 pid: :undefined, shell: :undefined)
+  Record.defrecord(:r_gr, :gr, next: 0, current: 0,
+                              pid: :none, groups: [])
   defp gr_new() do
-    {0, 0, :none, []}
+    r_gr()
   end
 
-  defp gr_get_num({_Next, _CurI, _CurP, gs}, i) do
-    gr_get_num1(gs, i)
+  defp gr_new_group(i, p, s) do
+    r_group(index: i, pid: p, shell: s)
   end
 
-  defp gr_get_num1([{i, _Pid, {}} | _Gs], i) do
-    :undefined
+  defp gr_get_num(r_gr(groups: gs), i) do
+    case (:lists.keyfind(i, r_group(:index), gs)) do
+      false ->
+        :undefined
+      r_group(shell: {}) ->
+        :undefined
+      r_group(pid: pid) ->
+        {:pid, pid}
+    end
   end
 
-  defp gr_get_num1([{i, pid, _S} | _Gs], i) do
-    {:pid, pid}
+  defp gr_get_info(r_gr(groups: gs), pid) do
+    case (:lists.keyfind(pid, r_group(:pid), gs)) do
+      false ->
+        :undefined
+      r_group(index: i, shell: s) ->
+        {i, s}
+    end
   end
 
-  defp gr_get_num1([_G | gs], i) do
-    gr_get_num1(gs, i)
+  defp gr_add_cur(r_gr(next: next, groups: gs), pid, shell) do
+    :erlang.put(:current_group, pid)
+    r_gr(next: next + 1, current: next, pid: pid,
+        groups: gs ++ [gr_new_group(next, pid, shell)])
   end
 
-  defp gr_get_num1([], _I) do
-    :undefined
-  end
-
-  defp gr_get_info({_Next, _CurI, _CurP, gs}, pid) do
-    gr_get_info1(gs, pid)
-  end
-
-  defp gr_get_info1([{i, pid, s} | _Gs], pid) do
-    {i, s}
-  end
-
-  defp gr_get_info1([_G | gs], i) do
-    gr_get_info1(gs, i)
-  end
-
-  defp gr_get_info1([], _I) do
-    :undefined
-  end
-
-  defp gr_add_cur({next, _CurI, _CurP, gs}, pid, shell) do
-    {next + 1, next, pid, append(gs, [{next, pid, shell}])}
-  end
-
-  defp gr_set_cur({next, _CurI, _CurP, gs}, i) do
-    case gr_get_num1(gs, i) do
+  defp gr_set_cur(gr, i) do
+    case (gr_get_num(gr, i)) do
       {:pid, pid} ->
-        {:ok, {next, i, pid, gs}}
-
+        :erlang.put(:current_group, pid)
+        {:ok, r_gr(gr, current: i,  pid: pid)}
       :undefined ->
         :undefined
     end
   end
 
-  defp gr_set_num({next, curI, curP, gs}, i, pid, shell) do
-    {next, curI, curP, gr_set_num1(gs, i, pid, shell)}
+  defp gr_set_num(gr = r_gr(groups: groups), i, pid, shell) do
+    newGroups = :lists.keystore(i, r_group(:index), groups,
+                                  gr_new_group(i, pid, shell))
+    r_gr(gr, groups: newGroups)
   end
 
-  defp gr_set_num1([{i, _Pid, _Shell} | gs], i, newPid, newShell) do
-    [{i, newPid, newShell} | gs]
+  defp gr_del_pid(gr = r_gr(groups: groups), pid) do
+    r_gr(gr, groups: :lists.keydelete(pid, r_group(:pid), groups))
   end
 
-  defp gr_set_num1([{i, pid, shell} | gs], newI, newPid, newShell)
-       when newI > i do
-    [{i, pid, shell} | gr_set_num1(gs, newI, newPid, newShell)]
+  defp gr_cur_pid(r_gr(pid: pid)) do
+    pid
   end
 
-  defp gr_set_num1(gs, newI, newPid, newShell) do
-    [{newI, newPid, newShell} | gs]
+  defp gr_cur_index(r_gr(current: index)) do
+    index
   end
 
-  defp gr_del_pid({next, curI, curP, gs}, pid) do
-    {next, curI, curP, gr_del_pid1(gs, pid)}
+  defp gr_list(r_gr(current: current, groups: groups)) do
+    :lists.flatmap(fn r_group(shell: {}) ->
+                        []
+                      r_group(index: i, shell: s) ->
+                        marker = (for _ <- [:EFE_DUMMY_GEN], current === i do
+                                    '*'
+                                  end)
+                        [{:put_chars, :unicode,
+                            :unicode.characters_to_binary(:io_lib.format('~4w~.1ts ~w\n',
+                                                                           [i,
+                                                                                marker,
+                                                                                    s]))}]
+                   end,
+                     groups)
   end
 
-  defp gr_del_pid1([{_I, pid, _S} | gs], pid) do
-    gs
-  end
-
-  defp gr_del_pid1([g | gs], pid) do
-    [g | gr_del_pid1(gs, pid)]
-  end
-
-  defp gr_del_pid1([], _Pid) do
-    []
-  end
-
-  defp gr_cur_pid({_Next, _CurI, curP, _Gs}) do
-    curP
-  end
-
-  defp gr_list({_Next, curI, _CurP, gs}) do
-    gr_list(gs, curI, [])
-  end
-
-  defp gr_list([{_I, _Pid, {}} | gs], cur, jobs) do
-    gr_list(gs, cur, jobs)
-  end
-
-  defp gr_list([{cur, _Pid, shell} | gs], cur, jobs) do
-    gr_list(gs, cur, [
-      {:put_chars, :unicode, flatten(:io_lib.format('~4w* ~w\n', [cur, shell]))}
-      | jobs
-    ])
-  end
-
-  defp gr_list([{i, _Pid, shell} | gs], cur, jobs) do
-    gr_list(gs, cur, [
-      {:put_chars, :unicode, flatten(:io_lib.format('~4w  ~w\n', [i, shell]))}
-      | jobs
-    ])
-  end
-
-  defp gr_list([], _Cur, jobs) do
-    :lists.reverse(jobs)
-  end
-
-  defp append([h | t], x) do
-    [h | append(t, x)]
-  end
-
-  defp append([], x) do
-    x
-  end
-
-  defp member(x, [x | _Rest]) do
-    true
-  end
-
-  defp member(x, [_H | rest]) do
-    member(x, rest)
-  end
-
-  defp member(_X, []) do
-    false
-  end
-
-  defp flatten(list) do
-    flatten(list, [], [])
-  end
-
-  defp flatten([h | t], cont, tail) when is_list(h) do
-    flatten(h, [t | cont], tail)
-  end
-
-  defp flatten([h | t], cont, tail) do
-    [h | flatten(t, cont, tail)]
-  end
-
-  defp flatten([], [h | cont], tail) do
-    flatten(h, cont, tail)
-  end
-
-  defp flatten([], [], tail) do
-    tail
-  end
 end

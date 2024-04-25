@@ -1,41 +1,21 @@
 defmodule :m_erl_compile do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_options, :options,
-    includes: [],
-    outdir: '.',
-    output_type: :undefined,
-    defines: [],
-    warning: 1,
-    verbose: false,
-    optimize: 999,
-    specific: [],
-    outfile: '',
-    cwd: :undefined
-  )
-
-  Record.defrecord(:r_file_info, :file_info,
-    size: :undefined,
-    type: :undefined,
-    access: :undefined,
-    atime: :undefined,
-    mtime: :undefined,
-    ctime: :undefined,
-    mode: :undefined,
-    links: :undefined,
-    major_device: :undefined,
-    minor_device: :undefined,
-    inode: :undefined,
-    uid: :undefined,
-    gid: :undefined
-  )
-
-  Record.defrecord(:r_file_descriptor, :file_descriptor,
-    module: :undefined,
-    data: :undefined
-  )
-
+  Record.defrecord(:r_options, :options, includes: [], outdir: '.',
+                                   output_type: :undefined, defines: [],
+                                   warning: 1, verbose: false, optimize: 999,
+                                   specific: [], outfile: '', cwd: :undefined)
+  Record.defrecord(:r_file_info, :file_info, size: :undefined,
+                                     type: :undefined, access: :undefined,
+                                     atime: :undefined, mtime: :undefined,
+                                     ctime: :undefined, mode: :undefined,
+                                     links: :undefined,
+                                     major_device: :undefined,
+                                     minor_device: :undefined,
+                                     inode: :undefined, uid: :undefined,
+                                     gid: :undefined)
+  Record.defrecord(:r_file_descriptor, :file_descriptor, module: :undefined,
+                                           data: :undefined)
   defp compiler('.erl') do
     {:compile, :compile}
   end
@@ -44,8 +24,8 @@ defmodule :m_erl_compile do
     {:compile, :compile_asm}
   end
 
-  defp compiler('.beam') do
-    {:compile, :compile_beam}
+  defp compiler('.abstr') do
+    {:compile, :compile_abstr}
   end
 
   defp compiler('.core') do
@@ -108,7 +88,6 @@ defmodule :m_erl_compile do
     catch
       {:error, output} ->
         {:error, :unicode.characters_to_binary(output)}
-
       c, e ->
         {:crash, {c, e, __STACKTRACE__}}
     else
@@ -119,22 +98,17 @@ defmodule :m_erl_compile do
 
   defp compile_cmdline1(args) do
     {:ok, cwd} = :file.get_cwd()
-
-    {pid, ref} =
-      spawn_monitor(fn ->
-        exit(compile(args, cwd))
-      end)
-
+    {pid, ref} = spawn_monitor(fn () ->
+                                    exit(compile(args, cwd))
+                               end)
     receive do
       {:DOWN, ^ref, :process, ^pid, result} ->
-        case result do
+        case (result) do
           :ok ->
             :erlang.halt(0)
-
           {:error, output} ->
             :io.put_chars(:standard_error, output)
             :erlang.halt(1)
-
           {:crash, {c, e, stk}} ->
             :io.format(:standard_error, 'Crash: ~p:~tp\n~tp\n', [c, e, stk])
             :erlang.halt(2)
@@ -143,11 +117,9 @@ defmodule :m_erl_compile do
   end
 
   defp cmdline_init() do
-    path =
-      for d <- :code.get_path(), d !== '.' do
-        d
-      end
-
+    path = (for d <- :code.get_path(), d !== '.' do
+              d
+            end)
     true = :code.set_path(path)
     :ok
   end
@@ -163,7 +135,7 @@ defmodule :m_erl_compile do
   defp compile1(['+' ++ option | rest], opts) do
     term = make_term(option)
     specific = r_options(opts, :specific)
-    compile1(rest, r_options(opts, specific: [term | specific]))
+    compile1(rest, r_options(opts, specific: specific ++ [term]))
   end
 
   defp compile1(files, opts) do
@@ -172,22 +144,17 @@ defmodule :m_erl_compile do
 
   defp parse_generic_option('b' ++ opt, t0, opts) do
     {outputType, t} = get_option('b', opt, t0)
-
-    compile1(
-      t,
-      r_options(opts, output_type: :erlang.list_to_atom(outputType))
-    )
+    compile1(t,
+               r_options(opts, output_type: :erlang.list_to_atom(outputType)))
   end
 
   defp parse_generic_option('D' ++ opt, t0, r_options(defines: defs) = opts) do
     {val0, t} = get_option('D', opt, t0)
     {key0, val1} = split_at_equals(val0, [])
     key = :erlang.list_to_atom(key0)
-
-    case val1 do
+    case (val1) do
       [] ->
         compile1(t, r_options(opts, defines: [key | defs]))
-
       val2 ->
         val = make_term(val2)
         compile1(t, r_options(opts, defines: [{key, val} | defs]))
@@ -201,11 +168,8 @@ defmodule :m_erl_compile do
   defp parse_generic_option('I' ++ opt, t0, r_options(cwd: cwd) = opts) do
     {dir, t} = get_option('I', opt, t0)
     absDir = :filename.absname(dir, cwd)
-
-    compile1(
-      t,
-      r_options(opts, includes: [absDir | r_options(opts, :includes)])
-    )
+    compile1(t,
+               r_options(opts, includes: [absDir | r_options(opts, :includes)]))
   end
 
   defp parse_generic_option('M' ++ opt, t0, r_options(specific: spec) = opts) do
@@ -216,21 +180,18 @@ defmodule :m_erl_compile do
   defp parse_generic_option('o' ++ opt, t0, r_options(cwd: cwd) = opts) do
     {dir, t} = get_option('o', opt, t0)
     absName = :filename.absname(dir, cwd)
-
-    case file_or_directory(absName) do
+    case (file_or_directory(absName)) do
       :file ->
         compile1(t, r_options(opts, outfile: absName))
-
       :directory ->
         compile1(t, r_options(opts, outdir: absName))
     end
   end
 
   defp parse_generic_option('O' ++ opt, t, opts) do
-    case opt do
+    case (opt) do
       '' ->
         compile1(t, r_options(opts, optimize: 1))
-
       _ ->
         term = make_term(opt)
         compile1(t, r_options(opts, optimize: term))
@@ -242,19 +203,14 @@ defmodule :m_erl_compile do
   end
 
   defp parse_generic_option('W' ++ warn, t, r_options(specific: spec) = opts) do
-    case warn do
+    case (warn) do
       'all' ->
         compile1(t, r_options(opts, warning: 999))
-
       'error' ->
-        compile1(
-          t,
-          r_options(opts, specific: [:warnings_as_errors | spec])
-        )
-
+        compile1(t,
+                   r_options(opts, specific: [:warnings_as_errors | spec]))
       '' ->
         compile1(t, r_options(opts, warning: 1))
-
       _ ->
         try do
           :erlang.list_to_integer(warn)
@@ -278,6 +234,35 @@ defmodule :m_erl_compile do
 
   defp parse_generic_option('S', t, r_options(specific: spec) = opts) do
     compile1(t, r_options(opts, specific: [:S | spec]))
+  end
+
+  defp parse_generic_option('enable-feature' ++ str, t0, r_options(specific: spec) = opts) do
+    {ftrStr, t} = get_option('enable-feature', str, t0)
+    feature = :erlang.list_to_atom(ftrStr)
+    compile1(t,
+               r_options(opts, specific: spec ++ [{:feature, feature,
+                                             :enable}]))
+  end
+
+  defp parse_generic_option('disable-feature' ++ str, t0, r_options(specific: spec) = opts) do
+    {ftrStr, t} = get_option('disable-feature', str, t0)
+    feature = :erlang.list_to_atom(ftrStr)
+    compile1(t,
+               r_options(opts, specific: spec ++ [{:feature, feature,
+                                             :disable}]))
+  end
+
+  defp parse_generic_option('describe-feature' ++ str, t0, r_options(specific: spec) = opts) do
+    {ftrStr, t} = get_option('disable-feature', str, t0)
+    feature = :erlang.list_to_atom(ftrStr)
+    compile1(t,
+               r_options(opts, specific: [{:describe_feature, feature} |
+                                      spec]))
+  end
+
+  defp parse_generic_option('list-features', t, r_options(specific: spec) = opts) do
+    compile1(t,
+               r_options(opts, specific: [{:list_features, true} | spec]))
   end
 
   defp parse_generic_option(option, _T, _Opts) do
@@ -328,51 +313,65 @@ defmodule :m_erl_compile do
   end
 
   defp usage(error) do
-    h = [
-      {'-b type', 'type of output file (e.g. beam)'},
-      {'-d', 'turn on debugging of erlc itself'},
-      {'-Dname', 'define name'},
-      {'-Dname=value', 'define name to have value'},
-      {'-help', 'shows this help text'},
-      {'-I path', 'where to search for include files'},
-      {'-M', 'generate a rule for make(1) describing the dependencies'},
-      {'-MF file', 'write the dependencies to \'file\''},
-      {'-MT target', 'change the target of the rule emitted by dependency generation'},
-      {'-MQ target', 'same as -MT but quote characters special to make(1)'},
-      {'-MG', 'consider missing headers as generated files and add them to the dependencies'},
-      {'-MP', 'add a phony target for each dependency'},
-      {'-MD', 'same as -M -MT file (with default \'file\')'},
-      {'-MMD', 'generate dependencies as a side-effect'},
-      {'-o name', 'name output directory or file'},
-      {'-pa path', 'add path to the front of Erlang\'s code path'},
-      {'-pz path', 'add path to the end of Erlang\'s code path'},
-      {'-smp', 'compile using SMP emulator'},
-      {'-v', 'verbose compiler output'},
-      {'-Werror', 'make all warnings into errors'},
-      {'-W0', 'disable warnings'},
-      {'-Wnumber', 'set warning level to number'},
-      {'-Wall', 'enable all warnings'},
-      {'-W', 'enable warnings (default; same as -W1)'},
-      {'-E', 'generate listing of expanded code (Erlang compiler)'},
-      {'-S', 'generate assembly listing (Erlang compiler)'},
-      {'-P', 'generate listing of preprocessed code (Erlang compiler)'},
-      {'+term', 'pass the Erlang term unchanged to the compiler'}
-    ]
-
-    msg = [
-      error,
-      'Usage: erlc [Options] file.ext ...\n',
-      'Options:\n',
-      for {k, d} <- h do
-        :io_lib.format('~-14s ~s\n', [k, d])
-      end
-    ]
-
+    h = [{'-b type', 'type of output file (e.g. beam)'}, {'-d', 'turn on debugging of erlc itself'}, {'-Dname', 'define name'}, {'-Dname=value', 'define name to have value'}, {'-help', 'shows this help text'}, {'-I path', 'where to search for include files'}, {'-M',
+                                                            'generate a rule for make(1) describing the dependencies'},
+                                                             {'-MF file', 'write the dependencies to \'file\''}, {'-MT target', 'change the target of the rule emitted by dependency generation'}, {'-MQ target',
+                                                                                'same as -MT but quote characters special to make(1)'},
+                                                                                 {'-MG',
+                                                                                    'consider missing headers as generated files and add them to the dependencies'},
+                                                                                     {'-MP',
+                                                                                        'add a phony target for each dependency'},
+                                                                                         {'-MD',
+                                                                                            'same as -M -MT file (with default \'file\')'},
+                                                                                             {'-MMD',
+                                                                                                'generate dependencies as a side-effect'},
+                                                                                                 {'-o name',
+                                                                                                    'name output directory or file'},
+                                                                                                     {'-pa path',
+                                                                                                        'add path to the front of Erlang\'s code path'},
+                                                                                                         {'-pz path',
+                                                                                                            'add path to the end of Erlang\'s code path'},
+                                                                                                             {'-v',
+                                                                                                                'verbose compiler output'},
+                                                                                                                 {'-Werror',
+                                                                                                                    'make all warnings into errors'},
+                                                                                                                     {'-W0',
+                                                                                                                        'disable warnings'},
+                                                                                                                         {'-Wnumber',
+                                                                                                                            'set warning level to number'},
+                                                                                                                             {'-Wall',
+                                                                                                                                'enable all warnings'},
+                                                                                                                                 {'-W',
+                                                                                                                                    'enable warnings (default; same as -W1)'},
+                                                                                                                                     {'-E',
+                                                                                                                                        'generate listing of expanded code (Erlang compiler)'},
+                                                                                                                                         {'-S',
+                                                                                                                                            'generate assembly listing (Erlang compiler)'},
+                                                                                                                                             {'-P',
+                                                                                                                                                'generate listing of preprocessed code (Erlang compiler)'},
+                                                                                                                                                 {'-enable-feature <feature>',
+                                                                                                                                                    'enable <feature> when compiling (Erlang compiler)'},
+                                                                                                                                                     {'-disable-feature <feature>',
+                                                                                                                                                        'disable <feature> when compiling (Erlang compiler)'},
+                                                                                                                                                         {'-list-features',
+                                                                                                                                                            'list short descriptions of available features (Erlang compiler)'},
+                                                                                                                                                             {'-describe-feature <feature>',
+                                                                                                                                                                'show long description of <feature>'},
+                                                                                                                                                                 {'+term',
+                                                                                                                                                                    'pass the Erlang term unchanged to the compiler'}]
+    fmt = fn k, d when length(k) < 15 ->
+               :io_lib.format('~-14s ~s\n', [k, d])
+             k, d ->
+               :io_lib.format('~s\n~-14s ~s\n', [k, '', d])
+          end
+    msg = [error, 'Usage: erlc [Options] file.ext ...\n', 'Options:\n', for {k, d} <- h do
+                          fmt.(k, d)
+                        end]
     throw({:error, msg})
   end
 
   defp get_option(_Name, [], [[c | _] = option | t])
-       when c !== ?- do
+      when c !== ?- do
     {option, t}
   end
 
@@ -396,21 +395,22 @@ defmodule :m_erl_compile do
     {:lists.reverse(acc), []}
   end
 
-  defp compile2(
-         files,
-         r_options(cwd: cwd, includes: incl, outfile: outfile) = opts0
-       ) do
-    opts = r_options(opts0, includes: :lists.reverse(incl))
-
-    case {outfile, length(files)} do
-      {'', _} ->
-        compile3(files, cwd, opts)
-
-      {[_ | _], 1} ->
-        compile3(files, cwd, opts)
-
-      {[_ | _], _N} ->
-        throw({:error, 'Output file name given, but more than one input file.\n'})
+  defp compile2(files,
+            r_options(cwd: cwd, includes: incl,
+                outfile: outfile) = opts0) do
+    case (show_info(opts0)) do
+      {:ok, msg} ->
+        throw({:error, msg})
+      false ->
+        opts = r_options(opts0, includes: :lists.reverse(incl))
+        case ({outfile, length(files)}) do
+          {'', _} ->
+            compile3(files, cwd, opts)
+          {[_ | _], 1} ->
+            compile3(files, cwd, opts)
+          {[_ | _], _N} ->
+            throw({:error, 'Output file name given, but more than one input file.\n'})
+        end
     end
   end
 
@@ -418,19 +418,13 @@ defmodule :m_erl_compile do
     ext = :filename.extension(file)
     root = :filename.rootname(file)
     inFile = :filename.absname(root, cwd)
-
-    outFile =
-      case r_options(options, :outfile) do
-        '' ->
-          :filename.join(
-            r_options(options, :outdir),
-            :filename.basename(root)
-          )
-
-        outfile ->
-          :filename.rootname(outfile)
-      end
-
+    outFile = (case (r_options(options, :outfile)) do
+                 '' ->
+                   :filename.join(r_options(options, :outdir),
+                                    :filename.basename(root))
+                 outfile ->
+                   :filename.rootname(outfile)
+               end)
     compile_file(ext, inFile, outFile, options)
     compile3(rest, cwd, options)
   end
@@ -439,35 +433,60 @@ defmodule :m_erl_compile do
     :ok
   end
 
+  defp show_info(r_options(specific: spec)) do
+    g = fn g0
+        [] ->
+          :undefined
+        [e | es] ->
+          case (:proplists.get_value(e, spec)) do
+            :undefined ->
+              g0.(es)
+            v ->
+              {e, v}
+          end
+        end
+    case (g.([:list_features, :describe_feature])) do
+      {:list_features, true} ->
+        features = :erl_features.configurable()
+        msg = ['Available features:\n', for ftr <- features do
+                    :io_lib.format(' ~-18s ~s\n', [ftr, :erl_features.short(ftr)])
+                  end]
+        {:ok, msg}
+      {:describe_feature, ftr} ->
+        description = (try do
+                         :erl_features.long(ftr)
+                       catch
+                         :error, :invalid_feature ->
+                           :io_lib.format('Unknown feature: ~p\n', [ftr])
+                       end)
+        {:ok, description}
+      _ ->
+        false
+    end
+  end
+
   defp compile_file('', input, _Output, _Options) do
     throw({:error, :io_lib.format('File has no extension: ~ts~n', [input])})
   end
 
   defp compile_file(ext, input, output, options) do
-    case compiler(ext) do
+    case (compiler(ext)) do
       :no ->
         error = :io_lib.format('Unknown extension: \'~ts\'\n', [ext])
         throw({:error, error})
-
       {m, f} ->
         try do
           apply(m, f, [input, output, options])
         catch
           reason ->
-            error =
-              :io_lib.format(
-                'Compiler function ~w:~w/3 failed:\n~tp\n~tp\n',
-                [m, f, reason, __STACKTRACE__]
-              )
-
+            error = :io_lib.format('Compiler function ~w:~w/3 failed:\n~tp\n~tp\n',
+                                     [m, f, reason, __STACKTRACE__])
             throw({:error, error})
         else
           :ok ->
             :ok
-
           :error ->
             throw({:error, ''})
-
           other ->
             error = :io_lib.format('Compiler function ~w:~w/3 returned:\n~tp~n', [m, f, other])
             throw({:error, error})
@@ -476,18 +495,15 @@ defmodule :m_erl_compile do
   end
 
   defp file_or_directory(name) do
-    case :file.read_file_info(name) do
+    case (:file.read_file_info(name)) do
       {:ok, r_file_info(type: :regular)} ->
         :file
-
       {:ok, _} ->
         :directory
-
       {:error, _} ->
-        case :filename.extension(name) do
+        case (:filename.extension(name)) do
           [] ->
             :directory
-
           _Other ->
             :file
         end
@@ -495,18 +511,18 @@ defmodule :m_erl_compile do
   end
 
   defp make_term(str) do
-    case :erl_scan.string(str) do
+    case (:erl_scan.string(str)) do
       {:ok, tokens, _} ->
-        case :erl_parse.parse_term(tokens ++ [{:dot, :erl_anno.new(1)}]) do
+        case (:erl_parse.parse_term(tokens ++ [{:dot,
+                                                  :erl_anno.new(1)}])) do
           {:ok, term} ->
             term
-
           {:error, {_, _, reason}} ->
             throw({:error, :io_lib.format('~ts: ~ts~n', [reason, str])})
         end
-
       {:error, {_, _, reason}, _} ->
         throw({:error, :io_lib.format('~ts: ~ts~n', [reason, str])})
     end
   end
+
 end

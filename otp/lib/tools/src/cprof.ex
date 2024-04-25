@@ -1,6 +1,5 @@
 defmodule :m_cprof do
   use Bitwise
-
   def start() do
     tr({:_, :_, :_}, true) + tr(:on_load, true)
   end
@@ -102,30 +101,20 @@ defmodule :m_cprof do
   end
 
   def analyse(limit) when is_integer(limit) do
-    l0 =
-      for mod <- :code.all_loaded() do
-        analyse(:erlang.element(1, mod), limit)
-      end
-
-    l1 =
-      for {m, c, lm} <- l0, c > 0, m !== :cprof do
-        {c, m, lm}
-      end
-
-    n =
-      :lists.foldl(
-        fn {c, _, _}, q ->
-          q + c
-        end,
-        0,
-        l1
-      )
-
-    l =
-      for {c, m, lm} <- :lists.reverse(:lists.sort(l1)) do
-        {m, c, lm}
-      end
-
+    l0 = (for mod <- :code.all_loaded() do
+            analyse(:erlang.element(1, mod), limit)
+          end)
+    l1 = (for {m, c, lm} <- l0, c > 0, m !== :cprof do
+            {c, m, lm}
+          end)
+    n = :lists.foldl(fn {c, _, _}, q ->
+                          q + c
+                     end,
+                       0, l1)
+    l = (for {c, m,
+                lm} <- :lists.reverse(:lists.sort(l1)) do
+           {m, c, lm}
+         end)
     {n, l}
   end
 
@@ -133,40 +122,28 @@ defmodule :m_cprof do
     analyse(m, 1)
   end
 
-  def analyse(m, limit)
-      when is_atom(m) and
-             is_integer(limit) do
-    l0 =
-      for {f, a} <- m.module_info(:functions) do
-        mFA = {m, f, a}
-        {_, c} = :erlang.trace_info(mFA, :call_count)
-        [c | mFA]
-      end
-
-    l1 =
-      for [c | _] = x <- l0, is_integer(c) do
-        x
-      end
-
-    n =
-      :lists.foldl(
-        fn [c | _], q ->
-          q + c
-        end,
-        0,
-        l1
-      )
-
-    l2 =
-      for [c | _] = x <- l1, c >= limit do
-        x
-      end
-
-    l =
-      for [c | mFA] <- :lists.reverse(:lists.sort(l2)) do
-        {mFA, c}
-      end
-
+  def analyse(m, limit) when (is_atom(m) and
+                           is_integer(limit)) do
+    l0 = (for {f, a} <- m.module_info(:functions) do
+            (
+              mFA = {m, f, a}
+              {_, c} = :erlang.trace_info(mFA, :call_count)
+              [c | mFA]
+            )
+          end)
+    l1 = (for ([c | _] = x) <- l0, is_integer(c) do
+            x
+          end)
+    n = :lists.foldl(fn [c | _], q ->
+                          q + c
+                     end,
+                       0, l1)
+    l2 = (for ([c | _] = x) <- l1, c >= limit do
+            x
+          end)
+    l = (for [c | mFA] <- :lists.reverse(:lists.sort(l2)) do
+           {mFA, c}
+         end)
     {m, n, l}
   end
 
@@ -185,4 +162,5 @@ defmodule :m_cprof do
   defp tr(funcSpec, state) do
     :erlang.trace_pattern(funcSpec, state, [:call_count])
   end
+
 end

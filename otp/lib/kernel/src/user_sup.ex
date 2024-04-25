@@ -6,39 +6,35 @@ defmodule :m_user_sup do
   end
 
   def init([]) do
-    case get_user() do
+    init(:init.get_arguments())
+  end
+
+  def init(flags) do
+    case (get_user(flags)) do
       :nouser ->
         :ignore
-
       {:master, master} ->
-        pid = start_slave(master)
+        pid = start_relay(master)
         {:ok, pid, pid}
-
       {m, f, a} ->
-        case start_user(m, f, a) do
+        case (start_user(m, f, a)) do
           {:ok, pid} ->
             {:ok, pid, pid}
-
           error ->
             error
         end
     end
   end
 
-  defp start_slave(master) do
-    case :rpc.call(master, :erlang, :whereis, [:user]) do
+  defp start_relay(master) do
+    case (:rpc.call(master, :erlang, :whereis, [:user])) do
       user when is_pid(user) ->
         spawn(:user_sup, :relay, [user])
-
       _ ->
         :error_logger.error_msg('Cannot get remote user', [])
-
-        receive do
-        after
-          1000 ->
-            true
+        receive do after 1000 ->
+          true
         end
-
         :erlang.halt()
     end
   end
@@ -57,12 +53,9 @@ defmodule :m_user_sup do
   end
 
   def terminate(_Reason, userPid) do
-    receive do
-    after
-      1000 ->
-        :ok
+    receive do after 1000 ->
+      :ok
     end
-
     :erlang.exit(userPid, :kill)
     :ok
   end
@@ -77,56 +70,60 @@ defmodule :m_user_sup do
   end
 
   defp wait_for_user_p(n) do
-    case :erlang.whereis(:user) do
+    case (:erlang.whereis(:user)) do
       pid when is_pid(pid) ->
         :erlang.link(pid)
         {:ok, pid}
-
       _ ->
-        receive do
-        after
-          100 ->
-            :ok
+        receive do after 100 ->
+          :ok
         end
-
         wait_for_user_p(n - 1)
     end
   end
 
-  defp get_user() do
-    flags = :init.get_arguments()
-    check_flags(flags, {:user_drv, :start, []})
+  defp get_user(flags) do
+    check_flags(flags,
+                  :lists.keymember(:detached, 1, flags),
+                  {:user_drv, :start, []})
   end
 
-  defp check_flags([{:nouser, []} | t], _) do
-    check_flags(t, :nouser)
+  defp check_flags([{:nouser, []} | t], attached, _) do
+    check_flags(t, attached, :nouser)
   end
 
-  defp check_flags([{:user, [user]} | t], _) do
-    check_flags(t, {:erlang.list_to_atom(user), :start, []})
+  defp check_flags([{:user, [user]} | t], attached, _) do
+    check_flags(t, attached,
+                  {:erlang.list_to_atom(user), :start, []})
   end
 
-  defp check_flags([{:noshell, []} | t], _) do
-    check_flags(t, {:user, :start, []})
+  defp check_flags([{:noshell, []} | t], attached, _) do
+    check_flags(t, attached,
+                  {:user_drv, :start, [%{initial_shell: :noshell}]})
   end
 
-  defp check_flags([{:oldshell, []} | t], _) do
-    check_flags(t, {:user, :start, []})
+  defp check_flags([{:oldshell, []} | t], false, _) do
+    check_flags(t, false,
+                  {:user_drv, :start, [%{initial_shell: :oldshell}]})
   end
 
-  defp check_flags([{:noinput, []} | t], _) do
-    check_flags(t, {:user, :start_out, []})
+  defp check_flags([{:noinput, []} | t], attached, _) do
+    check_flags(t, attached,
+                  {:user_drv, :start,
+                     [%{initial_shell: :noshell, input: false}]})
   end
 
-  defp check_flags([{:master, [node]} | t], _) do
-    check_flags(t, {:master, :erlang.list_to_atom(node)})
+  defp check_flags([{:master, [node]} | t], attached, _) do
+    check_flags(t, attached,
+                  {:master, :erlang.list_to_atom(node)})
   end
 
-  defp check_flags([_H | t], user) do
-    check_flags(t, user)
+  defp check_flags([_H | t], attached, user) do
+    check_flags(t, attached, user)
   end
 
-  defp check_flags([], user) do
+  defp check_flags([], _Attached, user) do
     user
   end
+
 end

@@ -3,7 +3,8 @@ defmodule :m_dbg_ieval do
   require Record
   Record.defrecord(:r_ieval, :ieval, level: 1, line: - 1,
                                  module: :undefined, function: :undefined,
-                                 arguments: :undefined, top: false)
+                                 arguments: :undefined, error_info: [],
+                                 top: false)
   def eval(mod, func, args) do
     debugged = self()
     int = :dbg_iserver.find()
@@ -42,9 +43,10 @@ defmodule :m_dbg_ieval do
     end
   end
 
-  def eval_expr(expr, bs, ieval) do
+  def eval_expr(expr0, bs, ieval) do
     exitInfo = :erlang.get(:exit_info)
     stacktrace = :erlang.get(:stacktrace)
+    expr = expand_records(expr0, r_ieval(ieval, :module))
     try do
       debugged_cmd({:eval, expr, bs}, bs, ieval)
     catch
@@ -549,8 +551,12 @@ defmodule :m_dbg_ieval do
       {:skip, bs} ->
         seq(es, bs, ieval)
       bs1 ->
-        {:value, _, bs} = expr(e, bs1, r_ieval(ieval, top: false))
-        seq(es, bs, ieval)
+        case (expr(e, bs1, r_ieval(ieval, top: false))) do
+          {:value, _, bs} ->
+            seq(es, bs, ieval)
+          {:bad_maybe_match, _} = bad ->
+            bad
+        end
     end
   end
 
@@ -607,6 +613,18 @@ defmodule :m_dbg_ieval do
                          end,
                            e, fs)
     {:value, value, merge_bindings(bs2, bs1, ieval)}
+  end
+
+  defp expr({:record_update, line, es}, bs,
+            r_ieval(level: le) = ieval0) do
+    ieval = r_ieval(ieval0, top: false,  line: line, 
+                        level: le + 1)
+    seq = fn e, {_, _, bs1} ->
+               expr(e, bs1, ieval)
+          end
+    {:value, value, bs1} = :lists.foldl(seq,
+                                          {:value, true, bs}, es)
+    {:value, value, remove_temporary_bindings(bs1)}
   end
 
   defp expr({:block, line, es}, bs, ieval) do
@@ -707,6 +725,25 @@ defmodule :m_dbg_ieval do
     end
   end
 
+  defp expr({:maybe, line, es}, bs, ieval) do
+    case (seq(es, bs, r_ieval(ieval, line: line))) do
+      {:bad_maybe_match, val} ->
+        {:value, val, bs}
+      {:value, _, _} = other ->
+        other
+    end
+  end
+
+  defp expr({:maybe, line, es, cs}, bs, ieval) do
+    case (seq(es, bs, r_ieval(ieval, line: line))) do
+      {:bad_maybe_match, val} ->
+        case_clauses(val, cs, bs, :else_clause,
+                       r_ieval(ieval, line: line))
+      {:value, _, _} = other ->
+        other
+    end
+  end
+
   defp expr({:match, line, lhs, rhs0}, bs0, ieval0) do
     ieval = r_ieval(ieval0, line: line)
     {:value, rhs, bs1} = expr(rhs0, bs0,
@@ -716,6 +753,18 @@ defmodule :m_dbg_ieval do
         {:value, rhs, bs}
       :nomatch ->
         exception(:error, {:badmatch, rhs}, bs1, ieval)
+    end
+  end
+
+  defp expr({:maybe_match, line, lhs, rhs0}, bs0, ieval0) do
+    ieval = r_ieval(ieval0, line: line)
+    {:value, rhs, bs1} = expr(rhs0, bs0,
+                                r_ieval(ieval, top: false))
+    case (match(lhs, rhs, bs1)) do
+      {:match, bs} ->
+        {:value, rhs, bs}
+      :nomatch ->
+        {:bad_maybe_match, rhs}
     end
   end
 
@@ -1181,8 +1230,7 @@ defmodule :m_dbg_ieval do
       :eval_bits.expr_grp(fs, bs0,
                             fn e, b ->
                                  expr(e, b, ieval)
-                            end,
-                            [], false)
+                            end)
     catch
       class, reason ->
         exception(class, reason, bs0, ieval)
@@ -1195,6 +1243,10 @@ defmodule :m_dbg_ieval do
 
   defp expr({:bc, _Line, e, qs}, bs, ieval) do
     eval_bc(e, qs, bs, ieval)
+  end
+
+  defp expr({:mc, _Line, e, qs}, bs, ieval) do
+    eval_mc(e, qs, bs, ieval)
   end
 
   defp expr(e, _Bs, _Ieval) do
@@ -1215,24 +1267,11 @@ defmodule :m_dbg_ieval do
     {:value, eval_lc1(e, qs, bs, ieval), bs}
   end
 
-  defp eval_lc1(e, [{:generate, line, p, l0} | qs], bs0,
-            ieval0) do
-    ieval = r_ieval(ieval0, line: line)
-    {:value, l1, bs1} = expr(l0, bs0, r_ieval(ieval, top: false))
+  defp eval_lc1(e, [{:generator, g} | qs], bs, ieval) do
     compFun = fn newBs ->
                    eval_lc1(e, qs, newBs, ieval)
               end
-    eval_generate(l1, p, bs1, compFun, ieval)
-  end
-
-  defp eval_lc1(e, [{:b_generate, line, p, l0} | qs], bs0,
-            ieval0) do
-    ieval = r_ieval(ieval0, line: line)
-    {:value, bin, _} = expr(l0, bs0, r_ieval(ieval, top: false))
-    compFun = fn newBs ->
-                   eval_lc1(e, qs, newBs, ieval)
-              end
-    eval_b_generate(bin, p, bs0, compFun, ieval)
+    eval_generator(g, bs, compFun, ieval)
   end
 
   defp eval_lc1(e, [{:guard, q} | qs], bs0, ieval) do
@@ -1266,24 +1305,11 @@ defmodule :m_dbg_ieval do
     {:value, val, bs}
   end
 
-  defp eval_bc1(e, [{:generate, line, p, l0} | qs], bs0,
-            ieval0) do
-    ieval = r_ieval(ieval0, line: line)
-    {:value, l1, bs1} = expr(l0, bs0, r_ieval(ieval, top: false))
+  defp eval_bc1(e, [{:generator, g} | qs], bs, ieval) do
     compFun = fn newBs ->
                    eval_bc1(e, qs, newBs, ieval)
               end
-    eval_generate(l1, p, bs1, compFun, ieval)
-  end
-
-  defp eval_bc1(e, [{:b_generate, line, p, l0} | qs], bs0,
-            ieval0) do
-    ieval = r_ieval(ieval0, line: line)
-    {:value, bin, _} = expr(l0, bs0, r_ieval(ieval, top: false))
-    compFun = fn newBs ->
-                   eval_bc1(e, qs, newBs, ieval)
-              end
-    eval_b_generate(bin, p, bs0, compFun, ieval)
+    eval_generator(g, bs, compFun, ieval)
   end
 
   defp eval_bc1(e, [{:guard, q} | qs], bs0, ieval) do
@@ -1309,6 +1335,85 @@ defmodule :m_dbg_ieval do
   defp eval_bc1(e, [], bs, ieval) do
     {:value, v, _} = expr(e, bs, r_ieval(ieval, top: false))
     [v]
+  end
+
+  defp eval_mc(e, qs, bs, ieval) do
+    map = eval_mc1(e, qs, bs, ieval)
+    {:value, :maps.from_list(map), bs}
+  end
+
+  defp eval_mc1(e, [{:generator, g} | qs], bs, ieval) do
+    compFun = fn newBs ->
+                   eval_mc1(e, qs, newBs, ieval)
+              end
+    eval_generator(g, bs, compFun, ieval)
+  end
+
+  defp eval_mc1(e, [{:guard, q} | qs], bs0, ieval) do
+    case (guard(q, bs0)) do
+      true ->
+        eval_mc1(e, qs, bs0, ieval)
+      false ->
+        []
+    end
+  end
+
+  defp eval_mc1(e, [q | qs], bs0, ieval) do
+    case (expr(q, bs0, r_ieval(ieval, top: false))) do
+      {:value, true, bs} ->
+        eval_mc1(e, qs, bs, ieval)
+      {:value, false, _Bs} ->
+        []
+      {:value, v, bs} ->
+        exception(:error, {:bad_filter, v}, bs, ieval)
+    end
+  end
+
+  defp eval_mc1({:map_field_assoc, _, k0, v0}, [], bs, ieval) do
+    {:value, k, _} = expr(k0, bs, r_ieval(ieval, top: false))
+    {:value, v, _} = expr(v0, bs, r_ieval(ieval, top: false))
+    [{k, v}]
+  end
+
+  defp eval_generator({:generate, line, p, l0}, bs0, compFun,
+            ieval0) do
+    ieval = r_ieval(ieval0, line: line)
+    {:value, l1, bs1} = expr(l0, bs0, r_ieval(ieval, top: false))
+    eval_generate(l1, p, bs1, compFun, ieval)
+  end
+
+  defp eval_generator({:b_generate, line, p, bin0}, bs0, compFun,
+            ieval0) do
+    ieval = r_ieval(ieval0, line: line)
+    {:value, bin, bs1} = expr(bin0, bs0,
+                                r_ieval(ieval, top: false))
+    eval_b_generate(bin, p, bs1, compFun, ieval)
+  end
+
+  defp eval_generator({:m_generate, line, p, map0}, bs0, compFun,
+            ieval0) do
+    ieval = r_ieval(ieval0, line: line)
+    {:map_field_exact, _, k, v} = p
+    {:value, map, _Bs1} = expr(map0, bs0, ieval)
+    iter = (case (is_map(map)) do
+              true ->
+                :maps.iterator(map)
+              false ->
+                try do
+                  :maps.foreach(fn _, _ ->
+                                     :ok
+                                end,
+                                  map)
+                catch
+                  _, _ ->
+                    exception(:error, {:bad_generator, map}, bs0, ieval)
+                else
+                  _ ->
+                    map
+                end
+            end)
+    eval_m_generate(iter, {:tuple, line, [k, v]}, bs0,
+                      compFun, ieval)
   end
 
   defp eval_generate([v | rest], p, bs0, compFun, ieval) do
@@ -1359,11 +1464,40 @@ defmodule :m_dbg_ieval do
     exception(:error, {:bad_generator, term}, bs, ieval)
   end
 
-  defp safe_bif(m, f, as, bs, ieval) do
+  defp eval_m_generate(iter0, p, bs0, compFun, ieval) do
+    case (:maps.next(iter0)) do
+      {k, v, iter} ->
+        case ((try do
+                match1(p, {k, v}, :erl_eval.new_bindings(), bs0)
+              catch
+                :error, e -> {:EXIT, {e, __STACKTRACE__}}
+                :exit, e -> {:EXIT, e}
+                e -> e
+              end)) do
+          {:match, bsn} ->
+            bs2 = add_bindings(bsn, bs0)
+            compFun.(bs2) ++ eval_m_generate(iter, p, bs0, compFun,
+                                               ieval)
+          :nomatch ->
+            eval_m_generate(iter, p, bs0, compFun, ieval)
+        end
+      :none ->
+        []
+    end
+  end
+
+  defp safe_bif(m, f, as, bs, ieval0) do
     try do
       apply(m, f, as)
     catch
       class, reason ->
+        [{_, _, _, info} | _] = __STACKTRACE__
+        ieval = (case (:lists.keyfind(:error_info, 1, info)) do
+                   false ->
+                     r_ieval(ieval0, error_info: [])
+                   errorInfo ->
+                     r_ieval(ieval0, error_info: [errorInfo])
+                 end)
         exception(class, reason, bs, ieval, true)
     else
       value ->
@@ -1731,6 +1865,11 @@ defmodule :m_dbg_ieval do
     end
   end
 
+  defp guard_expr({:case, _, e0, cs}, bs) do
+    {:value, e} = guard_expr(e0, bs)
+    guard_case_clauses(e, cs, bs)
+  end
+
   defp guard_expr({:dbg, _, :self, []}, _) do
     {:value, :erlang.get(:self)}
   end
@@ -1791,9 +1930,22 @@ defmodule :m_dbg_ieval do
                                              fn e, b ->
                                                   {:value, v} = guard_expr(e, b)
                                                   {:value, v, b}
-                                             end,
-                                             [], false)
+                                             end)
     {:value, v}
+  end
+
+  defp guard_case_clauses(val, [{:clause, _, [p], g, b} | cs], bs0) do
+    case (match(p, val, bs0)) do
+      {:match, bs} ->
+        case (guard(g, bs)) do
+          true ->
+            guard_expr(hd(b), bs)
+          false ->
+            guard_case_clauses(val, cs, bs0)
+        end
+      :nomatch ->
+        guard_case_clauses(val, cs, bs0)
+    end
   end
 
   defp eval_map_fields(fs, bs, ieval) do
@@ -1904,8 +2056,7 @@ defmodule :m_dbg_ieval do
       :eval_bits.match_bits(fs, b, bs0, bBs, match_fun(bBs),
                               fn e, bs ->
                                    expr(e, bs, r_ieval())
-                              end,
-                              false)
+                              end)
     catch
       _, _ ->
         throw(:nomatch)
@@ -2170,6 +2321,13 @@ defmodule :m_dbg_ieval do
     [{n, val}]
   end
 
+  defp remove_temporary_bindings(bs0) do
+    for {var, val} <- bs0,
+          hd(:erlang.atom_to_list(var)) !== ?% do
+      {var, val}
+    end
+  end
+
   defp get_stacktrace() do
     case (:erlang.get(:stacktrace)) do
       makeStk when is_function(makeStk, 1) ->
@@ -2181,6 +2339,145 @@ defmodule :m_dbg_ieval do
       stk when is_list(stk) ->
         stk
     end
+  end
+
+  defp expand_records(expr, mod) do
+    try do
+      expand_records_1(used_record_defs(expr, mod), expr)
+    catch
+      _, _Err ->
+        expr
+    end
+  end
+
+  defp expand_records_1([], expr) do
+    expr
+  end
+
+  defp expand_records_1(usedRecords, expr) do
+    a = :erl_anno.new(1)
+    recordDefs = (for {name, fields} <- usedRecords do
+                    {:attribute, a, :record,
+                       {name,
+                          for f <- fields do
+                            {:record_field, a, {:atom, a, f}}
+                          end}}
+                  end)
+    forms0 = recordDefs ++ [{:function, a, :foo, 0,
+                               [{:clause, a, [], [], [expr]}]}]
+    forms = :erl_expand_records.module(forms0,
+                                         [:strict_record_tests])
+    {:function, ^a, :foo, 0,
+       [{:clause, ^a, [], [], [nE]}]} = :lists.last(forms)
+    nE
+  end
+
+  defp used_record_defs(e, mod) do
+    case (mod_recs(mod)) do
+      [] ->
+        []
+      recs0 ->
+        recs = (for {{_, _, name, _}, fields} <- recs0 do
+                  {name, fields}
+                end)
+        l0 = used_record_defs(e, :maps.from_list(recs), [], [])
+        l1 = :lists.zip(l0, :lists.seq(1, length(l0)))
+        l2 = :lists.keysort(2, :lists.ukeysort(1, l1))
+        for {r, _} <- l2 do
+          r
+        end
+    end
+  end
+
+  defp used_record_defs(e, recs, skip, used) do
+    case (used_records(e)) do
+      {:name, name, e1} ->
+        case (:lists.member(name, skip)) do
+          true ->
+            used_record_defs(e1, recs, skip, used)
+          false ->
+            case (:maps.get(name, recs, :undefined)) do
+              :undefined ->
+                used_record_defs(e1, recs, [name | skip], used)
+              fields ->
+                used_record_defs(e1, recs, [name | skip],
+                                   [{name, fields} | used])
+            end
+        end
+      {:expr, [e1 | es]} ->
+        used_record_defs(es, recs, skip,
+                           used_record_defs(e1, recs, skip, used))
+      _ ->
+        used
+    end
+  end
+
+  defp mod_recs(mod) do
+    case (db_ref(mod)) do
+      :not_found ->
+        []
+      modDb ->
+        :dbg_idb.match_object(modDb,
+                                {{:record, mod, :_, :_}, :_})
+    end
+  end
+
+  defp used_records({:record_index, _, name, f}) do
+    {:name, name, f}
+  end
+
+  defp used_records({:record, _, name, is}) do
+    {:name, name, is}
+  end
+
+  defp used_records({:record_field, _, r, name, f}) do
+    {:name, name, [r | f]}
+  end
+
+  defp used_records({:record, _, r, name, ups}) do
+    {:name, name, [r | ups]}
+  end
+
+  defp used_records({:record_field, _, r, f}) do
+    {:expr, [r | f]}
+  end
+
+  defp used_records({:call, _, {:atom, _, :record},
+             [a, {:atom, _, name}]}) do
+    {:name, name, a}
+  end
+
+  defp used_records({:call, _, {:atom, _, :is_record},
+             [a, {:atom, _, name}]}) do
+    {:name, name, a}
+  end
+
+  defp used_records({:call, _,
+             {:remote, _, {:atom, _, :erlang},
+                {:atom, _, :is_record}},
+             [a, {:atom, _, name}]}) do
+    {:name, name, a}
+  end
+
+  defp used_records({:call, _, {:atom, _, :record_info},
+             [a, {:atom, _, name}]}) do
+    {:name, name, a}
+  end
+
+  defp used_records({:call, a, {:tuple, _, [m, f]}, as}) do
+    used_records({:call, a, {:remote, a, m, f}, as})
+  end
+
+  defp used_records({:type, _, :record, [{:atom, _, name} | fs]}) do
+    {:name, name, fs}
+  end
+
+  defp used_records(t) when is_tuple(t) do
+    {:expr, :erlang.tuple_to_list(t)}
+  end
+
+  defp used_records(e) do
+    {:expr, e}
   end
 
 end

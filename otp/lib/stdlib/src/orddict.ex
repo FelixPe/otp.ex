@@ -1,6 +1,5 @@
 defmodule :m_orddict do
   use Bitwise
-
   def new() do
     []
   end
@@ -226,10 +225,9 @@ defmodule :m_orddict do
   end
 
   def filter(f, [{key, val} = e | d]) do
-    case f.(key, val) do
+    case (f.(key, val)) do
       true ->
         [e | filter(f, d)]
-
       false ->
         filter(f, d)
     end
@@ -268,4 +266,5 @@ defmodule :m_orddict do
   defp reverse_pairs([], acc) do
     acc
   end
+
 end

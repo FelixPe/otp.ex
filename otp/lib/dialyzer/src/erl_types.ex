@@ -8,7 +8,7 @@ defmodule :m_erl_types do
   Record.defrecord(:r_int_rng, :int_rng, from: :undefined,
                                    to: :undefined)
   Record.defrecord(:r_opaque, :opaque, mod: :undefined,
-                                  name: :undefined, args: [],
+                                  name: :undefined, arity: 0,
                                   struct: :undefined)
   def t_any() do
     :any
@@ -39,7 +39,8 @@ defmodule :m_erl_types do
   end
 
   defp t_opaque(mod, name, args, struct) do
-    o = r_opaque(mod: mod, name: name, args: args, struct: struct)
+    o = r_opaque(mod: mod, name: name, arity: length(args),
+            struct: struct)
     r_c(tag: :opaque, elements: set_singleton(o))
   end
 
@@ -63,8 +64,7 @@ defmodule :m_erl_types do
     do_opaque(type, opaques, &has_opaque_subtype/1)
   end
 
-  defp has_opaque_subtype(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = ts)) do
+  defp has_opaque_subtype(r_c(tag: :union, elements: ts)) do
     :lists.any(&t_is_opaque/1, ts)
   end
 
@@ -73,7 +73,7 @@ defmodule :m_erl_types do
   end
 
   def t_opaque_structure(r_c(tag: :opaque, elements: elements)) do
-    t_sup(for r_opaque(struct: struct) <- :ordsets.to_list(elements) do
+    t_sup(for r_opaque(struct: struct) <- elements do
             struct
           end)
   end
@@ -98,7 +98,7 @@ defmodule :m_erl_types do
     false
   end
 
-  def t_contains_opaque(r_c(tag: :binary, elements: [_Unit, _Base]),
+  def t_contains_opaque(r_c(tag: :binary, elements: {_Unit, _Base}),
            _Opaques) do
     false
   end
@@ -109,7 +109,7 @@ defmodule :m_erl_types do
     false
   end
 
-  def t_contains_opaque(r_c(tag: :function, elements: [domain, range]),
+  def t_contains_opaque(r_c(tag: :function, elements: {domain, range}),
            opaques) do
     t_contains_opaque(domain,
                         opaques) or t_contains_opaque(range, opaques)
@@ -138,7 +138,13 @@ defmodule :m_erl_types do
     false
   end
 
-  def t_contains_opaque(r_c(tag: :list, elements: [type, tail],
+  def t_contains_opaque(r_c(tag: :list, elements: {type, r_c(tag: nil)},
+             qualifier: _),
+           opaques) do
+    t_contains_opaque(type, opaques)
+  end
+
+  def t_contains_opaque(r_c(tag: :list, elements: {type, tail},
              qualifier: _),
            opaques) do
     t_contains_opaque(type,
@@ -148,11 +154,6 @@ defmodule :m_erl_types do
   def t_contains_opaque(r_c(tag: :map, elements: {_, _, _}) = map,
            opaques) do
     list_contains_opaque(map_all_types(map), opaques)
-  end
-
-  def t_contains_opaque(r_c(tag: :matchstate, elements: [_P, _Slots]),
-           _Opaques) do
-    false
   end
 
   def t_contains_opaque(r_c(tag: nil), _Opaques) do
@@ -191,9 +192,7 @@ defmodule :m_erl_types do
     list_contains_opaque(t_tuple_subtypes(t), opaques)
   end
 
-  def t_contains_opaque(r_c(tag: :union,
-             elements: [_, _, _, _, _, _, _, _, _, _] = list),
-           opaques) do
+  def t_contains_opaque(r_c(tag: :union, elements: list), opaques) do
     list_contains_opaque(list, opaques)
   end
 
@@ -201,11 +200,13 @@ defmodule :m_erl_types do
     false
   end
 
-  defp list_contains_opaque(list, opaques) do
-    :lists.any(fn e ->
-                    t_contains_opaque(e, opaques)
-               end,
-                 list)
+  defp list_contains_opaque([h | t], opaques) do
+    t_contains_opaque(h, opaques) or list_contains_opaque(t,
+                                                            opaques)
+  end
+
+  defp list_contains_opaque([], _Opaques) do
+    false
   end
 
   def t_find_opaque_mismatch(t1, t2, opaques) do
@@ -225,9 +226,9 @@ defmodule :m_erl_types do
     throw(:error)
   end
 
-  defp t_find_opaque_mismatch(r_c(tag: :list, elements: [t1, tl1],
+  defp t_find_opaque_mismatch(r_c(tag: :list, elements: {t1, tl1},
               qualifier: _),
-            r_c(tag: :list, elements: [t2, tl2], qualifier: _),
+            r_c(tag: :list, elements: {t2, tl2}, qualifier: _),
             topType, opaques) do
     t_find_opaque_mismatch_ordlists([t1, tl1], [t2, tl2],
                                       topType, opaques)
@@ -291,10 +292,8 @@ defmodule :m_erl_types do
                                    opaques)
   end
 
-  defp t_find_opaque_mismatch(t1,
-            r_c(tag: :union,
-                elements: [_, _, _, _, _, _, _, _, _, _] = u2),
-            topType, opaques) do
+  defp t_find_opaque_mismatch(t1, r_c(tag: :union, elements: u2), topType,
+            opaques) do
     t_find_opaque_mismatch_lists([t1], u2, topType, opaques)
   end
 
@@ -307,7 +306,8 @@ defmodule :m_erl_types do
     end
   end
 
-  defp t_find_opaque_mismatch_ordlists(l1, l2, topType, opaques) do
+  defp t_find_opaque_mismatch_ordlists(l1, l2, topType, opaques) when (is_list(l1) and
+                                            is_list(l2)) do
     list = :lists.zipwith(fn t1, t2 ->
                                t_find_opaque_mismatch(t1, t2, topType, opaques)
                           end,
@@ -315,7 +315,12 @@ defmodule :m_erl_types do
     t_find_opaque_mismatch_list(list)
   end
 
-  defp t_find_opaque_mismatch_lists(l1, l2, _TopType, opaques) do
+  defp t_find_opaque_mismatch_ordlists(_, _, _TopType, _Opaques) do
+    :error
+  end
+
+  defp t_find_opaque_mismatch_lists(l1, l2, _TopType, opaques) when (is_list(l1) and
+                                             is_list(l2)) do
     list = (for t1 <- l1, t2 <- l2 do
               try do
                 t_find_opaque_mismatch(t1, t2, t2, opaques)
@@ -325,6 +330,10 @@ defmodule :m_erl_types do
               end
             end)
     t_find_opaque_mismatch_list(list)
+  end
+
+  defp t_find_opaque_mismatch_lists(_, _, _TopType, _Opaques) do
+    :error
   end
 
   defp t_find_opaque_mismatch_list([]) do
@@ -378,20 +387,20 @@ defmodule :m_erl_types do
     type
   end
 
-  defp decorate(r_c(tag: :function, elements: [domain, range]),
-            r_c(tag: :function, elements: [d, r]), opaques) do
+  defp decorate(r_c(tag: :function, elements: {domain, range}),
+            r_c(tag: :function, elements: {d, r}), opaques) do
     r_c(tag: :function,
-        elements: [decorate(domain, d, opaques), decorate(range,
-                                                            r, opaques)])
+        elements: {decorate(domain, d, opaques),
+                     decorate(range, r, opaques)})
   end
 
-  defp decorate(r_c(tag: :list, elements: [types, tail],
+  defp decorate(r_c(tag: :list, elements: {types, tail},
               qualifier: size),
-            r_c(tag: :list, elements: [ts, tl], qualifier: _Sz),
+            r_c(tag: :list, elements: {ts, tl}, qualifier: _Sz),
             opaques) do
     r_c(tag: :list,
-        elements: [decorate(types, ts, opaques), decorate(tail,
-                                                            tl, opaques)],
+        elements: {decorate(types, ts, opaques),
+                     decorate(tail, tl, opaques)},
         qualifier: size)
   end
 
@@ -435,24 +444,15 @@ defmodule :m_erl_types do
     decorate_tuple_sets(list, l, opaques)
   end
 
-  defp decorate(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = list),
-            t, opaques)
+  defp decorate(r_c(tag: :union, elements: list), t, opaques)
       when t !== :any do
-    r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = l) = force_union(t)
+    r_c(tag: :union, elements: l) = force_union(t)
     union_decorate(list, l, opaques)
   end
 
-  defp decorate(t,
-            r_c(tag: :union,
-                elements: [_, _, _, _, _, _, _, _, _, _] = l),
-            opaques)
+  defp decorate(t, r_c(tag: :union, elements: l), opaques)
       when t !== :any do
-    r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = list) = force_union(t)
+    r_c(tag: :union, elements: list) = force_union(t)
     union_decorate(list, l, opaques)
   end
 
@@ -467,8 +467,7 @@ defmodule :m_erl_types do
 
   defp decorate_with_opaque(type, r_c(tag: :opaque, elements: set2),
             opaques) do
-    case (decoration(set_to_list(set2), type, opaques, [],
-                       false)) do
+    case (decoration(set2, type, opaques, [], false)) do
       {[], false} ->
         type
       {list, all} when list !== [] ->
@@ -512,9 +511,9 @@ defmodule :m_erl_types do
 
   defp union_decorate(u1, u2, opaques) do
     union = union_decorate(u1, u2, opaques, 0, [])
-    [a, b, f, i, l, n, t, m, _, map] = u1
-    [_, _, _, _, _, _, _, _, opaque, _] = u2
-    list = [a, b, f, i, l, n, t, m, map]
+    [a, b, f, i, l, n, t, _, map] = u1
+    [_, _, _, _, _, _, _, opaque, _] = u2
+    list = [a, b, f, i, l, n, t, map]
     decList = (for e <- list, not t_is_none(e),
                      not t_is_none(dec = decorate(e, opaque, opaques)) do
                  dec
@@ -547,9 +546,7 @@ defmodule :m_erl_types do
                   end)
         type
       n >= 2 ->
-        r_c(tag: :union,
-            elements: [_, _, _, _, _, _, _, _, _,
-                                                   _] = :lists.reverse(acc))
+        r_c(tag: :union, elements: :lists.reverse(acc))
     end
   end
 
@@ -606,7 +603,7 @@ defmodule :m_erl_types do
         decorate_tuples_in_sets(tuples, l2, opaques, [t1 | acc])
       tag1 > tag2 ->
         decorate_tuples_in_sets(l1, ts, opaques, acc)
-      tag1 === tag2 ->
+      tag1 == tag2 ->
         newElements = list_decorate(elements, es, opaques)
         newAcc = [r_c(tag: :tuple, elements: newElements,
                       qualifier: {arity, tag1}) |
@@ -623,102 +620,6 @@ defmodule :m_erl_types do
     :lists.reverse(acc)
   end
 
-  def t_opaque_from_records(recMap) do
-    opaqueRecMap = :maps.filter(fn key, _Value ->
-                                     case (key) do
-                                       {:opaque, _Name, _Arity} ->
-                                         true
-                                       _ ->
-                                         false
-                                     end
-                                end,
-                                  recMap)
-    opaqueTypeMap = :maps.map(fn {:opaque, name, _Arity},
-                                   {{module, _FileLine, _Form, argNames},
-                                      _Type} ->
-                                   rep = t_any()
-                                   args = (for _ <- argNames do
-                                             t_any()
-                                           end)
-                                   t_opaque(module, name, args, rep)
-                              end,
-                                opaqueRecMap)
-    for {_Key,
-           opaqueType} <- :maps.to_list(opaqueTypeMap) do
-      opaqueType
-    end
-  end
-
-  def t_struct_from_opaque(r_c(tag: :function, elements: [domain, range]),
-           opaques) do
-    r_c(tag: :function,
-        elements: [t_struct_from_opaque(domain, opaques),
-                       t_struct_from_opaque(range, opaques)])
-  end
-
-  def t_struct_from_opaque(r_c(tag: :list, elements: [types, term],
-             qualifier: size),
-           opaques) do
-    r_c(tag: :list,
-        elements: [t_struct_from_opaque(types, opaques),
-                       t_struct_from_opaque(term, opaques)],
-        qualifier: size)
-  end
-
-  def t_struct_from_opaque(r_c(tag: :opaque, elements: _) = t, opaques) do
-    case (is_opaque_type(t, opaques)) do
-      true ->
-        t_opaque_structure(t)
-      false ->
-        t
-    end
-  end
-
-  def t_struct_from_opaque(r_c(tag: :product, elements: types), opaques) do
-    r_c(tag: :product,
-        elements: list_struct_from_opaque(types, opaques))
-  end
-
-  def t_struct_from_opaque(r_c(tag: :tuple, elements: :any,
-             qualifier: {_, _}) = t,
-           _Opaques) do
-    t
-  end
-
-  def t_struct_from_opaque(r_c(tag: :tuple, elements: types,
-             qualifier: {arity, tag}),
-           opaques) do
-    r_c(tag: :tuple,
-        elements: list_struct_from_opaque(types, opaques),
-        qualifier: {arity, tag})
-  end
-
-  def t_struct_from_opaque(r_c(tag: :tuple_set, elements: set), opaques) do
-    newSet = (for {sz, tuples} <- set do
-                {sz,
-                   for t <- tuples do
-                     t_struct_from_opaque(t, opaques)
-                   end}
-              end)
-    r_c(tag: :tuple_set, elements: newSet)
-  end
-
-  def t_struct_from_opaque(r_c(tag: :union,
-             elements: [_, _, _, _, _, _, _, _, _, _] = list),
-           opaques) do
-    t_sup(list_struct_from_opaque(list, opaques))
-  end
-
-  def t_struct_from_opaque(type, _Opaques) do
-    type
-  end
-
-  defp list_struct_from_opaque(types, opaques) do
-    for type <- types do
-      t_struct_from_opaque(type, opaques)
-    end
-  end
-
   def t_unit() do
     :unit
   end
@@ -731,16 +632,20 @@ defmodule :m_erl_types do
     false
   end
 
-  def t_is_none_or_unit(:none) do
+  def t_is_impossible(:none) do
     true
   end
 
-  def t_is_none_or_unit(:unit) do
+  def t_is_impossible(:unit) do
     true
   end
 
-  def t_is_none_or_unit(_) do
+  def t_is_impossible(_) do
     false
+  end
+
+  def t_is_none_or_unit(t) do
+    t_is_impossible(t)
   end
 
   def t_atom() do
@@ -770,7 +675,7 @@ defmodule :m_erl_types do
   end
 
   defp atom_vals(r_c(tag: :atom, elements: set)) do
-    set_to_list(set)
+    set
   end
 
   defp atom_vals(r_c(tag: :opaque, elements: _)) do
@@ -836,17 +741,13 @@ defmodule :m_erl_types do
     r_c(tag: :atom, elements: set_from_list([false, true]))
   end
 
-  defp is_boolean(r_c(tag: :atom, elements: :any)) do
-    false
-  end
-
   defp is_boolean(r_c(tag: :atom, elements: set)) do
-    case (set_size(set)) do
-      1 ->
-        set_is_element(true, set) or set_is_element(false, set)
-      2 ->
-        set_is_element(true, set) and set_is_element(false, set)
-      n when (is_integer(n) and n > 2) ->
+    case (set) do
+      [atom] when :erlang.is_boolean(atom) ->
+        true
+      [false, true] ->
+        true
+      _ ->
         false
     end
   end
@@ -856,7 +757,11 @@ defmodule :m_erl_types do
   end
 
   def t_binary() do
-    r_c(tag: :binary, elements: [8, 0])
+    r_c(tag: :binary, elements: {8, 0})
+  end
+
+  def t_nonempty_binary() do
+    r_c(tag: :binary, elements: {8, 8})
   end
 
   def t_is_binary(type) do
@@ -867,7 +772,7 @@ defmodule :m_erl_types do
     do_opaque(type, opaques, &is_binary/1)
   end
 
-  defp is_binary(r_c(tag: :binary, elements: [u, b])) do
+  defp is_binary(r_c(tag: :binary, elements: {u, b})) do
     rem(u, 8) === 0 and rem(b, 8) === 0
   end
 
@@ -876,7 +781,11 @@ defmodule :m_erl_types do
   end
 
   def t_bitstr() do
-    r_c(tag: :binary, elements: [1, 0])
+    r_c(tag: :binary, elements: {1, 0})
+  end
+
+  def t_nonempty_bitstring() do
+    r_c(tag: :binary, elements: {1, 1})
   end
 
   def t_bitstr(u, b) do
@@ -888,14 +797,14 @@ defmodule :m_erl_types do
               true ->
                 b
             end)
-    r_c(tag: :binary, elements: [u, newB])
+    r_c(tag: :binary, elements: {u, newB})
   end
 
-  def t_bitstr_unit(r_c(tag: :binary, elements: [u, _])) do
+  def t_bitstr_unit(r_c(tag: :binary, elements: {u, _})) do
     u
   end
 
-  def t_bitstr_base(r_c(tag: :binary, elements: [_, b])) do
+  def t_bitstr_base(r_c(tag: :binary, elements: {_, b})) do
     b
   end
 
@@ -931,7 +840,7 @@ defmodule :m_erl_types do
     do_opaque(type, opaques, &is_bitstr/1)
   end
 
-  defp is_bitstr(r_c(tag: :binary, elements: [_, _])) do
+  defp is_bitstr(r_c(tag: :binary, elements: {_, _})) do
     true
   end
 
@@ -939,117 +848,25 @@ defmodule :m_erl_types do
     false
   end
 
-  def t_matchstate() do
-    r_c(tag: :matchstate, elements: [t_bitstr(), :any])
-  end
-
-  def t_matchstate(init, 0) do
-    r_c(tag: :matchstate, elements: [init, init])
-  end
-
-  def t_matchstate(init, max) when is_integer(max) do
-    slots = [init | for _ <- :lists.seq(1, max) do
-                      :none
-                    end]
-    r_c(tag: :matchstate, elements: [init, t_product(slots)])
-  end
-
-  def t_is_matchstate(r_c(tag: :matchstate, elements: [_, _])) do
-    true
-  end
-
-  def t_is_matchstate(_) do
-    false
-  end
-
-  def t_matchstate_present(type) do
-    case (t_inf(t_matchstate(), type)) do
-      r_c(tag: :matchstate, elements: [p, _]) ->
-        p
-      _ ->
-        :none
-    end
-  end
-
-  def t_matchstate_slot(type, slot) do
-    realSlot = slot + 1
-    case (t_inf(t_matchstate(), type)) do
-      r_c(tag: :matchstate, elements: [_, :any]) ->
-        :any
-      r_c(tag: :matchstate,
-          elements: [_, r_c(tag: :product, elements: vals)])
-          when length(vals) >= realSlot ->
-        :lists.nth(realSlot, vals)
-      r_c(tag: :matchstate,
-          elements: [_, r_c(tag: :product, elements: _)]) ->
-        :none
-      r_c(tag: :matchstate, elements: [_, slotType])
-          when realSlot === 1 ->
-        slotType
-      _ ->
-        :none
-    end
-  end
-
-  def t_matchstate_slots(r_c(tag: :matchstate, elements: [_, slots])) do
-    slots
-  end
-
-  def t_matchstate_update_present(new, type) do
-    case (t_inf(t_matchstate(), type)) do
-      r_c(tag: :matchstate, elements: [_, slots]) ->
-        r_c(tag: :matchstate, elements: [new, slots])
-      _ ->
-        :none
-    end
-  end
-
-  def t_matchstate_update_slot(new, type, slot) do
-    realSlot = slot + 1
-    case (t_inf(t_matchstate(), type)) do
-      r_c(tag: :matchstate, elements: [pres, slots]) ->
-        newSlots = (case (slots) do
-                      :any ->
-                        :any
-                      r_c(tag: :product, elements: vals)
-                          when length(vals) >= realSlot ->
-                        newTuple = :erlang.setelement(realSlot,
-                                                        :erlang.list_to_tuple(vals),
-                                                        new)
-                        newVals = :erlang.tuple_to_list(newTuple)
-                        r_c(tag: :product, elements: newVals)
-                      r_c(tag: :product, elements: _) ->
-                        :none
-                      _ when realSlot === 1 ->
-                        new
-                      _ ->
-                        :none
-                    end)
-        r_c(tag: :matchstate, elements: [pres, newSlots])
-      _ ->
-        :none
-    end
-  end
-
   def t_fun() do
-    r_c(tag: :function, elements: [:any, :any])
+    r_c(tag: :function, elements: {:any, :any})
   end
 
   def t_fun(range) do
-    r_c(tag: :function, elements: [:any, range])
+    r_c(tag: :function, elements: {:any, range})
   end
 
   def t_fun(domain, range) when is_list(domain) do
     r_c(tag: :function,
-        elements: [r_c(tag: :product, elements: domain), range])
+        elements: {r_c(tag: :product, elements: domain), range})
   end
 
   def t_fun(arity, range) when (is_integer(arity) and
                                0 <= arity and arity <= 255) do
     r_c(tag: :function,
-        elements: [r_c(tag: :product,
+        elements: {r_c(tag: :product,
                        elements: :lists.duplicate(arity, :any)),
-                       range])
+                     range})
   end
 
   def t_fun_args(type) do
@@ -1060,12 +877,12 @@ defmodule :m_erl_types do
     do_opaque(type, opaques, &fun_args/1)
   end
 
-  defp fun_args(r_c(tag: :function, elements: [:any, _])) do
+  defp fun_args(r_c(tag: :function, elements: {:any, _})) do
     :unknown
   end
 
   defp fun_args(r_c(tag: :function,
-              elements: [r_c(tag: :product, elements: domain), _]))
+              elements: {r_c(tag: :product, elements: domain), _}))
       when is_list(domain) do
     domain
   end
@@ -1078,12 +895,12 @@ defmodule :m_erl_types do
     do_opaque(type, opaques, &fun_arity/1)
   end
 
-  defp fun_arity(r_c(tag: :function, elements: [:any, _])) do
+  defp fun_arity(r_c(tag: :function, elements: {:any, _})) do
     :unknown
   end
 
   defp fun_arity(r_c(tag: :function,
-              elements: [r_c(tag: :product, elements: domain), _])) do
+              elements: {r_c(tag: :product, elements: domain), _})) do
     length(domain)
   end
 
@@ -1095,7 +912,7 @@ defmodule :m_erl_types do
     do_opaque(type, opaques, &fun_range/1)
   end
 
-  defp fun_range(r_c(tag: :function, elements: [_, range])) do
+  defp fun_range(r_c(tag: :function, elements: {_, range})) do
     range
   end
 
@@ -1107,7 +924,7 @@ defmodule :m_erl_types do
     do_opaque(type, opaques, &is_fun/1)
   end
 
-  defp is_fun(r_c(tag: :function, elements: [_, _])) do
+  defp is_fun(r_c(tag: :function, elements: {_, _})) do
     true
   end
 
@@ -1233,7 +1050,7 @@ defmodule :m_erl_types do
 
   defp number_vals(r_c(tag: :number, elements: r_int_set(set: set),
               qualifier: :integer)) do
-    set_to_list(set)
+    set
   end
 
   defp number_vals(r_c(tag: :number, elements: _, qualifier: _)) do
@@ -1370,7 +1187,7 @@ defmodule :m_erl_types do
   end
 
   def t_cons() do
-    r_c(tag: :list, elements: [:any, :any],
+    r_c(tag: :list, elements: {:any, :any},
         qualifier: :nonempty)
   end
 
@@ -1391,34 +1208,34 @@ defmodule :m_erl_types do
   end
 
   def t_cons(hd, r_c(tag: nil)) do
-    r_c(tag: :list, elements: [hd, r_c(tag: nil)],
+    r_c(tag: :list, elements: {hd, r_c(tag: nil)},
         qualifier: :nonempty)
   end
 
   def t_cons(hd,
-           r_c(tag: :list, elements: [contents, termination],
+           r_c(tag: :list, elements: {contents, termination},
                qualifier: _)) do
     r_c(tag: :list,
-        elements: [t_sup(contents, hd), termination],
+        elements: {t_sup(contents, hd), termination},
         qualifier: :nonempty)
   end
 
   def t_cons(hd, tail) do
     case (cons_tail(t_inf(tail,
                             t_maybe_improper_list()))) do
-      r_c(tag: :list, elements: [contents, termination],
+      r_c(tag: :list, elements: {contents, termination},
           qualifier: _Size) ->
         newTermination = t_sup(t_subtract(tail,
                                             t_maybe_improper_list()),
                                  termination)
         r_c(tag: :list,
-            elements: [t_sup(hd, contents), newTermination],
+            elements: {t_sup(hd, contents), newTermination},
             qualifier: :nonempty)
       r_c(tag: nil) ->
-        r_c(tag: :list, elements: [hd, tail],
+        r_c(tag: :list, elements: {hd, tail},
             qualifier: :nonempty)
       :none ->
-        r_c(tag: :list, elements: [hd, tail],
+        r_c(tag: :list, elements: {hd, tail},
             qualifier: :nonempty)
       :unit ->
         :none
@@ -1440,7 +1257,7 @@ defmodule :m_erl_types do
     do_opaque(type, opaques, &is_cons/1)
   end
 
-  defp is_cons(r_c(tag: :list, elements: [_, _],
+  defp is_cons(r_c(tag: :list, elements: {_, _},
               qualifier: :nonempty)) do
     true
   end
@@ -1458,7 +1275,7 @@ defmodule :m_erl_types do
   end
 
   defp cons_hd(r_c(tag: :list,
-              elements: [contents, _Termination],
+              elements: {contents, _Termination},
               qualifier: :nonempty)) do
     contents
   end
@@ -1472,7 +1289,7 @@ defmodule :m_erl_types do
   end
 
   defp cons_tl(r_c(tag: :list,
-              elements: [_Contents, termination],
+              elements: {_Contents, termination},
               qualifier: :nonempty) = t) do
     t_sup(termination, t)
   end
@@ -1498,21 +1315,12 @@ defmodule :m_erl_types do
   end
 
   def t_list() do
-    r_c(tag: :list, elements: [:any, r_c(tag: nil)],
+    r_c(tag: :list, elements: {:any, r_c(tag: nil)},
         qualifier: :unknown)
-  end
-
-  def t_list(:none) do
-    :none
-  end
-
-  def t_list(:unit) do
-    :none
   end
 
   def t_list(contents) do
-    r_c(tag: :list, elements: [contents, r_c(tag: nil)],
-        qualifier: :unknown)
+    t_sup(t_nonempty_list(contents), t_nil())
   end
 
   def t_list_elements(type) do
@@ -1523,7 +1331,7 @@ defmodule :m_erl_types do
     do_opaque(type, opaques, &list_elements/1)
   end
 
-  defp list_elements(r_c(tag: :list, elements: [contents, _],
+  defp list_elements(r_c(tag: :list, elements: {contents, _},
               qualifier: _)) do
     contents
   end
@@ -1540,12 +1348,12 @@ defmodule :m_erl_types do
     r_c(tag: nil)
   end
 
-  def t_list_termination(r_c(tag: :list, elements: [_, term],
+  def t_list_termination(r_c(tag: :list, elements: {_, term},
              qualifier: _)) do
     term
   end
 
-  def t_is_list(r_c(tag: :list, elements: [_Contents, r_c(tag: nil)],
+  def t_is_list(r_c(tag: :list, elements: {_Contents, r_c(tag: nil)},
              qualifier: _)) do
     true
   end
@@ -1579,7 +1387,7 @@ defmodule :m_erl_types do
   end
 
   def t_maybe_improper_list() do
-    r_c(tag: :list, elements: [:any, :any],
+    r_c(tag: :list, elements: {:any, :any},
         qualifier: :unknown)
   end
 
@@ -1591,8 +1399,16 @@ defmodule :m_erl_types do
     :none
   end
 
+  defp t_maybe_improper_list(_Content, :none) do
+    :none
+  end
+
+  defp t_maybe_improper_list(:none, _Termination) do
+    :none
+  end
+
   defp t_maybe_improper_list(content, termination) do
-    r_c(tag: :list, elements: [content, termination],
+    r_c(tag: :list, elements: {content, termination},
         qualifier: :unknown)
   end
 
@@ -1604,7 +1420,7 @@ defmodule :m_erl_types do
     do_opaque(type, opaques, &is_maybe_improper_list/1)
   end
 
-  defp is_maybe_improper_list(r_c(tag: :list, elements: [_, _],
+  defp is_maybe_improper_list(r_c(tag: :list, elements: {_, _},
               qualifier: _)) do
     true
   end
@@ -1625,9 +1441,9 @@ defmodule :m_erl_types do
     r_c(tag: nil)
   end
 
-  def lift_list_to_pos_empty(r_c(tag: :list, elements: [content, termination],
+  def lift_list_to_pos_empty(r_c(tag: :list, elements: {content, termination},
              qualifier: _)) do
-    r_c(tag: :list, elements: [content, termination],
+    r_c(tag: :list, elements: {content, termination},
         qualifier: :unknown)
   end
 
@@ -1647,7 +1463,7 @@ defmodule :m_erl_types do
     t
   end
 
-  def t_widen_to_number(r_c(tag: :binary, elements: [_Unit, _Base]) = t) do
+  def t_widen_to_number(r_c(tag: :binary, elements: {_Unit, _Base}) = t) do
     t
   end
 
@@ -1656,10 +1472,10 @@ defmodule :m_erl_types do
     t_number()
   end
 
-  def t_widen_to_number(r_c(tag: :function, elements: [domain, range])) do
+  def t_widen_to_number(r_c(tag: :function, elements: {domain, range})) do
     r_c(tag: :function,
-        elements: [t_widen_to_number(domain),
-                       t_widen_to_number(range)])
+        elements: {t_widen_to_number(domain),
+                     t_widen_to_number(range)})
   end
 
   def t_widen_to_number(r_c(tag: :identifier, elements: _Types) = t) do
@@ -1682,11 +1498,11 @@ defmodule :m_erl_types do
     t_number()
   end
 
-  def t_widen_to_number(r_c(tag: :list, elements: [type, tail],
+  def t_widen_to_number(r_c(tag: :list, elements: {type, tail},
              qualifier: size)) do
     r_c(tag: :list,
-        elements: [t_widen_to_number(type),
-                       t_widen_to_number(tail)],
+        elements: {t_widen_to_number(type),
+                     t_widen_to_number(tail)},
         qualifier: size)
   end
 
@@ -1696,11 +1512,6 @@ defmodule :m_erl_types do
          end)
     t_map(l, t_widen_to_number(defK),
             t_widen_to_number(defV))
-  end
-
-  def t_widen_to_number(r_c(tag: :matchstate,
-             elements: [_P, _Slots]) = t) do
-    t
   end
 
   def t_widen_to_number(r_c(tag: nil)) do
@@ -1713,7 +1524,7 @@ defmodule :m_erl_types do
   end
 
   def t_widen_to_number(r_c(tag: :opaque, elements: set)) do
-    l = (for (r_opaque(struct: s) = opaque) <- set_to_list(set) do
+    l = (for (r_opaque(struct: s) = opaque) <- set do
            r_opaque(opaque, struct: t_widen_to_number(s))
          end)
     r_c(tag: :opaque, elements: :ordsets.from_list(l))
@@ -1740,11 +1551,8 @@ defmodule :m_erl_types do
           end)
   end
 
-  def t_widen_to_number(r_c(tag: :union,
-             elements: [_, _, _, _, _, _, _, _, _, _] = list)) do
-    r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = list_widen_to_number(list))
+  def t_widen_to_number(r_c(tag: :union, elements: list)) do
+    r_c(tag: :union, elements: list_widen_to_number(list))
   end
 
   def t_widen_to_number(r_c(tag: :var, elements: _Id) = t) do
@@ -1771,13 +1579,13 @@ defmodule :m_erl_types do
                          end,
                            defK0, pairs0)
     {defK2,
-       defV1} = (case (t_is_none_or_unit(defK1) or t_is_none_or_unit(defV0)) do
+       defV1} = (case (t_is_impossible(defK1) or t_is_impossible(defV0)) do
                    true ->
                      {:none, :none}
                    false ->
                      {defK1, defV0}
                  end)
-    {pairs1, defK,
+    {pairs1, defK3,
        defV} = (case (is_singleton_type(defK2)) do
                   true ->
                     {mapdict_insert({defK2, :optional, defV1}, pairs0),
@@ -1785,7 +1593,8 @@ defmodule :m_erl_types do
                   false ->
                     {pairs0, defK2, defV1}
                 end)
-    pairs = normalise_map_optionals(pairs1, defK, defV)
+    {pairs, defK} = normalise_map_optionals(pairs1, defK3,
+                                              defV)
     try do
       validate_map_elements(pairs)
     catch
@@ -1800,31 +1609,87 @@ defmodule :m_erl_types do
     end
   end
 
-  defp normalise_map_optionals([], _, _) do
-    []
+  defp normalise_map_optionals(pairs, defK, defV) do
+    case (normalise_map_optionals(pairs, defK, defV, [],
+                                    :defk_unchanged)) do
+      {pairs1, defK1, :defk_changed} ->
+        normalise_map_optionals(pairs1, defK1, defV)
+      {pairs1, defK1, :defk_unchanged} ->
+        {pairs1, defK1}
+    end
   end
 
-  defp normalise_map_optionals([e = {k, :optional, :none} | t], defK, defV) do
+  defp normalise_map_optionals([], defK, _, es, f) do
+    {:lists.reverse(es), defK, f}
+  end
+
+  defp normalise_map_optionals([e = {k, :optional, :none} | t], defK, defV, es,
+            f) do
     diff = t_subtract(defK, k)
     case (t_is_subtype(k, defK) and defK === diff) do
       true ->
-        [e | normalise_map_optionals(t, defK, defV)]
+        normalise_map_optionals(t, defK, defV, [e | es], f)
       false ->
-        normalise_map_optionals(t, diff, defV)
+        normalise_map_optionals(t, diff, defV, es, f)
     end
   end
 
-  defp normalise_map_optionals([e = {k, :optional, v} | t], defK, defV) do
-    case (t_is_equal(v, defV) and t_is_subtype(k, defK)) do
-      true ->
-        normalise_map_optionals(t, defK, defV)
-      false ->
-        [e | normalise_map_optionals(t, defK, defV)]
+  defp normalise_map_optionals([e = {k, :optional, v} | t], defK, defV, es,
+            f) do
+    howToHandleE = (case (t_is_equal(v, defV)) do
+                      true ->
+                        case (t_is_subtype(k, defK)) do
+                          true ->
+                            :skip
+                          false ->
+                            case (needs_to_be_merged(k, defK)) do
+                              true ->
+                                :add_to_default_key
+                              false ->
+                                :keep
+                            end
+                        end
+                      false ->
+                        :keep
+                    end)
+    case (howToHandleE) do
+      :skip ->
+        normalise_map_optionals(t, defK, defV, es, f)
+      :keep ->
+        normalise_map_optionals(t, defK, defV, [e | es], f)
+      :add_to_default_key ->
+        normalise_map_optionals(t, t_sup(k, defK), defV, es,
+                                  :defk_changed)
     end
   end
 
-  defp normalise_map_optionals([e | t], defK, defV) do
-    [e | normalise_map_optionals(t, defK, defV)]
+  defp normalise_map_optionals([e | t], defK, defV, es, f) do
+    normalise_map_optionals(t, defK, defV, [e | es], f)
+  end
+
+  defp needs_to_be_merged(r_c(tag: :number, elements: r_int_set(set: set),
+              qualifier: :integer),
+            defK) do
+    [i] = set
+    iplus = t_integer(i + 1)
+    iminus = t_integer(i - 1)
+    infPlus = t_inf(iplus, defK)
+    infMinus = t_inf(iminus, defK)
+    not (t_is_none(infPlus) and t_is_none(infMinus))
+  end
+
+  defp needs_to_be_merged(r_c(tag: :atom, elements: _Set), defK) do
+    infAtom = t_inf(t_atom(), defK)
+    not t_is_none(infAtom)
+  end
+
+  defp needs_to_be_merged(r_c(tag: nil), defK) do
+    infNonEmpty = t_inf(t_nonempty_list(), defK)
+    t_is_cons(infNonEmpty)
+  end
+
+  defp needs_to_be_merged(_, _) do
+    false
   end
 
   defp validate_map_elements([{k1, _, _} | rest = [{k2, _, _} | _]]) do
@@ -2050,7 +1915,7 @@ defmodule :m_erl_types do
 
   defp map_put({key, value},
             r_c(tag: :map, elements: {pairs, defK, defV}), opaques) do
-    case (t_is_none_or_unit(key) or t_is_none_or_unit(value)) do
+    case (t_is_impossible(key) or t_is_impossible(value)) do
       true ->
         :none
       false ->
@@ -2280,11 +2145,11 @@ defmodule :m_erl_types do
   end
 
   defp tuple_tags(r_c(tag: :atom, elements: set)) do
-    case (set_size(set) > 5) do
+    case (length(set) > 5) do
       true ->
         [:any]
       false ->
-        for a <- set_to_list(set) do
+        for a <- set do
           t_atom(a)
         end
     end
@@ -2431,7 +2296,7 @@ defmodule :m_erl_types do
     false
   end
 
-  defp t_neg_integer() do
+  def t_neg_integer() do
     t_from_range(:neg_inf, - 1)
   end
 
@@ -2522,11 +2387,16 @@ defmodule :m_erl_types do
     true
   end
 
-  def t_has_var(r_c(tag: :function, elements: [domain, range])) do
+  def t_has_var(r_c(tag: :function, elements: {domain, range})) do
     t_has_var(domain) or t_has_var(range)
   end
 
-  def t_has_var(r_c(tag: :list, elements: [contents, termination],
+  def t_has_var(r_c(tag: :list, elements: {contents, r_c(tag: nil)},
+             qualifier: _)) do
+    t_has_var(contents)
+  end
+
+  def t_has_var(r_c(tag: :list, elements: {contents, termination},
              qualifier: _)) do
     t_has_var(contents) or t_has_var(termination)
   end
@@ -2554,13 +2424,12 @@ defmodule :m_erl_types do
   end
 
   def t_has_var(r_c(tag: :opaque, elements: set)) do
-    t_has_var_list(for o <- set_to_list(set) do
+    t_has_var_list(for o <- set do
                      r_opaque(o, :struct)
                    end)
   end
 
-  def t_has_var(r_c(tag: :union,
-             elements: [_, _, _, _, _, _, _, _, _, _] = list)) do
+  def t_has_var(r_c(tag: :union, elements: list)) do
     t_has_var_list(list)
   end
 
@@ -2576,142 +2445,75 @@ defmodule :m_erl_types do
     false
   end
 
-  def t_collect_vars(t) do
-    vs = t_collect_vars(t, :maps.new())
-    for {v, _} <- :maps.to_list(vs) do
-      v
-    end
+  def t_collect_var_names(t) do
+    t_collect_var_names(t, [])
   end
 
-  defp t_collect_vars(r_c(tag: :var, elements: _) = var, acc) do
-    :maps.put(var, :any, acc)
+  defp t_collect_var_names(r_c(tag: :var, elements: id), acc) do
+    :ordsets.add_element(id, acc)
   end
 
-  defp t_collect_vars(r_c(tag: :function, elements: [domain, range]),
+  defp t_collect_var_names(r_c(tag: :function, elements: {domain, range}),
             acc) do
-    acc1 = t_collect_vars(domain, acc)
-    t_collect_vars(range, acc1)
+    acc1 = t_collect_var_names(domain, acc)
+    t_collect_var_names(range, acc1)
   end
 
-  defp t_collect_vars(r_c(tag: :list, elements: [contents, termination],
+  defp t_collect_var_names(r_c(tag: :list, elements: {contents, termination},
               qualifier: _),
             acc) do
-    acc1 = t_collect_vars(contents, acc)
-    t_collect_vars(termination, acc1)
+    acc1 = t_collect_var_names(contents, acc)
+    t_collect_var_names(termination, acc1)
   end
 
-  defp t_collect_vars(r_c(tag: :product, elements: types), acc) do
+  defp t_collect_var_names(r_c(tag: :product, elements: types), acc) do
     t_collect_vars_list(types, acc)
   end
 
-  defp t_collect_vars(r_c(tag: :tuple, elements: :any,
+  defp t_collect_var_names(r_c(tag: :tuple, elements: :any,
               qualifier: {:any, :any}),
             acc) do
     acc
   end
 
-  defp t_collect_vars(r_c(tag: :tuple, elements: types,
+  defp t_collect_var_names(r_c(tag: :tuple, elements: types,
               qualifier: {_, _}),
             acc) do
     t_collect_vars_list(types, acc)
   end
 
-  defp t_collect_vars(r_c(tag: :tuple_set, elements: _) = tS, acc) do
+  defp t_collect_var_names(r_c(tag: :tuple_set, elements: _) = tS, acc) do
     t_collect_vars_list(t_tuple_subtypes(tS), acc)
   end
 
-  defp t_collect_vars(r_c(tag: :map, elements: {_, defK, _}) = map,
+  defp t_collect_var_names(r_c(tag: :map, elements: {_, defK, _}) = map,
             acc0) do
     acc = t_collect_vars_list(map_all_values(map), acc0)
-    t_collect_vars(defK, acc)
+    t_collect_var_names(defK, acc)
   end
 
-  defp t_collect_vars(r_c(tag: :opaque, elements: set), acc) do
-    t_collect_vars_list(for o <- set_to_list(set) do
+  defp t_collect_var_names(r_c(tag: :opaque, elements: set), acc) do
+    t_collect_vars_list(for o <- set do
                           r_opaque(o, :struct)
                         end,
                           acc)
   end
 
-  defp t_collect_vars(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = list),
-            acc) do
+  defp t_collect_var_names(r_c(tag: :union, elements: list), acc) do
     t_collect_vars_list(list, acc)
   end
 
-  defp t_collect_vars(_, acc) do
+  defp t_collect_var_names(_, acc) do
     acc
   end
 
   defp t_collect_vars_list([t | ts], acc0) do
-    acc = t_collect_vars(t, acc0)
+    acc = t_collect_var_names(t, acc0)
     t_collect_vars_list(ts, acc)
   end
 
   defp t_collect_vars_list([], acc) do
     acc
-  end
-
-  def t_from_term([h | t]) do
-    t_cons(t_from_term(h), t_from_term(t))
-  end
-
-  def t_from_term([]) do
-    t_nil()
-  end
-
-  def t_from_term(t) when is_atom(t) do
-    t_atom(t)
-  end
-
-  def t_from_term(t) when is_bitstring(t) do
-    t_bitstr(0, :erlang.bit_size(t))
-  end
-
-  def t_from_term(t) when is_float(t) do
-    t_float()
-  end
-
-  def t_from_term(t) when is_function(t) do
-    {:arity, arity} = :erlang.fun_info(t, :arity)
-    t_fun(arity, t_any())
-  end
-
-  def t_from_term(t) when is_integer(t) do
-    t_integer(t)
-  end
-
-  def t_from_term(t) when is_map(t) do
-    pairs = (for {k, v} <- :maps.to_list(t) do
-               {t_from_term(k), :mandatory, t_from_term(v)}
-             end)
-    {stons, rest} = :lists.partition(fn {k, _, _} ->
-                                          is_singleton_type(k)
-                                     end,
-                                       pairs)
-    {defK, defV} = :lists.foldl(fn {k, _, v}, {aK, aV} ->
-                                     {t_sup(k, aK), t_sup(v, aV)}
-                                end,
-                                  {t_none(), t_none()}, rest)
-    t_map(:lists.keysort(1, stons), defK, defV)
-  end
-
-  def t_from_term(t) when is_pid(t) do
-    t_pid()
-  end
-
-  def t_from_term(t) when is_port(t) do
-    t_port()
-  end
-
-  def t_from_term(t) when is_reference(t) do
-    t_reference()
-  end
-
-  def t_from_term(t) when is_tuple(t) do
-    t_tuple(for e <- :erlang.tuple_to_list(t) do
-              t_from_term(e)
-            end)
   end
 
   def t_from_range(:pos_inf, :pos_inf) do
@@ -2795,130 +2597,6 @@ defmodule :m_erl_types do
 
   def t_from_range(:pos_inf, :neg_inf) do
     t_none()
-  end
-
-  def t_from_range_unsafe(:pos_inf, :pos_inf) do
-    r_c(tag: :number, elements: r_int_rng(from: 1, to: :pos_inf),
-        qualifier: :integer)
-  end
-
-  def t_from_range_unsafe(:neg_inf, :neg_inf) do
-    r_c(tag: :number, elements: r_int_rng(from: :neg_inf, to: - 1),
-        qualifier: :integer)
-  end
-
-  def t_from_range_unsafe(:neg_inf, :pos_inf) do
-    t_integer()
-  end
-
-  def t_from_range_unsafe(:neg_inf, y) do
-    r_c(tag: :number, elements: r_int_rng(from: :neg_inf, to: y),
-        qualifier: :integer)
-  end
-
-  def t_from_range_unsafe(x, :pos_inf) do
-    r_c(tag: :number, elements: r_int_rng(from: x, to: :pos_inf),
-        qualifier: :integer)
-  end
-
-  def t_from_range_unsafe(x, y) when (is_integer(x) and is_integer(y) and
-                       x <= y) do
-    cond do
-      y - x < 13 ->
-        t_integers(:lists.seq(x, y))
-      true ->
-        r_c(tag: :number, elements: r_int_rng(from: x, to: y),
-            qualifier: :integer)
-    end
-  end
-
-  def t_from_range_unsafe(x, y) when (is_integer(x) and is_integer(y)) do
-    t_none()
-  end
-
-  def t_from_range_unsafe(:pos_inf, :neg_inf) do
-    t_none()
-  end
-
-  def t_is_fixnum(r_c(tag: :number,
-             elements: r_int_rng(from: :neg_inf, to: _),
-             qualifier: :integer)) do
-    false
-  end
-
-  def t_is_fixnum(r_c(tag: :number,
-             elements: r_int_rng(from: _, to: :pos_inf),
-             qualifier: :integer)) do
-    false
-  end
-
-  def t_is_fixnum(r_c(tag: :number, elements: r_int_rng(from: from, to: to),
-             qualifier: :integer)) do
-    is_fixnum(from) and is_fixnum(to)
-  end
-
-  def t_is_fixnum(r_c(tag: :number, elements: r_int_set(set: set),
-             qualifier: :integer)) do
-    is_fixnum(set_min(set)) and is_fixnum(set_max(set))
-  end
-
-  def t_is_fixnum(_) do
-    false
-  end
-
-  defp is_fixnum(n) when is_integer(n) do
-    bits = :erlang.system_info(:wordsize) * 8 - 4
-    n <= 1 <<< (bits - 1) - 1 and n >= - (1 <<< (bits - 1))
-  end
-
-  defp infinity_geq(:pos_inf, _) do
-    true
-  end
-
-  defp infinity_geq(_, :pos_inf) do
-    false
-  end
-
-  defp infinity_geq(_, :neg_inf) do
-    true
-  end
-
-  defp infinity_geq(:neg_inf, _) do
-    false
-  end
-
-  defp infinity_geq(a, b) do
-    a >= b
-  end
-
-  def t_is_bitwidth(r_c(tag: :number,
-             elements: r_int_rng(from: :neg_inf, to: _),
-             qualifier: :integer)) do
-    false
-  end
-
-  def t_is_bitwidth(r_c(tag: :number,
-             elements: r_int_rng(from: _, to: :pos_inf),
-             qualifier: :integer)) do
-    false
-  end
-
-  def t_is_bitwidth(r_c(tag: :number, elements: r_int_rng(from: from, to: to),
-             qualifier: :integer)) do
-    infinity_geq(from,
-                   0) and infinity_geq(:erlang.system_info(:wordsize) * 8 - 4,
-                                         to)
-  end
-
-  def t_is_bitwidth(r_c(tag: :number, elements: r_int_set(set: set),
-             qualifier: :integer)) do
-    infinity_geq(set_min(set),
-                   0) and infinity_geq(:erlang.system_info(:wordsize) * 8 - 4,
-                                         set_max(set))
-  end
-
-  def t_is_bitwidth(_) do
-    false
   end
 
   def number_min(type) do
@@ -3058,24 +2736,33 @@ defmodule :m_erl_types do
   end
 
   def t_sup(ts) do
-    case (:lists.any(&is_any/1, ts)) do
+    case (any_any(ts)) do
       true ->
         :any
       false ->
-        t_sup1(ts, [])
+        [type | newTs] = ts
+        t_sup1(newTs, type)
     end
   end
 
-  defp t_sup1([h1, h2 | t], l) do
-    t_sup1(t, [t_sup(h1, h2) | l])
+  defp any_any([:any | _]) do
+    true
   end
 
-  defp t_sup1([t], []) do
-    subst_all_vars_to_any(t)
+  defp any_any([_ | t]) do
+    any_any(t)
   end
 
-  defp t_sup1(ts, l) do
-    t_sup1(ts ++ l, [])
+  defp any_any([]) do
+    false
+  end
+
+  defp t_sup1([h | t], type) do
+    t_sup1(t, t_sup(h, type))
+  end
+
+  defp t_sup1([], type) do
+    do_not_subst_all_vars_to_any(type)
   end
 
   def t_sup(:any, _) do
@@ -3103,7 +2790,7 @@ defmodule :m_erl_types do
   end
 
   def t_sup(t, t) do
-    subst_all_vars_to_any(t)
+    do_not_subst_all_vars_to_any(t)
   end
 
   def t_sup(r_c(tag: :var, elements: _), _) do
@@ -3119,17 +2806,17 @@ defmodule :m_erl_types do
     r_c(tag: :atom, elements: set_union(set1, set2))
   end
 
-  def t_sup(r_c(tag: :binary, elements: [u1, b1]),
-           r_c(tag: :binary, elements: [u2, b2])) do
+  def t_sup(r_c(tag: :binary, elements: {u1, b1}),
+           r_c(tag: :binary, elements: {u2, b2})) do
     t_bitstr(gcd(gcd(u1, u2), abs(b1 - b2)),
                :lists.min([b1, b2]))
   end
 
-  def t_sup(r_c(tag: :function, elements: [domain1, range1]),
-           r_c(tag: :function, elements: [domain2, range2])) do
+  def t_sup(r_c(tag: :function, elements: {domain1, range1}),
+           r_c(tag: :function, elements: {domain2, range2})) do
     r_c(tag: :function,
-        elements: [t_sup(domain1, domain2), t_sup(range1,
-                                                    range2)])
+        elements: {t_sup(domain1, domain2),
+                     t_sup(range1, range2)})
   end
 
   def t_sup(r_c(tag: :identifier, elements: set1),
@@ -3139,38 +2826,28 @@ defmodule :m_erl_types do
 
   def t_sup(r_c(tag: :opaque, elements: set1),
            r_c(tag: :opaque, elements: set2)) do
-    sup_opaque(set_to_list(:ordsets.union(set1, set2)))
-  end
-
-  def t_sup(r_c(tag: :matchstate, elements: [pres1, slots1]),
-           r_c(tag: :matchstate, elements: [pres2, slots2])) do
-    r_c(tag: :matchstate,
-        elements: [t_sup(pres1, pres2), t_sup(slots1, slots2)])
-  end
-
-  def t_sup(r_c(tag: nil), r_c(tag: nil)) do
-    r_c(tag: nil)
+    sup_opaque(:ordsets.union(set1, set2))
   end
 
   def t_sup(r_c(tag: nil),
-           r_c(tag: :list, elements: [contents, termination],
+           r_c(tag: :list, elements: {contents, termination},
                qualifier: _)) do
     r_c(tag: :list,
-        elements: [contents, t_sup(r_c(tag: nil), termination)],
+        elements: {contents, t_sup(r_c(tag: nil), termination)},
         qualifier: :unknown)
   end
 
-  def t_sup(r_c(tag: :list, elements: [contents, termination],
+  def t_sup(r_c(tag: :list, elements: {contents, termination},
              qualifier: _),
            r_c(tag: nil)) do
     r_c(tag: :list,
-        elements: [contents, t_sup(r_c(tag: nil), termination)],
+        elements: {contents, t_sup(r_c(tag: nil), termination)},
         qualifier: :unknown)
   end
 
   def t_sup(r_c(tag: :list,
-             elements: [contents1, termination1], qualifier: size1),
-           r_c(tag: :list, elements: [contents2, termination2],
+             elements: {contents1, termination1}, qualifier: size1),
+           r_c(tag: :list, elements: {contents2, termination2},
                qualifier: size2)) do
     newSize = (case ({size1, size2}) do
                  {:unknown, :unknown} ->
@@ -3184,18 +2861,8 @@ defmodule :m_erl_types do
                end)
     newContents = t_sup(contents1, contents2)
     newTermination = t_sup(termination1, termination2)
-    tmpList = t_cons(newContents, newTermination)
-    case (newSize) do
-      :nonempty ->
-        tmpList
-      :unknown ->
-        r_c(tag: :list,
-            elements: [finalContents, finalTermination],
-            qualifier: _) = tmpList
-        r_c(tag: :list,
-            elements: [finalContents, finalTermination],
-            qualifier: :unknown)
-    end
+    r_c(tag: :list, elements: {newContents, newTermination},
+        qualifier: newSize)
   end
 
   def t_sup(r_c(tag: :number, elements: _, qualifier: _),
@@ -3208,12 +2875,6 @@ defmodule :m_erl_types do
              qualifier: :unknown) = t,
            r_c(tag: :number, elements: _, qualifier: _)) do
     t
-  end
-
-  def t_sup(r_c(tag: :number, elements: :any,
-             qualifier: :float),
-           r_c(tag: :number, elements: :any, qualifier: :float)) do
-    r_c(tag: :number, elements: :any, qualifier: :float)
   end
 
   def t_sup(r_c(tag: :number, elements: :any,
@@ -3325,11 +2986,11 @@ defmodule :m_erl_types do
            r_c(tag: :tuple, elements: elements2,
                qualifier: {arity, tag2}) = t2) do
     cond do
-      tag1 === tag2 ->
+      tag1 == tag2 ->
         t_tuple(t_sup_lists(elements1, elements2))
-      tag1 === :any ->
+      tag1 == :any ->
         t_tuple(t_sup_lists(elements1, elements2))
-      tag2 === :any ->
+      tag2 == :any ->
         t_tuple(t_sup_lists(elements1, elements2))
       tag1 < tag2 ->
         r_c(tag: :tuple_set, elements: [{arity, [t1, t2]}])
@@ -3374,12 +3035,8 @@ defmodule :m_erl_types do
   end
 
   def t_sup(t1, t2) do
-    r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = u1) = force_union(t1)
-    r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = u2) = force_union(t2)
+    r_c(tag: :union, elements: u1) = force_union(t1)
+    r_c(tag: :union, elements: u2) = force_union(t2)
     sup_union(u1, u2)
   end
 
@@ -3394,10 +3051,10 @@ defmodule :m_erl_types do
 
   defp sup_opaq(l0) do
     l1 = (for (r_opaque(mod: mod, name: name,
-                   args: args) = t) <- l0 do
-            {{mod, name, args}, t}
+                   arity: arity) = t) <- l0 do
+            {{mod, name, arity}, t}
           end)
-    f = family(l1)
+    f = :dialyzer_utils.family(l1)
     for {_, ts} <- f do
       supl(ts)
     end
@@ -3500,7 +3157,7 @@ defmodule :m_erl_types do
       r_c(tag: :atom, elements: :any) ->
         [t_tuple(sup_tuple_elements(l1 ++ l2))]
       r_c(tag: :atom, elements: set) ->
-        case (set_size(set) > 5) do
+        case (length(set) > 5) do
           true ->
             [t_tuple(sup_tuple_elements(l1 ++ l2))]
           false ->
@@ -3532,7 +3189,7 @@ defmodule :m_erl_types do
         sup_tuples_in_set(left1, l2, [t1 | acc])
       tag1 > tag2 ->
         sup_tuples_in_set(l1, left2, [t2 | acc])
-      tag2 === tag2 ->
+      tag1 == tag2 ->
         newElements = t_sup_lists(elements1, elements2)
         newAcc = [r_c(tag: :tuple, elements: newElements,
                       qualifier: {arity, tag1}) |
@@ -3570,213 +3227,146 @@ defmodule :m_erl_types do
                     t
                   end)
         type
-      n === length(acc) ->
+      n === length([:any, :any, :any, :any, :any, :any, :any,
+                                                            :any, :any]) ->
         :any
       true ->
-        r_c(tag: :union,
-            elements: [_, _, _, _, _, _, _, _, _,
-                                                   _] = :lists.reverse(acc))
+        r_c(tag: :union, elements: :lists.reverse(acc))
     end
   end
 
   defp force_union(t = r_c(tag: :atom, elements: _)) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [t, :none,
-                                                           :none, :none, :none,
-                                                                             :none,
-                                                                                 :none,
-                                                                                     :none,
-                                                                                         :none,
-                                                                                             :none])
+        elements: [t, :none, :none, :none, :none, :none, :none,
+                                                             :none, :none])
   end
 
-  defp force_union(t = r_c(tag: :binary, elements: [_, _])) do
+  defp force_union(t = r_c(tag: :binary, elements: {_, _})) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [:none, t,
-                                                               :none, :none,
-                                                                          :none,
-                                                                              :none,
-                                                                                  :none,
-                                                                                      :none,
-                                                                                          :none,
-                                                                                              :none])
+        elements: [:none, t, :none, :none, :none, :none, :none,
+                                                             :none, :none])
   end
 
-  defp force_union(t = r_c(tag: :function, elements: [_, _])) do
+  defp force_union(t = r_c(tag: :function, elements: {_, _})) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [:none,
-                                                        :none, t, :none, :none,
-                                                                             :none,
-                                                                                 :none,
-                                                                                     :none,
-                                                                                         :none,
-                                                                                             :none])
+        elements: [:none, :none, t, :none, :none, :none, :none,
+                                                             :none, :none])
   end
 
   defp force_union(t = r_c(tag: :identifier, elements: _)) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [:none,
-                                                        :none, :none, t, :none,
-                                                                             :none,
-                                                                                 :none,
-                                                                                     :none,
-                                                                                         :none,
-                                                                                             :none])
+        elements: [:none, :none, :none, t, :none, :none, :none,
+                                                             :none, :none])
   end
 
-  defp force_union(t = r_c(tag: :list, elements: [_, _],
+  defp force_union(t = r_c(tag: :list, elements: {_, _},
                   qualifier: _)) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [:none,
-                                                        :none, :none, :none, t,
-                                                                                 :none,
-                                                                                     :none,
-                                                                                         :none,
-                                                                                             :none,
-                                                                                                 :none])
+        elements: [:none, :none, :none, :none, t, :none, :none,
+                                                             :none, :none])
   end
 
   defp force_union(t = r_c(tag: nil)) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [:none,
-                                                        :none, :none, :none, t,
-                                                                                 :none,
-                                                                                     :none,
-                                                                                         :none,
-                                                                                             :none,
-                                                                                                 :none])
+        elements: [:none, :none, :none, :none, t, :none, :none,
+                                                             :none, :none])
   end
 
   defp force_union(t = r_c(tag: :number, elements: _,
                   qualifier: _)) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [:none,
-                                                        :none, :none, :none,
-                                                                          :none,
-                                                                              t,
-                                                                                  :none,
-                                                                                      :none,
-                                                                                          :none,
-                                                                                              :none])
+        elements: [:none, :none, :none, :none, :none, t, :none,
+                                                             :none, :none])
   end
 
   defp force_union(t = r_c(tag: :opaque, elements: _)) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [:none,
-                                                        :none, :none, :none,
-                                                                          :none,
-                                                                              :none,
-                                                                                  :none,
-                                                                                      :none,
-                                                                                          t,
-                                                                                              :none])
+        elements: [:none, :none, :none, :none, :none, :none,
+                                                          :none, t, :none])
   end
 
   defp force_union(t = r_c(tag: :map, elements: {_, _, _})) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [:none,
-                                                        :none, :none, :none,
-                                                                          :none,
-                                                                              :none,
-                                                                                  :none,
-                                                                                      :none,
-                                                                                          :none,
-                                                                                              t])
+        elements: [:none, :none, :none, :none, :none, :none,
+                                                          :none, :none, t])
   end
 
   defp force_union(t = r_c(tag: :tuple, elements: _,
                   qualifier: {_, _})) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [:none,
-                                                        :none, :none, :none,
-                                                                          :none,
-                                                                              :none,
-                                                                                  t,
-                                                                                      :none,
-                                                                                          :none,
-                                                                                              :none])
+        elements: [:none, :none, :none, :none, :none, :none, t,
+                                                                 :none, :none])
   end
 
   defp force_union(t = r_c(tag: :tuple_set, elements: _)) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [:none,
-                                                        :none, :none, :none,
-                                                                          :none,
-                                                                              :none,
-                                                                                  t,
-                                                                                      :none,
-                                                                                          :none,
-                                                                                              :none])
+        elements: [:none, :none, :none, :none, :none, :none, t,
+                                                                 :none, :none])
   end
 
-  defp force_union(t = r_c(tag: :matchstate, elements: [_, _])) do
-    r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _, _] = [:none,
-                                                        :none, :none, :none,
-                                                                          :none,
-                                                                              :none,
-                                                                                  :none,
-                                                                                      t,
-                                                                                          :none,
-                                                                                              :none])
-  end
-
-  defp force_union(t = r_c(tag: :union,
-                  elements: [_, _, _, _, _, _, _, _, _, _] = _)) do
+  defp force_union(t = r_c(tag: :union, elements: _)) do
     t
   end
 
-  def t_elements(:none) do
+  def t_elements(t) do
+    t_elements(t, :universe)
+  end
+
+  def t_elements(:none, _Opaques) do
     []
   end
 
-  def t_elements(:unit) do
+  def t_elements(:unit, _Opaques) do
     []
   end
 
-  def t_elements(:any = t) do
+  def t_elements(:any = t, _Opaques) do
     [t]
   end
 
-  def t_elements(r_c(tag: nil) = t) do
+  def t_elements(r_c(tag: nil) = t, _Opaques) do
     [t]
   end
 
-  def t_elements(r_c(tag: :atom, elements: :any) = t) do
+  def t_elements(r_c(tag: :atom, elements: :any) = t, _Opaques) do
     [t]
   end
 
-  def t_elements(r_c(tag: :atom, elements: atoms)) do
+  def t_elements(r_c(tag: :atom, elements: atoms), _Opaques) do
     for a <- atoms do
       t_atom(a)
     end
   end
 
-  def t_elements(r_c(tag: :binary, elements: [_, _]) = t) do
+  def t_elements(r_c(tag: :binary, elements: {_, _}) = t,
+           _Opaques) do
     [t]
   end
 
-  def t_elements(r_c(tag: :function, elements: [_, _]) = t) do
+  def t_elements(r_c(tag: :function, elements: {_, _}) = t,
+           _Opaques) do
     [t]
   end
 
-  def t_elements(r_c(tag: :identifier, elements: :any) = t) do
+  def t_elements(r_c(tag: :identifier, elements: :any) = t,
+           _Opaques) do
     [t]
   end
 
-  def t_elements(r_c(tag: :identifier, elements: iDs)) do
+  def t_elements(r_c(tag: :identifier, elements: iDs), _Opaques) do
     for t <- iDs do
       r_c(tag: :identifier, elements: [t])
     end
   end
 
-  def t_elements(r_c(tag: :list, elements: [_, _],
-             qualifier: _) = t) do
+  def t_elements(r_c(tag: :list, elements: {_, _},
+             qualifier: _) = t,
+           _Opaques) do
     [t]
   end
 
-  def t_elements(r_c(tag: :number, elements: _,
-             qualifier: _) = t) do
+  def t_elements(r_c(tag: :number, elements: _, qualifier: _) = t,
+           _Opaques) do
     case (t) do
       r_c(tag: :number, elements: :any, qualifier: :unknown) ->
         [r_c(tag: :number, elements: :any, qualifier: :float),
@@ -3796,20 +3386,23 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_elements(r_c(tag: :opaque, elements: _) = t) do
-    do_elements(t)
+  def t_elements(r_c(tag: :opaque, elements: _) = t, opaques) do
+    do_elements(t, opaques)
   end
 
-  def t_elements(r_c(tag: :map, elements: {_, _, _}) = t) do
+  def t_elements(r_c(tag: :map, elements: {_, _, _}) = t,
+           _Opaques) do
     [t]
   end
 
   def t_elements(r_c(tag: :tuple, elements: _,
-             qualifier: {_, _}) = t) do
+             qualifier: {_, _}) = t,
+           _Opaques) do
     [t]
   end
 
-  def t_elements(r_c(tag: :tuple_set, elements: _) = tS) do
+  def t_elements(r_c(tag: :tuple_set, elements: _) = tS,
+           _Opaques) do
     case (t_tuple_subtypes(tS)) do
       :unknown ->
         []
@@ -3818,27 +3411,27 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_elements(r_c(tag: :union,
-             elements: [_, _, _, _, _, _, _, _, _, _] = _) = t) do
-    do_elements(t)
+  def t_elements(r_c(tag: :union, elements: _) = t, opaques) do
+    do_elements(t, opaques)
   end
 
-  def t_elements(r_c(tag: :var, elements: _)) do
+  def t_elements(r_c(tag: :var, elements: _), _Opaques) do
     [:any]
   end
 
-  defp do_elements(type0) do
-    case (do_opaque(type0, :universe,
+  defp do_elements(type0, opaques) do
+    case (do_opaque(type0, opaques,
                       fn t ->
                            t
                       end)) do
-      r_c(tag: :union,
-          elements: [_, _, _, _, _, _, _, _, _, _] = list) ->
+      r_c(tag: :union, elements: list) ->
         :lists.append(for t <- list do
-                        t_elements(t)
+                        t_elements(t, opaques)
                       end)
+      r_c(tag: :opaque, elements: _) = type ->
+        [type]
       type ->
-        t_elements(type)
+        t_elements(type, opaques)
     end
   end
 
@@ -3869,19 +3462,19 @@ defmodule :m_erl_types do
   end
 
   def t_inf(r_c(tag: :var, elements: _), t, _Opaques) do
-    subst_all_vars_to_any(t)
+    do_not_subst_all_vars_to_any(t)
   end
 
   def t_inf(t, r_c(tag: :var, elements: _), _Opaques) do
-    subst_all_vars_to_any(t)
+    do_not_subst_all_vars_to_any(t)
   end
 
   def t_inf(:any, t, _Opaques) do
-    subst_all_vars_to_any(t)
+    do_not_subst_all_vars_to_any(t)
   end
 
   def t_inf(t, :any, _Opaques) do
-    subst_all_vars_to_any(t)
+    do_not_subst_all_vars_to_any(t)
   end
 
   def t_inf(:none, _, _Opaques) do
@@ -3901,7 +3494,7 @@ defmodule :m_erl_types do
   end
 
   def t_inf(t, t, _Opaques) do
-    subst_all_vars_to_any(t)
+    do_not_subst_all_vars_to_any(t)
   end
 
   def t_inf(r_c(tag: :atom, elements: set1),
@@ -3914,8 +3507,8 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_inf(r_c(tag: :binary, elements: [u1, b1]),
-           r_c(tag: :binary, elements: [0, b2]), _Opaques) do
+  def t_inf(r_c(tag: :binary, elements: {u1, b1}),
+           r_c(tag: :binary, elements: {0, b2}), _Opaques) do
     cond do
       b2 >= b1 and rem(b2 - b1, u1) === 0 ->
         t_bitstr(0, b2)
@@ -3924,8 +3517,8 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_inf(r_c(tag: :binary, elements: [0, b1]),
-           r_c(tag: :binary, elements: [u2, b2]), _Opaques) do
+  def t_inf(r_c(tag: :binary, elements: {0, b1}),
+           r_c(tag: :binary, elements: {u2, b2}), _Opaques) do
     cond do
       b1 >= b2 and rem(b1 - b2, u2) === 0 ->
         t_bitstr(0, b1)
@@ -3934,31 +3527,31 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_inf(r_c(tag: :binary, elements: [u1, b1]),
-           r_c(tag: :binary, elements: [u1, b1]), _Opaques) do
+  def t_inf(r_c(tag: :binary, elements: {u1, b1}),
+           r_c(tag: :binary, elements: {u1, b1}), _Opaques) do
     t_bitstr(u1, b1)
   end
 
-  def t_inf(r_c(tag: :binary, elements: [u1, b1]),
-           r_c(tag: :binary, elements: [u2, b2]), _Opaques)
+  def t_inf(r_c(tag: :binary, elements: {u1, b1}),
+           r_c(tag: :binary, elements: {u2, b2}), _Opaques)
       when u2 > u1 do
     inf_bitstr(u2, b2, u1, b1)
   end
 
-  def t_inf(r_c(tag: :binary, elements: [u1, b1]),
-           r_c(tag: :binary, elements: [u2, b2]), _Opaques) do
+  def t_inf(r_c(tag: :binary, elements: {u1, b1}),
+           r_c(tag: :binary, elements: {u2, b2}), _Opaques) do
     inf_bitstr(u1, b1, u2, b2)
   end
 
-  def t_inf(r_c(tag: :function, elements: [domain1, range1]),
-           r_c(tag: :function, elements: [domain2, range2]),
+  def t_inf(r_c(tag: :function, elements: {domain1, range1}),
+           r_c(tag: :function, elements: {domain2, range2}),
            opaques) do
     case (t_inf(domain1, domain2, opaques)) do
       :none ->
         :none
       domain ->
         r_c(tag: :function,
-            elements: [domain, t_inf(range1, range2, opaques)])
+            elements: {domain, t_inf(range1, range2, opaques)})
     end
   end
 
@@ -3985,45 +3578,38 @@ defmodule :m_erl_types do
     t_map(pairs, t_inf(aDefK, bDefK), t_inf(aDefV, bDefV))
   end
 
-  def t_inf(r_c(tag: :matchstate, elements: [pres1, slots1]),
-           r_c(tag: :matchstate, elements: [pres2, slots2]),
-           _Opaques) do
-    r_c(tag: :matchstate,
-        elements: [t_inf(pres1, pres2), t_inf(slots1, slots2)])
-  end
-
   def t_inf(r_c(tag: nil), r_c(tag: nil), _Opaques) do
     r_c(tag: nil)
   end
 
   def t_inf(r_c(tag: nil),
-           r_c(tag: :list, elements: [_, _], qualifier: :nonempty),
+           r_c(tag: :list, elements: {_, _}, qualifier: :nonempty),
            _Opaques) do
     :none
   end
 
-  def t_inf(r_c(tag: :list, elements: [_, _],
+  def t_inf(r_c(tag: :list, elements: {_, _},
              qualifier: :nonempty),
            r_c(tag: nil), _Opaques) do
     :none
   end
 
   def t_inf(r_c(tag: nil),
-           r_c(tag: :list, elements: [_Contents, termination],
+           r_c(tag: :list, elements: {_Contents, termination},
                qualifier: _),
            opaques) do
     t_inf(r_c(tag: nil), t_unopaque(termination), opaques)
   end
 
-  def t_inf(r_c(tag: :list, elements: [_Contents, termination],
+  def t_inf(r_c(tag: :list, elements: {_Contents, termination},
              qualifier: _),
            r_c(tag: nil), opaques) do
     t_inf(r_c(tag: nil), t_unopaque(termination), opaques)
   end
 
   def t_inf(r_c(tag: :list,
-             elements: [contents1, termination1], qualifier: size1),
-           r_c(tag: :list, elements: [contents2, termination2],
+             elements: {contents1, termination1}, qualifier: size1),
+           r_c(tag: :list, elements: {contents2, termination2},
                qualifier: size2),
            opaques) do
     case (t_inf(termination1, termination2, opaques)) do
@@ -4049,7 +3635,7 @@ defmodule :m_erl_types do
                       {:nonempty, :nonempty} ->
                         :nonempty
                     end)
-            r_c(tag: :list, elements: [contents, termination],
+            r_c(tag: :list, elements: {contents, termination},
                 qualifier: size)
         end
     end
@@ -4152,26 +3738,26 @@ defmodule :m_erl_types do
              qualifier: {:any, :any}),
            r_c(tag: :tuple, elements: _, qualifier: {_, _}) = t,
            _Opaques) do
-    subst_all_vars_to_any(t)
+    do_not_subst_all_vars_to_any(t)
   end
 
   def t_inf(r_c(tag: :tuple, elements: _,
              qualifier: {_, _}) = t,
            r_c(tag: :tuple, elements: :any, qualifier: {:any, :any}),
            _Opaques) do
-    subst_all_vars_to_any(t)
+    do_not_subst_all_vars_to_any(t)
   end
 
   def t_inf(r_c(tag: :tuple, elements: :any,
              qualifier: {:any, :any}),
            r_c(tag: :tuple_set, elements: _) = t, _Opaques) do
-    subst_all_vars_to_any(t)
+    do_not_subst_all_vars_to_any(t)
   end
 
   def t_inf(r_c(tag: :tuple_set, elements: _) = t,
            r_c(tag: :tuple, elements: :any, qualifier: {:any, :any}),
            _Opaques) do
-    subst_all_vars_to_any(t)
+    do_not_subst_all_vars_to_any(t)
   end
 
   def t_inf(r_c(tag: :tuple, elements: elements1,
@@ -4205,22 +3791,13 @@ defmodule :m_erl_types do
     inf_tuple_sets(list, [{arity, [t]}], opaques)
   end
 
-  def t_inf(r_c(tag: :union,
-             elements: [_, _, _, _, _, _, _, _, _, _] = u1),
-           t, opaques) do
-    r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = u2) = force_union(t)
+  def t_inf(r_c(tag: :union, elements: u1), t, opaques) do
+    r_c(tag: :union, elements: u2) = force_union(t)
     inf_union(u1, u2, opaques)
   end
 
-  def t_inf(t,
-           r_c(tag: :union,
-               elements: [_, _, _, _, _, _, _, _, _, _] = u2),
-           opaques) do
-    r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = u1) = force_union(t)
+  def t_inf(t, r_c(tag: :union, elements: u2), opaques) do
+    r_c(tag: :union, elements: u1) = force_union(t)
     inf_union(u1, u2, opaques)
   end
 
@@ -4250,8 +3827,7 @@ defmodule :m_erl_types do
       false ->
         :none
       true ->
-        list2 = set_to_list(set2)
-        case (inf_collect(t1, list2, opaques, [])) do
+        case (inf_collect(t1, set2, opaques, [])) do
           [] ->
             :none
           opL ->
@@ -4328,7 +3904,7 @@ defmodule :m_erl_types do
   end
 
   defp inf_look_up(set, opaques) do
-    for t <- set_to_list(set) do
+    for t <- set do
       {opaques === :universe or inf_is_opaque_type2(t,
                                                       opaques),
          t}
@@ -4379,238 +3955,13 @@ defmodule :m_erl_types do
   end
 
   defp is_compat_opaque_names(opaque1, opaque2) do
-    r_opaque(mod: mod1, name: name1, args: args1) = opaque1
-    r_opaque(mod: mod2, name: name2, args: args2) = opaque2
-    case ({{mod1, name1, args1}, {mod2, name2, args2}}) do
-      {modNameArgs, modNameArgs} ->
+    r_opaque(mod: mod1, name: name1, arity: arity1) = opaque1
+    r_opaque(mod: mod2, name: name2, arity: arity2) = opaque2
+    case ({{mod1, name1, arity1}, {mod2, name2, arity2}}) do
+      {modNameArity, modNameArity} ->
         true
-      {{mod, name, ^args1}, {mod, name, ^args2}} ->
-        is_compat_args(args1, args2)
       _ ->
         false
-    end
-  end
-
-  defp is_compat_args([a1 | args1], [a2 | args2]) do
-    is_compat_arg(a1, a2) and is_compat_args(args1, args2)
-  end
-
-  defp is_compat_args([], []) do
-    true
-  end
-
-  defp is_compat_args(_, _) do
-    false
-  end
-
-  defp is_compat_arg(t, t) do
-    true
-  end
-
-  defp is_compat_arg(_, :any) do
-    true
-  end
-
-  defp is_compat_arg(:any, _) do
-    true
-  end
-
-  defp is_compat_arg(r_c(tag: :function, elements: [domain1, range1]),
-            r_c(tag: :function, elements: [domain2, range2])) do
-    is_compat_arg(domain1,
-                    domain2) and is_compat_arg(range1, range2)
-  end
-
-  defp is_compat_arg(r_c(tag: :list,
-              elements: [contents1, termination1], qualifier: size1),
-            r_c(tag: :list, elements: [contents2, termination2],
-                qualifier: size2)) do
-    size1 === size2 and is_compat_arg(contents1,
-                                        contents2) and is_compat_arg(termination1,
-                                                                       termination2)
-  end
-
-  defp is_compat_arg(r_c(tag: :product, elements: types1),
-            r_c(tag: :product, elements: types2)) do
-    is_compat_list(types1, types2)
-  end
-
-  defp is_compat_arg(r_c(tag: :map, elements: {pairs1, defK1, defV1}),
-            r_c(tag: :map, elements: {pairs2, defK2, defV2})) do
-    {ks1, _, vs1} = :lists.unzip3(pairs1)
-    {ks2, _, vs2} = :lists.unzip3(pairs2)
-    key1 = t_sup([defK1 | ks1])
-    key2 = t_sup([defK2 | ks2])
-    case (is_compat_arg(key1, key2)) do
-      true ->
-        value1 = t_sup([defV1 | vs1])
-        value2 = t_sup([defV2 | vs2])
-        is_compat_arg(value1, value2)
-      false ->
-        false
-    end
-  end
-
-  defp is_compat_arg(r_c(tag: :tuple, elements: :any,
-              qualifier: {:any, :any}),
-            r_c(tag: :tuple, elements: _, qualifier: {_, _})) do
-    false
-  end
-
-  defp is_compat_arg(r_c(tag: :tuple, elements: _, qualifier: {_, _}),
-            r_c(tag: :tuple, elements: :any,
-                qualifier: {:any, :any})) do
-    false
-  end
-
-  defp is_compat_arg(r_c(tag: :tuple, elements: elements1,
-              qualifier: {arity, _}),
-            r_c(tag: :tuple, elements: elements2,
-                qualifier: {arity, _}))
-      when arity !== :any do
-    is_compat_list(elements1, elements2)
-  end
-
-  defp is_compat_arg(r_c(tag: :tuple_set, elements: [{arity, list}]),
-            r_c(tag: :tuple, elements: elements2,
-                qualifier: {arity, _}))
-      when arity !== :any do
-    is_compat_list(sup_tuple_elements(list), elements2)
-  end
-
-  defp is_compat_arg(r_c(tag: :tuple, elements: elements1,
-              qualifier: {arity, _}),
-            r_c(tag: :tuple_set, elements: [{arity, list}]))
-      when arity !== :any do
-    is_compat_list(elements1, sup_tuple_elements(list))
-  end
-
-  defp is_compat_arg(r_c(tag: :tuple_set, elements: list1),
-            r_c(tag: :tuple_set, elements: list2)) do
-    try do
-      is_compat_list_list(for {_Arity, t} <- list1 do
-                            sup_tuple_elements(t)
-                          end,
-                            for {_Arity, t} <- list2 do
-                              sup_tuple_elements(t)
-                            end)
-    catch
-      _, _ ->
-        false
-    end
-  end
-
-  defp is_compat_arg(r_c(tag: :opaque, elements: _) = t1, t2) do
-    is_compat_arg(t_opaque_structure(t1), t2)
-  end
-
-  defp is_compat_arg(t1, r_c(tag: :opaque, elements: _) = t2) do
-    is_compat_arg(t1, t_opaque_structure(t2))
-  end
-
-  defp is_compat_arg(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = list1) = t1,
-            r_c(tag: :union,
-                elements: [_, _, _, _, _, _, _, _, _,
-                                                       _] = list2) = t2) do
-    case (is_compat_union2(t1, t2)) do
-      {:yes, type1, type2} ->
-        is_compat_arg(type1, type2)
-      :no ->
-        is_compat_list(list1, list2)
-    end
-  end
-
-  defp is_compat_arg(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = list),
-            t2) do
-    case (unify_union(list)) do
-      {:yes, type} ->
-        is_compat_arg(type, t2)
-      :no ->
-        false
-    end
-  end
-
-  defp is_compat_arg(t1,
-            r_c(tag: :union,
-                elements: [_, _, _, _, _, _, _, _, _, _] = list)) do
-    case (unify_union(list)) do
-      {:yes, type} ->
-        is_compat_arg(t1, type)
-      :no ->
-        false
-    end
-  end
-
-  defp is_compat_arg(r_c(tag: :var, elements: _), _) do
-    exit(:error)
-  end
-
-  defp is_compat_arg(_, r_c(tag: :var, elements: _)) do
-    exit(:error)
-  end
-
-  defp is_compat_arg(:none, _) do
-    false
-  end
-
-  defp is_compat_arg(_, :none) do
-    false
-  end
-
-  defp is_compat_arg(:unit, _) do
-    false
-  end
-
-  defp is_compat_arg(_, :unit) do
-    false
-  end
-
-  defp is_compat_arg(r_c(), r_c()) do
-    false
-  end
-
-  defp is_compat_list_list(lL1, lL2) do
-    length(lL1) === length(lL2) and is_compat_list_list1(lL1,
-                                                           lL2)
-  end
-
-  defp is_compat_list_list1([], []) do
-    true
-  end
-
-  defp is_compat_list_list1([l1 | lL1], [l2 | lL2]) do
-    is_compat_list(l1, l2) and is_compat_list_list1(lL1,
-                                                      lL2)
-  end
-
-  defp is_compat_list(l1, l2) do
-    length(l1) === length(l2) and is_compat_list1(l1, l2)
-  end
-
-  defp is_compat_list1([], []) do
-    true
-  end
-
-  defp is_compat_list1([t1 | l1], [t2 | l2]) do
-    is_compat_arg(t1, t2) and is_compat_list1(l1, l2)
-  end
-
-  defp is_compat_union2(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = list1) = t1,
-            r_c(tag: :union,
-                elements: [_, _, _, _, _, _, _, _, _,
-                                                       _] = list2) = t2) do
-    case ({unify_union(list1), unify_union(list2)}) do
-      {{:yes, type1}, {:yes, type2}} ->
-        {:yes, type1, type2}
-      {{:yes, type1}, :no} ->
-        {:yes, type1, t2}
-      {:no, {:yes, type2}} ->
-        {:yes, t1, type2}
-      {:no, :no} ->
-        :no
     end
   end
 
@@ -4766,9 +4117,9 @@ defmodule :m_erl_types do
 
   defp inf_union(u1, u2, opaques) do
     opaqueFun = fn union1, union2, infFun ->
-                     [_, _, _, _, _, _, _, _, opaque, _] = union1
-                     [a, b, f, i, l, n, t, m, _, map] = union2
-                     list = [a, b, f, i, l, n, t, m, map]
+                     [_, _, _, _, _, _, _, opaque, _] = union1
+                     [a, b, f, i, l, n, t, _, map] = union2
+                     list = [a, b, f, i, l, n, t, map]
                      inf_union_collect(list, opaque, infFun, [], [])
                 end
     {o1, throwList1} = opaqueFun.(u1, u2,
@@ -4779,7 +4130,7 @@ defmodule :m_erl_types do
                                     fn e, opaque ->
                                          t_inf(e, opaque, opaques)
                                     end)
-    {union, throwList3} = inf_union(u1, u2, 0, [], [],
+    {union, throwList3} = inf_union(u1, u2, :none, [], [],
                                       opaques)
     throwList = :lists.merge3(throwList1, throwList2,
                                 throwList3)
@@ -4815,44 +4166,40 @@ defmodule :m_erl_types do
     end
   end
 
-  defp inf_union([:none | left1], [:none | left2], n, acc,
+  defp inf_union([:none | left1], [:none | left2], type, acc,
             throwList, opaques) do
-    inf_union(left1, left2, n, [:none | acc], throwList,
+    inf_union(left1, left2, type, [:none | acc], throwList,
                 opaques)
   end
 
-  defp inf_union([t1 | left1], [t2 | left2], n, acc, throwList,
-            opaques) do
+  defp inf_union([t1 | left1], [t2 | left2], type, acc,
+            throwList, opaques) do
     try do
       t_inf(t1, t2, opaques)
     catch
       {:pos, ns} ->
-        inf_union(left1, left2, n, [:none | acc],
+        inf_union(left1, left2, type, [:none | acc],
                     ns ++ throwList, opaques)
     else
       :none ->
-        inf_union(left1, left2, n, [:none | acc], throwList,
+        inf_union(left1, left2, type, [:none | acc], throwList,
+                    opaques)
+      t when type === :none ->
+        inf_union(left1, left2, t, [t | acc], throwList,
                     opaques)
       t ->
-        inf_union(left1, left2, n + 1, [t | acc], throwList,
+        inf_union(left1, left2, :union, [t | acc], throwList,
                     opaques)
     end
   end
 
-  defp inf_union([], [], n, acc, throwList, _Opaques) do
-    cond do
-      n === 0 ->
-        {:none, throwList}
-      n === 1 ->
-        [type] = (for t <- acc, t !== :none do
-                    t
-                  end)
-        {type, throwList}
-      n >= 2 ->
-        {r_c(tag: :union,
-             elements: [_, _, _, _, _, _, _, _, _,
-                                                    _] = :lists.reverse(acc)),
+  defp inf_union([], [], type, acc, throwList, _Opaques) do
+    case (type) do
+      :union ->
+        {r_c(tag: :union, elements: :lists.reverse(acc)),
            throwList}
+      _ ->
+        {type, throwList}
     end
   end
 
@@ -4875,10 +4222,16 @@ defmodule :m_erl_types do
       val1 === val2 ->
         val1
       val1 > val2 ->
-        findfirst(n1, n2 + 1, u1, b1, u2, b2)
+        n2_1 = n2 + max(div((val1 - val2), u2), 1)
+        findfirst(n1, n2_1, u1, b1, u2, b2)
       val1 < val2 ->
-        findfirst(n1 + 1, n2, u1, b1, u2, b2)
+        n1_1 = n1 + max(div((val2 - val1), u1), 1)
+        findfirst(n1_1, n2, u1, b1, u2, b2)
     end
+  end
+
+  defp do_not_subst_all_vars_to_any(t) do
+    t
   end
 
   def t_subst(t, map) do
@@ -4895,42 +4248,44 @@ defmodule :m_erl_types do
   end
 
   defp t_subst_aux(r_c(tag: :var, elements: id), map) do
-    case (:maps.find(id, map)) do
-      :error ->
-        :any
-      {:ok, type} ->
+    case (map) do
+      %{^id => type} ->
         type
+      %{} ->
+        :any
     end
   end
 
-  defp t_subst_aux(r_c(tag: :list, elements: [contents, termination],
+  defp t_subst_aux(r_c(tag: :list, elements: {contents, termination},
               qualifier: size),
             map) do
     case (t_subst_aux(contents, map)) do
       :none ->
         :none
+      :unit ->
+        :none
       newContents ->
         case (t_subst_aux(termination, map)) do
           r_c(tag: nil) ->
-            r_c(tag: :list, elements: [newContents, r_c(tag: nil)],
+            r_c(tag: :list, elements: {newContents, r_c(tag: nil)},
                 qualifier: size)
           :any ->
-            r_c(tag: :list, elements: [newContents, :any],
+            r_c(tag: :list, elements: {newContents, :any},
                 qualifier: size)
           other ->
-            r_c(tag: :list, elements: [newContents2, newTermination],
+            r_c(tag: :list, elements: {newContents2, newTermination},
                 qualifier: _) = t_cons(newContents, other)
-            r_c(tag: :list, elements: [newContents2, newTermination],
+            r_c(tag: :list, elements: {newContents2, newTermination},
                 qualifier: size)
         end
     end
   end
 
-  defp t_subst_aux(r_c(tag: :function, elements: [domain, range]),
+  defp t_subst_aux(r_c(tag: :function, elements: {domain, range}),
             map) do
     r_c(tag: :function,
-        elements: [t_subst_aux(domain, map), t_subst_aux(range,
-                                                           map)])
+        elements: {t_subst_aux(domain, map),
+                     t_subst_aux(range, map)})
   end
 
   defp t_subst_aux(r_c(tag: :product, elements: types), map) do
@@ -4969,235 +4324,221 @@ defmodule :m_erl_types do
   end
 
   defp t_subst_aux(r_c(tag: :opaque, elements: es), map) do
-    list = (for (opaque = r_opaque(args: args,
-                              struct: s)) <- set_to_list(es) do
-              r_opaque(opaque, args: for arg <- args do
-                                t_subst_aux(arg, map)
-                              end, 
-                          struct: t_subst_aux(s, map))
+    list = (for (opaque = r_opaque(struct: s)) <- es do
+              r_opaque(opaque, struct: t_subst_aux(s, map))
             end)
     r_c(tag: :opaque, elements: :ordsets.from_list(list))
   end
 
-  defp t_subst_aux(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = list),
-            map) do
+  defp t_subst_aux(r_c(tag: :union, elements: list), map) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = (for e <- list do
-                                                       t_subst_aux(e, map)
-                                                     end))
+        elements: for e <- list do
+                    t_subst_aux(e, map)
+                  end)
   end
 
   defp t_subst_aux(t, _Map) do
     t
   end
 
-  def t_unify(t1, t2) do
-    {t, varMap} = t_unify(t1, t2, %{})
-    {t_subst(t, varMap),
-       :lists.keysort(1, :maps.to_list(varMap))}
+  def t_unify_table_only(t1, t2) do
+    t_unify_table_only(t1, t2, %{})
   end
 
-  defp t_unify(r_c(tag: :var, elements: id) = t,
+  defp t_unify_table_only(r_c(tag: :var, elements: id),
             r_c(tag: :var, elements: id), varMap) do
-    {t, varMap}
+    varMap
   end
 
-  defp t_unify(r_c(tag: :var, elements: id1) = t,
-            r_c(tag: :var, elements: id2), varMap) do
-    case (:maps.find(id1, varMap)) do
-      :error ->
-        case (:maps.find(id2, varMap)) do
-          :error ->
-            {t, Map.put(varMap, id2, t)}
-          {:ok, type} ->
-            t_unify(t, type, varMap)
-        end
-      {:ok, type1} ->
-        case (:maps.find(id2, varMap)) do
-          :error ->
-            {type1, Map.put(varMap, id2, t)}
-          {:ok, type2} ->
-            t_unify(type1, type2, varMap)
-        end
+  defp t_unify_table_only(r_c(tag: :var, elements: id1) = lHS,
+            r_c(tag: :var, elements: id2) = rHS, varMap) do
+    case (varMap) do
+      %{^id1 => type1, ^id2 => type2} ->
+        t_unify_table_only(type1, type2, varMap)
+      %{^id1 => type} ->
+        t_unify_table_only(type, rHS, varMap)
+      %{^id2 => type} ->
+        t_unify_table_only(lHS, type, varMap)
+      %{} ->
+        Map.merge(varMap, %{id1 => lHS, id2 => rHS})
     end
   end
 
-  defp t_unify(r_c(tag: :var, elements: id), type, varMap) do
-    case (:maps.find(id, varMap)) do
-      :error ->
-        {type, Map.put(varMap, id, type)}
-      {:ok, varType} ->
-        t_unify(varType, type, varMap)
+  defp t_unify_table_only(r_c(tag: :var, elements: id), type, varMap) do
+    case (varMap) do
+      %{^id => varType} ->
+        t_unify_table_only(varType, type, varMap)
+      %{} ->
+        Map.put(varMap, id, type)
     end
   end
 
-  defp t_unify(type, r_c(tag: :var, elements: id), varMap) do
-    case (:maps.find(id, varMap)) do
-      :error ->
-        {type, Map.put(varMap, id, type)}
-      {:ok, varType} ->
-        t_unify(varType, type, varMap)
+  defp t_unify_table_only(type, r_c(tag: :var, elements: id), varMap) do
+    case (varMap) do
+      %{^id => varType} ->
+        t_unify_table_only(varType, type, varMap)
+      %{} ->
+        Map.put(varMap, id, type)
     end
   end
 
-  defp t_unify(r_c(tag: :function, elements: [domain1, range1]),
-            r_c(tag: :function, elements: [domain2, range2]),
+  defp t_unify_table_only(r_c(tag: :function, elements: {domain1, range1}),
+            r_c(tag: :function, elements: {domain2, range2}),
             varMap) do
-    {domain, varMap1} = t_unify(domain1, domain2, varMap)
-    {range, varMap2} = t_unify(range1, range2, varMap1)
-    {r_c(tag: :function, elements: [domain, range]), varMap2}
+    varMap1 = t_unify_table_only(domain1, domain2, varMap)
+    t_unify_table_only(range1, range2, varMap1)
   end
 
-  defp t_unify(r_c(tag: :list,
-              elements: [contents1, termination1], qualifier: size),
-            r_c(tag: :list, elements: [contents2, termination2],
+  defp t_unify_table_only(r_c(tag: :list,
+              elements: {contents1, termination1}, qualifier: size),
+            r_c(tag: :list, elements: {contents2, termination2},
                 qualifier: size),
             varMap) do
-    {contents, varMap1} = t_unify(contents1, contents2,
-                                    varMap)
-    {termination, varMap2} = t_unify(termination1,
-                                       termination2, varMap1)
-    {r_c(tag: :list, elements: [contents, termination],
-         qualifier: size),
-       varMap2}
+    varMap1 = t_unify_table_only(contents1, contents2,
+                                   varMap)
+    t_unify_table_only(termination1, termination2, varMap1)
   end
 
-  defp t_unify(r_c(tag: :product, elements: types1),
+  defp t_unify_table_only(r_c(tag: :product, elements: types1),
             r_c(tag: :product, elements: types2), varMap) do
-    {types, varMap1} = unify_lists(types1, types2, varMap)
-    {r_c(tag: :product, elements: types), varMap1}
+    unify_lists_table_only(types1, types2, varMap)
   end
 
-  defp t_unify(r_c(tag: :tuple, elements: :any,
-              qualifier: {:any, :any}) = t,
+  defp t_unify_table_only(r_c(tag: :tuple, elements: :any,
+              qualifier: {:any, :any}),
             r_c(tag: :tuple, elements: :any, qualifier: {:any, :any}),
             varMap) do
-    {t, varMap}
+    varMap
   end
 
-  defp t_unify(r_c(tag: :tuple, elements: elements1,
+  defp t_unify_table_only(r_c(tag: :tuple, elements: elements1,
               qualifier: {arity, _}),
             r_c(tag: :tuple, elements: elements2,
                 qualifier: {arity, _}),
             varMap)
       when arity !== :any do
-    {newElements, varMap1} = unify_lists(elements1,
-                                           elements2, varMap)
-    {t_tuple(newElements), varMap1}
+    unify_lists_table_only(elements1, elements2, varMap)
   end
 
-  defp t_unify(r_c(tag: :tuple_set, elements: [{arity, _}]) = t1,
+  defp t_unify_table_only(r_c(tag: :tuple_set, elements: [{arity, _}]) = t1,
             r_c(tag: :tuple, elements: _, qualifier: {arity, _}) = t2,
             varMap)
       when arity !== :any do
-    unify_tuple_set_and_tuple1(t1, t2, varMap)
+    unify_tuple_set_and_tuple1_table_only(t1, t2, varMap)
   end
 
-  defp t_unify(r_c(tag: :tuple, elements: _,
+  defp t_unify_table_only(r_c(tag: :tuple, elements: _,
               qualifier: {arity, _}) = t1,
             r_c(tag: :tuple_set, elements: [{arity, _}]) = t2, varMap)
       when arity !== :any do
-    unify_tuple_set_and_tuple2(t1, t2, varMap)
+    unify_tuple_set_and_tuple2_table_only(t1, t2, varMap)
   end
 
-  defp t_unify(r_c(tag: :tuple_set, elements: list1) = t1,
+  defp t_unify_table_only(r_c(tag: :tuple_set, elements: list1) = t1,
             r_c(tag: :tuple_set, elements: list2) = t2, varMap) do
     try do
-      unify_lists(:lists.append(for {_Arity, t} <- list1 do
-                                  t
-                                end),
-                    :lists.append(for {_Arity, t} <- list2 do
-                                    t
-                                  end),
-                    varMap)
+      unify_lists_table_only(:lists.append(for {_Arity,
+                                                  t} <- list1 do
+                                             t
+                                           end),
+                               :lists.append(for {_Arity, t} <- list2 do
+                                               t
+                                             end),
+                               varMap)
     catch
       _, _ ->
         throw({:mismatch, t1, t2})
-    else
-      {tuples, newVarMap} ->
-        {t_sup(tuples), newVarMap}
     end
   end
 
-  defp t_unify(r_c(tag: :map, elements: {_, aDefK, aDefV}) = a,
+  defp t_unify_table_only(r_c(tag: :map, elements: {_, aDefK, aDefV}) = a,
             r_c(tag: :map, elements: {_, bDefK, bDefV}) = b,
             varMap0) do
-    {defK, varMap1} = t_unify(aDefK, bDefK, varMap0)
-    {defV, varMap2} = t_unify(aDefV, bDefV, varMap1)
-    {pairs, varMap} = map_pairwise_merge_foldr(fn k, mNess,
-                                                    v1, mNess, v2,
-                                                    {pairs0, varMap3} ->
-                                                    {v, varMap4} = t_unify(v1,
-                                                                             v2,
-                                                                             varMap3)
-                                                    {[{k, mNess, v} | pairs0],
-                                                       varMap4}
-                                                  k, _, v1, _, v2,
-                                                    {pairs0, varMap3} ->
-                                                    {v, varMap4} = t_unify(v1,
-                                                                             v2,
-                                                                             varMap3)
-                                                    {[{k, :mandatory, v} |
-                                                          pairs0],
-                                                       varMap4}
-                                               end,
-                                                 {[], varMap2}, a, b)
-    {t_map(pairs, defK, defV), varMap}
+    varMap1 = t_unify_table_only(aDefK, bDefK, varMap0)
+    varMap2 = t_unify_table_only(aDefV, bDefV, varMap1)
+    {[], varMap} = map_pairwise_merge_foldr(fn _K, mNess,
+                                                 v1, mNess, v2,
+                                                 {pairs0, varMap3} ->
+                                                 varMap4 = t_unify_table_only(v1,
+                                                                                v2,
+                                                                                varMap3)
+                                                 {pairs0, varMap4}
+                                               _K, _, v1, _, v2,
+                                                 {pairs0, varMap3} ->
+                                                 varMap4 = t_unify_table_only(v1,
+                                                                                v2,
+                                                                                varMap3)
+                                                 {pairs0, varMap4}
+                                            end,
+                                              {[], varMap2}, a, b)
+    varMap
   end
 
-  defp t_unify(r_c(tag: :opaque, elements: _) = t1,
+  defp t_unify_table_only(r_c(tag: :opaque, elements: _) = t1,
             r_c(tag: :opaque, elements: _) = t2, varMap) do
-    t_unify(t_opaque_structure(t1), t_opaque_structure(t2),
-              varMap)
+    t_unify_table_only(t_opaque_structure(t1),
+                         t_opaque_structure(t2), varMap)
   end
 
-  defp t_unify(t1, r_c(tag: :opaque, elements: _) = t2,
+  defp t_unify_table_only(t1, r_c(tag: :opaque, elements: _) = t2,
             varMap) do
-    t_unify(t1, t_opaque_structure(t2), varMap)
+    t_unify_table_only(t1, t_opaque_structure(t2), varMap)
   end
 
-  defp t_unify(r_c(tag: :opaque, elements: _) = t1, t2,
+  defp t_unify_table_only(r_c(tag: :opaque, elements: _) = t1, t2,
             varMap) do
-    t_unify(t_opaque_structure(t1), t2, varMap)
+    t_unify_table_only(t_opaque_structure(t1), t2, varMap)
   end
 
-  defp t_unify(t, t, varMap) do
-    {t, varMap}
+  defp t_unify_table_only(t, t, varMap) do
+    varMap
   end
 
-  defp t_unify(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = _) = t1,
-            r_c(tag: :union,
-                elements: [_, _, _, _, _, _, _, _, _, _] = _) = t2,
-            varMap) do
+  defp t_unify_table_only(r_c(tag: :union, elements: _) = t1,
+            r_c(tag: :union, elements: _) = t2, varMap) do
     {type1, type2} = unify_union2(t1, t2)
-    t_unify(type1, type2, varMap)
+    t_unify_table_only(type1, type2, varMap)
   end
 
-  defp t_unify(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = _) = t1,
-            t2, varMap) do
-    t_unify(unify_union1(t1, t1, t2), t2, varMap)
+  defp t_unify_table_only(r_c(tag: :union, elements: _) = t1, t2, varMap) do
+    t_unify_table_only(unify_union1(t1, t1, t2), t2, varMap)
   end
 
-  defp t_unify(t1,
-            r_c(tag: :union,
-                elements: [_, _, _, _, _, _, _, _, _, _] = _) = t2,
-            varMap) do
-    t_unify(t1, unify_union1(t2, t1, t2), varMap)
+  defp t_unify_table_only(t1, r_c(tag: :union, elements: _) = t2, varMap) do
+    t_unify_table_only(t1, unify_union1(t2, t1, t2), varMap)
   end
 
-  defp t_unify(t1, t2, _) do
+  defp t_unify_table_only(t1, t2, _) do
     throw({:mismatch, t1, t2})
   end
 
-  defp unify_union2(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = list1) = t1,
-            r_c(tag: :union,
-                elements: [_, _, _, _, _, _, _, _, _,
-                                                       _] = list2) = t2) do
+  defp unify_tuple_set_and_tuple1_table_only(r_c(tag: :tuple_set, elements: [{arity, list}]),
+            r_c(tag: :tuple, elements: elements2,
+                qualifier: {arity, _}),
+            varMap) do
+    unify_lists_table_only(sup_tuple_elements(list),
+                             elements2, varMap)
+  end
+
+  defp unify_tuple_set_and_tuple2_table_only(r_c(tag: :tuple, elements: elements2,
+              qualifier: {arity, _}),
+            r_c(tag: :tuple_set, elements: [{arity, list}]),
+            varMap) do
+    unify_lists_table_only(elements2,
+                             sup_tuple_elements(list), varMap)
+  end
+
+  defp unify_lists_table_only([t1 | left1], [t2 | left2], varMap) do
+    newVarMap = t_unify_table_only(t1, t2, varMap)
+    unify_lists_table_only(left1, left2, newVarMap)
+  end
+
+  defp unify_lists_table_only([], [], varMap) do
+    varMap
+  end
+
+  defp unify_union2(r_c(tag: :union, elements: list1) = t1,
+            r_c(tag: :union, elements: list2) = t2) do
     case ({unify_union(list1), unify_union(list2)}) do
       {{:yes, type1}, {:yes, type2}} ->
         {type1, type2}
@@ -5210,9 +4551,7 @@ defmodule :m_erl_types do
     end
   end
 
-  defp unify_union1(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = list),
-            t1, t2) do
+  defp unify_union1(r_c(tag: :union, elements: list), t1, t2) do
     case (unify_union(list)) do
       {:yes, type} ->
         type
@@ -5222,13 +4561,13 @@ defmodule :m_erl_types do
   end
 
   defp unify_union(list) do
-    [a, b, f, i, l, n, t, m, o, map] = list
+    [a, b, f, i, l, n, t, o, map] = list
     cond do
       o === :none ->
         :no
       true ->
         s = t_opaque_structure(o)
-        {:yes, t_sup([a, b, f, i, l, n, t, m, s, map])}
+        {:yes, t_sup([a, b, f, i, l, n, t, s, map])}
     end
   end
 
@@ -5239,55 +4578,24 @@ defmodule :m_erl_types do
                  elements)
   end
 
-  defp is_opaque_type2(r_opaque(mod: mod1, name: name1, args: args1),
+  defp is_opaque_type2(r_opaque(mod: mod1, name: name1, arity: arity1),
             opaques) do
     f1 = fn r_c(tag: :opaque, elements: es) ->
-              f2 = fn r_opaque(mod: mod, name: name, args: args) ->
-                        is_type_name(mod1, name1, args1, mod, name, args)
+              f2 = fn r_opaque(mod: mod, name: name, arity: arity) ->
+                        is_type_name(mod1, name1, arity1, mod, name, arity)
                    end
               :lists.any(f2, es)
          end
     :lists.any(f1, opaques)
   end
 
-  defp is_type_name(mod, name, args1, mod, name, args2) do
-    length(args1) === length(args2)
+  defp is_type_name(mod, name, arity, mod, name, arity) do
+    true
   end
 
-  defp is_type_name(_Mod1, _Name1, _Args1, _Mod2, _Name2, _Args2) do
+  defp is_type_name(_Mod1, _Name1, _Arity1, _Mod2, _Name2,
+            _Arity2) do
     false
-  end
-
-  defp unify_tuple_set_and_tuple1(r_c(tag: :tuple_set, elements: [{arity, list}]),
-            r_c(tag: :tuple, elements: elements2,
-                qualifier: {arity, _}),
-            varMap) do
-    {newElements,
-       varMap1} = unify_lists(sup_tuple_elements(list),
-                                elements2, varMap)
-    {t_tuple(newElements), varMap1}
-  end
-
-  defp unify_tuple_set_and_tuple2(r_c(tag: :tuple, elements: elements2,
-              qualifier: {arity, _}),
-            r_c(tag: :tuple_set, elements: [{arity, list}]),
-            varMap) do
-    {newElements, varMap1} = unify_lists(elements2,
-                                           sup_tuple_elements(list), varMap)
-    {t_tuple(newElements), varMap1}
-  end
-
-  defp unify_lists(l1, l2, varMap) do
-    unify_lists(l1, l2, varMap, [])
-  end
-
-  defp unify_lists([t1 | left1], [t2 | left2], varMap, acc) do
-    {newT, newVarMap} = t_unify(t1, t2, varMap)
-    unify_lists(left1, left2, newVarMap, [newT | acc])
-  end
-
-  defp unify_lists([], [], varMap, acc) do
-    {:lists.reverse(acc), varMap}
   end
 
   def t_subtract_list(t1, [t2 | left]) do
@@ -5340,14 +4648,14 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_subtract(r_c(tag: :binary, elements: [u1, b1]),
-           r_c(tag: :binary, elements: [u2, b2])) do
+  def t_subtract(r_c(tag: :binary, elements: {u1, b1}),
+           r_c(tag: :binary, elements: {u2, b2})) do
     subtract_bin(t_bitstr(u1, b1),
                    t_inf(t_bitstr(u1, b1), t_bitstr(u2, b2)))
   end
 
-  def t_subtract(r_c(tag: :function, elements: [_, _]) = t1,
-           r_c(tag: :function, elements: [_, _]) = t2) do
+  def t_subtract(r_c(tag: :function, elements: {_, _}) = t1,
+           r_c(tag: :function, elements: {_, _}) = t2) do
     case (t_is_subtype(t1, t2)) do
       true ->
         :none
@@ -5379,43 +4687,27 @@ defmodule :m_erl_types do
     t_subtract(t1, t_opaque_structure(t2))
   end
 
-  def t_subtract(r_c(tag: :matchstate, elements: [pres1, slots1]),
-           r_c(tag: :matchstate, elements: [pres2, _Slots2])) do
-    pres = t_subtract(pres1, pres2)
-    case (t_is_none(pres)) do
-      true ->
-        :none
-      false ->
-        r_c(tag: :matchstate, elements: [pres, slots1])
-    end
-  end
-
-  def t_subtract(r_c(tag: :matchstate, elements: [present, slots]),
-           _) do
-    r_c(tag: :matchstate, elements: [present, slots])
-  end
-
   def t_subtract(r_c(tag: nil), r_c(tag: nil)) do
     :none
   end
 
   def t_subtract(r_c(tag: nil),
-           r_c(tag: :list, elements: [_, _],
+           r_c(tag: :list, elements: {_, _},
                qualifier: :nonempty)) do
     r_c(tag: nil)
   end
 
   def t_subtract(r_c(tag: nil),
-           r_c(tag: :list, elements: [_, _], qualifier: _)) do
+           r_c(tag: :list, elements: {_, _}, qualifier: _)) do
     :none
   end
 
-  def t_subtract(r_c(tag: :list, elements: [contents, termination],
+  def t_subtract(r_c(tag: :list, elements: {contents, termination},
              qualifier: _Size) = t,
            r_c(tag: nil)) do
     case (termination === r_c(tag: nil)) do
       true ->
-        r_c(tag: :list, elements: [contents, termination],
+        r_c(tag: :list, elements: {contents, termination},
             qualifier: :nonempty)
       false ->
         t
@@ -5423,9 +4715,9 @@ defmodule :m_erl_types do
   end
 
   def t_subtract(r_c(tag: :list,
-             elements: [contents1, termination1],
+             elements: {contents1, termination1},
              qualifier: size1) = t,
-           r_c(tag: :list, elements: [contents2, termination2],
+           r_c(tag: :list, elements: {contents2, termination2},
                qualifier: size2)) do
     case (t_is_subtype(contents1, contents2)) do
       true ->
@@ -5709,25 +5001,19 @@ defmodule :m_erl_types do
     t
   end
 
-  def t_subtract(r_c(tag: :union,
-             elements: [_, _, _, _, _, _, _, _, _, _] = u1),
-           r_c(tag: :union,
-               elements: [_, _, _, _, _, _, _, _, _, _] = u2)) do
+  def t_subtract(r_c(tag: :union, elements: u1),
+           r_c(tag: :union, elements: u2)) do
     subtract_union(u1, u2)
   end
 
   def t_subtract(t1, t2) do
-    r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = u1) = force_union(t1)
-    r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = u2) = force_union(t2)
+    r_c(tag: :union, elements: u1) = force_union(t1)
+    r_c(tag: :union, elements: u2) = force_union(t2)
     subtract_union(u1, u2)
   end
 
   defp opaque_subtract(r_c(tag: :opaque, elements: set1), t2) do
-    list = (for (r_opaque(struct: s1) = t1) <- set_to_list(set1),
+    list = (for (r_opaque(struct: s1) = t1) <- set1,
                   not t_is_none(sub = t_subtract(s1, t2)) do
               r_opaque(t1, struct: sub)
             end)
@@ -5753,18 +5039,16 @@ defmodule :m_erl_types do
   end
 
   defp subtract_union(u1, u2) do
-    [a1, b1, f1, i1, l1, n1, t1, m1, o1, map1] = u1
-    [a2, b2, f2, i2, l2, n2, t2, m2, o2, map2] = u2
-    list1 = [a1, b1, f1, i1, l1, n1, t1, m1, :none, map1]
-    list2 = [a2, b2, f2, i2, l2, n2, t2, m2, :none, map2]
-    sub1 = subtract_union(list1, list2, 0, [])
+    [a1, b1, f1, i1, l1, n1, t1, o1, map1] = u1
+    [a2, b2, f2, i2, l2, n2, t2, o2, map2] = u2
+    list1 = [a1, b1, f1, i1, l1, n1, t1, :none, map1]
+    list2 = [a2, b2, f2, i2, l2, n2, t2, :none, map2]
+    sub1 = subtract_union(list1, list2, :none, [])
     o = (cond do
            o1 === :none ->
              o1
            true ->
-             t_subtract(o1,
-                          r_c(tag: :union,
-                              elements: [_, _, _, _, _, _, _, _, _, _] = u2))
+             t_subtract(o1, r_c(tag: :union, elements: u2))
          end)
     sub2 = (cond do
               o2 === :none ->
@@ -5775,61 +5059,50 @@ defmodule :m_erl_types do
     t_sup(o, sub2)
   end
 
-  defp subtract_union([t1 | left1], [t2 | left2], n, acc) do
+  defp subtract_union([t1 | left1], [t2 | left2], type, acc) do
     case (t_subtract(t1, t2)) do
       :none ->
-        subtract_union(left1, left2, n, [:none | acc])
+        subtract_union(left1, left2, type, [:none | acc])
+      t when type === :none ->
+        subtract_union(left1, left2, t, [t | acc])
       t ->
-        subtract_union(left1, left2, n + 1, [t | acc])
+        subtract_union(left1, left2, :union, [t | acc])
     end
   end
 
-  defp subtract_union([], [], 0, _Acc) do
+  defp subtract_union([], [], type, acc) do
+    case (type) do
+      :union ->
+        r_c(tag: :union, elements: :lists.reverse(acc))
+      _ ->
+        type
+    end
+  end
+
+  defp replace_nontrivial_element([t1 | left1], [:none | left2]) do
+    [t1 | replace_nontrivial_element(left1, left2)]
+  end
+
+  defp replace_nontrivial_element([_ | left1], [t2 | _]) do
+    [t2 | left1]
+  end
+
+  defp subtract_bin(r_c(tag: :binary, elements: {u1, b1}),
+            r_c(tag: :binary, elements: {u1, b1})) do
     :none
   end
 
-  defp subtract_union([], [], 1, acc) do
-    [t] = (for x <- acc, x !== :none do
-             x
-           end)
-    t
-  end
-
-  defp subtract_union([], [], n, acc) when (is_integer(n) and
-                                  n > 1) do
-    r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = :lists.reverse(acc))
-  end
-
-  defp replace_nontrivial_element(el1, el2) do
-    replace_nontrivial_element(el1, el2, [])
-  end
-
-  defp replace_nontrivial_element([t1 | left1], [:none | left2], acc) do
-    replace_nontrivial_element(left1, left2, [t1 | acc])
-  end
-
-  defp replace_nontrivial_element([_ | left1], [t2 | _], acc) do
-    :lists.reverse(acc) ++ [t2 | left1]
-  end
-
-  defp subtract_bin(r_c(tag: :binary, elements: [u1, b1]),
-            r_c(tag: :binary, elements: [u1, b1])) do
-    :none
-  end
-
-  defp subtract_bin(r_c(tag: :binary, elements: [u1, b1]), :none) do
+  defp subtract_bin(r_c(tag: :binary, elements: {u1, b1}), :none) do
     t_bitstr(u1, b1)
   end
 
-  defp subtract_bin(r_c(tag: :binary, elements: [u1, b1]),
-            r_c(tag: :binary, elements: [0, b1])) do
+  defp subtract_bin(r_c(tag: :binary, elements: {u1, b1}),
+            r_c(tag: :binary, elements: {0, b1})) do
     t_bitstr(u1, b1 + u1)
   end
 
-  defp subtract_bin(r_c(tag: :binary, elements: [u1, b1]),
-            r_c(tag: :binary, elements: [u1, b2])) do
+  defp subtract_bin(r_c(tag: :binary, elements: {u1, b1}),
+            r_c(tag: :binary, elements: {u1, b2})) do
     cond do
       b1 + u1 !== b2 ->
         t_bitstr(0, b1)
@@ -5838,8 +5111,8 @@ defmodule :m_erl_types do
     end
   end
 
-  defp subtract_bin(r_c(tag: :binary, elements: [u1, b1]),
-            r_c(tag: :binary, elements: [u2, b2])) do
+  defp subtract_bin(r_c(tag: :binary, elements: {u1, b1}),
+            r_c(tag: :binary, elements: {u2, b2})) do
     cond do
       2 * u1 === u2 ->
         cond do
@@ -5892,7 +5165,7 @@ defmodule :m_erl_types do
   end
 
   defp t_do_overlap(typeA, typeB) do
-    not t_is_none_or_unit(t_inf(typeA, typeB))
+    not t_is_impossible(t_inf(typeA, typeB))
   end
 
   def t_unopaque(t) do
@@ -5909,12 +5182,12 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_unopaque(r_c(tag: :list, elements: [elemT, termination],
+  def t_unopaque(r_c(tag: :list, elements: {elemT, termination},
              qualifier: sz),
            opaques) do
     r_c(tag: :list,
-        elements: [t_unopaque(elemT, opaques),
-                       t_unopaque(termination, opaques)],
+        elements: {t_unopaque(elemT, opaques),
+                     t_unopaque(termination, opaques)},
         qualifier: sz)
   end
 
@@ -5951,24 +5224,19 @@ defmodule :m_erl_types do
                   end)
   end
 
-  def t_unopaque(r_c(tag: :function, elements: [domain, range]),
+  def t_unopaque(r_c(tag: :function, elements: {domain, range}),
            opaques) do
     r_c(tag: :function,
-        elements: [t_unopaque(domain, opaques),
-                       t_unopaque(range, opaques)])
+        elements: {t_unopaque(domain, opaques),
+                     t_unopaque(range, opaques)})
   end
 
   def t_unopaque(r_c(tag: :union,
-             elements: [_, _, _, _, _, _, _, _, _, _] = [a, b, f, i,
-                                                                      l, n, t,
-                                                                                m,
-                                                                                    o,
-                                                                                        map]),
+             elements: [a, b, f, i, l, n, t, o, map]),
            opaques) do
     uL = t_unopaque(l, opaques)
     uT = t_unopaque(t, opaques)
     uF = t_unopaque(f, opaques)
-    uM = t_unopaque(m, opaques)
     uMap = t_unopaque(map, opaques)
     {oF, uO} = (case (t_unopaque(o, opaques)) do
                   r_c(tag: :opaque, elements: _) = o1 ->
@@ -5977,12 +5245,7 @@ defmodule :m_erl_types do
                     {:none, [type]}
                 end)
     t_sup([r_c(tag: :union,
-               elements: [_, _, _, _, _, _, _, _, _, _] = [a, b, uF, i,
-                                                                         uL, n,
-                                                                                 uT,
-                                                                                     uM,
-                                                                                         oF,
-                                                                                             uMap]) |
+               elements: [a, b, uF, i, uL, n, uT, oF, uMap]) |
                uO])
   end
 
@@ -5999,7 +5262,99 @@ defmodule :m_erl_types do
   end
 
   def t_limit(term, k) when is_integer(k) do
-    t_limit_k(term, k)
+    case (is_limited(term, k)) do
+      true ->
+        term
+      false ->
+        t_limit_k(term, k)
+    end
+  end
+
+  defp is_limited(:any, _) do
+    true
+  end
+
+  defp is_limited(_, k) when k <= 0 do
+    false
+  end
+
+  defp is_limited(r_c(tag: :tuple, elements: :any,
+              qualifier: {:any, :any}),
+            _K) do
+    true
+  end
+
+  defp is_limited(r_c(tag: :tuple, elements: elements,
+              qualifier: {_Arity, _}),
+            k) do
+    cond do
+      k === 1 ->
+        false
+      true ->
+        are_all_limited(elements, k - 1)
+    end
+  end
+
+  defp is_limited(r_c(tag: :tuple_set, elements: _) = t, k) do
+    are_all_limited(t_tuple_subtypes(t), k)
+  end
+
+  defp is_limited(r_c(tag: :list, elements: {elements, r_c(tag: nil)},
+              qualifier: _Size),
+            k) do
+    is_limited(elements, k - 1)
+  end
+
+  defp is_limited(r_c(tag: :list, elements: {elements, termination},
+              qualifier: _Size),
+            k) do
+    (cond do
+       k === 1 ->
+         is_limited(termination, k)
+       true ->
+         is_limited(termination, k - 1)
+     end) and is_limited(elements, k - 1)
+  end
+
+  defp is_limited(r_c(tag: :function, elements: {domain, range}),
+            k) do
+    is_limited(domain, k) and is_limited(range, k - 1)
+  end
+
+  defp is_limited(r_c(tag: :product, elements: elements), k) do
+    are_all_limited(elements, k - 1)
+  end
+
+  defp is_limited(r_c(tag: :union, elements: elements), k) do
+    are_all_limited(elements, k)
+  end
+
+  defp is_limited(r_c(tag: :opaque, elements: es), k) do
+    :lists.all(fn r_opaque(struct: s) ->
+                    is_limited(s, k)
+               end,
+                 es)
+  end
+
+  defp is_limited(r_c(tag: :map, elements: {pairs, defK, defV}),
+            k) do
+    k1 = k - 1
+    :lists.all(fn {key, _, value} ->
+                    (is_limited(key, k1) and is_limited(value, k1))
+               end,
+                 pairs) and is_limited(defK, k1) and is_limited(defV, k1)
+  end
+
+  defp is_limited(_, _K) do
+    true
+  end
+
+  defp are_all_limited([e | es], k) do
+    is_limited(e, k) and are_all_limited(es, k)
+  end
+
+  defp are_all_limited([], _) do
+    true
   end
 
   defp t_limit_k(_, k) when k <= 0 do
@@ -6031,7 +5386,15 @@ defmodule :m_erl_types do
           end)
   end
 
-  defp t_limit_k(r_c(tag: :list, elements: [elements, termination],
+  defp t_limit_k(r_c(tag: :list, elements: {elements, r_c(tag: nil)},
+              qualifier: size),
+            k) do
+    newElements = t_limit_k(elements, k - 1)
+    r_c(tag: :list, elements: {newElements, r_c(tag: nil)},
+        qualifier: size)
+  end
+
+  defp t_limit_k(r_c(tag: :list, elements: {elements, termination},
               qualifier: size),
             k) do
     newTermination = (cond do
@@ -6041,23 +5404,15 @@ defmodule :m_erl_types do
                           t_limit_k(termination, k - 1)
                       end)
     newElements = t_limit_k(elements, k - 1)
-    tmpList = t_cons(newElements, newTermination)
-    case (size) do
-      :nonempty ->
-        tmpList
-      :unknown ->
-        r_c(tag: :list, elements: [newElements1, newTermination1],
-            qualifier: _) = tmpList
-        r_c(tag: :list, elements: [newElements1, newTermination1],
-            qualifier: :unknown)
-    end
+    r_c(tag: :list, elements: {newElements, newTermination},
+        qualifier: size)
   end
 
-  defp t_limit_k(r_c(tag: :function, elements: [domain, range]),
+  defp t_limit_k(r_c(tag: :function, elements: {domain, range}),
             k) do
     r_c(tag: :function,
-        elements: [t_limit_k(domain, k), t_limit_k(range,
-                                                     k - 1)])
+        elements: {t_limit_k(domain, k),
+                     t_limit_k(range, k - 1)})
   end
 
   defp t_limit_k(r_c(tag: :product, elements: elements), k) do
@@ -6067,18 +5422,15 @@ defmodule :m_erl_types do
                   end)
   end
 
-  defp t_limit_k(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = elements),
-            k) do
+  defp t_limit_k(r_c(tag: :union, elements: elements), k) do
     r_c(tag: :union,
-        elements: [_, _, _, _, _, _, _, _, _,
-                                               _] = (for x <- elements do
-                                                       t_limit_k(x, k)
-                                                     end))
+        elements: for x <- elements do
+                    t_limit_k(x, k)
+                  end)
   end
 
   defp t_limit_k(r_c(tag: :opaque, elements: es), k) do
-    list = (for (r_opaque(struct: s) = opaque) <- set_to_list(es) do
+    list = (for (r_opaque(struct: s) = opaque) <- es do
               (
                 newS = t_limit_k(s, k)
                 r_opaque(opaque, struct: newS)
@@ -6108,7 +5460,7 @@ defmodule :m_erl_types do
     t
   end
 
-  def t_abstract_records(r_c(tag: :list, elements: [contents, termination],
+  def t_abstract_records(r_c(tag: :list, elements: {contents, termination},
              qualifier: size),
            recDict) do
     case (t_abstract_records(contents, recDict)) do
@@ -6117,25 +5469,25 @@ defmodule :m_erl_types do
       newContents ->
         case (t_abstract_records(termination, recDict)) do
           r_c(tag: nil) ->
-            r_c(tag: :list, elements: [newContents, r_c(tag: nil)],
+            r_c(tag: :list, elements: {newContents, r_c(tag: nil)},
                 qualifier: size)
           :any ->
-            r_c(tag: :list, elements: [newContents, :any],
+            r_c(tag: :list, elements: {newContents, :any},
                 qualifier: size)
           other ->
-            r_c(tag: :list, elements: [newContents2, newTermination],
+            r_c(tag: :list, elements: {newContents2, newTermination},
                 qualifier: _) = t_cons(newContents, other)
-            r_c(tag: :list, elements: [newContents2, newTermination],
+            r_c(tag: :list, elements: {newContents2, newTermination},
                 qualifier: size)
         end
     end
   end
 
-  def t_abstract_records(r_c(tag: :function, elements: [domain, range]),
+  def t_abstract_records(r_c(tag: :function, elements: {domain, range}),
            recDict) do
     r_c(tag: :function,
-        elements: [t_abstract_records(domain, recDict),
-                       t_abstract_records(range, recDict)])
+        elements: {t_abstract_records(domain, recDict),
+                     t_abstract_records(range, recDict)})
   end
 
   def t_abstract_records(r_c(tag: :product, elements: types), recDict) do
@@ -6145,9 +5497,7 @@ defmodule :m_erl_types do
                   end)
   end
 
-  def t_abstract_records(r_c(tag: :union,
-             elements: [_, _, _, _, _, _, _, _, _, _] = types),
-           recDict) do
+  def t_abstract_records(r_c(tag: :union, elements: types), recDict) do
     t_sup(for t <- types do
             t_abstract_records(t, recDict)
           end)
@@ -6219,7 +5569,7 @@ defmodule :m_erl_types do
   end
 
   def t_to_string(r_c(tag: :atom, elements: set), _RecDict) do
-    case (set_size(set)) do
+    case (length(set)) do
       2 ->
         case (set_is_element(true,
                                set) and set_is_element(false, set)) do
@@ -6233,42 +5583,50 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_to_string(r_c(tag: :binary, elements: [0, 0]), _RecDict) do
+  def t_to_string(r_c(tag: :binary, elements: {0, 0}), _RecDict) do
     '<<>>'
   end
 
-  def t_to_string(r_c(tag: :binary, elements: [8, 0]), _RecDict) do
+  def t_to_string(r_c(tag: :binary, elements: {8, 0}), _RecDict) do
     'binary()'
   end
 
-  def t_to_string(r_c(tag: :binary, elements: [1, 0]), _RecDict) do
+  def t_to_string(r_c(tag: :binary, elements: {8, 8}), _RecDict) do
+    'nonempty_binary()'
+  end
+
+  def t_to_string(r_c(tag: :binary, elements: {1, 0}), _RecDict) do
     'bitstring()'
   end
 
-  def t_to_string(r_c(tag: :binary, elements: [0, b]), _RecDict) do
+  def t_to_string(r_c(tag: :binary, elements: {1, 1}), _RecDict) do
+    'nonempty_bitstring()'
+  end
+
+  def t_to_string(r_c(tag: :binary, elements: {0, b}), _RecDict) do
     flat_format('<<_:~w>>', [b])
   end
 
-  def t_to_string(r_c(tag: :binary, elements: [u, 0]), _RecDict) do
+  def t_to_string(r_c(tag: :binary, elements: {u, 0}), _RecDict) do
     flat_format('<<_:_*~w>>', [u])
   end
 
-  def t_to_string(r_c(tag: :binary, elements: [u, b]), _RecDict) do
+  def t_to_string(r_c(tag: :binary, elements: {u, b}), _RecDict) do
     flat_format('<<_:~w,_:_*~w>>', [b, u])
   end
 
-  def t_to_string(r_c(tag: :function, elements: [:any, :any]),
+  def t_to_string(r_c(tag: :function, elements: {:any, :any}),
            _RecDict) do
     'fun()'
   end
 
-  def t_to_string(r_c(tag: :function, elements: [:any, range]),
+  def t_to_string(r_c(tag: :function, elements: {:any, range}),
            recDict) do
     'fun((...) -> ' ++ t_to_string(range, recDict) ++ ')'
   end
 
   def t_to_string(r_c(tag: :function,
-             elements: [r_c(tag: :product, elements: argList), range]),
+             elements: {r_c(tag: :product, elements: argList), range}),
            recDict) do
     'fun((' ++ comma_sequence(argList,
                           recDict) ++ ') -> ' ++ t_to_string(range, recDict) ++ ')'
@@ -6279,7 +5637,7 @@ defmodule :m_erl_types do
       :any ->
         'identifier()'
       _ ->
-        flat_join(for t <- set_to_list(set) do
+        flat_join(for t <- set do
                     flat_format('~w()', [t])
                   end,
                     ' | ')
@@ -6288,24 +5646,17 @@ defmodule :m_erl_types do
 
   def t_to_string(r_c(tag: :opaque, elements: set), recDict) do
     flat_join(for r_opaque(mod: mod, name: name, struct: s,
-                      args: args) <- set_to_list(set) do
-                opaque_type(mod, name, args, s, recDict)
+                      arity: arity) <- set do
+                opaque_type(mod, name, arity, s, recDict)
               end,
                 ' | ')
-  end
-
-  def t_to_string(r_c(tag: :matchstate, elements: [pres, slots]),
-           recDict) do
-    flat_format('ms(~ts,~ts)',
-                  [t_to_string(pres, recDict), t_to_string(slots,
-                                                             recDict)])
   end
 
   def t_to_string(r_c(tag: nil), _RecDict) do
     '[]'
   end
 
-  def t_to_string(r_c(tag: :list, elements: [contents, termination],
+  def t_to_string(r_c(tag: :list, elements: {contents, termination},
              qualifier: :nonempty),
            recDict) do
     contentString = t_to_string(contents, recDict)
@@ -6338,7 +5689,7 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_to_string(r_c(tag: :list, elements: [contents, termination],
+  def t_to_string(r_c(tag: :list, elements: {contents, termination},
              qualifier: :unknown),
            recDict) do
     contentString = t_to_string(contents, recDict)
@@ -6365,7 +5716,7 @@ defmodule :m_erl_types do
             'maybe_improper_list(' ++ contentString ++ ',' ++ t_to_string(termination,
                                                      recDict) ++ ')'
           false ->
-            'improper_list(' ++ contentString ++ ',' ++ t_to_string(termination,
+            'maybe_improper_list(' ++ contentString ++ ',' ++ t_to_string(termination,
                                                      recDict) ++ ')'
         end
     end
@@ -6501,9 +5852,7 @@ defmodule :m_erl_types do
     union_sequence(t_tuple_subtypes(t), recDict)
   end
 
-  def t_to_string(r_c(tag: :union,
-             elements: [_, _, _, _, _, _, _, _, _, _] = types),
-           recDict) do
+  def t_to_string(r_c(tag: :union, elements: types), recDict) do
     union_sequence(for t <- types, t !== :none do
                      t
                    end,
@@ -6554,24 +5903,25 @@ defmodule :m_erl_types do
     [tagAtom] = atom_vals(tag)
     {:ok, fieldNames} = lookup_record(tagAtom, arity - 1,
                                         recDict)
-    fieldDiffs = field_diffs(fs, fieldNames, recDict, [])
-    flat_join(fieldDiffs, ' and ')
+    diffs = field_diffs(fs, fieldNames, 1, recDict, [])
+    {fNs, fieldDiffs} = :lists.unzip(diffs)
+    {fNs, flat_join(fieldDiffs, ' and ')}
   end
 
   defp field_diffs([f | fs], [{fName, _Abstr, defType} | fDefs],
-            recDict, acc) do
+            pos, recDict, acc) do
     newAcc = (case (not t_is_none(t_inf(f, defType))) do
                 true ->
                   acc
                 false ->
                   str = atom_to_string(fName) ++ '::' ++ t_to_string(defType,
                                                                     recDict)
-                  [str | acc]
+                  [{pos, str} | acc]
               end)
-    field_diffs(fs, fDefs, recDict, newAcc)
+    field_diffs(fs, fDefs, pos + 1, recDict, newAcc)
   end
 
-  defp field_diffs([], [], _, acc) do
+  defp field_diffs([], [], _, _, acc) do
     :lists.reverse(acc)
   end
 
@@ -6594,22 +5944,21 @@ defmodule :m_erl_types do
     flat_join(list, ' | ')
   end
 
-  defp opaque_type(mod, name, args, _S, recDict) do
-    argsString = comma_sequence(args, recDict)
-    opaque_name(mod, name, argsString)
+  defp opaque_type(mod, name, arity, _S, _RecDict) do
+    opaque_name(mod, name, arity)
   end
 
-  defp opaque_name(mod, name, extra) do
+  defp opaque_name(mod, name, arity) do
     s = mod_name(mod, name)
-    flat_format('~ts(~ts)', [s, extra])
+    args = :lists.join(?,, :lists.duplicate(arity, ?_))
+    flat_format('~ts(~ts)', [s, args])
   end
 
   defp mod_name(mod, name) do
     flat_format('~w:~tw', [mod, name])
   end
 
-  Record.defrecord(:r_cache, :cache, types: :maps.new(),
-                                 mod_recs: {:mrecs, :dict.new()})
+  Record.defrecord(:r_cache, :cache, types: %{}, mod_recs: %{})
   def t_from_form(form, expTypes, site, recDict, varTab, cache) do
     t_from_form1(form, expTypes, site, recDict, varTab,
                    cache)
@@ -6617,11 +5966,11 @@ defmodule :m_erl_types do
 
   def t_from_form_without_remote(form, site, typeTable) do
     module = site_module(site)
-    modRecs = :dict.from_list([{module, typeTable}])
+    modRecs = %{module => typeTable}
     expTypes = :replace_by_none
     varTab = var_table__new()
     cache0 = cache__new()
-    cache = r_cache(cache0, mod_recs: {:mrecs, modRecs})
+    cache = r_cache(cache0, mod_recs: modRecs)
     {type, _} = t_from_form1(form, expTypes, site,
                                :undefined, varTab, cache)
     type
@@ -6630,9 +5979,9 @@ defmodule :m_erl_types do
   Record.defrecord(:r_from_form, :from_form, site: :undefined,
                                      xtypes: :undefined, mrecs: :undefined,
                                      vtab: :undefined, tnames: :undefined)
-  def t_from_form_check_remote(form, expTypes, mTA, recDict) do
-    state = r_from_form(site: {:check, mTA}, xtypes: expTypes,
-                mrecs: recDict, vtab: var_table__new(), tnames: [])
+  def t_from_form_check_remote(form, expTypes, site, recDict) do
+    state = r_from_form(site: site, xtypes: expTypes, mrecs: recDict,
+                vtab: var_table__new(), tnames: [])
     d = 1 <<< 25
     l = 1 <<< 25
     cache0 = cache__new()
@@ -6660,15 +6009,15 @@ defmodule :m_erl_types do
     end
   end
 
-  defp initial_typenames({:type, _MTA} = site) do
-    [site]
+  defp initial_typenames({:type, mTA, _File}) do
+    [{:type, mTA}]
   end
 
-  defp initial_typenames({:spec, _MFA}) do
+  defp initial_typenames({:spec, _MFA, _File}) do
     []
   end
 
-  defp initial_typenames({:record, _MRA}) do
+  defp initial_typenames({:record, _MRA, _File}) do
     []
   end
 
@@ -6680,57 +6029,63 @@ defmodule :m_erl_types do
         {t0, c1}
       delta * 8 > limit ->
         {t1, c1}
+      d === 4 ->
+        {t1, c1}
       true ->
         d1 = d + 1
         from_form_loop(form, state, d1, limit, c1, t1)
     end
   end
 
+  defp from_form(_, _S, d, l, _C) when not is_integer(d) or
+                                  not is_integer(l) do
+    :erlang.error(:badarg)
+  end
+
   defp from_form(_, _S, d, l, c) when d <= 0 or l <= 0 do
     {t_any(), l, c}
   end
 
-  defp from_form({:var, _L, :_}, _S, _D, l, c) do
+  defp from_form({:var, _Anno, :_}, _S, _D, l, c) do
     {t_any(), l, c}
   end
 
-  defp from_form({:var, _L, name}, s, _D, l, c) do
-    v = r_from_form(s, :vtab)
-    case (:maps.find(name, v)) do
-      :error ->
-        {t_var(name), l, c}
-      {:ok, val} ->
+  defp from_form({:var, _Anno, name}, s, _D, l, c) do
+    case (r_from_form(s, :vtab)) do
+      %{^name => val} ->
         {val, l, c}
+      %{} ->
+        {t_var(name), l, c}
     end
   end
 
-  defp from_form({:ann_type, _L, [_Var, type]}, s, d, l, c) do
+  defp from_form({:ann_type, _Anno, [_Var, type]}, s, d, l, c) do
     from_form(type, s, d, l, c)
   end
 
-  defp from_form({:paren_type, _L, [type]}, s, d, l, c) do
+  defp from_form({:paren_type, _Anno, [type]}, s, d, l, c) do
     from_form(type, s, d, l, c)
   end
 
-  defp from_form({:remote_type, _L,
+  defp from_form({:remote_type, anno,
              [{:atom, _, module}, {:atom, _, type}, args]},
             s, d, l, c) do
-    remote_from_form(module, type, args, s, d, l, c)
+    remote_from_form(anno, module, type, args, s, d, l, c)
   end
 
-  defp from_form({:atom, _L, atom}, _S, _D, l, c) do
+  defp from_form({:atom, _Anno, atom}, _S, _D, l, c) do
     {t_atom(atom), l, c}
   end
 
-  defp from_form({:integer, _L, int}, _S, _D, l, c) do
+  defp from_form({:integer, _Anno, int}, _S, _D, l, c) do
     {t_integer(int), l, c}
   end
 
-  defp from_form({:char, _L, char}, _S, _D, l, c) do
+  defp from_form({:char, _Anno, char}, _S, _D, l, c) do
     {t_integer(char), l, c}
   end
 
-  defp from_form({:op, _L, _Op, _Arg} = op, _S, _D, l, c) do
+  defp from_form({:op, _Anno, _Op, _Arg} = op, _S, _D, l, c) do
     case (:erl_eval.partial_eval(op)) do
       {:integer, _, val} ->
         {t_integer(val), l, c}
@@ -6739,7 +6094,7 @@ defmodule :m_erl_types do
     end
   end
 
-  defp from_form({:op, _L, _Op, _Arg1, _Arg2} = op, _S, _D, l,
+  defp from_form({:op, _Anno, _Op, _Arg1, _Arg2} = op, _S, _D, l,
             c) do
     case (:erl_eval.partial_eval(op)) do
       {:integer, _, val} ->
@@ -6749,24 +6104,24 @@ defmodule :m_erl_types do
     end
   end
 
-  defp from_form({:type, _L, :any, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :any, []}, _S, _D, l, c) do
     {t_any(), l, c}
   end
 
-  defp from_form({:type, _L, :arity, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :arity, []}, _S, _D, l, c) do
     {t_arity(), l, c}
   end
 
-  defp from_form({:type, _L, :atom, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :atom, []}, _S, _D, l, c) do
     {t_atom(), l, c}
   end
 
-  defp from_form({:type, _L, :binary, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :binary, []}, _S, _D, l, c) do
     {t_binary(), l, c}
   end
 
-  defp from_form({:type, _L, :binary, [base, unit]} = type, _S,
-            _D, l, c) do
+  defp from_form({:type, _Anno, :binary, [base, unit]} = type,
+            _S, _D, l, c) do
     case ({:erl_eval.partial_eval(base),
              :erl_eval.partial_eval(unit)}) do
       {{:integer, _, b}, {:integer, _, u}} when (b >= 0 and
@@ -6778,45 +6133,49 @@ defmodule :m_erl_types do
     end
   end
 
-  defp from_form({:type, _L, :bitstring, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :bitstring, []}, _S, _D, l, c) do
     {t_bitstr(), l, c}
   end
 
-  defp from_form({:type, _L, :bool, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :bool, []}, _S, _D, l, c) do
     {t_boolean(), l, c}
   end
 
-  defp from_form({:type, _L, :boolean, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :boolean, []}, _S, _D, l, c) do
     {t_boolean(), l, c}
   end
 
-  defp from_form({:type, _L, :byte, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :byte, []}, _S, _D, l, c) do
     {t_byte(), l, c}
   end
 
-  defp from_form({:type, _L, :char, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :char, []}, _S, _D, l, c) do
     {t_char(), l, c}
   end
 
-  defp from_form({:type, _L, :float, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :dynamic, []}, _S, _D, l, c) do
+    {t_any(), l, c}
+  end
+
+  defp from_form({:type, _Anno, :float, []}, _S, _D, l, c) do
     {t_float(), l, c}
   end
 
-  defp from_form({:type, _L, :function, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :function, []}, _S, _D, l, c) do
     {t_fun(), l, c}
   end
 
-  defp from_form({:type, _L, :fun, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :fun, []}, _S, _D, l, c) do
     {t_fun(), l, c}
   end
 
-  defp from_form({:type, _L, :fun, [{:type, _, :any}, range]}, s,
-            d, l, c) do
+  defp from_form({:type, _Anno, :fun, [{:type, _, :any}, range]},
+            s, d, l, c) do
     {t, l1, c1} = from_form(range, s, d - 1, l - 1, c)
     {t_fun(t), l1, c1}
   end
 
-  defp from_form({:type, _L, :fun,
+  defp from_form({:type, _Anno, :fun,
              [{:type, _, :product, domain}, range]},
             s, d, l, c) do
     {dom1, l1, c1} = list_from_form(domain, s, d, l, c)
@@ -6824,36 +6183,37 @@ defmodule :m_erl_types do
     {t_fun(dom1, ran1), l2, c2}
   end
 
-  defp from_form({:type, _L, :identifier, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :identifier, []}, _S, _D, l,
+            c) do
     {t_identifier(), l, c}
   end
 
-  defp from_form({:type, _L, :integer, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :integer, []}, _S, _D, l, c) do
     {t_integer(), l, c}
   end
 
-  defp from_form({:type, _L, :iodata, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :iodata, []}, _S, _D, l, c) do
     {t_iodata(), l, c}
   end
 
-  defp from_form({:type, _L, :iolist, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :iolist, []}, _S, _D, l, c) do
     {t_iolist(), l, c}
   end
 
-  defp from_form({:type, _L, :list, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :list, []}, _S, _D, l, c) do
     {t_list(), l, c}
   end
 
-  defp from_form({:type, _L, :list, [type]}, s, d, l, c) do
+  defp from_form({:type, _Anno, :list, [type]}, s, d, l, c) do
     {t, l1, c1} = from_form(type, s, d - 1, l - 1, c)
     {t_list(t), l1, c1}
   end
 
-  defp from_form({:type, _L, :map, :any}, s, d, l, c) do
+  defp from_form({:type, _Anno, :map, :any}, s, d, l, c) do
     builtin_type(:map, t_map(), s, d, l, c)
   end
 
-  defp from_form({:type, _L, :map, list}, s, d0, l, c) do
+  defp from_form({:type, _Anno, :map, list}, s, d0, l, c) do
     {pairs1, l5, c5} = (fn pairsFromForm
                         _, l1, c1 when l1 <= 0 ->
                           {[{:any, :optional, :any}], l1, c1}
@@ -6882,51 +6242,72 @@ defmodule :m_erl_types do
     end
   end
 
-  defp from_form({:type, _L, :mfa, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :mfa, []}, _S, _D, l, c) do
     {t_mfa(), l, c}
   end
 
-  defp from_form({:type, _L, :module, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :module, []}, _S, _D, l, c) do
     {t_module(), l, c}
   end
 
-  defp from_form({:type, _L, nil, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, nil, []}, _S, _D, l, c) do
     {t_nil(), l, c}
   end
 
-  defp from_form({:type, _L, :neg_integer, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :neg_integer, []}, _S, _D, l,
+            c) do
     {t_neg_integer(), l, c}
   end
 
-  defp from_form({:type, _L, :non_neg_integer, []}, _S, _D, l,
+  defp from_form({:type, _Anno, :non_neg_integer, []}, _S, _D, l,
             c) do
     {t_non_neg_integer(), l, c}
   end
 
-  defp from_form({:type, _L, :no_return, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :no_return, []}, _S, _D, l, c) do
     {t_unit(), l, c}
   end
 
-  defp from_form({:type, _L, :node, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :node, []}, _S, _D, l, c) do
     {t_node(), l, c}
   end
 
-  defp from_form({:type, _L, :none, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :none, []}, _S, _D, l, c) do
     {t_none(), l, c}
   end
 
-  defp from_form({:type, _L, :nonempty_list, []}, _S, _D, l,
+  defp from_form({:type, _Anno, :nonempty_binary, []}, s, d, l,
+            c) do
+    try do
+      type_from_form(:nonempty_binary, [], s, d, l, c)
+    catch
+      _, _ ->
+        {t_nonempty_binary(), l, c}
+    end
+  end
+
+  defp from_form({:type, _Anno, :nonempty_bitstring, []}, s, d,
+            l, c) do
+    try do
+      type_from_form(:nonempty_binary, [], s, d, l, c)
+    catch
+      _, _ ->
+        {t_nonempty_bitstring(), l, c}
+    end
+  end
+
+  defp from_form({:type, _Anno, :nonempty_list, []}, _S, _D, l,
             c) do
     {t_nonempty_list(), l, c}
   end
 
-  defp from_form({:type, _L, :nonempty_list, [type]}, s, d, l,
+  defp from_form({:type, _Anno, :nonempty_list, [type]}, s, d, l,
             c) do
     {t, l1, c1} = from_form(type, s, d, l - 1, c)
     {t_nonempty_list(t), l1, c1}
   end
 
-  defp from_form({:type, _L, :nonempty_improper_list,
+  defp from_form({:type, _Anno, :nonempty_improper_list,
              [cont, term]},
             s, d, l, c) do
     {t1, l1, c1} = from_form(cont, s, d, l - 1, c)
@@ -6934,12 +6315,13 @@ defmodule :m_erl_types do
     {t_cons(t1, t2), l2, c2}
   end
 
-  defp from_form({:type, _L, :nonempty_maybe_improper_list, []},
+  defp from_form({:type, _Anno, :nonempty_maybe_improper_list,
+             []},
             _S, _D, l, c) do
     {t_cons(:any, :any), l, c}
   end
 
-  defp from_form({:type, _L, :nonempty_maybe_improper_list,
+  defp from_form({:type, _Anno, :nonempty_maybe_improper_list,
              [cont, term]},
             s, d, l, c) do
     {t1, l1, c1} = from_form(cont, s, d, l - 1, c)
@@ -6947,33 +6329,34 @@ defmodule :m_erl_types do
     {t_cons(t1, t2), l2, c2}
   end
 
-  defp from_form({:type, _L, :nonempty_string, []}, _S, _D, l,
+  defp from_form({:type, _Anno, :nonempty_string, []}, _S, _D, l,
             c) do
     {t_nonempty_string(), l, c}
   end
 
-  defp from_form({:type, _L, :number, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :number, []}, _S, _D, l, c) do
     {t_number(), l, c}
   end
 
-  defp from_form({:type, _L, :pid, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :pid, []}, _S, _D, l, c) do
     {t_pid(), l, c}
   end
 
-  defp from_form({:type, _L, :port, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :port, []}, _S, _D, l, c) do
     {t_port(), l, c}
   end
 
-  defp from_form({:type, _L, :pos_integer, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :pos_integer, []}, _S, _D, l,
+            c) do
     {t_pos_integer(), l, c}
   end
 
-  defp from_form({:type, _L, :maybe_improper_list, []}, _S, _D,
-            l, c) do
+  defp from_form({:type, _Anno, :maybe_improper_list, []}, _S,
+            _D, l, c) do
     {t_maybe_improper_list(), l, c}
   end
 
-  defp from_form({:type, _L, :maybe_improper_list,
+  defp from_form({:type, _Anno, :maybe_improper_list,
              [content, termination]},
             s, d, l, c) do
     {t1, l1, c1} = from_form(content, s, d, l - 1, c)
@@ -6981,13 +6364,14 @@ defmodule :m_erl_types do
     {t_maybe_improper_list(t1, t2), l2, c2}
   end
 
-  defp from_form({:type, _L, :product, elements}, s, d, l, c) do
+  defp from_form({:type, _Anno, :product, elements}, s, d, l,
+            c) do
     {lst, l1, c1} = list_from_form(elements, s, d - 1, l, c)
     {t_product(lst), l1, c1}
   end
 
-  defp from_form({:type, _L, :range, [from, to]} = type, _S, _D,
-            l, c) do
+  defp from_form({:type, _Anno, :range, [from, to]} = type, _S,
+            _D, l, c) do
     case ({:erl_eval.partial_eval(from),
              :erl_eval.partial_eval(to)}) do
       {{:integer, _, fromVal}, {:integer, _, toVal}} ->
@@ -6997,51 +6381,51 @@ defmodule :m_erl_types do
     end
   end
 
-  defp from_form({:type, _L, :record, [name | fields]}, s, d, l,
-            c) do
+  defp from_form({:type, _Anno, :record, [name | fields]}, s, d,
+            l, c) do
     record_from_form(name, fields, s, d, l, c)
   end
 
-  defp from_form({:type, _L, :reference, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :reference, []}, _S, _D, l, c) do
     {t_reference(), l, c}
   end
 
-  defp from_form({:type, _L, :string, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :string, []}, _S, _D, l, c) do
     {t_string(), l, c}
   end
 
-  defp from_form({:type, _L, :term, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :term, []}, _S, _D, l, c) do
     {t_any(), l, c}
   end
 
-  defp from_form({:type, _L, :timeout, []}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :timeout, []}, _S, _D, l, c) do
     {t_timeout(), l, c}
   end
 
-  defp from_form({:type, _L, :tuple, :any}, _S, _D, l, c) do
+  defp from_form({:type, _Anno, :tuple, :any}, _S, _D, l, c) do
     {t_tuple(), l, c}
   end
 
-  defp from_form({:type, _L, :tuple, args}, s, d, l, c) do
+  defp from_form({:type, _Anno, :tuple, args}, s, d, l, c) do
     {lst, l1, c1} = list_from_form(args, s, d - 1, l, c)
     {t_tuple(lst), l1, c1}
   end
 
-  defp from_form({:type, _L, :union, args}, s, d, l, c) do
+  defp from_form({:type, _Anno, :union, args}, s, d, l, c) do
     {lst, l1, c1} = list_from_form(args, s, d, l, c)
     {t_sup(lst), l1, c1}
   end
 
-  defp from_form({:user_type, _L, name, args}, s, d, l, c) do
+  defp from_form({:user_type, _Anno, name, args}, s, d, l, c) do
     type_from_form(name, args, s, d, l, c)
   end
 
-  defp from_form({:type, _L, name, args}, s, d, l, c) do
+  defp from_form({:type, _Anno, name, args}, s, d, l, c) do
     type_from_form(name, args, s, d, l, c)
   end
 
-  defp from_form({:opaque, _L, name, {mod, args, rep}}, _S, _D,
-            l, c) do
+  defp from_form({:opaque, _Anno, name, {mod, args, rep}}, _S,
+            _D, l, c) do
     {t_opaque(mod, name, args, rep), l, c}
   end
 
@@ -7082,7 +6466,8 @@ defmodule :m_erl_types do
       {_, {_, _}} when :erlang.element(1, site) === :check ->
         {_ArgTypes, l1, c1} = list_from_form(args, s, d, l, c)
         {t_any(), l1, c1}
-      {tag, {{module, _FileName, form, argNames}, type}} ->
+      {tag,
+         {{module, {file, _Location}, form, argNames}, type}} ->
         newTypeNames = [typeName | typeNames]
         s1 = r_from_form(s, tnames: newTypeNames)
         {argTypes, l1, c1} = list_from_form(args, s1, d, l, c)
@@ -7093,7 +6478,9 @@ defmodule :m_erl_types do
           :error ->
             list = :lists.zip(argNames, argTypes)
             tmpV = :maps.from_list(list)
-            s2 = r_from_form(s1, site: typeName,  vtab: tmpV)
+            {siteTag, mFA} = typeName
+            site1 = {siteTag, mFA, file}
+            s2 = r_from_form(s1, site: site1,  vtab: tmpV)
             fun = fn dD, lL ->
                        from_form(form, s2, dD, lL, c1)
                   end
@@ -7127,7 +6514,7 @@ defmodule :m_erl_types do
     end
   end
 
-  defp remote_from_form(remMod, name, args, s, d, l, c) do
+  defp remote_from_form(anno, remMod, name, args, s, d, l, c) do
     r_from_form(site: site, xtypes: eT, mrecs: mR,
         tnames: typeNames) = s
     cond do
@@ -7138,10 +6525,11 @@ defmodule :m_erl_types do
         mFA = {remMod, name, argsLen}
         case (lookup_module_types(remMod, mR, c)) do
           :error ->
-            send(self(), {self(), :ext_types, mFA})
+            send(self(), {self(), :ext_types,
+                            ext_types_message(mFA, anno, site)})
             {t_any(), l, c}
           {remDict, c1} ->
-            case (:sets.is_element(mFA, eT)) do
+            case (:ets.member(eT, mFA)) do
               true ->
                 remType = {:type, mFA}
                 case (can_unfold_more(remType, typeNames)) do
@@ -7153,11 +6541,17 @@ defmodule :m_erl_types do
                 end
               false ->
                 send(self(), {self(), :ext_types,
-                                {remMod, name, argsLen}})
+                                ext_types_message(mFA, anno, site)})
                 {t_any(), l, c1}
             end
         end
     end
+  end
+
+  defp ext_types_message(mFA, anno, site) do
+    {mFA,
+       {site_file(site), :erl_anno.location(anno),
+          site_mfa(site)}}
   end
 
   defp remote_from_form1(remMod, name, args, argsLen, remDict, remType,
@@ -7166,7 +6560,8 @@ defmodule :m_erl_types do
       {_, {_, _}} when :erlang.element(1, site) === :check ->
         {_ArgTypes, l1, c1} = list_from_form(args, s, d, l, c)
         {t_any(), l1, c1}
-      {tag, {{mod, _FileLine, form, argNames}, type}} ->
+      {tag,
+         {{mod, {file, _Location}, form, argNames}, type}} ->
         newTypeNames = [remType | typeNames]
         s1 = r_from_form(s, tnames: newTypeNames)
         {argTypes, l1, c1} = list_from_form(args, s1, d, l, c)
@@ -7177,7 +6572,9 @@ defmodule :m_erl_types do
           :error ->
             list = :lists.zip(argNames, argTypes)
             tmpVarTab = :maps.from_list(list)
-            s2 = r_from_form(s1, site: remType,  vtab: tmpVarTab)
+            {siteTag, mFA} = remType
+            site1 = {siteTag, mFA, file}
+            s2 = r_from_form(s1, site: site1,  vtab: tmpVarTab)
             fun = fn dD, lL ->
                        from_form(form, s2, dD, lL, c1)
                   end
@@ -7239,7 +6636,8 @@ defmodule :m_erl_types do
             {t_any(), l0, c1}
           {:ok, declFields} ->
             newTypeNames = [recordType | typeNames]
-            site1 = {:record, {m, name, length(declFields)}}
+            site1 = {:record, {m, name, length(declFields)},
+                       site_file(site)}
             s1 = r_from_form(s, site: site1,  tnames: newTypeNames)
             fun = fn d, l ->
                        {getModRec, l1, c2} = get_mod_record(modFields,
@@ -7378,8 +6776,7 @@ defmodule :m_erl_types do
     t_elements(t)
   end
 
-  defp separate_key(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = list)) do
+  defp separate_key(r_c(tag: :union, elements: list)) do
     :lists.append(for k <- list, not t_is_none(k) do
                     separate_key(k)
                   end)
@@ -7497,74 +6894,76 @@ defmodule :m_erl_types do
     check_record_fields(form, state, cache)
   end
 
-  defp check_record_fields({:var, _L, _}, _S, c) do
+  defp check_record_fields({:var, _Anno, _}, _S, c) do
     c
   end
 
-  defp check_record_fields({:ann_type, _L, [_Var, type]}, s, c) do
+  defp check_record_fields({:ann_type, _Anno, [_Var, type]}, s, c) do
     check_record_fields(type, s, c)
   end
 
-  defp check_record_fields({:paren_type, _L, [type]}, s, c) do
+  defp check_record_fields({:paren_type, _Anno, [type]}, s, c) do
     check_record_fields(type, s, c)
   end
 
-  defp check_record_fields({:remote_type, _L,
+  defp check_record_fields({:remote_type, _Anno,
              [{:atom, _, _}, {:atom, _, _}, args]},
             s, c) do
     list_check_record_fields(args, s, c)
   end
 
-  defp check_record_fields({:atom, _L, _}, _S, c) do
+  defp check_record_fields({:atom, _Anno, _}, _S, c) do
     c
   end
 
-  defp check_record_fields({:integer, _L, _}, _S, c) do
+  defp check_record_fields({:integer, _Anno, _}, _S, c) do
     c
   end
 
-  defp check_record_fields({:char, _L, _}, _S, c) do
+  defp check_record_fields({:char, _Anno, _}, _S, c) do
     c
   end
 
-  defp check_record_fields({:op, _L, _Op, _Arg}, _S, c) do
+  defp check_record_fields({:op, _Anno, _Op, _Arg}, _S, c) do
     c
   end
 
-  defp check_record_fields({:op, _L, _Op, _Arg1, _Arg2}, _S, c) do
+  defp check_record_fields({:op, _Anno, _Op, _Arg1, _Arg2}, _S, c) do
     c
   end
 
-  defp check_record_fields({:type, _L, :tuple, :any}, _S, c) do
+  defp check_record_fields({:type, _Anno, :tuple, :any}, _S, c) do
     c
   end
 
-  defp check_record_fields({:type, _L, :map, :any}, _S, c) do
+  defp check_record_fields({:type, _Anno, :map, :any}, _S, c) do
     c
   end
 
-  defp check_record_fields({:type, _L, :binary, [_Base, _Unit]}, _S, c) do
-    c
-  end
-
-  defp check_record_fields({:type, _L, :fun, [{:type, _, :any}, range]}, s,
+  defp check_record_fields({:type, _Anno, :binary, [_Base, _Unit]}, _S,
             c) do
+    c
+  end
+
+  defp check_record_fields({:type, _Anno, :fun, [{:type, _, :any}, range]},
+            s, c) do
     check_record_fields(range, s, c)
   end
 
-  defp check_record_fields({:type, _L, :range, [_From, _To]}, _S, c) do
+  defp check_record_fields({:type, _Anno, :range, [_From, _To]}, _S, c) do
     c
   end
 
-  defp check_record_fields({:type, _L, :record, [name | fields]}, s, c) do
+  defp check_record_fields({:type, _Anno, :record, [name | fields]}, s,
+            c) do
     check_record(name, fields, s, c)
   end
 
-  defp check_record_fields({:type, _L, _, args}, s, c) do
+  defp check_record_fields({:type, _Anno, _, args}, s, c) do
     list_check_record_fields(args, s, c)
   end
 
-  defp check_record_fields({:user_type, _L, _Name, args}, s, c) do
+  defp check_record_fields({:user_type, _Anno, _Name, args}, s, c) do
     list_check_record_fields(args, s, c)
   end
 
@@ -7588,7 +6987,8 @@ defmodule :m_erl_types do
             declFields, s, c) do
     r_from_form(site: site0, xtypes: eT, mrecs: mR, vtab: v) = s
     m = site_module(site0)
-    site = {:record, {m, recName, length(declFields)}}
+    site = {:record, {m, recName, length(declFields)},
+              site_file(site0)}
     {type, c1} = t_from_form(abstr, eT, site, mR, v, c)
     {^name, _, declType} = :lists.keyfind(name, 1,
                                             declFields)
@@ -7614,8 +7014,16 @@ defmodule :m_erl_types do
     list_check_record_fields(tail, s, c1)
   end
 
-  defp site_module({_, {module, _, _}}) do
+  defp site_module({_, {module, _, _}, _}) do
     module
+  end
+
+  defp site_mfa({_, {m, f, a}, _}) do
+    {m, f, a}
+  end
+
+  defp site_file({_, _, file}) do
+    file
   end
 
   def cache__new() do
@@ -7627,10 +7035,10 @@ defmodule :m_erl_types do
   end
 
   defp cache_find(key, r_cache(types: types)) do
-    case (:maps.find(key, types)) do
-      {:ok, value} ->
+    case (types) do
+      %{^key => value} ->
         value
-      :error ->
+      %{} ->
         :error
     end
   end
@@ -7640,7 +7048,7 @@ defmodule :m_erl_types do
   end
 
   defp cache_put(key, type, deltaL, r_cache(types: types) = cache) do
-    newTypes = :maps.put(key, {type, deltaL}, types)
+    newTypes = Map.put(types, key, {type, deltaL})
     r_cache(cache, types: newTypes)
   end
 
@@ -7652,27 +7060,27 @@ defmodule :m_erl_types do
     []
   end
 
-  def t_form_to_string({:var, _L, :_}) do
+  def t_form_to_string({:var, _Anno, :_}) do
     '_'
   end
 
-  def t_form_to_string({:var, _L, name}) do
+  def t_form_to_string({:var, _Anno, name}) do
     :erlang.atom_to_list(name)
   end
 
-  def t_form_to_string({:atom, _L, atom}) do
+  def t_form_to_string({:atom, _Anno, atom}) do
     :io_lib.write_string(:erlang.atom_to_list(atom), ?')
   end
 
-  def t_form_to_string({:integer, _L, int}) do
+  def t_form_to_string({:integer, _Anno, int}) do
     :erlang.integer_to_list(int)
   end
 
-  def t_form_to_string({:char, _L, char}) do
+  def t_form_to_string({:char, _Anno, char}) do
     :erlang.integer_to_list(char)
   end
 
-  def t_form_to_string({:op, _L, _Op, _Arg} = op) do
+  def t_form_to_string({:op, _Anno, _Op, _Arg} = op) do
     case (:erl_eval.partial_eval(op)) do
       {:integer, _, _} = int ->
         t_form_to_string(int)
@@ -7681,7 +7089,7 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_form_to_string({:op, _L, _Op, _Arg1, _Arg2} = op) do
+  def t_form_to_string({:op, _Anno, _Op, _Arg1, _Arg2} = op) do
     case (:erl_eval.partial_eval(op)) do
       {:integer, _, _} = int ->
         t_form_to_string(int)
@@ -7690,30 +7098,30 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_form_to_string({:ann_type, _L, [var, type]}) do
+  def t_form_to_string({:ann_type, _Anno, [var, type]}) do
     t_form_to_string(var) ++ '::' ++ t_form_to_string(type)
   end
 
-  def t_form_to_string({:paren_type, _L, [type]}) do
+  def t_form_to_string({:paren_type, _Anno, [type]}) do
     flat_format('(~ts)', [t_form_to_string(type)])
   end
 
-  def t_form_to_string({:remote_type, _L,
+  def t_form_to_string({:remote_type, _Anno,
             [{:atom, _, mod}, {:atom, _, name}, args]}) do
     argString = '(' ++ flat_join(t_form_to_string_list(args),
                                  ',') ++ ')'
     flat_format('~w:~tw', [mod, name]) ++ argString
   end
 
-  def t_form_to_string({:type, _L, :arity, []}) do
+  def t_form_to_string({:type, _Anno, :arity, []}) do
     'arity()'
   end
 
-  def t_form_to_string({:type, _L, :binary, []}) do
+  def t_form_to_string({:type, _Anno, :binary, []}) do
     'binary()'
   end
 
-  def t_form_to_string({:type, _L, :binary, [base, unit]} = type) do
+  def t_form_to_string({:type, _Anno, :binary, [base, unit]} = type) do
     case ({:erl_eval.partial_eval(base),
              :erl_eval.partial_eval(unit)}) do
       {{:integer, _, b}, {:integer, _, u}} ->
@@ -7736,77 +7144,90 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_form_to_string({:type, _L, :bitstring, []}) do
+  def t_form_to_string({:type, _Anno, :bitstring, []}) do
     'bitstring()'
   end
 
-  def t_form_to_string({:type, _L, :fun, []}) do
+  def t_form_to_string({:type, _Anno, :dynamic, []}) do
+    'dynamic()'
+  end
+
+  def t_form_to_string({:type, _Anno, :fun, []}) do
     'fun()'
   end
 
-  def t_form_to_string({:type, _L, :fun, [{:type, _, :any}, range]}) do
+  def t_form_to_string({:type, _Anno, :fun,
+            [{:type, _, :any}, range]}) do
     'fun(...) -> ' ++ t_form_to_string(range)
   end
 
-  def t_form_to_string({:type, _L, :fun,
+  def t_form_to_string({:type, _Anno, :fun,
             [{:type, _, :product, domain}, range]}) do
     'fun((' ++ flat_join(t_form_to_string_list(domain),
                      ',') ++ ') -> ' ++ t_form_to_string(range) ++ ')'
   end
 
-  def t_form_to_string({:type, _L, :iodata, []}) do
+  def t_form_to_string({:type, _Anno, :iodata, []}) do
     'iodata()'
   end
 
-  def t_form_to_string({:type, _L, :iolist, []}) do
+  def t_form_to_string({:type, _Anno, :iolist, []}) do
     'iolist()'
   end
 
-  def t_form_to_string({:type, _L, :list, [type]}) do
+  def t_form_to_string({:type, _Anno, :list, [type]}) do
     '[' ++ t_form_to_string(type) ++ ']'
   end
 
-  def t_form_to_string({:type, _L, :map, :any}) do
+  def t_form_to_string({:type, _Anno, :map, :any}) do
     'map()'
   end
 
-  def t_form_to_string({:type, _L, :map, args}) do
+  def t_form_to_string({:type, _Anno, :map, args}) do
     '\#{' ++ flat_join(t_form_to_string_list(args), ',') ++ '}'
   end
 
-  def t_form_to_string({:type, _L, :map_field_assoc, [key, val]}) do
+  def t_form_to_string({:type, _Anno, :map_field_assoc, [key, val]}) do
     t_form_to_string(key) ++ '=>' ++ t_form_to_string(val)
   end
 
-  def t_form_to_string({:type, _L, :map_field_exact, [key, val]}) do
+  def t_form_to_string({:type, _Anno, :map_field_exact, [key, val]}) do
     t_form_to_string(key) ++ ':=' ++ t_form_to_string(val)
   end
 
-  def t_form_to_string({:type, _L, :mfa, []}) do
+  def t_form_to_string({:type, _Anno, :mfa, []}) do
     'mfa()'
   end
 
-  def t_form_to_string({:type, _L, :module, []}) do
+  def t_form_to_string({:type, _Anno, :module, []}) do
     'module()'
   end
 
-  def t_form_to_string({:type, _L, :node, []}) do
+  def t_form_to_string({:type, _Anno, :node, []}) do
     'node()'
   end
 
-  def t_form_to_string({:type, _L, :nonempty_list, [type]}) do
+  def t_form_to_string({:type, _Anno, :nonempty_binary, []}) do
+    'nonempty_binary()'
+  end
+
+  def t_form_to_string({:type, _Anno, :nonempty_bitstring, []}) do
+    'nonempty_bitstring()'
+  end
+
+  def t_form_to_string({:type, _Anno, :nonempty_list, [type]}) do
     '[' ++ t_form_to_string(type) ++ ',...]'
   end
 
-  def t_form_to_string({:type, _L, :nonempty_string, []}) do
+  def t_form_to_string({:type, _Anno, :nonempty_string, []}) do
     'nonempty_string()'
   end
 
-  def t_form_to_string({:type, _L, :product, elements}) do
+  def t_form_to_string({:type, _Anno, :product, elements}) do
     '<' ++ flat_join(t_form_to_string_list(elements), ',') ++ '>'
   end
 
-  def t_form_to_string({:type, _L, :range, [from, to]} = type) do
+  def t_form_to_string({:type, _Anno, :range, [from, to]} = type) do
     case ({:erl_eval.partial_eval(from),
              :erl_eval.partial_eval(to)}) do
       {{:integer, _, fromVal}, {:integer, _, toVal}} ->
@@ -7816,39 +7237,39 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_form_to_string({:type, _L, :record, [{:atom, _, name}]}) do
+  def t_form_to_string({:type, _Anno, :record, [{:atom, _, name}]}) do
     flat_format('#~tw{}', [name])
   end
 
-  def t_form_to_string({:type, _L, :record,
+  def t_form_to_string({:type, _Anno, :record,
             [{:atom, _, name} | fields]}) do
     fieldString = flat_join(t_form_to_string_list(fields),
                               ',')
     flat_format('#~tw{~ts}', [name, fieldString])
   end
 
-  def t_form_to_string({:type, _L, :field_type,
+  def t_form_to_string({:type, _Anno, :field_type,
             [{:atom, _, name}, type]}) do
     flat_format('~tw::~ts', [name, t_form_to_string(type)])
   end
 
-  def t_form_to_string({:type, _L, :term, []}) do
+  def t_form_to_string({:type, _Anno, :term, []}) do
     'term()'
   end
 
-  def t_form_to_string({:type, _L, :timeout, []}) do
+  def t_form_to_string({:type, _Anno, :timeout, []}) do
     'timeout()'
   end
 
-  def t_form_to_string({:type, _L, :tuple, :any}) do
+  def t_form_to_string({:type, _Anno, :tuple, :any}) do
     'tuple()'
   end
 
-  def t_form_to_string({:type, _L, :tuple, args}) do
+  def t_form_to_string({:type, _Anno, :tuple, args}) do
     '{' ++ flat_join(t_form_to_string_list(args), ',') ++ '}'
   end
 
-  def t_form_to_string({:type, _L, :union, args}) do
+  def t_form_to_string({:type, _Anno, :union, args}) do
     flat_join(:lists.map(fn arg ->
                               case (arg) do
                                 {:ann_type, _AL, _} ->
@@ -7861,13 +7282,13 @@ defmodule :m_erl_types do
                 ' | ')
   end
 
-  def t_form_to_string({:type, _L, name, []} = t) do
+  def t_form_to_string({:type, _Anno, name, []} = t) do
     try do
       m = :mod
-      site = {:type, {m, name, 0}}
+      site = {:type, {m, name, 0}, ''}
       v = var_table__new()
       c = cache__new()
-      state = r_from_form(site: site, xtypes: :sets.new(),
+      state = r_from_form(site: site, xtypes: :replace_by_none,
                   mrecs: :undefined, vtab: v, tnames: [])
       {t1, _, _} = from_form(t, state, _Deep = 1000,
                                _ALot = 1000000, c)
@@ -7878,13 +7299,13 @@ defmodule :m_erl_types do
     end
   end
 
-  def t_form_to_string({:user_type, _L, name, list}) do
+  def t_form_to_string({:user_type, _Anno, name, list}) do
     flat_format('~tw(~ts)',
                   [name, flat_join(t_form_to_string_list(list), ',')])
   end
 
-  def t_form_to_string({:type, l, name, list}) do
-    t_form_to_string({:user_type, l, name, list})
+  def t_form_to_string({:type, anno, name, list}) do
+    t_form_to_string({:user_type, anno, name, list})
   end
 
   defp t_form_to_string_list(list) do
@@ -7952,57 +7373,54 @@ defmodule :m_erl_types do
   end
 
   defp lookup_module_types(module, codeTable, cache) do
-    r_cache(mod_recs: {:mrecs, mRecs}) = cache
-    case (:dict.find(module, mRecs)) do
-      {:ok, r} ->
+    r_cache(mod_recs: mRecs) = cache
+    case (mRecs) do
+      %{^module => r} ->
         {r, cache}
-      :error ->
-        try do
-          :ets.lookup_element(codeTable, module, 2)
-        catch
-          _, _ ->
+      %{} ->
+        case (:ets.lookup_element(codeTable, module, 2,
+                                    :error)) do
+          :error ->
             :error
-        else
           r ->
-            newMRecs = :dict.store(module, r, mRecs)
-            {r, r_cache(cache, mod_recs: {:mrecs, newMRecs})}
+            newMRecs = Map.put(mRecs, module, r)
+            {r, r_cache(cache, mod_recs: newMRecs)}
         end
     end
   end
 
   defp lookup_record(tag, table) when is_atom(tag) do
-    case (:maps.find({:record, tag}, table)) do
-      {:ok, {_FileLine, [{_Arity, fields}]}} ->
+    key = {:record, tag}
+    case (table) do
+      %{^key => {_FileLocation, [{_Arity, fields}]}} ->
         {:ok, fields}
-      {:ok, {_FileLine, list}} when is_list(list) ->
+      %{^key => {_FileLocation, list}} when is_list(list) ->
         :error
-      :error ->
+      %{} ->
         :error
     end
   end
 
   def lookup_record(tag, arity, table) when is_atom(tag) do
-    case (:maps.find({:record, tag}, table)) do
-      {:ok, {_FileLine, [{^arity, fields}]}} ->
+    key = {:record, tag}
+    case (table) do
+      %{^key => {_FileLocation, [{^arity, fields}]}} ->
         {:ok, fields}
-      {:ok, {_FileLine, ordDict}} ->
+      %{^key => {_FileLocation, ordDict}} ->
         :orddict.find(arity, ordDict)
-      :error ->
+      %{} ->
         :error
     end
   end
 
   defp lookup_type(name, arity, table) do
-    case (:maps.find({:type, name, arity}, table)) do
-      :error ->
-        case (:maps.find({:opaque, name, arity}, table)) do
-          :error ->
-            :error
-          {:ok, found} ->
-            {:opaque, found}
-        end
-      {:ok, found} ->
+    case (table) do
+      %{{:type, ^name, ^arity} => found} ->
         {:type, found}
+      %{{:opaque, ^name, ^arity} => found} ->
+        {:opaque, found}
+      %{} ->
+        :error
     end
   end
 
@@ -8041,10 +7459,9 @@ defmodule :m_erl_types do
     end
   end
 
-  defp do_opaque(r_c(tag: :union,
-              elements: [_, _, _, _, _, _, _, _, _, _] = list) = type,
-            opaques, pred) do
-    [a, b, f, i, l, n, t, m, o, map] = list
+  defp do_opaque(r_c(tag: :union, elements: list) = type, opaques,
+            pred) do
+    [a, b, f, i, l, n, t, o, map] = list
     cond do
       o === :none ->
         pred.(type)
@@ -8053,8 +7470,8 @@ defmodule :m_erl_types do
                                                         opaques)) do
           true ->
             s = t_opaque_structure(o)
-            do_opaque(t_sup([a, b, f, i, l, n, t, m, s, map]),
-                        opaques, pred)
+            do_opaque(t_sup([a, b, f, i, l, n, t, s, map]), opaques,
+                        pred)
           false ->
             pred.(type)
         end
@@ -8097,8 +7514,8 @@ defmodule :m_erl_types do
     false
   end
 
-  defp is_singleton_type(r_c(tag: :atom, elements: set)) do
-    :ordsets.size(set) === 1
+  defp is_singleton_type(r_c(tag: :atom, elements: [_])) do
+    true
   end
 
   defp is_singleton_type(r_c(tag: :number, elements: r_int_rng(from: v, to: v),
@@ -8106,73 +7523,25 @@ defmodule :m_erl_types do
     true
   end
 
-  defp is_singleton_type(r_c(tag: :number, elements: r_int_set(set: set),
+  defp is_singleton_type(r_c(tag: :number, elements: r_int_set(set: [_]),
               qualifier: :integer)) do
-    :ordsets.size(set) === 1
+    true
   end
 
   defp is_singleton_type(_) do
     false
   end
 
-  def t_singleton_to_term(type, opaques) do
-    do_opaque(type, opaques, &singleton_type_to_term/1)
-  end
-
-  defp singleton_type_to_term(r_c(tag: nil)) do
-    []
-  end
-
-  defp singleton_type_to_term(r_c(tag: :atom, elements: set))
-      when set !== :any do
-    case (:ordsets.size(set)) do
-      1 ->
-        hd(:ordsets.to_list(set))
-      _ ->
-        :erlang.error(:badarg)
-    end
-  end
-
-  defp singleton_type_to_term(r_c(tag: :number, elements: r_int_rng(from: v, to: v),
-              qualifier: :integer)) do
-    v
-  end
-
-  defp singleton_type_to_term(r_c(tag: :number, elements: r_int_set(set: set),
-              qualifier: :integer)) do
-    case (:ordsets.size(set)) do
-      1 ->
-        hd(:ordsets.to_list(set))
-      _ ->
-        :erlang.error(:badarg)
-    end
-  end
-
-  defp singleton_type_to_term(r_c(tag: :tuple, elements: types,
-              qualifier: {arity, _}))
-      when is_integer(arity) do
-    :lists.map(&singleton_type_to_term/1, types)
-  end
-
-  defp singleton_type_to_term(r_c(tag: :tuple_set,
-              elements: [{arity, [onlyTuple]}]))
-      when is_integer(arity) do
-    singleton_type_to_term(onlyTuple)
-  end
-
-  defp singleton_type_to_term(r_c(tag: :map,
-              elements: {pairs, :none, :none})) do
-    :maps.from_list(for {k, :mandatory, v} <- pairs do
-                      {singleton_type_to_term(k), singleton_type_to_term(v)}
-                    end)
-  end
-
   defp set_singleton(element) do
-    :ordsets.from_list([element])
+    [element]
   end
 
-  defp set_is_singleton(element, set) do
-    set_singleton(element) === set
+  defp set_is_singleton(element, [element]) do
+    true
+  end
+
+  defp set_is_singleton(_, _) do
+    false
   end
 
   defp set_is_element(element, set) do
@@ -8239,12 +7608,10 @@ defmodule :m_erl_types do
     end
   end
 
-  defp set_to_list(set) do
-    :ordsets.to_list(set)
-  end
-
-  defp set_filter(fun, set) do
-    case (:ordsets.filter(fun, set)) do
+  defp set_filter(pred, set) do
+    case (for e <- set, pred.(e) do
+            e
+          end) do
       [] ->
         :none
       newSet ->
@@ -8252,12 +7619,8 @@ defmodule :m_erl_types do
     end
   end
 
-  defp set_size(set) do
-    :ordsets.size(set)
-  end
-
   defp set_to_string(set) do
-    l = (for x <- set_to_list(set) do
+    l = (for x <- set do
            case (is_atom(x)) do
              true ->
                :io_lib.write_string(:erlang.atom_to_list(x), ?')
@@ -8273,7 +7636,7 @@ defmodule :m_erl_types do
   end
 
   defp set_max(set) do
-    hd(:lists.reverse(set))
+    :lists.last(set)
   end
 
   defp flat_format(f, s) do
@@ -8313,8 +7676,8 @@ defmodule :m_erl_types do
     :none
   end
 
-  defp bitstr_concat(r_c(tag: :binary, elements: [u1, b1]),
-            r_c(tag: :binary, elements: [u2, b2])) do
+  defp bitstr_concat(r_c(tag: :binary, elements: {u1, b1}),
+            r_c(tag: :binary, elements: {u2, b2})) do
     t_bitstr(gcd(u1, u2), b1 + b2)
   end
 
@@ -8326,36 +7689,36 @@ defmodule :m_erl_types do
     :none
   end
 
-  defp bitstr_match(r_c(tag: :binary, elements: [0, b1]),
-            r_c(tag: :binary, elements: [0, b2]))
+  defp bitstr_match(r_c(tag: :binary, elements: {0, b1}),
+            r_c(tag: :binary, elements: {0, b2}))
       when b1 <= b2 do
     t_bitstr(0, b2 - b1)
   end
 
-  defp bitstr_match(r_c(tag: :binary, elements: [0, _B1]),
-            r_c(tag: :binary, elements: [0, _B2])) do
+  defp bitstr_match(r_c(tag: :binary, elements: {0, _B1}),
+            r_c(tag: :binary, elements: {0, _B2})) do
     :none
   end
 
-  defp bitstr_match(r_c(tag: :binary, elements: [0, b1]),
-            r_c(tag: :binary, elements: [u2, b2]))
+  defp bitstr_match(r_c(tag: :binary, elements: {0, b1}),
+            r_c(tag: :binary, elements: {u2, b2}))
       when b1 <= b2 do
     t_bitstr(u2, b2 - b1)
   end
 
-  defp bitstr_match(r_c(tag: :binary, elements: [0, b1]),
-            r_c(tag: :binary, elements: [u2, b2])) do
+  defp bitstr_match(r_c(tag: :binary, elements: {0, b1}),
+            r_c(tag: :binary, elements: {u2, b2})) do
     t_bitstr(u2, handle_base(u2, b2 - b1))
   end
 
-  defp bitstr_match(r_c(tag: :binary, elements: [_, b1]),
-            r_c(tag: :binary, elements: [0, b2]))
+  defp bitstr_match(r_c(tag: :binary, elements: {_, b1}),
+            r_c(tag: :binary, elements: {0, b2}))
       when b1 > b2 do
     :none
   end
 
-  defp bitstr_match(r_c(tag: :binary, elements: [u1, b1]),
-            r_c(tag: :binary, elements: [u2, b2])) do
+  defp bitstr_match(r_c(tag: :binary, elements: {u1, b1}),
+            r_c(tag: :binary, elements: {u2, b2})) do
     gCD = gcd(u1, u2)
     t_bitstr(gCD, handle_base(gCD, b2 - b1))
   end
@@ -8368,14 +7731,206 @@ defmodule :m_erl_types do
     rem(unit + rem(neg, unit), unit)
   end
 
-  defp family(l) do
-    r = :sofs.relation(l)
-    f = :sofs.relation_to_family(r)
-    :sofs.to_external(f)
-  end
-
   def var_table__new() do
     :maps.new()
+  end
+
+  def module_type_deps_of_type_defs(typeTable) do
+    moduleTypeDependencies = (for typeTableEntry <- :maps.to_list(typeTable) do
+                                module_type_deps_of_entry(typeTableEntry)
+                              end)
+    :lists.append(moduleTypeDependencies)
+  end
+
+  defp module_type_deps_of_entry({{:type, _TypeName, _A},
+             {{_FromM, _FileLine, abstractType, _ArgNames}, _}}) do
+    type_form_to_remote_modules(abstractType)
+  end
+
+  defp module_type_deps_of_entry({{:opaque, _TypeName, _A},
+             {{_FromM, _FileLine, abstractType, _ArgNames}, _}}) do
+    type_form_to_remote_modules(abstractType)
+  end
+
+  defp module_type_deps_of_entry({{:record, _Name},
+             {_FileLine, sizesAndFields}}) do
+    allFields = :lists.append(for {_Size,
+                                     fields} <- sizesAndFields do
+                                fields
+                              end)
+    fieldTypes = (for {_, abstractType, _} <- allFields do
+                    abstractType
+                  end)
+    type_form_to_remote_modules(fieldTypes)
+  end
+
+  def type_form_to_remote_modules([]) do
+    []
+  end
+
+  def type_form_to_remote_modules([_ | _] = forms) do
+    d = 16
+    l = 10000
+    {_, mods} = list_get_modules_mentioned(forms, d, l, [])
+    :lists.usort(mods)
+  end
+
+  def type_form_to_remote_modules(form) do
+    d = 16
+    l = 10000
+    {_, mods} = get_modules_mentioned(form, d, l, [])
+    :lists.usort(mods)
+  end
+
+  defp get_modules_mentioned(_, d, l, acc) when d <= 0 or l <= 0 do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:var, _L, :_}, _D, l, acc) do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:var, _L, _Name}, _D, l, acc) do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:ann_type, _L, [_Var, type]}, d, l, acc) do
+    get_modules_mentioned(type, d, l, acc)
+  end
+
+  defp get_modules_mentioned({:paren_type, _L, [type]}, d, l, acc) do
+    get_modules_mentioned(type, d, l, acc)
+  end
+
+  defp get_modules_mentioned({:atom, _L, _Atom}, _D, l, acc) do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:integer, _L, _Int}, _D, l, acc) do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:char, _L, _Char}, _D, l, acc) do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:op, _L, _Op, _Arg}, _D, l, acc) do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:op, _L, _Op, _Arg1, _Arg2}, _D, l, acc) do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:type, _L, :fun, [{:type, _, :any}, range]}, d,
+            l, acc) do
+    get_modules_mentioned(range, d - 1, l - 1, acc)
+  end
+
+  defp get_modules_mentioned({:type, _L, :fun,
+             [{:type, _, :product, domain}, range]},
+            d, l, acc) do
+    {l1, acc1} = list_get_modules_mentioned(domain, d, l,
+                                              acc)
+    get_modules_mentioned(range, d, l1, acc1)
+  end
+
+  defp get_modules_mentioned({:type, _L, :list, [type]}, d, l, acc) do
+    get_modules_mentioned(type, d - 1, l - 1, acc)
+  end
+
+  defp get_modules_mentioned({:type, _L, :map, :any}, _D, l, acc) do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:type, _L, :map, list}, d0, l, acc) do
+    (fn pairsFromForm
+     _, l1, acc1 when l1 <= 0 ->
+       acc1
+     [], l1, acc1 ->
+       {l1, acc1}
+     [{:type, _, _Oper, [kF, vF]} | t], l1, acc1 ->
+       d = d0 - 1
+       {l2, acc2} = get_modules_mentioned(kF, d, l1, acc1)
+       {l3, acc3} = get_modules_mentioned(vF, d, l2, acc2)
+       pairsFromForm.(t, l3 - 1, acc3)
+     end)(list, l, acc)
+  end
+
+  defp get_modules_mentioned({:type, _L, :nonempty_list, [type]}, d, l,
+            acc) do
+    get_modules_mentioned(type, d, l - 1, acc)
+  end
+
+  defp get_modules_mentioned({:type, _L, :nonempty_improper_list,
+             [cont, term]},
+            d, l, acc) do
+    {l1, acc1} = get_modules_mentioned(cont, d, l - 1, acc)
+    get_modules_mentioned(term, d, l1, acc1)
+  end
+
+  defp get_modules_mentioned({:type, _L, :nonempty_maybe_improper_list,
+             [cont, term]},
+            d, l, acc) do
+    {l1, acc1} = get_modules_mentioned(cont, d, l - 1, acc)
+    get_modules_mentioned(term, d, l1, acc1)
+  end
+
+  defp get_modules_mentioned({:type, _L, :maybe_improper_list,
+             [content, termination]},
+            d, l, acc) do
+    {l1, acc1} = get_modules_mentioned(content, d, l - 1,
+                                         acc)
+    get_modules_mentioned(termination, d, l1, acc1)
+  end
+
+  defp get_modules_mentioned({:type, _L, :product, elements}, d, l, acc) do
+    list_get_modules_mentioned(elements, d - 1, l, acc)
+  end
+
+  defp get_modules_mentioned({:type, _L, :range, [_From, _To]}, _D, l,
+            acc) do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:type, _L, :tuple, :any}, _D, l, acc) do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:type, _L, :tuple, args}, d, l, acc) do
+    list_get_modules_mentioned(args, d - 1, l, acc)
+  end
+
+  defp get_modules_mentioned({:type, _L, :union, args}, d, l, acc) do
+    list_get_modules_mentioned(args, d, l, acc)
+  end
+
+  defp get_modules_mentioned({:remote_type, _L,
+             [{:atom, _, module}, {:atom, _, _Type}, args]},
+            d, l, acc) do
+    acc1 = [module | acc]
+    list_get_modules_mentioned(args, d, l, acc1)
+  end
+
+  defp get_modules_mentioned({:user_type, _L, _Name, args}, d, l, acc) do
+    list_get_modules_mentioned(args, d, l, acc)
+  end
+
+  defp get_modules_mentioned({:type, _L, _Name, []}, _D, l, acc) do
+    {l, acc}
+  end
+
+  defp get_modules_mentioned({:type, _L, _Name, args}, d, l, acc) do
+    list_get_modules_mentioned(args, d, l, acc)
+  end
+
+  defp list_get_modules_mentioned([], _D, l, acc) do
+    {l, acc}
+  end
+
+  defp list_get_modules_mentioned([h | tail], d, l, acc) do
+    {l1, acc1} = get_modules_mentioned(h, d, l - 1, acc)
+    list_get_modules_mentioned(tail, d, l1, acc1)
   end
 
 end

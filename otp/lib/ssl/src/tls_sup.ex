@@ -6,28 +6,25 @@ defmodule :m_tls_sup do
   end
 
   def init([]) do
-    tLSConnetionManager = tls_connection_manager_child_spec()
-    serverInstanceSup = server_instance_child_spec()
-    {:ok, {{:one_for_one, 10, 3600}, [tLSConnetionManager, serverInstanceSup]}}
+    childSpecs = [tls_connection_child_spec(),
+                      server_instance_child_spec()]
+    supFlags = %{strategy: :one_for_one, intensity: 10,
+                   period: 3600}
+    {:ok, {supFlags, childSpecs}}
   end
 
-  defp tls_connection_manager_child_spec() do
-    name = :tls_connection
-    startFunc = {:tls_connection_sup, :start_link, []}
-    restart = :permanent
-    shutdown = 4000
-    modules = [:tls_connection_sup]
-    type = :supervisor
-    {name, startFunc, restart, shutdown, type, modules}
+  defp tls_connection_child_spec() do
+    %{id: :tls_connection_sup,
+        start: {:tls_connection_sup, :start_link, []},
+        restart: :permanent, shutdown: 4000,
+        modules: [:tls_connection_sup], type: :supervisor}
   end
 
   defp server_instance_child_spec() do
-    name = :tls_server_sup
-    startFunc = {:tls_server_sup, :start_link, []}
-    restart = :permanent
-    shutdown = 4000
-    modules = [:tls_server_sup]
-    type = :supervisor
-    {name, startFunc, restart, shutdown, type, modules}
+    %{id: :tls_server_sup,
+        start: {:tls_server_sup, :start_link, []},
+        restart: :permanent, shutdown: 4000,
+        modules: [:tls_server_sup], type: :supervisor}
   end
+
 end

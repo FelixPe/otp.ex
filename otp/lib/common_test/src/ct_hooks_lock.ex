@@ -2,13 +2,13 @@ defmodule :m_ct_hooks_lock do
   use Bitwise
   @behaviour :gen_server
   require Record
-  Record.defrecord(:r_state, :state, id: :undefined, locked: false, requests: [])
-
+  Record.defrecord(:r_state, :state, id: :undefined,
+                                 locked: false, requests: [])
   def start(id) do
-    case :gen_server.start({:local, :ct_hooks_lock}, :ct_hooks_lock, id, []) do
+    case (:gen_server.start({:local, :ct_hooks_lock},
+                              :ct_hooks_lock, id, [])) do
       {:error, {:already_started, pid}} ->
         {:ok, pid}
-
       else__ ->
         else__
     end
@@ -25,7 +25,8 @@ defmodule :m_ct_hooks_lock do
 
   def request() do
     try do
-      :gen_server.call(:ct_hooks_lock, {:request, self()}, :infinity)
+      :gen_server.call(:ct_hooks_lock, {:request, self()},
+                         :infinity)
     catch
       :exit, {:noproc, _} ->
         :locked
@@ -46,12 +47,11 @@ defmodule :m_ct_hooks_lock do
     {:ok, r_state(id: id)}
   end
 
-  def handle_call({:stop, id}, _From, r_state(id: id, requests: reqs) = state) do
-    _ =
-      for {req, _ReqId} <- reqs do
-        :gen_server.reply(req, :locker_stopped)
-      end
-
+  def handle_call({:stop, id}, _From,
+           r_state(id: id, requests: reqs) = state) do
+    _ = (for {req, _ReqId} <- reqs do
+           :gen_server.reply(req, :locker_stopped)
+         end)
     {:stop, :normal, :stopped, state}
   end
 
@@ -59,37 +59,32 @@ defmodule :m_ct_hooks_lock do
     {:reply, :stopped, state}
   end
 
-  def handle_call({:request, pid}, _From, r_state(locked: false, requests: []) = state) do
+  def handle_call({:request, pid}, _From,
+           r_state(locked: false, requests: []) = state) do
     ref = :erlang.monitor(:process, pid)
     {:reply, :locked, r_state(state, locked: {true, pid, ref})}
   end
 
-  def handle_call({:request, pid}, from, r_state(requests: reqs) = state) do
+  def handle_call({:request, pid}, from,
+           r_state(requests: reqs) = state) do
     {:noreply, r_state(state, requests: reqs ++ [{from, pid}])}
   end
 
-  def handle_call({:release, pid}, _From, r_state(locked: {true, pid, ref}, requests: []) = state) do
+  def handle_call({:release, pid}, _From,
+           r_state(locked: {true, pid, ref}, requests: []) = state) do
     :erlang.demonitor(ref, [:flush])
     {:reply, :unlocked, r_state(state, locked: false)}
   end
 
-  def handle_call(
-        {:release, pid},
-        _From,
-        r_state(
-          locked: {true, pid, ref},
-          requests: [{nextFrom, nextPid} | rest]
-        ) = state
-      ) do
+  def handle_call({:release, pid}, _From,
+           r_state(locked: {true, pid, ref},
+               requests: [{nextFrom, nextPid} | rest]) = state) do
     :erlang.demonitor(ref, [:flush])
     :gen_server.reply(nextFrom, :locked)
     nextRef = :erlang.monitor(:process, nextPid)
-
     {:reply, :unlocked,
-     r_state(state,
-       locked: {true, nextPid, nextRef},
-       requests: rest
-     )}
+       r_state(state, locked: {true, nextPid, nextRef}, 
+                  requests: rest)}
   end
 
   def handle_call({:release, _Pid}, _From, state) do
@@ -100,21 +95,19 @@ defmodule :m_ct_hooks_lock do
     {:noreply, state}
   end
 
-  def handle_info(
-        {:DOWN, ref, :process, pid, _},
-        r_state(
-          locked: {true, pid, ref},
-          requests: [{nextFrom, nextPid} | rest]
-        ) = state
-      ) do
+  def handle_info({:DOWN, ref, :process, pid, _},
+           r_state(locked: {true, pid, ref},
+               requests: [{nextFrom, nextPid} | rest]) = state) do
     :gen_server.reply(nextFrom, :locked)
     nextRef = :erlang.monitor(:process, nextPid)
-
     {:noreply,
-     r_state(state,
-       locked: {true, nextPid, nextRef},
-       requests: rest
-     )}
+       r_state(state, locked: {true, nextPid, nextRef}, 
+                  requests: rest)}
+  end
+
+  def handle_info({:DOWN, ref, :process, pid, _},
+           r_state(locked: {true, pid, ref}, requests: []) = state) do
+    {:noreply, r_state(state, locked: false)}
   end
 
   def terminate(_Reason, _State) do
@@ -124,4 +117,5 @@ defmodule :m_ct_hooks_lock do
   def code_change(_OldVsn, state, _Extra) do
     {:ok, state}
   end
+
 end

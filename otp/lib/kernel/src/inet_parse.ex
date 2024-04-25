@@ -2,38 +2,41 @@ defmodule :m_inet_parse do
   use Bitwise
   import :lists, only: [reverse: 1]
   require Record
-
-  Record.defrecord(:r_file_info, :file_info,
-    size: :undefined,
-    type: :undefined,
-    access: :undefined,
-    atime: :undefined,
-    mtime: :undefined,
-    ctime: :undefined,
-    mode: :undefined,
-    links: :undefined,
-    major_device: :undefined,
-    minor_device: :undefined,
-    inode: :undefined,
-    uid: :undefined,
-    gid: :undefined
-  )
-
-  Record.defrecord(:r_file_descriptor, :file_descriptor,
-    module: :undefined,
-    data: :undefined
-  )
-
+  Record.defrecord(:r_file_info, :file_info, size: :undefined,
+                                     type: :undefined, access: :undefined,
+                                     atime: :undefined, mtime: :undefined,
+                                     ctime: :undefined, mode: :undefined,
+                                     links: :undefined,
+                                     major_device: :undefined,
+                                     minor_device: :undefined,
+                                     inode: :undefined, uid: :undefined,
+                                     gid: :undefined)
+  Record.defrecord(:r_file_descriptor, :file_descriptor, module: :undefined,
+                                           data: :undefined)
+  Record.defrecord(:r_connect_opts, :connect_opts, ifaddr: :undefined,
+                                        port: 0, fd: - 1, opts: [])
+  Record.defrecord(:r_listen_opts, :listen_opts, ifaddr: :undefined,
+                                       port: 0, backlog: 5, fd: - 1, opts: [])
+  Record.defrecord(:r_udp_opts, :udp_opts, ifaddr: :undefined,
+                                    port: 0, fd: - 1, opts: [{:active, true}])
+  Record.defrecord(:r_sctp_opts, :sctp_opts, ifaddr: :undefined,
+                                     port: 0, fd: - 1, type: :seqpacket,
+                                     opts: [{:mode, :binary}, {:buffer, 65536},
+                                                                  {:sndbuf,
+                                                                     65536},
+                                                                      {:recbuf,
+                                                                         1024},
+                                                                          {:sctp_events,
+                                                                             :undefined}])
   def services(file) do
     services(:noname, file)
   end
 
   def services(fname, file) do
     fn__ = fn [name, portProto | aliases] ->
-      {proto, port} = port_proto(portProto, 0)
-      {name, proto, port, aliases}
-    end
-
+                {proto, port} = port_proto(portProto, 0)
+                {name, proto, port, aliases}
+           end
     parse_file(fname, file, fn__)
   end
 
@@ -43,10 +46,9 @@ defmodule :m_inet_parse do
 
   def rpc(fname, file) do
     fn__ = fn [name, program | aliases] ->
-      prog = :erlang.list_to_integer(program)
-      {name, prog, aliases}
-    end
-
+                prog = :erlang.list_to_integer(program)
+                {name, prog, aliases}
+           end
     parse_file(fname, file, fn__)
   end
 
@@ -56,17 +58,15 @@ defmodule :m_inet_parse do
 
   def hosts(fname, file) do
     fn__ = fn [address, name | aliases] ->
-      case :string.lexemes(address, '%') do
-        [addr, _] ->
-          {:ok, _} = address(addr)
-          :skip
-
-        _ ->
-          {:ok, iP} = address(address)
-          {iP, name, aliases}
-      end
-    end
-
+                case (:string.lexemes(address, '%')) do
+                  [addr, _] ->
+                    {:ok, _} = address(addr)
+                    :skip
+                  _ ->
+                    {:ok, iP} = address(address)
+                    {iP, name, aliases}
+                end
+           end
     parse_file(fname, file, fn__)
   end
 
@@ -75,24 +75,18 @@ defmodule :m_inet_parse do
   end
 
   def resolv(fname, file) do
-    fn__ = fn
-      ['domain', domain] ->
-        {:domain, domain}
-
-      ['nameserver', address] ->
-        {:ok, iP} = address(address)
-        {:nameserver, iP}
-
-      ['search' | list] ->
-        {:search, list}
-
-      ['lookup' | types] ->
-        {:lookup, types}
-
-      _ ->
-        :skip
-    end
-
+    fn__ = fn ['domain', domain] ->
+                {:domain, domain}
+              ['nameserver', address] ->
+                {:ok, iP} = address(address)
+                {:nameserver, iP}
+              ['search' | list] ->
+                {:search, list}
+              ['lookup' | types] ->
+                {:lookup, types}
+              _ ->
+                :skip
+           end
     parse_file(fname, file, fn__)
   end
 
@@ -101,14 +95,11 @@ defmodule :m_inet_parse do
   end
 
   def host_conf_linux(fname, file) do
-    fn__ = fn
-      ['order' | order] ->
-        {:lookup, split_comma(order)}
-
-      _ ->
-        :skip
-    end
-
+    fn__ = fn ['order' | order] ->
+                {:lookup, split_comma(order)}
+              _ ->
+                :skip
+           end
     parse_file(fname, file, fn__)
   end
 
@@ -118,13 +109,11 @@ defmodule :m_inet_parse do
 
   def host_conf_freebsd(fname, file) do
     fn__ = fn [type] ->
-      type
-    end
-
-    case parse_file(fname, file, fn__) do
+                type
+           end
+    case (parse_file(fname, file, fn__)) do
       {:ok, ls} ->
         {:ok, [{:lookup, ls}]}
-
       error ->
         error
     end
@@ -135,18 +124,14 @@ defmodule :m_inet_parse do
   end
 
   def host_conf_bsdos(fname, file) do
-    fn__ = fn
-      ['hosts' | list] ->
-        delete_options(split_comma(list))
-
-      _ ->
-        :skip
-    end
-
-    case parse_file(fname, file, fn__) do
+    fn__ = fn ['hosts' | list] ->
+                delete_options(split_comma(list))
+              _ ->
+                :skip
+           end
+    case (parse_file(fname, file, fn__)) do
       {:ok, ls} ->
         {:ok, [{:lookup, :lists.append(ls)}]}
-
       error ->
         error
     end
@@ -173,14 +158,11 @@ defmodule :m_inet_parse do
   end
 
   def nsswitch_conf(fname, file) do
-    fn__ = fn
-      ['hosts:' | types] ->
-        {:lookup, types}
-
-      _ ->
-        :skip
-    end
-
+    fn__ = fn ['hosts:' | types] ->
+                {:lookup, types}
+              _ ->
+                :skip
+           end
     parse_file(fname, file, fn__)
   end
 
@@ -190,9 +172,9 @@ defmodule :m_inet_parse do
 
   def protocols(fname, file) do
     fn__ = fn [name, number, dName] ->
-      {:erlang.list_to_atom(name), :erlang.list_to_integer(number), dName}
-    end
-
+                {:erlang.list_to_atom(name),
+                   :erlang.list_to_integer(number), dName}
+           end
     parse_file(fname, file, fn__)
   end
 
@@ -202,11 +184,10 @@ defmodule :m_inet_parse do
 
   def netmasks(fname, file) do
     fn__ = fn [net, subnetmask] ->
-      {:ok, netIP} = address(net)
-      {:ok, mask} = address(subnetmask)
-      {netIP, mask}
-    end
-
+                {:ok, netIP} = address(net)
+                {:ok, mask} = address(subnetmask)
+                {netIP, mask}
+           end
     parse_file(fname, file, fn__)
   end
 
@@ -216,10 +197,9 @@ defmodule :m_inet_parse do
 
   def networks(fname, file) do
     fn__ = fn [netName, netNumber] ->
-      number = :erlang.list_to_integer(netNumber)
-      {netName, number}
-    end
-
+                number = :erlang.list_to_integer(netNumber)
+                {netName, number}
+           end
     parse_file(fname, file, fn__)
   end
 
@@ -236,46 +216,40 @@ defmodule :m_inet_parse do
   end
 
   defp parse_file(_, file, fn__) do
-    case :file.open(file, [:read]) do
+    case (:file.open(file, [:read])) do
       {:ok, fd} ->
         result = parse_fd(file, fd, 1, fn__, [])
         _ = :file.close(fd)
         result
-
       error ->
         error
     end
   end
 
   defp parse_fd(fname, fd, line, fun, ls) do
-    case read_line(fd) do
+    case (read_line(fd)) do
       :eof ->
         {:ok, reverse(ls)}
-
       cs ->
-        case split_line(cs) do
+        case (split_line(cs)) do
           [] ->
             parse_fd(fname, fd, line + 1, fun, ls)
-
           toks ->
-            case (try do
+            case ((try do
                     fun.(toks)
                   catch
                     :error, e -> {:EXIT, {e, __STACKTRACE__}}
                     :exit, e -> {:EXIT, e}
                     e -> e
-                  end) do
+                  end)) do
               {:EXIT, _} ->
                 :erlang.error('~p:~p: erroneous line, SKIPPED~n', [fname, line])
                 parse_fd(fname, fd, line + 1, fun, ls)
-
               {:warning, wlist, val} ->
                 warning('~p:~p: warning! strange domain name(s) ~p ~n', [fname, line, wlist])
                 parse_fd(fname, fd, line + 1, fun, [val | ls])
-
               :skip ->
                 parse_fd(fname, fd, line + 1, fun, ls)
-
               val ->
                 parse_fd(fname, fd, line + 1, fun, [val | ls])
             end
@@ -284,34 +258,29 @@ defmodule :m_inet_parse do
   end
 
   defp parse_cs(fname, chars, line, fun, ls) do
-    case get_line(chars) do
+    case (get_line(chars)) do
       :eof ->
         {:ok, reverse(ls)}
-
       {cs, chars1} ->
-        case split_line(cs) do
+        case (split_line(cs)) do
           [] ->
             parse_cs(fname, chars1, line + 1, fun, ls)
-
           toks ->
-            case (try do
+            case ((try do
                     fun.(toks)
                   catch
                     :error, e -> {:EXIT, {e, __STACKTRACE__}}
                     :exit, e -> {:EXIT, e}
                     e -> e
-                  end) do
+                  end)) do
               {:EXIT, _} ->
                 :erlang.error('~p:~p: erroneous line, SKIPPED~n', [fname, line])
                 parse_cs(fname, chars1, line + 1, fun, ls)
-
               {:warning, wlist, val} ->
                 warning('~p:~p: warning! strange domain name(s) ~p ~n', [fname, line, wlist])
                 parse_cs(fname, chars1, line + 1, fun, [val | ls])
-
               :skip ->
                 parse_cs(fname, chars1, line + 1, fun, ls)
-
               val ->
                 parse_cs(fname, chars1, line + 1, fun, [val | ls])
             end
@@ -352,28 +321,26 @@ defmodule :m_inet_parse do
   end
 
   defp collect_line(fd, cs) do
-    case :file.read(fd, 80) do
+    case (:file.read(fd, 80)) do
       {:ok, line} when is_binary(line) ->
-        collect_line(fd, byte_size(line), :erlang.binary_to_list(line), cs)
-
+        collect_line(fd, byte_size(line),
+                       :erlang.binary_to_list(line), cs)
       {:ok, line} ->
         collect_line(fd, length(line), line, cs)
-
       :eof when cs === [] ->
         :eof
-
       :eof ->
         reverse(cs)
     end
   end
 
   defp collect_line(fd, n, [?\r, ?\n | _], cs) do
-    {:ok, _} = :file.position(fd, {:cur, -(n - 2)})
+    {:ok, _} = :file.position(fd, {:cur, - (n - 2)})
     reverse([?\n | cs])
   end
 
   defp collect_line(fd, n, [?\n | _], cs) do
-    {:ok, _} = :file.position(fd, {:cur, -(n - 1)})
+    {:ok, _} = :file.position(fd, {:cur, - (n - 1)})
     reverse([?\n | cs])
   end
 
@@ -385,7 +352,7 @@ defmodule :m_inet_parse do
     collect_line(fd, n - 1, xs, [x | cs])
   end
 
-  defp port_proto([x | xs], n) when x >= ?0 and x <= ?9 do
+  defp port_proto([x | xs], n) when (x >= ?0 and x <= ?9) do
     port_proto(xs, n * 10 + (x - ?0))
   end
 
@@ -393,23 +360,15 @@ defmodule :m_inet_parse do
     {:erlang.list_to_atom(proto), port}
   end
 
-  def visible_string([h | t]) do
-    is_vis1([h | t])
+  def visible_string([c | cs]) when (c >= 33 and c <= 126) do
+    visible_string(cs)
   end
 
-  def visible_string(_) do
-    false
-  end
-
-  defp is_vis1([c | cs]) when c >= 33 and c <= 126 do
-    is_vis1(cs)
-  end
-
-  defp is_vis1([]) do
+  def visible_string([]) do
     true
   end
 
-  defp is_vis1(_) do
+  def visible_string(_) do
     false
   end
 
@@ -421,19 +380,18 @@ defmodule :m_inet_parse do
     false
   end
 
-  defp is_dom1([c | cs]) when c >= ?a and c <= ?z do
+  defp is_dom1([c | cs]) when (c >= ?a and c <= ?z) do
     is_dom_ldh(cs)
   end
 
-  defp is_dom1([c | cs]) when c >= ?A and c <= ?Z do
+  defp is_dom1([c | cs]) when (c >= ?A and c <= ?Z) do
     is_dom_ldh(cs)
   end
 
-  defp is_dom1([c | cs]) when c >= ?0 and c <= ?9 do
-    case is_dom_ldh(cs) do
+  defp is_dom1([c | cs]) when (c >= ?0 and c <= ?9) do
+    case (is_dom_ldh(cs)) do
       true ->
         is_dom2(:string.lexemes([c | cs], '.'))
-
       false ->
         false
     end
@@ -443,15 +401,15 @@ defmodule :m_inet_parse do
     false
   end
 
-  defp is_dom_ldh([c | cs]) when c >= ?a and c <= ?z do
+  defp is_dom_ldh([c | cs]) when (c >= ?a and c <= ?z) do
     is_dom_ldh(cs)
   end
 
-  defp is_dom_ldh([c | cs]) when c >= ?A and c <= ?Z do
+  defp is_dom_ldh([c | cs]) when (c >= ?A and c <= ?Z) do
     is_dom_ldh(cs)
   end
 
-  defp is_dom_ldh([c | cs]) when c >= ?0 and c <= ?9 do
+  defp is_dom_ldh([c | cs]) when (c >= ?0 and c <= ?9) do
     is_dom_ldh(cs)
   end
 
@@ -484,44 +442,42 @@ defmodule :m_inet_parse do
   end
 
   defp is_dom2([a, b, c, d]) do
-    case (try do
+    case ((try do
             :erlang.list_to_integer(d)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       di when is_integer(di) ->
-        case {try do
-                :erlang.list_to_integer(a)
-              catch
-                :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                :exit, e -> {:EXIT, e}
-                e -> e
-              end,
-              try do
-                :erlang.list_to_integer(b)
-              catch
-                :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                :exit, e -> {:EXIT, e}
-                e -> e
-              end,
-              try do
-                :erlang.list_to_integer(c)
-              catch
-                :error, e -> {:EXIT, {e, __STACKTRACE__}}
-                :exit, e -> {:EXIT, e}
-                e -> e
-              end} do
-          {ai, bi, ci}
-          when is_integer(ai) and is_integer(bi) and
-                 is_integer(ci) ->
+        case ({(try do
+                 :erlang.list_to_integer(a)
+               catch
+                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
+                 :exit, e -> {:EXIT, e}
+                 e -> e
+               end),
+                 (try do
+                   :erlang.list_to_integer(b)
+                 catch
+                   :error, e -> {:EXIT, {e, __STACKTRACE__}}
+                   :exit, e -> {:EXIT, e}
+                   e -> e
+                 end),
+                 (try do
+                   :erlang.list_to_integer(c)
+                 catch
+                   :error, e -> {:EXIT, {e, __STACKTRACE__}}
+                   :exit, e -> {:EXIT, e}
+                   e -> e
+                 end)}) do
+          {ai, bi, ci} when (is_integer(ai) and is_integer(bi) and
+                               is_integer(ci))
+                            ->
             false
-
           _ ->
             true
         end
-
       _ ->
         true
     end
@@ -532,10 +488,9 @@ defmodule :m_inet_parse do
   end
 
   def address(cs) when is_list(cs) do
-    case ipv4_address(cs) do
+    case (ipv4_address(cs)) do
       {:ok, iP} ->
         {:ok, iP}
-
       _ ->
         ipv6strict_address(cs)
     end
@@ -546,10 +501,9 @@ defmodule :m_inet_parse do
   end
 
   def strict_address(cs) when is_list(cs) do
-    case ipv4strict_address(cs) do
+    case (ipv4strict_address(cs)) do
       {:ok, iP} ->
         {:ok, iP}
-
       _ ->
         ipv6strict_address(cs)
     end
@@ -572,22 +526,18 @@ defmodule :m_inet_parse do
   end
 
   defp ipv4_addr(cs) do
-    case ipv4_addr(cs, []) do
+    case (ipv4_addr(cs, [])) do
       [d] when d < 1 <<< 32 ->
-        <<d1, d2, d3, d4>> = <<d::size(32)>>
+        <<d1, d2, d3, d4>> = <<d :: size(32)>>
         {d1, d2, d3, d4}
-
-      [d, d1] when d < 1 <<< 24 and d1 < 256 ->
-        <<d2, d3, d4>> = <<d::size(24)>>
+      [d, d1] when (d < 1 <<< 24 and d1 < 256) ->
+        <<d2, d3, d4>> = <<d :: size(24)>>
         {d1, d2, d3, d4}
-
-      [d, d2, d1] when (d < 1 <<< 16 and d2) ||| d1 < 256 ->
-        <<d3, d4>> = <<d::size(16)>>
+      [d, d2, d1] when (d < 1 <<< 16 and d2 ||| d1 < 256) ->
+        <<d3, d4>> = <<d :: size(16)>>
         {d1, d2, d3, d4}
-
       [d4, d3, d2, d1] when d4 ||| d3 ||| d2 ||| d1 < 256 ->
         {d1, d2, d3, d4}
-
       _ ->
         :erlang.error(:badarg)
     end
@@ -614,13 +564,11 @@ defmodule :m_inet_parse do
   end
 
   defp ipv4_addr(cs0, ds, rs, base, n) do
-    case ipv4_field(cs0, n, rs, base) do
+    case (ipv4_field(cs0, n, rs, base)) do
       {d, ''} ->
         [d | ds]
-
       {d, [?. | [_ | _] = cs]} ->
         ipv4_addr(cs, [d | ds])
-
       {_, _} ->
         :erlang.error(:badarg)
     end
@@ -647,10 +595,9 @@ defmodule :m_inet_parse do
   end
 
   defp ipv4strict_addr(cs) do
-    case ipv4strict_addr(cs, []) do
+    case (ipv4strict_addr(cs, [])) do
       [d4, d3, d2, d1] when d4 ||| d3 ||| d2 ||| d1 < 256 ->
         {d1, d2, d3, d4}
-
       _ ->
         :erlang.error(:badarg)
     end
@@ -669,13 +616,11 @@ defmodule :m_inet_parse do
   end
 
   defp ipv4strict_addr(cs0, ds) when is_list(cs0) do
-    case ipv4_field(cs0, 3, [], 10) do
+    case (ipv4_field(cs0, 3, [], 10)) do
       {d, ''} ->
         [d | ds]
-
       {d, [?. | [_ | _] = cs]} ->
         ipv4strict_addr(cs, [d | ds])
-
       {_, _} ->
         :erlang.error(:badarg)
     end
@@ -703,21 +648,20 @@ defmodule :m_inet_parse do
 
   defp ipv4_field(rs, base) do
     v = :erlang.list_to_integer(:lists.reverse(rs), base)
-
     cond do
       v < 0 ->
         :erlang.error(:badarg)
-
       true ->
         v
     end
   end
 
   def ipv6_address(cs) do
-    case ipv4_address(cs) do
+    case (ipv4_address(cs)) do
       {:ok, {d1, d2, d3, d4}} ->
-        {:ok, {0, 0, 0, 0, 0, 65535, d1 <<< 8 ||| d2, d3 <<< 8 ||| d4}}
-
+        {:ok,
+           {0, 0, 0, 0, 0, 65535, d1 <<< 8 ||| d2,
+              d3 <<< 8 ||| d4}}
       _ ->
         ipv6strict_address(cs)
     end
@@ -748,7 +692,8 @@ defmodule :m_inet_parse do
   end
 
   defp ipv6_addr({cs0, '%' ++ cs1}, a, n) when n == 7 do
-    ipv6_addr_scope(cs1, [hex_to_int(cs0) | a], [], n + 1, [])
+    ipv6_addr_scope(cs1, [hex_to_int(cs0) | a], [], n + 1,
+                      [])
   end
 
   defp ipv6_addr({cs0, []}, a, n) when n == 7 do
@@ -756,7 +701,8 @@ defmodule :m_inet_parse do
   end
 
   defp ipv6_addr({cs0, '::%' ++ cs1}, a, n) when n <= 6 do
-    ipv6_addr_scope(cs1, [hex_to_int(cs0) | a], [], n + 1, [])
+    ipv6_addr_scope(cs1, [hex_to_int(cs0) | a], [], n + 1,
+                      [])
   end
 
   defp ipv6_addr({cs0, '::'}, a, n) when n <= 6 do
@@ -780,7 +726,8 @@ defmodule :m_inet_parse do
   end
 
   defp ipv6_addr({cs0, '%' ++ cs1}, a, b, n) when n <= 6 do
-    ipv6_addr_scope(cs1, a, [hex_to_int(cs0) | b], n + 1, [])
+    ipv6_addr_scope(cs1, a, [hex_to_int(cs0) | b], n + 1,
+                      [])
   end
 
   defp ipv6_addr({cs0, []}, a, b, n) when n <= 6 do
@@ -800,18 +747,14 @@ defmodule :m_inet_parse do
   end
 
   defp ipv6_addr_scope([], ar, br, n, sr) do
-    scopeId =
-      case :lists.reverse(sr) do
-        '' ->
-          0
-
-        '0' ++ s ->
-          dec16(s)
-
-        _ ->
-          0
-      end
-
+    scopeId = (case (:lists.reverse(sr)) do
+                 '' ->
+                   0
+                 '0' ++ s ->
+                   dec16(s)
+                 _ ->
+                   0
+               end)
     ipv6_addr_scope(scopeId, ar, br, n)
   end
 
@@ -819,25 +762,24 @@ defmodule :m_inet_parse do
     ipv6_addr_scope(cs, ar, br, n, [c | sr])
   end
 
-  defp ipv6_addr_scope(scopeId, [p], br, n)
-       when (n <= 7 and
-               p === 65152) or
-              (n <= 7 and p === 65282) do
+  defp ipv6_addr_scope(scopeId, [p], br, n) when (n <= 7 and
+                                       p === 65152) or
+                                      (n <= 7 and p === 65282) do
     ipv6_addr_done([scopeId, p], br, n + 1)
   end
 
   defp ipv6_addr_scope(scopeId, ar, br, n) do
-    case :lists.reverse(br ++ dup(8 - n, 0, ar)) do
+    case (:lists.reverse(br ++ dup(8 - n, 0, ar))) do
       [p, 0 | xs] when p === 65152 or p === 65282 ->
         :erlang.list_to_tuple([p, scopeId | xs])
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   defp ipv6_addr_done(ar, br, n, {d1, d2, d3, d4}) do
-    ipv6_addr_done(ar, [d3 <<< 8 ||| d4, d1 <<< 8 ||| d2 | br], n + 2)
+    ipv6_addr_done(ar,
+                     [d3 <<< 8 ||| d4, d1 <<< 8 ||| d2 | br], n + 2)
   end
 
   defp ipv6_addr_done(ar, br, n) do
@@ -852,21 +794,18 @@ defmodule :m_inet_parse do
     hex(cs, [], 4)
   end
 
-  defp hex([c | cs], r, n)
-       when c >= ?0 and c <= ?9 and
-              n > 0 do
+  defp hex([c | cs], r, n) when (c >= ?0 and c <= ?9 and
+                                  n > 0) do
     hex(cs, [c | r], n - 1)
   end
 
-  defp hex([c | cs], r, n)
-       when c >= ?a and c <= ?f and
-              n > 0 do
+  defp hex([c | cs], r, n) when (c >= ?a and c <= ?f and
+                                  n > 0) do
     hex(cs, [c | r], n - 1)
   end
 
-  defp hex([c | cs], r, n)
-       when c >= ?A and c <= ?F and
-              n > 0 do
+  defp hex([c | cs], r, n) when (c >= ?A and c <= ?F and
+                                  n > 0) do
     hex(cs, [c | r], n - 1)
   end
 
@@ -886,11 +825,10 @@ defmodule :m_inet_parse do
     i
   end
 
-  defp dec16([c | cs], i) when c >= ?0 and c <= ?9 do
-    case 10 * i + (c - ?0) do
+  defp dec16([c | cs], i) when (c >= ?0 and c <= ?9) do
+    case (10 * i + (c - ?0)) do
       j when 65535 < j ->
         :erlang.error(:badarg)
-
       j ->
         dec16(cs, j)
     end
@@ -908,15 +846,13 @@ defmodule :m_inet_parse do
     l
   end
 
-  defp dup(n, e, l) when is_integer(n) and n >= 1 do
+  defp dup(n, e, l) when (is_integer(n) and n >= 1) do
     dup(n - 1, e, [e | l])
   end
 
-  def ntoa({a, b, c, d}) when a &&& b &&& c &&& d &&& ~~~255 === 0 do
-    :erlang.integer_to_list(a) ++
-      '.' ++
-      :erlang.integer_to_list(b) ++
-      '.' ++ :erlang.integer_to_list(c) ++ '.' ++ :erlang.integer_to_list(d)
+  def ntoa({a, b, c, d}) when (a ||| b ||| c ||| d) &&& ~~~
+                                                      255 === 0 do
+    :erlang.integer_to_list(a) ++ '.' ++ :erlang.integer_to_list(b) ++ '.' ++ :erlang.integer_to_list(c) ++ '.' ++ :erlang.integer_to_list(d)
   end
 
   def ntoa({0, 0, 0, 0, 0, 0, 0, 0}) do
@@ -927,25 +863,26 @@ defmodule :m_inet_parse do
     '::1'
   end
 
-  def ntoa({0, 0, 0, 0, 0, 0, a, b}) when a &&& b &&& ~~~65535 === 0 do
+  def ntoa({0, 0, 0, 0, 0, 0, a, b})
+      when (0 ||| 0 ||| 0 ||| 0 ||| 0 ||| 0 ||| a ||| b) &&& ~~~
+                                                             65535 === 0 do
     '::' ++ dig_to_dec(a) ++ '.' ++ dig_to_dec(b)
   end
 
-  def ntoa({0, 0, 0, 0, 0, 65535, a, b})
-      when a &&& b &&& ~~~65535 === 0 do
+  def ntoa({0, 0, 0, 0, 0, 65535 = x, a, b})
+      when (0 ||| 0 ||| 0 ||| 0 ||| 0 ||| x ||| a ||| b) &&& ~~~
+                                                             65535 === 0 do
     '::ffff:' ++ dig_to_dec(a) ++ '.' ++ dig_to_dec(b)
   end
 
   def ntoa({a, b, c, d, e, f, g, h})
-      when a &&& b &&& c &&& d &&& e &&& f &&& g &&& h &&& ~~~65535 === 0 do
+      when (a ||| b ||| c ||| d ||| e ||| f ||| g ||| h) &&& ~~~
+                                                             65535 === 0 do
     cond do
       (a === 65152 and b !== 0) or
-          (a === 65282 and b !== 0) ->
-        ntoa(
-          [a, 0, c, d, e, f, g, h],
-          []
-        ) ++ '%0' ++ :erlang.integer_to_list(b)
-
+        (a === 65282 and b !== 0) ->
+        ntoa([a, 0, c, d, e, f, g, h],
+               []) ++ '%0' ++ :erlang.integer_to_list(b)
       true ->
         ntoa([a, b, c, d, e, f, g, h], [])
     end
@@ -1008,34 +945,17 @@ defmodule :m_inet_parse do
   end
 
   defp ntoa_done(r1, r2) do
-    :lists.append(
-      separate(
-        ':',
-        :lists.map(
-          &dig_to_hex/1,
-          :lists.reverse(r1)
-        )
-      ) ++
-        [
-          '::'
-          | separate(
-              ':',
-              :lists.map(
-                &dig_to_hex/1,
-                :lists.reverse(r2)
-              )
-            )
-        ]
-    )
+    :lists.append(separate(':',
+                             :lists.map(&dig_to_hex/1,
+                                          :lists.reverse(r1))) ++ ['::' |
+                                                                       separate(':',
+                                                                                  :lists.map(&dig_to_hex/1,
+                                                                                               :lists.reverse(r2)))])
   end
 
   defp ntoa_done(r) do
-    :lists.append(
-      separate(
-        ':',
-        :lists.map(&dig_to_hex/1, :lists.reverse(r))
-      )
-    )
+    :lists.append(separate(':',
+                             :lists.map(&dig_to_hex/1, :lists.reverse(r))))
   end
 
   defp separate(_E, []) do
@@ -1059,14 +979,14 @@ defmodule :m_inet_parse do
   end
 
   defp dig_to_dec(x) do
-    :erlang.integer_to_list(x >>> 8 &&& 255) ++ '.' ++ :erlang.integer_to_list(x &&& 255)
+    :erlang.integer_to_list((x >>> 8) &&& 255) ++ '.' ++ :erlang.integer_to_list(x &&& 255)
   end
 
   defp dig_to_hex(0) do
     '0'
   end
 
-  defp dig_to_hex(x) when is_integer(x) and 0 < x do
+  defp dig_to_hex(x) when (is_integer(x) and 0 < x) do
     dig_to_hex(x, '')
   end
 
@@ -1075,19 +995,14 @@ defmodule :m_inet_parse do
   end
 
   defp dig_to_hex(x, acc) do
-    dig_to_hex(
-      x >>> 4,
-      [
-        case x &&& 15 do
-          d when d < 10 ->
-            d + ?0
-
-          d ->
-            d - 10 + ?a
-        end
-        | acc
-      ]
-    )
+    dig_to_hex(x >>> 4,
+                 [case (x &&& 15) do
+                    d when d < 10 ->
+                      d + ?0
+                    d ->
+                      d - 10 + ?a
+                  end |
+                      acc])
   end
 
   def dots(name) do
@@ -1203,10 +1118,9 @@ defmodule :m_inet_parse do
   end
 
   defp warning(fmt, args) do
-    case :application.get_env(:kernel, :inet_warnings) do
+    case (:application.get_env(:kernel, :inet_warnings)) do
       {:ok, :on} ->
         :error_logger.info_msg('inet_parse:' ++ fmt, args)
-
       _ ->
         :ok
     end
@@ -1215,4 +1129,5 @@ defmodule :m_inet_parse do
   defp error(fmt, args) do
     :error_logger.info_msg('inet_parse:' ++ fmt, args)
   end
+
 end

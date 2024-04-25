@@ -10,20 +10,16 @@ defmodule :m_ftp_sup do
   end
 
   def init(_) do
-    supFlags = %{strategy: :simple_one_for_one, intensity: 0, period: 3600}
+    supFlags = %{strategy: :simple_one_for_one,
+                   intensity: 0, period: 3600}
     {:ok, {supFlags, child_specs()}}
   end
 
   defp child_specs() do
-    [
-      %{
-        id: :undefined,
-        start: {:ftp, :start_link, []},
-        restart: :temporary,
-        shutdown: 4000,
-        type: :worker,
-        modules: [:ftp]
-      }
-    ]
+    [%{id: :undefined,
+         start: {:ftp_internal, :start_link, []},
+         restart: :temporary, shutdown: 4000, type: :worker,
+         modules: [:ftp]}]
   end
+
 end

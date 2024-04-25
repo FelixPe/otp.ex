@@ -1,87 +1,49 @@
 defmodule :m_mnesia_monitor do
   use Bitwise
-  import :mnesia_lib, only: [dbg_out: 2, error: 2, fatal: 2, set: 2, verbose: 2]
+  import :mnesia_lib, only: [dbg_out: 2, error: 2,
+                               fatal: 2, set: 2, verbose: 2]
   @behaviour :gen_server
   require Record
-
-  Record.defrecord(:r_tid, :tid,
-    counter: :undefined,
-    pid: :undefined
-  )
-
-  Record.defrecord(:r_tidstore, :tidstore, store: :undefined, up_stores: [], level: 1)
-
-  Record.defrecord(:r_cstruct, :cstruct,
-    name: :undefined,
-    type: :set,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    external_copies: [],
-    load_order: 0,
-    access_mode: :read_write,
-    majority: false,
-    index: [],
-    snmp: [],
-    local_content: false,
-    record_name: {:bad_record_name},
-    attributes: [:key, :val],
-    user_properties: [],
-    frag_properties: [],
-    storage_properties: [],
-    cookie:
-      {{:erlang.monotonic_time() + :erlang.time_offset(), :erlang.unique_integer(), 1}, node()},
-    version: {{2, 0}, []}
-  )
-
-  Record.defrecord(:r_log_header, :log_header,
-    log_kind: :undefined,
-    log_version: :undefined,
-    mnesia_version: :undefined,
-    node: :undefined,
-    now: :undefined
-  )
-
-  Record.defrecord(:r_commit, :commit,
-    node: :undefined,
-    decision: :undefined,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    ext: [],
-    schema_ops: []
-  )
-
-  Record.defrecord(:r_decision, :decision,
-    tid: :undefined,
-    outcome: :undefined,
-    disc_nodes: :undefined,
-    ram_nodes: :undefined
-  )
-
-  Record.defrecord(:r_cyclic, :cyclic,
-    node: node(),
-    oid: :undefined,
-    op: :undefined,
-    lock: :undefined,
-    lucky: :undefined
-  )
-
-  Record.defrecord(:r_state, :state,
-    supervisor: :undefined,
-    pending_negotiators: [],
-    going_down: [],
-    tm_started: false,
-    early_connects: [],
-    connecting: :undefined,
-    mq: [],
-    remote_node_status: []
-  )
-
+  Record.defrecord(:r_tid, :tid, counter: :undefined,
+                               pid: :undefined)
+  Record.defrecord(:r_tidstore, :tidstore, store: :undefined,
+                                    up_stores: [], level: 1)
+  Record.defrecord(:r_cstruct, :cstruct, name: :undefined,
+                                   type: :set, ram_copies: [], disc_copies: [],
+                                   disc_only_copies: [], external_copies: [],
+                                   load_order: 0, access_mode: :read_write,
+                                   majority: false, index: [], snmp: [],
+                                   local_content: false,
+                                   record_name: {:bad_record_name},
+                                   attributes: [:key, :val],
+                                   user_properties: [], frag_properties: [],
+                                   storage_properties: [],
+                                   cookie: {{:erlang.monotonic_time() + :erlang.time_offset(),
+                                               :erlang.unique_integer(), 1},
+                                              node()},
+                                   version: {{2, 0}, []})
+  Record.defrecord(:r_log_header, :log_header, log_kind: :undefined,
+                                      log_version: :undefined,
+                                      mnesia_version: :undefined,
+                                      node: :undefined, now: :undefined)
+  Record.defrecord(:r_commit, :commit, node: :undefined,
+                                  decision: :undefined, ram_copies: [],
+                                  disc_copies: [], disc_only_copies: [],
+                                  ext: [], schema_ops: [])
+  Record.defrecord(:r_decision, :decision, tid: :undefined,
+                                    outcome: :undefined, disc_nodes: :undefined,
+                                    ram_nodes: :undefined)
+  Record.defrecord(:r_cyclic, :cyclic, node: node(),
+                                  oid: :undefined, op: :undefined,
+                                  lock: :undefined, lucky: :undefined)
+  Record.defrecord(:r_state, :state, supervisor: :undefined,
+                                 pending_negotiators: [], going_down: [],
+                                 tm_started: false, early_connects: [],
+                                 connecting: :undefined, mq: [],
+                                 remote_node_status: [])
   def start() do
-    :gen_server.start_link({:local, :mnesia_monitor}, :mnesia_monitor, [self()], [
-      {:timeout, :infinity}
-    ])
+    :gen_server.start_link({:local, :mnesia_monitor},
+                             :mnesia_monitor, [self()], [{:timeout, :infinity}])
   end
 
   def init() do
@@ -137,7 +99,8 @@ defmodule :m_mnesia_monitor do
   end
 
   def unsafe_create_external(tab, alias, mod, cs) do
-    unsafe_call({:unsafe_create_external, tab, alias, mod, cs})
+    unsafe_call({:unsafe_create_external, tab, alias, mod,
+                   cs})
   end
 
   def disconnect(node) do
@@ -156,56 +119,39 @@ defmodule :m_mnesia_monitor do
     version = :mnesia.system_info(:version)
     protocols = acceptable_protocol_versions()
     monitorPid = :erlang.whereis(:mnesia_monitor)
-    msg = {:negotiate_protocol, monitorPid, version, protocols}
+    msg = {:negotiate_protocol, monitorPid, version,
+             protocols}
     {replies, _BadNodes} = multicall(nodes, msg)
     res = check_protocol(replies, protocols)
-    send(:mnesia_monitor, {:protocol_negotiated, requester, res})
+    send(:mnesia_monitor, {:protocol_negotiated, requester,
+                             res})
     :erlang.unlink(:erlang.whereis(:mnesia_monitor))
     :ok
   end
 
-  defp check_protocol(
-         [
-           {node, {:accept, mon, version, protocol}}
-           | tail
-         ],
-         protocols
-       ) do
-    case :lists.member(protocol, protocols) do
+  defp check_protocol([{node, {:accept, mon, version, protocol}} |
+               tail],
+            protocols) do
+    case (:lists.member(protocol, protocols)) do
       true ->
-        case protocol == protocol_version() do
+        case (protocol == protocol_version()) do
           true ->
             set({:protocol, node}, {protocol, false})
-
           false ->
             set({:protocol, node}, {protocol, true})
         end
-
         [node(mon) | check_protocol(tail, protocols)]
-
       false ->
-        verbose(
-          'Failed to connect with ~p. ~p protocols rejected. expected version = ~p, expected protocol = ~p~n',
-          [node, protocols, version, protocol]
-        )
-
+        verbose('Failed to connect with ~p. ~p protocols rejected. expected version = ~p, expected protocol = ~p~n', [node, protocols, version, protocol])
         :erlang.unlink(mon)
         check_protocol(tail, protocols)
     end
   end
 
-  defp check_protocol(
-         [
-           {node, {:reject, _Mon, version, protocol}}
-           | tail
-         ],
-         protocols
-       ) do
-    verbose(
-      'Failed to connect with ~p. ~p protocols rejected. expected version = ~p, expected protocol = ~p~n',
-      [node, protocols, version, protocol]
-    )
-
+  defp check_protocol([{node, {:reject, _Mon, version, protocol}} |
+               tail],
+            protocols) do
+    verbose('Failed to connect with ~p. ~p protocols rejected. expected version = ~p, expected protocol = ~p~n', [node, protocols, version, protocol])
     check_protocol(tail, protocols)
   end
 
@@ -232,71 +178,64 @@ defmodule :m_mnesia_monitor do
               {:EXIT, {:badarg, []}}
           end) do
       {:EXIT, _} ->
-        {8, 5}
-
+        {8, 6}
       version ->
         version
     end
   end
 
   defp acceptable_protocol_versions() do
-    [protocol_version(), {8, 4}, {8, 3}]
+    [protocol_version(), {8, 5}, {8, 4}, {8, 3}]
   end
 
   def needs_protocol_conversion(node) do
-    case {try do
-            :ets.lookup_element(:mnesia_gvar, {:protocol, node}, 2)
-          catch
-            :error, _ ->
-              {:EXIT, {:badarg, []}}
-          end, protocol_version()} do
+    case ({try do
+             :ets.lookup_element(:mnesia_gvar, {:protocol, node}, 2)
+           catch
+             :error, _ ->
+               {:EXIT, {:badarg, []}}
+           end,
+             protocol_version()}) do
       {{:EXIT, _}, _} ->
         false
-
-      {{_, bool}, {8, 5}} ->
+      {{_, bool}, {8, 6}} ->
         bool
-
       {{_, bool}, _} ->
         not bool
     end
   end
 
   def cast(msg) do
-    case :erlang.whereis(:mnesia_monitor) do
+    case (:erlang.whereis(:mnesia_monitor)) do
       :undefined ->
         :ok
-
       pid ->
         :gen_server.cast(pid, msg)
     end
   end
 
   defp unsafe_call(msg) do
-    case :erlang.whereis(:mnesia_monitor) do
+    case (:erlang.whereis(:mnesia_monitor)) do
       :undefined ->
         {:error, {:node_not_running, node()}}
-
       pid ->
         :gen_server.call(pid, msg, :infinity)
     end
   end
 
   def call(msg) do
-    case :erlang.whereis(:mnesia_monitor) do
+    case (:erlang.whereis(:mnesia_monitor)) do
       :undefined ->
         {:error, {:node_not_running, node()}}
-
       pid ->
         :erlang.link(pid)
         res = :gen_server.call(pid, msg, :infinity)
         :erlang.unlink(pid)
-
         receive do
           {:EXIT, ^pid, _Reason} ->
             {:error, {:node_not_running, node()}}
-        after
-          0 ->
-            res
+        after 0 ->
+          res
         end
     end
   end
@@ -307,12 +246,12 @@ defmodule :m_mnesia_monitor do
 
   def start_proc(who, mod, fun, args) do
     args2 = [who, mod, fun, args]
-    :proc_lib.start_link(:mnesia_sp, :init_proc, args2, :infinity)
+    :proc_lib.start_link(:mnesia_sp, :init_proc, args2,
+                           :infinity)
   end
 
-  def terminate_proc(who, r, state)
-      when r != :shutdown and
-             r != :killed do
+  def terminate_proc(who, r, state) when (r != :shutdown and
+                                r != :killed) do
     fatal('~p crashed: ~p state: ~tp~n', [who, r, state])
   end
 
@@ -323,26 +262,16 @@ defmodule :m_mnesia_monitor do
 
   def init([parent]) do
     :erlang.process_flag(:trap_exit, true)
-
-    _ =
-      :ets.new(
-        :mnesia_gvar,
-        [:set, :public, :named_table]
-      )
-
-    _ =
-      :ets.new(
-        :mnesia_stats,
-        [:set, :public, :named_table]
-      )
-
+    _ = :ets.new(:mnesia_gvar,
+                   [:set, :public, :named_table])
+    _ = :ets.new(:mnesia_stats,
+                   [:set, :public, :named_table])
     set(:subscribers, [])
     set(:activity_subscribers, [])
     :mnesia_lib.verbose('~p starting: ~p~n', [:mnesia_monitor, self()])
     version = :mnesia.system_info(:version)
     set(:version, version)
     dbg_out('Version: ~p~n', [version])
-
     try do
       process_config_args(env())
     catch
@@ -380,30 +309,23 @@ defmodule :m_mnesia_monitor do
               {:EXIT, {:badarg, []}}
           end) do
       {:EXIT, _} ->
-        case get_env(:schema_location) do
+        case (get_env(:schema_location)) do
           :disc ->
             true
-
           :opt_disc ->
             non_empty_dir()
-
           :ram ->
             false
         end
-
       bool ->
         bool
     end
   end
 
   defp non_empty_dir() do
-    :erlang.or(
-      :erlang.or(
-        :mnesia_lib.exists(:mnesia_bup.fallback_bup()),
-        :mnesia_lib.exists(:mnesia_lib.tab2dmp(:schema))
-      ),
-      :mnesia_lib.exists(:mnesia_lib.tab2dat(:schema))
-    )
+    :erlang.or(:erlang.or(:mnesia_lib.exists(:mnesia_bup.fallback_bup()),
+                            :mnesia_lib.exists(:mnesia_lib.tab2dmp(:schema))),
+                 :mnesia_lib.exists(:mnesia_lib.tab2dat(:schema)))
   end
 
   def handle_call({:mktab, tab, args}, _From, state) do
@@ -434,10 +356,9 @@ defmodule :m_mnesia_monitor do
   end
 
   def handle_call({:open_dets, tab, args}, _From, state) do
-    case :mnesia_lib.dets_sync_open(tab, args) do
+    case (:mnesia_lib.dets_sync_open(tab, args)) do
       {:ok, ^tab} ->
         {:reply, {:ok, tab}, state}
-
       {:error, reason} ->
         msg = 'Cannot open dets table'
         error = {:error, {msg, tab, args, reason}}
@@ -447,10 +368,9 @@ defmodule :m_mnesia_monitor do
   end
 
   def handle_call({:unsafe_open_dets, tab, args}, _From, state) do
-    case :mnesia_lib.dets_sync_open(tab, args) do
+    case (:mnesia_lib.dets_sync_open(tab, args)) do
       {:ok, ^tab} ->
         {:reply, {:ok, tab}, state}
-
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -471,11 +391,11 @@ defmodule :m_mnesia_monitor do
     {:reply, res, state}
   end
 
-  def handle_call({:reopen_log, name, fname, head}, _From, state) do
-    case :disk_log.reopen(name, fname, head) do
+  def handle_call({:reopen_log, name, fname, head}, _From,
+           state) do
+    case (:disk_log.reopen(name, fname, head)) do
       :ok ->
         {:reply, :ok, state}
-
       {:error, reason} ->
         msg = 'Cannot rename disk_log file'
         error = {:error, {msg, name, fname, head, reason}}
@@ -489,10 +409,9 @@ defmodule :m_mnesia_monitor do
   end
 
   def handle_call({:close_log, name}, _From, state) do
-    case :disk_log.close(name) do
+    case (:disk_log.close(name)) do
       :ok ->
         {:reply, :ok, state}
-
       {:error, reason} ->
         msg = 'Cannot close disk_log file'
         error = {:error, {msg, name, reason}}
@@ -506,7 +425,8 @@ defmodule :m_mnesia_monitor do
     {:reply, :ok, state}
   end
 
-  def handle_call({:unsafe_create_external, tab, alias, mod, cs}, _From, state) do
+  def handle_call({:unsafe_create_external, tab, alias, mod, cs},
+           _From, state) do
     case (try do
             mod.create_table(alias, tab, :mnesia_schema.cs2list(cs))
           catch
@@ -515,59 +435,50 @@ defmodule :m_mnesia_monitor do
           end) do
       {:EXIT, exitReason} ->
         {:reply, {:error, exitReason}, state}
-
       reply ->
         {:reply, reply, state}
     end
   end
 
-  def handle_call({:negotiate_protocol, mon, _Version, _Protocols}, _From, state)
+  def handle_call({:negotiate_protocol, mon, _Version, _Protocols},
+           _From, state)
       when r_state(state, :tm_started) == false do
-    state2 =
-      r_state(state,
-        early_connects: [
-          node(mon)
-          | r_state(state, :early_connects)
-        ]
-      )
-
-    {:reply, {node(), {:reject, self(), :uninitialized, :uninitialized}}, state2}
+    state2 = r_state(state, early_connects: [node(mon) |
+                                           r_state(state, :early_connects)])
+    {:reply,
+       {node(),
+          {:reject, self(), :uninitialized, :uninitialized}},
+       state2}
   end
 
-  def handle_call({:negotiate_protocol, mon, version, protocols}, from, state)
+  def handle_call({:negotiate_protocol, mon, version, protocols},
+           from, state)
       when node(mon) != node() do
     protocol = protocol_version()
     myVersion = :mnesia.system_info(:version)
-
-    case :lists.member(protocol, protocols) do
+    case (:lists.member(protocol, protocols)) do
       true ->
         accept_protocol(mon, myVersion, protocol, from, state)
-
       false ->
-        case hd(protocols) do
-          {8, 4} ->
-            accept_protocol(mon, myVersion, {8, 4}, from, state)
-
+        case (hd(protocols)) do
+          {8, 5} ->
+            accept_protocol(mon, myVersion, {8, 5}, from, state)
           _ ->
-            verbose(
-              'Connection with ~p rejected. version = ~p, protocols = ~p, expected version = ~p, expected protocol = ~p~n',
-              [node(mon), version, protocols, myVersion, protocol]
-            )
-
-            {:reply, {node(), {:reject, self(), myVersion, protocol}}, state}
+            verbose('Connection with ~p rejected. version = ~p, protocols = ~p, expected version = ~p, expected protocol = ~p~n',
+                      [node(mon), version, protocols, myVersion, protocol])
+            {:reply,
+               {node(), {:reject, self(), myVersion, protocol}}, state}
         end
     end
   end
 
   def handle_call({:negotiate_protocol, nodes}, from, state) do
-    case :mnesia_lib.intersect(
-           r_state(state, :going_down),
-           nodes
-         ) do
+    case (:mnesia_lib.intersect(r_state(state, :going_down),
+                                  nodes)) do
       [] ->
-        spawn_link(:mnesia_monitor, :negotiate_protocol_impl, [nodes, from])
+        spawn_link(:mnesia_monitor, :negotiate_protocol_impl,
+                     [nodes, from])
         {:noreply, r_state(state, connecting: {from, nodes})}
-
       _ ->
         {:reply, :busy, state}
     end
@@ -590,31 +501,24 @@ defmodule :m_mnesia_monitor do
     node = node(mon)
     pending0 = r_state(state, :pending_negotiators)
     pending = :lists.keydelete(node, 1, pending0)
-
-    case :lists.member(node, r_state(state, :going_down)) do
+    case (:lists.member(node, r_state(state, :going_down))) do
       true ->
         p = pending ++ [{node, mon, from, reply}]
         {:noreply, r_state(state, pending_negotiators: p)}
-
       false ->
         :erlang.link(mon)
-
-        case protocol == protocol_version() do
+        case (protocol == protocol_version()) do
           true ->
             set({:protocol, node}, {protocol, false})
-
           false ->
             set({:protocol, node}, {protocol, true})
         end
-
         {:reply, reply, r_state(state, pending_negotiators: pending)}
     end
   end
 
-  def handle_cast(
-        {:mnesia_down, :mnesia_controller, node},
-        state
-      ) do
+  def handle_cast({:mnesia_down, :mnesia_controller, node},
+           state) do
     :mnesia_tm.mnesia_down(node)
     {:noreply, state}
   end
@@ -626,39 +530,33 @@ defmodule :m_mnesia_monitor do
     state2 = r_state(state, going_down: goingDown)
     pending = r_state(state, :pending_negotiators)
     state3 = check_raise_conditon_nodeup(node, state2)
-
-    case :lists.keysearch(node, 1, pending) do
+    case (:lists.keysearch(node, 1, pending)) do
       {:value, {^node, mon, replyTo, reply}} ->
         :erlang.link(mon)
         :gen_server.reply(replyTo, reply)
         p2 = :lists.keydelete(node, 1, pending)
         state4 = r_state(state3, pending_negotiators: p2)
         process_q(state4)
-
       false ->
         process_q(state3)
     end
   end
 
   def handle_cast({:disconnect, node}, state) do
-    case :rpc.call(node, :erlang, :whereis, [:mnesia_monitor]) do
+    case (:rpc.call(node, :erlang, :whereis,
+                      [:mnesia_monitor])) do
       {:badrpc, _} ->
         :ignore
-
       :undefined ->
         :ignore
-
       remoteMon when is_pid(remoteMon) ->
         :erlang.unlink(remoteMon)
     end
-
     {:noreply, state}
   end
 
-  def handle_cast(
-        {:inconsistent_database, context, node},
-        state
-      ) do
+  def handle_cast({:inconsistent_database, context, node},
+           state) do
     msg = {:inconsistent_database, context, node}
     :mnesia_lib.report_system_event(msg)
     {:noreply, state}
@@ -678,30 +576,27 @@ defmodule :m_mnesia_monitor do
   def handle_info({:EXIT, pid, :fatal}, state)
       when node(pid) == node() do
     dbg_out('~p got FATAL ERROR from: ~p~n', [:mnesia_monitor, pid])
-
     try do
       :erlang.exit(:erlang.whereis(:mnesia_locker), :kill)
     catch
       :error, _ ->
         :ok
     end
-
     {:noreply, state}
   end
 
   def handle_info(msg = {:EXIT, pid, _}, state) do
     node = node(pid)
-
     cond do
-      node != node() and
-          r_state(state, :connecting) == :undefined ->
+      (node != node() and
+         r_state(state, :connecting) == :undefined) ->
         :mnesia_recover.mnesia_down(node)
         :mnesia_controller.mnesia_down(node)
-        {:noreply, r_state(state, going_down: [node | r_state(state, :going_down)])}
-
+        {:noreply,
+           r_state(state, going_down: [node | r_state(state, :going_down)])}
       node != node() ->
-        {:noreply, r_state(state, mq: r_state(state, :mq) ++ [{:info, msg}])}
-
+        {:noreply,
+           r_state(state, mq: r_state(state, :mq) ++ [{:info, msg}])}
       true ->
         hint = 'Hint: check that the disk still is writable'
         fatal('~p got unexpected info: ~tp; ~p~n', [:mnesia_monitor, msg, hint])
@@ -731,17 +626,13 @@ defmodule :m_mnesia_monitor do
   end
 
   def handle_info({:disk_log, _Node, log, info}, state) do
-    case info do
+    case (info) do
       {:truncated, _No} ->
         :ok
-
       _ ->
-        :mnesia_lib.important(
-          'Warning Log file ~tp error reason ~ts~n',
-          [log, :disk_log.format_error(info)]
-        )
+        :mnesia_lib.important('Warning Log file ~tp error reason ~ts~n',
+                                [log, :disk_log.format_error(info)])
     end
-
     {:noreply, state}
   end
 
@@ -771,13 +662,8 @@ defmodule :m_mnesia_monitor do
 
   def code_change(_, {:state, sUP, pN, gD, tMS, eC}, _) do
     {:ok,
-     r_state(
-       supervisor: sUP,
-       pending_negotiators: pN,
-       going_down: gD,
-       tm_started: tMS,
-       early_connects: eC
-     )}
+       r_state(supervisor: sUP, pending_negotiators: pN,
+           going_down: gD, tm_started: tMS, early_connects: eC)}
   end
 
   def code_change(_OldVsn, state, _Extra) do
@@ -808,46 +694,39 @@ defmodule :m_mnesia_monitor do
               {:EXIT, {:badarg, []}}
           end) do
       {:EXIT, _} ->
-        case :application.get_env(:mnesia, e) do
+        case (:application.get_env(:mnesia, e)) do
           {:ok, val} ->
             check_type(e, val)
-
           :undefined ->
             check_type(e, default_env(e))
         end
-
       val ->
         val
     end
   end
 
   defp env() do
-    [
-      :access_module,
-      :allow_index_on_key,
-      :auto_repair,
-      :backup_module,
-      :debug,
-      :dir,
-      :dump_disc_copies_at_startup,
-      :dump_log_load_regulation,
-      :dump_log_time_threshold,
-      :dump_log_update_in_place,
-      :dump_log_write_threshold,
-      :event_module,
-      :extra_db_nodes,
-      :ignore_fallback_at_startup,
-      :fallback_error_function,
-      :fold_chunk_size,
-      :max_wait_for_decision,
-      :schema_location,
-      :core_dir,
-      :pid_sort_order,
-      :no_table_loaders,
-      :dc_dump_limit,
-      :send_compressed,
-      :schema
-    ]
+    [:access_module, :allow_index_on_key, :auto_repair,
+                                              :backup_module, :debug, :dir,
+                                                                          :dump_disc_copies_at_startup,
+                                                                              :dump_log_load_regulation,
+                                                                                  :dump_log_time_threshold,
+                                                                                      :dump_log_update_in_place,
+                                                                                          :dump_log_write_threshold,
+                                                                                              :event_module,
+                                                                                                  :extra_db_nodes,
+                                                                                                      :ignore_fallback_at_startup,
+                                                                                                          :fallback_error_function,
+                                                                                                              :fold_chunk_size,
+                                                                                                                  :max_wait_for_decision,
+                                                                                                                      :schema_location,
+                                                                                                                          :core_dir,
+                                                                                                                              :pid_sort_order,
+                                                                                                                                  :no_table_loaders,
+                                                                                                                                      :dc_dump_limit,
+                                                                                                                                          :send_compressed,
+                                                                                                                                              :max_transfer_size,
+                                                                                                                                                  :schema]
   end
 
   defp default_env(:access_module) do
@@ -943,6 +822,10 @@ defmodule :m_mnesia_monitor do
     0
   end
 
+  defp default_env(:max_transfer_size) do
+    64000
+  end
+
   defp default_env(:schema) do
     []
   end
@@ -1009,7 +892,7 @@ defmodule :m_mnesia_monitor do
   end
 
   def do_check_type(:dump_log_time_threshold, i)
-      when is_integer(i) and i > 0 do
+      when (is_integer(i) and i > 0) do
     i
   end
 
@@ -1018,7 +901,7 @@ defmodule :m_mnesia_monitor do
   end
 
   def do_check_type(:dump_log_write_threshold, i)
-      when is_integer(i) and i > 0 do
+      when (is_integer(i) and i > 0) do
     i
   end
 
@@ -1031,26 +914,22 @@ defmodule :m_mnesia_monitor do
   end
 
   def do_check_type(:fallback_error_function, {mod, func})
-      when is_atom(mod) and is_atom(func) do
+      when (is_atom(mod) and is_atom(func)) do
     {mod, func}
   end
 
   def do_check_type(:extra_db_nodes, l) when is_list(l) do
-    fun = fn
-      n when n == node() ->
-        false
-
-      a when is_atom(a) ->
-        true
-    end
-
+    fun = fn n when n == node() ->
+               false
+             a when is_atom(a) ->
+               true
+          end
     :lists.filter(fun, l)
   end
 
-  def do_check_type(:fold_chunk_size, i)
-      when (is_integer(i) and
-              i > 0) or
-             i === :infinity do
+  def do_check_type(:fold_chunk_size, i) when (is_integer(i) and
+                                      i > 0) or
+                                     i === :infinity do
     i
   end
 
@@ -1059,7 +938,7 @@ defmodule :m_mnesia_monitor do
   end
 
   def do_check_type(:max_wait_for_decision, i)
-      when is_integer(i) and i > 0 do
+      when (is_integer(i) and i > 0) do
     i
   end
 
@@ -1099,22 +978,24 @@ defmodule :m_mnesia_monitor do
     false
   end
 
-  def do_check_type(:no_table_loaders, n)
-      when is_integer(n) and
-             n > 0 do
+  def do_check_type(:no_table_loaders, n) when (is_integer(n) and
+                                       n > 0) do
     n
   end
 
-  def do_check_type(:dc_dump_limit, n)
-      when is_number(n) and
-             n > 0 do
+  def do_check_type(:dc_dump_limit, n) when (is_number(n) and
+                                    n > 0) do
     n
   end
 
-  def do_check_type(:send_compressed, l)
-      when is_integer(l) and
-             l >= 0 and l <= 9 do
+  def do_check_type(:send_compressed, l) when (is_integer(l) and
+                                      l >= 0 and l <= 9) do
     l
+  end
+
+  def do_check_type(:max_transfer_size, n) when (is_integer(n) and
+                                        n > 0) do
+    n
   end
 
   def do_check_type(:schema, l) when is_list(l) do
@@ -1155,11 +1036,8 @@ defmodule :m_mnesia_monitor do
   end
 
   def detect_partitioned_network(mon, node) do
-    detect_inconcistency(
-      [node],
-      :running_partitioned_network
-    )
-
+    detect_inconcistency([node],
+                           :running_partitioned_network)
     :erlang.unlink(mon)
     exit(:normal)
   end
@@ -1169,26 +1047,22 @@ defmodule :m_mnesia_monitor do
   end
 
   def detect_inconcistency(nodes, context) do
-    downs =
-      for n <- nodes,
-          :mnesia_recover.has_mnesia_down(n) do
-        n
-      end
-
-    {replies, _BadNodes} =
-      :rpc.multicall(downs, :mnesia_monitor, :has_remote_mnesia_down, [node()])
-
+    downs = (for n <- nodes,
+                   :mnesia_recover.has_mnesia_down(n) do
+               n
+             end)
+    {replies, _BadNodes} = :rpc.multicall(downs,
+                                            :mnesia_monitor,
+                                            :has_remote_mnesia_down, [node()])
     report_inconsistency(replies, context, :ok)
   end
 
   def has_remote_mnesia_down(node) do
     hasDown = :mnesia_recover.has_mnesia_down(node)
     master = :mnesia_recover.get_master_nodes(:schema)
-
     cond do
-      hasDown == true and master == [] ->
+      (hasDown == true and master == []) ->
         {true, node()}
-
       true ->
         {false, node()}
     end
@@ -1197,14 +1071,16 @@ defmodule :m_mnesia_monitor do
   defp report_inconsistency([{true, node} | replies], context, _Status) do
     msg = {:inconsistent_database, context, node}
     :mnesia_lib.report_system_event(msg)
-    report_inconsistency(replies, context, :inconsistent_database)
+    report_inconsistency(replies, context,
+                           :inconsistent_database)
   end
 
   defp report_inconsistency([{false, _Node} | replies], context, status) do
     report_inconsistency(replies, context, status)
   end
 
-  defp report_inconsistency([{:badrpc, _Reason} | replies], context, status) do
+  defp report_inconsistency([{:badrpc, _Reason} | replies], context,
+            status) do
     report_inconsistency(replies, context, status)
   end
 
@@ -1214,61 +1090,54 @@ defmodule :m_mnesia_monitor do
 
   defp remote_node_status(node, status, state) do
     {:ok, nodes} = :mnesia_schema.read_nodes()
-
-    case :lists.member(node, nodes) do
+    case (:lists.member(node, nodes)) do
       true ->
         update_node_status({node, status}, state)
-
       _ ->
         state
     end
   end
 
-  defp update_node_status(
-         {node, :down},
-         state = r_state(remote_node_status: rNodeS)
-       ) do
+  defp update_node_status({node, :down},
+            state = r_state(remote_node_status: rNodeS)) do
     rNodeS2 = :lists.ukeymerge(1, [{node, :down}], rNodeS)
     r_state(state, remote_node_status: rNodeS2)
   end
 
-  defp update_node_status(
-         {node, :up},
-         state = r_state(remote_node_status: rNodeS)
-       ) do
-    case :lists.keyfind(node, 1, rNodeS) do
+  defp update_node_status({node, :up},
+            state = r_state(remote_node_status: rNodeS)) do
+    case (:lists.keyfind(node, 1, rNodeS)) do
       {^node, :down} ->
         rNodeS2 = :lists.ukeymerge(1, [{node, :up}], rNodeS)
         r_state(state, remote_node_status: rNodeS2)
-
       _ ->
         state
     end
   end
 
   defp check_raise_conditon_nodeup(node, state = r_state(remote_node_status: rNodeS)) do
-    case :lists.keyfind(node, 1, rNodeS) do
+    case (:lists.keyfind(node, 1, rNodeS)) do
       {^node, :up} ->
         send(self(), {:check_nodeup, node})
-
       _ ->
         :ignore
     end
-
-    r_state(state, remote_node_status: :lists.keydelete(node, 1, rNodeS))
+    r_state(state, remote_node_status: :lists.keydelete(node, 1,
+                                                    rNodeS))
   end
 
   defp check_mnesia_down(node, state = r_state(remote_node_status: rNodeS)) do
     hasDown = :mnesia_recover.has_mnesia_down(node)
     imRunning = :mnesia_lib.is_running()
-
     cond do
-      hasDown == true and imRunning == :yes ->
-        spawn_link(:mnesia_monitor, :detect_partitioned_network, [self(), node])
-        r_state(state, remote_node_status: :lists.keydelete(node, 1, rNodeS))
-
+      (hasDown == true and imRunning == :yes) ->
+        spawn_link(:mnesia_monitor, :detect_partitioned_network,
+                     [self(), node])
+        r_state(state, remote_node_status: :lists.keydelete(node, 1,
+                                                        rNodeS))
       true ->
         state
     end
   end
+
 end

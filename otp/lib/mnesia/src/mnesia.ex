@@ -2,70 +2,38 @@ defmodule :m_mnesia do
   use Bitwise
   import :mnesia_lib, only: [verbose: 2]
   require Record
-
-  Record.defrecord(:r_tid, :tid,
-    counter: :undefined,
-    pid: :undefined
-  )
-
-  Record.defrecord(:r_tidstore, :tidstore, store: :undefined, up_stores: [], level: 1)
-
-  Record.defrecord(:r_cstruct, :cstruct,
-    name: :undefined,
-    type: :set,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    external_copies: [],
-    load_order: 0,
-    access_mode: :read_write,
-    majority: false,
-    index: [],
-    snmp: [],
-    local_content: false,
-    record_name: {:bad_record_name},
-    attributes: [:key, :val],
-    user_properties: [],
-    frag_properties: [],
-    storage_properties: [],
-    cookie:
-      {{:erlang.monotonic_time() + :erlang.time_offset(), :erlang.unique_integer(), 1}, node()},
-    version: {{2, 0}, []}
-  )
-
-  Record.defrecord(:r_log_header, :log_header,
-    log_kind: :undefined,
-    log_version: :undefined,
-    mnesia_version: :undefined,
-    node: :undefined,
-    now: :undefined
-  )
-
-  Record.defrecord(:r_commit, :commit,
-    node: :undefined,
-    decision: :undefined,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    ext: [],
-    schema_ops: []
-  )
-
-  Record.defrecord(:r_decision, :decision,
-    tid: :undefined,
-    outcome: :undefined,
-    disc_nodes: :undefined,
-    ram_nodes: :undefined
-  )
-
-  Record.defrecord(:r_cyclic, :cyclic,
-    node: node(),
-    oid: :undefined,
-    op: :undefined,
-    lock: :undefined,
-    lucky: :undefined
-  )
-
+  Record.defrecord(:r_tid, :tid, counter: :undefined,
+                               pid: :undefined)
+  Record.defrecord(:r_tidstore, :tidstore, store: :undefined,
+                                    up_stores: [], level: 1)
+  Record.defrecord(:r_cstruct, :cstruct, name: :undefined,
+                                   type: :set, ram_copies: [], disc_copies: [],
+                                   disc_only_copies: [], external_copies: [],
+                                   load_order: 0, access_mode: :read_write,
+                                   majority: false, index: [], snmp: [],
+                                   local_content: false,
+                                   record_name: {:bad_record_name},
+                                   attributes: [:key, :val],
+                                   user_properties: [], frag_properties: [],
+                                   storage_properties: [],
+                                   cookie: {{:erlang.monotonic_time() + :erlang.time_offset(),
+                                               :erlang.unique_integer(), 1},
+                                              node()},
+                                   version: {{2, 0}, []})
+  Record.defrecord(:r_log_header, :log_header, log_kind: :undefined,
+                                      log_version: :undefined,
+                                      mnesia_version: :undefined,
+                                      node: :undefined, now: :undefined)
+  Record.defrecord(:r_commit, :commit, node: :undefined,
+                                  decision: :undefined, ram_copies: [],
+                                  disc_copies: [], disc_only_copies: [],
+                                  ext: [], schema_ops: [])
+  Record.defrecord(:r_decision, :decision, tid: :undefined,
+                                    outcome: :undefined, disc_nodes: :undefined,
+                                    ram_nodes: :undefined)
+  Record.defrecord(:r_cyclic, :cyclic, node: node(),
+                                  oid: :undefined, op: :undefined,
+                                  lock: :undefined, lucky: :undefined)
   defp val(var) do
     case (try do
             :ets.lookup_element(:mnesia_gvar, var, 2)
@@ -75,17 +43,15 @@ defmodule :m_mnesia do
           end) do
       {:EXIT, stacktrace} ->
         :mnesia_lib.other_val(var, stacktrace)
-
       value ->
         value
     end
   end
 
   defp is_dollar_digits(var) do
-    case :erlang.atom_to_list(var) do
+    case (:erlang.atom_to_list(var)) do
       [?$ | digs] ->
         is_digits(digs)
-
       _ ->
         false
     end
@@ -93,9 +59,8 @@ defmodule :m_mnesia do
 
   defp is_digits([dig | tail]) do
     cond do
-      ?0 <= dig and dig <= ?9 ->
+      (?0 <= dig and dig <= ?9) ->
         is_digits(tail)
-
       true ->
         false
     end
@@ -109,10 +74,8 @@ defmodule :m_mnesia do
     cond do
       x == :_ ->
         true
-
       is_atom(x) ->
         is_dollar_digits(x)
-
       true ->
         false
     end
@@ -123,10 +86,9 @@ defmodule :m_mnesia do
   end
 
   def has_var([h | t]) do
-    case has_var(h) do
+    case (has_var(h)) do
       false ->
         has_var(t)
-
       other ->
         other
     end
@@ -141,10 +103,9 @@ defmodule :m_mnesia do
   end
 
   defp e_has_var(x, pos) do
-    case has_var(:erlang.element(pos, x)) do
+    case (has_var(:erlang.element(pos, x))) do
       false ->
         e_has_var(x, pos - 1)
-
       other ->
         other
     end
@@ -155,18 +116,16 @@ defmodule :m_mnesia do
   end
 
   defp start_() do
-    {time, res} = :timer.tc(:application, :start, [:mnesia, :temporary])
-    secs = div(time, 1_000_000)
-
-    case res do
+    {time, res} = :timer.tc(:application, :start,
+                              [:mnesia, :temporary])
+    secs = div(time, 1000000)
+    case (res) do
       :ok ->
         verbose('Mnesia started, ~p seconds~n', [secs])
         :ok
-
       {:error, {:already_started, :mnesia}} ->
         verbose('Mnesia already started, ~p seconds~n', [secs])
         :ok
-
       {:error, r} ->
         verbose('Mnesia failed to start, ~p seconds: ~p~n', [secs, r])
         {:error, r}
@@ -174,10 +133,9 @@ defmodule :m_mnesia do
   end
 
   def start(extraEnv) when is_list(extraEnv) do
-    case :mnesia_lib.ensure_loaded(:mnesia) do
+    case (:mnesia_lib.ensure_loaded(:mnesia)) do
       :ok ->
         patched_start(extraEnv)
-
       error ->
         error
     end
@@ -188,10 +146,9 @@ defmodule :m_mnesia do
   end
 
   defp patched_start([{env, val} | tail]) when is_atom(env) do
-    case :mnesia_monitor.patch_env(env, val) do
+    case (:mnesia_monitor.patch_env(env, val)) do
       {:error, reason} ->
         {:error, reason}
-
       _NewVal ->
         patched_start(tail)
     end
@@ -206,13 +163,11 @@ defmodule :m_mnesia do
   end
 
   def stop() do
-    case :application.stop(:mnesia) do
+    case (:application.stop(:mnesia)) do
       :ok ->
         :stopped
-
       {:error, {:not_started, :mnesia}} ->
         :stopped
-
       other ->
         other
     end
@@ -222,14 +177,12 @@ defmodule :m_mnesia do
     :mnesia_controller.connect_nodes(ns)
   end
 
-  def change_config(:dc_dump_limit, n)
-      when is_number(n) and
-             n > 0 do
-    case :mnesia_lib.is_running() do
+  def change_config(:dc_dump_limit, n) when (is_number(n) and
+                                    n > 0) do
+    case (:mnesia_lib.is_running()) do
       :yes ->
         :mnesia_lib.set(:dc_dump_limit, n)
         {:ok, n}
-
       _ ->
         {:error, {:not_started, :mnesia}}
     end
@@ -252,37 +205,32 @@ defmodule :m_mnesia do
   end
 
   def ms() do
-    [
-      :mnesia,
-      :mnesia_app,
-      :mnesia_backup,
-      :mnesia_bup,
-      :mnesia_checkpoint,
-      :mnesia_checkpoint_sup,
-      :mnesia_controller,
-      :mnesia_dumper,
-      :mnesia_loader,
-      :mnesia_frag,
-      :mnesia_frag_hash,
-      :mnesia_index,
-      :mnesia_kernel_sup,
-      :mnesia_late_loader,
-      :mnesia_lib,
-      :mnesia_log,
-      :mnesia_registry,
-      :mnesia_schema,
-      :mnesia_snmp_hook,
-      :mnesia_snmp_sup,
-      :mnesia_subscr,
-      :mnesia_sup,
-      :mnesia_text,
-      :mnesia_tm,
-      :mnesia_recover,
-      :mnesia_locker,
-      :mnesia_ext_sup,
-      :mnesia_monitor,
-      :mnesia_event
-    ]
+    [:mnesia_sup, :mnesia_kernel_sup,
+                      :mnesia_checkpoint_sup, :mnesia_snmp_sup,
+                                                  :mnesia_ext_sup, :mnesia,
+                                                                       :mnesia_app,
+                                                                           :mnesia_backup,
+                                                                               :mnesia_bup,
+                                                                                   :mnesia_checkpoint,
+                                                                                       :mnesia_controller,
+                                                                                           :mnesia_dumper,
+                                                                                               :mnesia_loader,
+                                                                                                   :mnesia_frag,
+                                                                                                       :mnesia_frag_hash,
+                                                                                                           :mnesia_index,
+                                                                                                               :mnesia_late_loader,
+                                                                                                                   :mnesia_lib,
+                                                                                                                       :mnesia_log,
+                                                                                                                           :mnesia_registry,
+                                                                                                                               :mnesia_schema,
+                                                                                                                                   :mnesia_snmp_hook,
+                                                                                                                                       :mnesia_subscr,
+                                                                                                                                           :mnesia_text,
+                                                                                                                                               :mnesia_tm,
+                                                                                                                                                   :mnesia_recover,
+                                                                                                                                                       :mnesia_locker,
+                                                                                                                                                           :mnesia_monitor,
+                                                                                                                                                               :mnesia_event]
   end
 
   def abort(reason = {:aborted, _}) do
@@ -294,70 +242,79 @@ defmodule :m_mnesia do
   end
 
   def is_transaction() do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {_, tid, _Ts} when :erlang.element(1, tid) == :tid ->
         true
-
       _ ->
         false
     end
   end
 
   def transaction(fun) do
-    transaction(:erlang.get(:mnesia_activity_state), fun, [], :infinity, :mnesia, :async)
+    transaction(:erlang.get(:mnesia_activity_state), fun,
+                  [], :infinity, :mnesia, :async)
   end
 
-  def transaction(fun, retries)
-      when is_integer(retries) and
-             retries >= 0 do
-    transaction(:erlang.get(:mnesia_activity_state), fun, [], retries, :mnesia, :async)
+  def transaction(fun, retries) when (is_integer(retries) and
+                               retries >= 0) do
+    transaction(:erlang.get(:mnesia_activity_state), fun,
+                  [], retries, :mnesia, :async)
   end
 
   def transaction(fun, retries) when retries == :infinity do
-    transaction(:erlang.get(:mnesia_activity_state), fun, [], retries, :mnesia, :async)
+    transaction(:erlang.get(:mnesia_activity_state), fun,
+                  [], retries, :mnesia, :async)
   end
 
   def transaction(fun, args) do
-    transaction(:erlang.get(:mnesia_activity_state), fun, args, :infinity, :mnesia, :async)
+    transaction(:erlang.get(:mnesia_activity_state), fun,
+                  args, :infinity, :mnesia, :async)
   end
 
   def transaction(fun, args, retries) do
-    transaction(:erlang.get(:mnesia_activity_state), fun, args, retries, :mnesia, :async)
+    transaction(:erlang.get(:mnesia_activity_state), fun,
+                  args, retries, :mnesia, :async)
   end
 
   def sync_transaction(fun) do
-    transaction(:erlang.get(:mnesia_activity_state), fun, [], :infinity, :mnesia, :sync)
+    transaction(:erlang.get(:mnesia_activity_state), fun,
+                  [], :infinity, :mnesia, :sync)
   end
 
-  def sync_transaction(fun, retries)
-      when is_integer(retries) and
-             retries >= 0 do
-    transaction(:erlang.get(:mnesia_activity_state), fun, [], retries, :mnesia, :sync)
+  def sync_transaction(fun, retries) when (is_integer(retries) and
+                               retries >= 0) do
+    transaction(:erlang.get(:mnesia_activity_state), fun,
+                  [], retries, :mnesia, :sync)
   end
 
   def sync_transaction(fun, retries) when retries == :infinity do
-    transaction(:erlang.get(:mnesia_activity_state), fun, [], retries, :mnesia, :sync)
+    transaction(:erlang.get(:mnesia_activity_state), fun,
+                  [], retries, :mnesia, :sync)
   end
 
   def sync_transaction(fun, args) do
-    transaction(:erlang.get(:mnesia_activity_state), fun, args, :infinity, :mnesia, :sync)
+    transaction(:erlang.get(:mnesia_activity_state), fun,
+                  args, :infinity, :mnesia, :sync)
   end
 
   def sync_transaction(fun, args, retries) do
-    transaction(:erlang.get(:mnesia_activity_state), fun, args, retries, :mnesia, :sync)
+    transaction(:erlang.get(:mnesia_activity_state), fun,
+                  args, retries, :mnesia, :sync)
   end
 
   defp transaction(state, fun, args, retries, mod, kind)
-       when is_function(fun) and is_list(args) and
-              retries == :infinity and is_atom(mod) do
-    :mnesia_tm.transaction(state, fun, args, retries, mod, kind)
+      when (is_function(fun) and is_list(args) and
+              retries == :infinity and is_atom(mod)) do
+    :mnesia_tm.transaction(state, fun, args, retries, mod,
+                             kind)
   end
 
   defp transaction(state, fun, args, retries, mod, kind)
-       when is_function(fun) and is_list(args) and
+      when (is_function(fun) and is_list(args) and
               is_integer(retries) and retries >= 0 and
-              is_atom(mod) do
-    :mnesia_tm.transaction(state, fun, args, retries, mod, kind)
+              is_atom(mod)) do
+    :mnesia_tm.transaction(state, fun, args, retries, mod,
+                             kind)
   end
 
   defp transaction(_State, fun, args, retries, mod, _Kind) do
@@ -365,9 +322,10 @@ defmodule :m_mnesia do
   end
 
   defp non_transaction(state, fun, args, activityKind, mod)
-       when is_function(fun) and is_list(args) and
-              is_atom(mod) do
-    :mnesia_tm.non_transaction(state, fun, args, activityKind, mod)
+      when (is_function(fun) and is_list(args) and
+              is_atom(mod)) do
+    :mnesia_tm.non_transaction(state, fun, args,
+                                 activityKind, mod)
   end
 
   defp non_transaction(_State, fun, args, _ActivityKind, _Mod) do
@@ -379,7 +337,8 @@ defmodule :m_mnesia do
   end
 
   def async_dirty(fun, args) do
-    non_transaction(:erlang.get(:mnesia_activity_state), fun, args, :async_dirty, :mnesia)
+    non_transaction(:erlang.get(:mnesia_activity_state),
+                      fun, args, :async_dirty, :mnesia)
   end
 
   def sync_dirty(fun) do
@@ -387,7 +346,8 @@ defmodule :m_mnesia do
   end
 
   def sync_dirty(fun, args) do
-    non_transaction(:erlang.get(:mnesia_activity_state), fun, args, :sync_dirty, :mnesia)
+    non_transaction(:erlang.get(:mnesia_activity_state),
+                      fun, args, :sync_dirty, :mnesia)
   end
 
   def ets(fun) do
@@ -395,7 +355,8 @@ defmodule :m_mnesia do
   end
 
   def ets(fun, args) do
-    non_transaction(:erlang.get(:mnesia_activity_state), fun, args, :ets, :mnesia)
+    non_transaction(:erlang.get(:mnesia_activity_state),
+                      fun, args, :ets, :mnesia)
   end
 
   def activity(kind, fun) do
@@ -403,7 +364,8 @@ defmodule :m_mnesia do
   end
 
   def activity(kind, fun, args) when is_list(args) do
-    activity(kind, fun, args, :mnesia_monitor.get_env(:access_module))
+    activity(kind, fun, args,
+               :mnesia_monitor.get_env(:access_module))
   end
 
   def activity(kind, fun, mod) do
@@ -412,52 +374,42 @@ defmodule :m_mnesia do
 
   def activity(kind, fun, args, mod) do
     state = :erlang.get(:mnesia_activity_state)
-
-    case kind do
+    case (kind) do
       :ets ->
         non_transaction(state, fun, args, kind, mod)
-
       :async_dirty ->
         non_transaction(state, fun, args, kind, mod)
-
       :sync_dirty ->
         non_transaction(state, fun, args, kind, mod)
-
       :transaction ->
         wrap_trans(state, fun, args, :infinity, mod, :async)
-
       {:transaction, retries} ->
         wrap_trans(state, fun, args, retries, mod, :async)
-
       :sync_transaction ->
         wrap_trans(state, fun, args, :infinity, mod, :sync)
-
       {:sync_transaction, retries} ->
         wrap_trans(state, fun, args, retries, mod, :sync)
-
       _ ->
         {:aborted, {:bad_type, kind}}
     end
   end
 
   defp wrap_trans(state, fun, args, retries, mod, kind) do
-    case transaction(state, fun, args, retries, mod, kind) do
+    case (transaction(state, fun, args, retries, mod,
+                        kind)) do
       {:atomic, goodRes} ->
         goodRes
-
       badRes ->
         exit(badRes)
     end
   end
 
   def lock(lockItem, lockKind) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         lock(tid, ts, lockItem, lockKind)
-
       {mod, tid, ts} ->
         mod.lock(tid, ts, lockItem, lockKind)
-
       _ ->
         abort(:no_transaction)
     end
@@ -468,22 +420,18 @@ defmodule :m_mnesia do
   end
 
   def lock(tid, ts, lockItem, lockKind) do
-    case :erlang.element(1, tid) do
+    case (:erlang.element(1, tid)) do
       :tid ->
-        case lockItem do
+        case (lockItem) do
           {:record, tab, key} ->
             lock_record(tid, ts, tab, key, lockKind)
-
           {:table, tab} ->
             lock_table(tid, ts, tab, lockKind)
-
           {:global, globalKey, nodes} ->
             global_lock(tid, ts, globalKey, lockKind, nodes)
-
           _ ->
             abort({:bad_type, lockItem})
         end
-
       _Protocol ->
         []
     end
@@ -500,23 +448,18 @@ defmodule :m_mnesia do
   end
 
   defp lock_record(tid, ts, tab, key, lockKind)
-       when is_atom(tab) do
+      when is_atom(tab) do
     store = r_tidstore(ts, :store)
     oid = {tab, key}
-
-    case lockKind do
+    case (lockKind) do
       :read ->
         :mnesia_locker.rlock(tid, store, oid)
-
       :write ->
         :mnesia_locker.wlock(tid, store, oid)
-
       :sticky_write ->
         :mnesia_locker.sticky_wlock(tid, store, oid)
-
       :none ->
         []
-
       _ ->
         abort({:bad_type, tab, lockKind})
     end
@@ -528,23 +471,17 @@ defmodule :m_mnesia do
 
   defp lock_table(tid, ts, tab, lockKind) when is_atom(tab) do
     store = r_tidstore(ts, :store)
-
-    case lockKind do
+    case (lockKind) do
       :read ->
         :mnesia_locker.rlock_table(tid, store, tab)
-
       :write ->
         :mnesia_locker.wlock_table(tid, store, tab)
-
       :load ->
         :mnesia_locker.load_lock_table(tid, store, tab)
-
       :sticky_write ->
         :mnesia_locker.sticky_wlock_table(tid, store, tab)
-
       :none ->
         []
-
       _ ->
         abort({:bad_type, tab, lockKind})
     end
@@ -555,20 +492,18 @@ defmodule :m_mnesia do
   end
 
   defp global_lock(tid, ts, item, kind, nodes)
-       when is_list(nodes) do
-    case :erlang.element(1, tid) do
+      when is_list(nodes) do
+    case (:erlang.element(1, tid)) do
       :tid ->
         store = r_tidstore(ts, :store)
         goodNs = good_global_nodes(nodes)
-
         cond do
-          kind != :read and kind != :write ->
+          (kind != :read and kind != :write) ->
             abort({:bad_type, kind})
-
           true ->
-            :mnesia_locker.global_lock(tid, store, item, kind, goodNs)
+            :mnesia_locker.global_lock(tid, store, item, kind,
+                                         goodNs)
         end
-
       _Protocol ->
         []
     end
@@ -583,9 +518,8 @@ defmodule :m_mnesia do
     :mnesia_lib.intersect(nodes, recover)
   end
 
-  def write(val)
-      when is_tuple(val) and
-             tuple_size(val) > 2 do
+  def write(val) when (is_tuple(val) and
+                      tuple_size(val) > 2) do
     tab = :erlang.element(1, val)
     write(tab, val, :write)
   end
@@ -594,51 +528,42 @@ defmodule :m_mnesia do
     abort({:bad_type, val})
   end
 
-  def s_write(val)
-      when is_tuple(val) and
-             tuple_size(val) > 2 do
+  def s_write(val) when (is_tuple(val) and
+                      tuple_size(val) > 2) do
     tab = :erlang.element(1, val)
     write(tab, val, :sticky_write)
   end
 
   def write(tab, val, lockKind) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         write(tid, ts, tab, val, lockKind)
-
       {mod, tid, ts} ->
         mod.write(tid, ts, tab, val, lockKind)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
   def write(tid, ts, tab, val, lockKind)
-      when is_atom(tab) and tab != :schema and
-             is_tuple(val) and tuple_size(val) > 2 do
-    case :erlang.element(1, tid) do
+      when (is_atom(tab) and tab != :schema and
+              is_tuple(val) and tuple_size(val) > 2) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         :ets.insert(tab, val)
         :ok
-
       :tid ->
         store = r_tidstore(ts, :store)
         oid = {tab, :erlang.element(2, val)}
-
-        case lockKind do
+        case (lockKind) do
           :write ->
             :mnesia_locker.wlock(tid, store, oid)
-
           :sticky_write ->
             :mnesia_locker.sticky_wlock(tid, store, oid)
-
           _ ->
             abort({:bad_type, tab, lockKind})
         end
-
         write_to_store(tab, store, oid, val)
-
       protocol ->
         do_dirty_write(protocol, tab, val)
     end
@@ -651,16 +576,13 @@ defmodule :m_mnesia do
   defp write_to_store(tab, store, oid, val) do
     {_, _, type} = :mnesia_lib.validate_record(tab, val)
     ^oid = {tab, :erlang.element(2, val)}
-
-    case type do
+    case (type) do
       :bag ->
         :ets.insert(store, {oid, val, :write})
-
       _ ->
         :ets.delete(store, oid)
         :ets.insert(store, {oid, val, :write})
     end
-
     :ok
   end
 
@@ -681,44 +603,36 @@ defmodule :m_mnesia do
   end
 
   def delete(tab, key, lockKind) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         delete(tid, ts, tab, key, lockKind)
-
       {mod, tid, ts} ->
         mod.delete(tid, ts, tab, key, lockKind)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
   def delete(tid, ts, tab, key, lockKind)
-      when is_atom(tab) and tab != :schema do
-    case :erlang.element(1, tid) do
+      when (is_atom(tab) and tab != :schema) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         :ets.delete(tab, key)
         :ok
-
       :tid ->
         store = r_tidstore(ts, :store)
         oid = {tab, key}
-
-        case lockKind do
+        case (lockKind) do
           :write ->
             :mnesia_locker.wlock(tid, store, oid)
-
           :sticky_write ->
             :mnesia_locker.sticky_wlock(tid, store, oid)
-
           _ ->
             abort({:bad_type, tab, lockKind})
         end
-
         :ets.delete(store, oid)
         :ets.insert(store, {oid, oid, :delete})
         :ok
-
       protocol ->
         do_dirty_delete(protocol, tab, key)
     end
@@ -728,9 +642,8 @@ defmodule :m_mnesia do
     abort({:bad_type, tab})
   end
 
-  def delete_object(val)
-      when is_tuple(val) and
-             tuple_size(val) > 2 do
+  def delete_object(val) when (is_tuple(val) and
+                      tuple_size(val) > 2) do
     tab = :erlang.element(1, val)
     delete_object(tab, val, :write)
   end
@@ -739,9 +652,8 @@ defmodule :m_mnesia do
     abort({:bad_type, val})
   end
 
-  def s_delete_object(val)
-      when is_tuple(val) and
-             tuple_size(val) > 2 do
+  def s_delete_object(val) when (is_tuple(val) and
+                      tuple_size(val) > 2) do
     tab = :erlang.element(1, val)
     delete_object(tab, val, :sticky_write)
   end
@@ -751,25 +663,22 @@ defmodule :m_mnesia do
   end
 
   def delete_object(tab, val, lockKind) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         delete_object(tid, ts, tab, val, lockKind)
-
       {mod, tid, ts} ->
         mod.delete_object(tid, ts, tab, val, lockKind)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
   def delete_object(tid, ts, tab, val, lockKind)
-      when is_atom(tab) and tab != :schema and
-             is_tuple(val) and tuple_size(val) > 2 do
-    case has_var(val) do
+      when (is_atom(tab) and tab != :schema and
+              is_tuple(val) and tuple_size(val) > 2) do
+    case (has_var(val)) do
       false ->
         do_delete_object(tid, ts, tab, val, lockKind)
-
       true ->
         abort({:bad_type, tab, val})
     end
@@ -780,58 +689,46 @@ defmodule :m_mnesia do
   end
 
   defp do_delete_object(tid, ts, tab, val, lockKind) do
-    case :erlang.element(1, tid) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         :ets.match_delete(tab, val)
         :ok
-
       :tid ->
         store = r_tidstore(ts, :store)
         oid = {tab, :erlang.element(2, val)}
-
-        case lockKind do
+        case (lockKind) do
           :write ->
             :mnesia_locker.wlock(tid, store, oid)
-
           :sticky_write ->
             :mnesia_locker.sticky_wlock(tid, store, oid)
-
           _ ->
             abort({:bad_type, tab, lockKind})
         end
-
-        case val({tab, :setorbag}) do
+        case (val({tab, :setorbag})) do
           :bag ->
             :ets.match_delete(store, {oid, val, :_})
             :ets.insert(store, {oid, val, :delete_object})
-
           _ ->
-            case :ets.match_object(
-                   store,
-                   {oid, :_, :write}
-                 ) ++
-                   :ets.match_object(
-                     store,
-                     {oid, :_, :delete}
-                   ) do
+            case (:ets.match_object(store,
+                                      {oid, :_,
+                                         :write}) ++ :ets.match_object(store,
+                                                                         {oid,
+                                                                            :_,
+                                                                            :delete})) do
               [] ->
                 :ets.match_delete(store, {oid, val, :_})
                 :ets.insert(store, {oid, val, :delete_object})
-
               ops ->
-                case :lists.member({oid, val, :write}, ops) do
+                case (:lists.member({oid, val, :write}, ops)) do
                   true ->
                     :ets.delete(store, oid)
                     :ets.insert(store, {oid, oid, :delete})
-
                   false ->
                     :ok
                 end
             end
         end
-
         :ok
-
       protocol ->
         do_dirty_delete_object(protocol, tab, val)
     end
@@ -858,46 +755,38 @@ defmodule :m_mnesia do
   end
 
   def read(tab, key, lockKind) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         read(tid, ts, tab, key, lockKind)
-
       {mod, tid, ts} ->
         mod.read(tid, ts, tab, key, lockKind)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
   def read(tid, ts, tab, key, lockKind)
-      when is_atom(tab) and tab != :schema do
-    case :erlang.element(1, tid) do
+      when (is_atom(tab) and tab != :schema) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         :ets.lookup(tab, key)
-
       :tid ->
         store = r_tidstore(ts, :store)
         oid = {tab, key}
-
-        objsFun = fn ->
-          case lockKind do
-            :read ->
-              :mnesia_locker.rlock(tid, store, oid)
-
-            :write ->
-              :mnesia_locker.rwlock(tid, store, oid)
-
-            :sticky_write ->
-              :mnesia_locker.sticky_rwlock(tid, store, oid)
-
-            _ ->
-              abort({:bad_type, tab, lockKind})
-          end
-        end
-
-        add_written(:ets.lookup(store, oid), tab, objsFun, lockKind)
-
+        objsFun = fn () ->
+                       case (lockKind) do
+                         :read ->
+                           :mnesia_locker.rlock(tid, store, oid)
+                         :write ->
+                           :mnesia_locker.rwlock(tid, store, oid)
+                         :sticky_write ->
+                           :mnesia_locker.sticky_rwlock(tid, store, oid)
+                         _ ->
+                           abort({:bad_type, tab, lockKind})
+                       end
+                  end
+        add_written(:ets.lookup(store, oid), tab, objsFun,
+                      lockKind)
       _Protocol ->
         dirty_read(tab, key)
     end
@@ -908,31 +797,27 @@ defmodule :m_mnesia do
   end
 
   def first(tab) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         first(tid, ts, tab)
-
       {mod, tid, ts} ->
         mod.first(tid, ts, tab)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
-  def first(tid, ts, tab)
-      when is_atom(tab) and
-             tab != :schema do
-    case :erlang.element(1, tid) do
+  def first(tid, ts, tab) when (is_atom(tab) and
+                               tab != :schema) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         :ets.first(tab)
-
       :tid ->
         lock_table(tid, ts, tab, :read)
         do_fixtable(tab, ts)
         key = dirty_first(tab)
-        stored_keys(tab, key, :"$end_of_table", ts, :next, val({tab, :setorbag}))
-
+        stored_keys(tab, key, :"$end_of_table", ts, :next,
+                      val({tab, :setorbag}))
       _Protocol ->
         dirty_first(tab)
     end
@@ -943,31 +828,27 @@ defmodule :m_mnesia do
   end
 
   def last(tab) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         last(tid, ts, tab)
-
       {mod, tid, ts} ->
         mod.last(tid, ts, tab)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
-  def last(tid, ts, tab)
-      when is_atom(tab) and
-             tab != :schema do
-    case :erlang.element(1, tid) do
+  def last(tid, ts, tab) when (is_atom(tab) and
+                               tab != :schema) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         :ets.last(tab)
-
       :tid ->
         lock_table(tid, ts, tab, :read)
         do_fixtable(tab, ts)
         key = dirty_last(tab)
-        stored_keys(tab, key, :"$end_of_table", ts, :prev, val({tab, :setorbag}))
-
+        stored_keys(tab, key, :"$end_of_table", ts, :prev,
+                      val({tab, :setorbag}))
       _Protocol ->
         dirty_last(tab)
     end
@@ -978,39 +859,32 @@ defmodule :m_mnesia do
   end
 
   def next(tab, key) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         next(tid, ts, tab, key)
-
       {mod, tid, ts} ->
         mod.next(tid, ts, tab, key)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
-  def next(tid, ts, tab, key)
-      when is_atom(tab) and
-             tab != :schema do
-    case :erlang.element(1, tid) do
+  def next(tid, ts, tab, key) when (is_atom(tab) and
+                                    tab != :schema) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         :ets.next(tab, key)
-
       :tid ->
         lock_table(tid, ts, tab, :read)
         do_fixtable(tab, ts)
-
-        new =
-          try do
-            dirty_next(tab, key)
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-
-        stored_keys(tab, new, key, ts, :next, val({tab, :setorbag}))
-
+        new = (try do
+                 dirty_next(tab, key)
+               catch
+                 _, _Reason ->
+                   {:EXIT, _Reason}
+               end)
+        stored_keys(tab, new, key, ts, :next,
+                      val({tab, :setorbag}))
       _Protocol ->
         dirty_next(tab, key)
     end
@@ -1021,39 +895,32 @@ defmodule :m_mnesia do
   end
 
   def prev(tab, key) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         prev(tid, ts, tab, key)
-
       {mod, tid, ts} ->
         mod.prev(tid, ts, tab, key)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
-  def prev(tid, ts, tab, key)
-      when is_atom(tab) and
-             tab != :schema do
-    case :erlang.element(1, tid) do
+  def prev(tid, ts, tab, key) when (is_atom(tab) and
+                                    tab != :schema) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         :ets.prev(tab, key)
-
       :tid ->
         lock_table(tid, ts, tab, :read)
         do_fixtable(tab, ts)
-
-        new =
-          try do
-            dirty_prev(tab, key)
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-
-        stored_keys(tab, new, key, ts, :prev, val({tab, :setorbag}))
-
+        new = (try do
+                 dirty_prev(tab, key)
+               catch
+                 _, _Reason ->
+                   {:EXIT, _Reason}
+               end)
+        stored_keys(tab, new, key, ts, :prev,
+                      val({tab, :setorbag}))
       _Protocol ->
         dirty_prev(tab, key)
     end
@@ -1064,40 +931,30 @@ defmodule :m_mnesia do
   end
 
   defp stored_keys(tab, :"$end_of_table", prev, ts, op, type) do
-    case ts_keys(r_tidstore(ts, :store), tab, op, type, []) do
+    case (ts_keys(r_tidstore(ts, :store), tab, op, type, [])) do
       [] ->
         :"$end_of_table"
-
       keys when type == :ordered_set ->
         get_ordered_tskey(prev, keys, op)
-
       keys ->
         get_next_tskey(prev, keys, tab)
     end
   end
 
-  defp stored_keys(
-         tab,
-         {:EXIT, {:aborted, r = {:badarg, [tab, key]}}},
-         key,
-         r_tidstore(store: store),
-         op,
-         type
-       ) do
-    case :ets.match(store, {{tab, key}, :_, :"$1"}) do
+  defp stored_keys(tab,
+            {:EXIT, {:aborted, r = {:badarg, [tab, key]}}}, key,
+            r_tidstore(store: store), op, type) do
+    case (:ets.match(store, {{tab, key}, :_, :"$1"})) do
       [] ->
         abort(r)
-
       ops ->
-        case :lists.last(ops) do
+        case (:lists.last(ops)) do
           [:delete] ->
             abort(r)
-
           _ ->
-            case ts_keys(store, tab, op, type, []) do
+            case (ts_keys(store, tab, op, type, [])) do
               [] ->
                 :"$end_of_table"
-
               keys ->
                 get_next_tskey(key, keys, tab)
             end
@@ -1109,17 +966,16 @@ defmodule :m_mnesia do
     abort(r)
   end
 
-  defp stored_keys(tab, key, prev, r_tidstore(store: store), op, :ordered_set) do
-    case :ets.match(store, {{tab, key}, :_, :"$1"}) do
+  defp stored_keys(tab, key, prev, r_tidstore(store: store), op,
+            :ordered_set) do
+    case (:ets.match(store, {{tab, key}, :_, :"$1"})) do
       [] ->
         keys = ts_keys(store, tab, op, :ordered_set, [key])
         get_ordered_tskey(prev, keys, op)
-
       ops ->
-        case :lists.last(ops) do
+        case (:lists.last(ops)) do
           [:delete] ->
             apply(:mnesia, op, [tab, key])
-
           _ ->
             keys = ts_keys(store, tab, op, :ordered_set, [key])
             get_ordered_tskey(prev, keys, op)
@@ -1128,15 +984,13 @@ defmodule :m_mnesia do
   end
 
   defp stored_keys(tab, key, _, r_tidstore(store: store), op, _) do
-    case :ets.match(store, {{tab, key}, :_, :"$1"}) do
+    case (:ets.match(store, {{tab, key}, :_, :"$1"})) do
       [] ->
         key
-
       ops ->
-        case :lists.last(ops) do
+        case (:lists.last(ops)) do
           [:delete] ->
             apply(:mnesia, op, [tab, key])
-
           _ ->
             key
         end
@@ -1164,38 +1018,29 @@ defmodule :m_mnesia do
   end
 
   defp get_next_tskey(key, keys, tab) do
-    next =
-      cond do
-        key == :"$end_of_table" ->
-          hd(keys)
-
-        true ->
-          case :lists.dropwhile(
-                 fn a ->
-                   a != key
-                 end,
-                 keys
-               ) do
-            [] ->
-              hd(keys)
-
-            [^key] ->
-              :"$end_of_table"
-
-            [^key, next2 | _] ->
-              next2
-          end
-      end
-
-    case next do
+    next = (cond do
+              key == :"$end_of_table" ->
+                hd(keys)
+              true ->
+                case (:lists.dropwhile(fn a ->
+                                            a != key
+                                       end,
+                                         keys)) do
+                  [] ->
+                    hd(keys)
+                  [^key] ->
+                    :"$end_of_table"
+                  [^key, next2 | _] ->
+                    next2
+                end
+            end)
+    case (next) do
       :"$end_of_table" ->
         :"$end_of_table"
-
       _ ->
-        case dirty_read(tab, next) do
+        case (dirty_read(tab, next)) do
           [] ->
             next
-
           _ ->
             get_next_tskey(next, keys, tab)
         end
@@ -1205,17 +1050,13 @@ defmodule :m_mnesia do
   defp ts_keys(store, tab, op, type, def__) do
     all = :ets.match(store, {{tab, :"$1"}, :_, :"$2"})
     keys = ts_keys_1(all, def__)
-
     cond do
-      type == :ordered_set and op == :prev ->
+      (type == :ordered_set and op == :prev) ->
         :lists.reverse(:lists.sort(keys))
-
       type == :ordered_set ->
         :lists.sort(keys)
-
       op == :next ->
         :lists.reverse(keys)
-
       true ->
         keys
     end
@@ -1250,68 +1091,73 @@ defmodule :m_mnesia do
   end
 
   def foldl(fun, acc, tab, lockKind) when is_function(fun) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         foldl(tid, ts, fun, acc, tab, lockKind)
-
       {mod, tid, ts} ->
         mod.foldl(tid, ts, fun, acc, tab, lockKind)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
   def foldl(activityId, opaque, fun, acc, tab, lockKind) do
-    {type, prev} = init_iteration(activityId, opaque, tab, lockKind)
-
-    res =
-      try do
-        do_foldl(activityId, opaque, tab, dirty_first(tab), fun, acc, type, prev)
-      catch
-        _, _Reason ->
-          {:EXIT, _Reason}
-      end
-
+    {type, prev} = init_iteration(activityId, opaque, tab,
+                                    lockKind)
+    res = (try do
+             do_foldl(activityId, opaque, tab, dirty_first(tab), fun,
+                        acc, type, prev)
+           catch
+             _, _Reason ->
+               {:EXIT, _Reason}
+           end)
     close_iteration(res, tab)
   end
 
   defp do_foldl(a, o, tab, :"$end_of_table", fun, rAcc, _Type, stored) do
-    :lists.foldl(
-      fn key, acc ->
-        :lists.foldl(fun, acc, read(a, o, tab, key, :read))
-      end,
-      rAcc,
-      stored
-    )
+    :lists.foldl(fn key, acc ->
+                      :lists.foldl(fun, acc, read(a, o, tab, key, :read))
+                 end,
+                   rAcc, stored)
   end
 
-  defp do_foldl(a, o, tab, key, fun, acc, :ordered_set, [h | stored])
-       when h == key do
-    newAcc = :lists.foldl(fun, acc, read(a, o, tab, key, :read))
+  defp do_foldl(a, o, tab, key, fun, acc, :ordered_set,
+            [h | stored])
+      when h == key do
+    newAcc = :lists.foldl(fun, acc,
+                            read(a, o, tab, key, :read))
     {_, tid, ts} = :erlang.get(:mnesia_activity_state)
-    do_foldl(tid, ts, tab, dirty_next(tab, key), fun, newAcc, :ordered_set, stored)
+    do_foldl(tid, ts, tab, dirty_next(tab, key), fun,
+               newAcc, :ordered_set, stored)
   end
 
-  defp do_foldl(a, o, tab, key, fun, acc, :ordered_set, [h | stored])
-       when h < key do
-    newAcc = :lists.foldl(fun, acc, read(a, o, tab, h, :read))
+  defp do_foldl(a, o, tab, key, fun, acc, :ordered_set,
+            [h | stored])
+      when h < key do
+    newAcc = :lists.foldl(fun, acc,
+                            read(a, o, tab, h, :read))
     {_, tid, ts} = :erlang.get(:mnesia_activity_state)
-    do_foldl(tid, ts, tab, key, fun, newAcc, :ordered_set, stored)
+    do_foldl(tid, ts, tab, key, fun, newAcc, :ordered_set,
+               stored)
   end
 
-  defp do_foldl(a, o, tab, key, fun, acc, :ordered_set, [h | stored])
-       when h > key do
-    newAcc = :lists.foldl(fun, acc, read(a, o, tab, key, :read))
+  defp do_foldl(a, o, tab, key, fun, acc, :ordered_set,
+            [h | stored])
+      when h > key do
+    newAcc = :lists.foldl(fun, acc,
+                            read(a, o, tab, key, :read))
     {_, tid, ts} = :erlang.get(:mnesia_activity_state)
-    do_foldl(tid, ts, tab, dirty_next(tab, key), fun, newAcc, :ordered_set, [h | stored])
+    do_foldl(tid, ts, tab, dirty_next(tab, key), fun,
+               newAcc, :ordered_set, [h | stored])
   end
 
   defp do_foldl(a, o, tab, key, fun, acc, type, stored) do
-    newAcc = :lists.foldl(fun, acc, read(a, o, tab, key, :read))
+    newAcc = :lists.foldl(fun, acc,
+                            read(a, o, tab, key, :read))
     newStored = :ordsets.del_element(key, stored)
     {_, tid, ts} = :erlang.get(:mnesia_activity_state)
-    do_foldl(tid, ts, tab, dirty_next(tab, key), fun, newAcc, type, newStored)
+    do_foldl(tid, ts, tab, dirty_next(tab, key), fun,
+               newAcc, type, newStored)
   end
 
   def foldr(fun, acc, tab) do
@@ -1319,77 +1165,79 @@ defmodule :m_mnesia do
   end
 
   def foldr(fun, acc, tab, lockKind) when is_function(fun) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         foldr(tid, ts, fun, acc, tab, lockKind)
-
       {mod, tid, ts} ->
         mod.foldr(tid, ts, fun, acc, tab, lockKind)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
   def foldr(activityId, opaque, fun, acc, tab, lockKind) do
-    {type, tempPrev} = init_iteration(activityId, opaque, tab, lockKind)
-
-    prev =
-      cond do
-        type == :ordered_set ->
-          :lists.reverse(tempPrev)
-
-        true ->
-          tempPrev
-      end
-
-    res =
-      try do
-        do_foldr(activityId, opaque, tab, dirty_last(tab), fun, acc, type, prev)
-      catch
-        _, _Reason ->
-          {:EXIT, _Reason}
-      end
-
+    {type, tempPrev} = init_iteration(activityId, opaque,
+                                        tab, lockKind)
+    prev = (cond do
+              type == :ordered_set ->
+                :lists.reverse(tempPrev)
+              true ->
+                tempPrev
+            end)
+    res = (try do
+             do_foldr(activityId, opaque, tab, dirty_last(tab), fun,
+                        acc, type, prev)
+           catch
+             _, _Reason ->
+               {:EXIT, _Reason}
+           end)
     close_iteration(res, tab)
   end
 
   defp do_foldr(a, o, tab, :"$end_of_table", fun, rAcc, _Type, stored) do
-    :lists.foldl(
-      fn key, acc ->
-        :lists.foldl(fun, acc, read(a, o, tab, key, :read))
-      end,
-      rAcc,
-      stored
-    )
+    :lists.foldl(fn key, acc ->
+                      :lists.foldl(fun, acc, read(a, o, tab, key, :read))
+                 end,
+                   rAcc, stored)
   end
 
-  defp do_foldr(a, o, tab, key, fun, acc, :ordered_set, [h | stored])
-       when h == key do
-    newAcc = :lists.foldl(fun, acc, read(a, o, tab, key, :read))
+  defp do_foldr(a, o, tab, key, fun, acc, :ordered_set,
+            [h | stored])
+      when h == key do
+    newAcc = :lists.foldl(fun, acc,
+                            read(a, o, tab, key, :read))
     {_, tid, ts} = :erlang.get(:mnesia_activity_state)
-    do_foldr(tid, ts, tab, dirty_prev(tab, key), fun, newAcc, :ordered_set, stored)
+    do_foldr(tid, ts, tab, dirty_prev(tab, key), fun,
+               newAcc, :ordered_set, stored)
   end
 
-  defp do_foldr(a, o, tab, key, fun, acc, :ordered_set, [h | stored])
-       when h > key do
-    newAcc = :lists.foldl(fun, acc, read(a, o, tab, h, :read))
+  defp do_foldr(a, o, tab, key, fun, acc, :ordered_set,
+            [h | stored])
+      when h > key do
+    newAcc = :lists.foldl(fun, acc,
+                            read(a, o, tab, h, :read))
     {_, tid, ts} = :erlang.get(:mnesia_activity_state)
-    do_foldr(tid, ts, tab, key, fun, newAcc, :ordered_set, stored)
+    do_foldr(tid, ts, tab, key, fun, newAcc, :ordered_set,
+               stored)
   end
 
-  defp do_foldr(a, o, tab, key, fun, acc, :ordered_set, [h | stored])
-       when h < key do
-    newAcc = :lists.foldl(fun, acc, read(a, o, tab, key, :read))
+  defp do_foldr(a, o, tab, key, fun, acc, :ordered_set,
+            [h | stored])
+      when h < key do
+    newAcc = :lists.foldl(fun, acc,
+                            read(a, o, tab, key, :read))
     {_, tid, ts} = :erlang.get(:mnesia_activity_state)
-    do_foldr(tid, ts, tab, dirty_prev(tab, key), fun, newAcc, :ordered_set, [h | stored])
+    do_foldr(tid, ts, tab, dirty_prev(tab, key), fun,
+               newAcc, :ordered_set, [h | stored])
   end
 
   defp do_foldr(a, o, tab, key, fun, acc, type, stored) do
-    newAcc = :lists.foldl(fun, acc, read(a, o, tab, key, :read))
+    newAcc = :lists.foldl(fun, acc,
+                            read(a, o, tab, key, :read))
     newStored = :ordsets.del_element(key, stored)
     {_, tid, ts} = :erlang.get(:mnesia_activity_state)
-    do_foldr(tid, ts, tab, dirty_prev(tab, key), fun, newAcc, type, newStored)
+    do_foldr(tid, ts, tab, dirty_prev(tab, key), fun,
+               newAcc, type, newStored)
   end
 
   defp init_iteration(activityId, opaque, tab, lockKind) do
@@ -1397,34 +1245,27 @@ defmodule :m_mnesia do
     type = val({tab, :setorbag})
     previous = add_previous(activityId, opaque, type, tab)
     st = val({tab, :storage_type})
-
     cond do
       st == :unknown ->
         :ignore
-
       true ->
         :mnesia_lib.db_fixtable(st, tab, true)
     end
-
     {type, previous}
   end
 
   defp close_iteration(res, tab) do
-    case val({tab, :storage_type}) do
+    case (val({tab, :storage_type})) do
       :unknown ->
         :ignore
-
       st ->
         :mnesia_lib.db_fixtable(st, tab, false)
     end
-
-    case res do
+    case (res) do
       {:EXIT, {:aborted, what}} ->
         abort(what)
-
       {:EXIT, what} ->
         abort(what)
-
       _ ->
         res
     end
@@ -1435,12 +1276,8 @@ defmodule :m_mnesia do
   end
 
   defp add_previous(_Tid, ts, _Type, tab) do
-    previous =
-      :ets.match(
-        r_tidstore(ts, :store),
-        {{tab, :"$1"}, :_, :write}
-      )
-
+    previous = :ets.match(r_tidstore(ts, :store),
+                            {{tab, :"$1"}, :_, :write})
     :lists.sort(:lists.concat(previous))
   end
 
@@ -1449,29 +1286,25 @@ defmodule :m_mnesia do
   end
 
   defp add_written(written, tab, objsFun, lockKind) do
-    case val({tab, :setorbag}) do
+    case (val({tab, :setorbag})) do
       :bag ->
         add_written_to_bag(written, objsFun.(), [])
-
       _ when lockKind == :read or lockKind == :write ->
         add_written_to_set(written, objsFun)
-
       _ ->
         add_written_to_set(written, objsFun.())
     end
   end
 
   defp add_written_to_set(ws, objsOrFun) do
-    case :lists.last(ws) do
+    case (:lists.last(ws)) do
       {_, _, :delete} ->
         []
-
       {_, val, :write} ->
         [val]
-
       {oid, _, :delete_object} ->
         for val <- get_objs(objsOrFun),
-            not :lists.member({oid, val, :delete_object}, ws) do
+              not :lists.member({oid, val, :delete_object}, ws) do
           val
         end
     end
@@ -1486,7 +1319,8 @@ defmodule :m_mnesia do
   end
 
   defp add_written_to_bag([{_, val, :write} | tail], objs, ack) do
-    add_written_to_bag(tail, :lists.delete(val, objs), [val | ack])
+    add_written_to_bag(tail, :lists.delete(val, objs),
+                         [val | ack])
   end
 
   defp add_written_to_bag([], objs, ack) do
@@ -1498,12 +1332,12 @@ defmodule :m_mnesia do
   end
 
   defp add_written_to_bag([{_, val, :delete_object} | tail], objs, ack) do
-    add_written_to_bag(tail, :lists.delete(val, objs), :lists.delete(val, ack))
+    add_written_to_bag(tail, :lists.delete(val, objs),
+                         :lists.delete(val, ack))
   end
 
-  def match_object(pat)
-      when is_tuple(pat) and
-             tuple_size(pat) > 2 do
+  def match_object(pat) when (is_tuple(pat) and
+                      tuple_size(pat) > 2) do
     tab = :erlang.element(1, pat)
     match_object(tab, pat, :read)
   end
@@ -1513,39 +1347,32 @@ defmodule :m_mnesia do
   end
 
   def match_object(tab, pat, lockKind) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         match_object(tid, ts, tab, pat, lockKind)
-
       {mod, tid, ts} ->
         mod.match_object(tid, ts, tab, pat, lockKind)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
   def match_object(tid, ts, tab, pat, lockKind)
-      when is_atom(tab) and tab != :schema and
-             is_tuple(pat) and tuple_size(pat) > 2 do
-    case :erlang.element(1, tid) do
+      when (is_atom(tab) and tab != :schema and
+              is_tuple(pat) and tuple_size(pat) > 2) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         :mnesia_lib.db_match_object(:ram_copies, tab, pat)
-
       :tid ->
         key = :erlang.element(2, pat)
-
-        case has_var(key) do
+        case (has_var(key)) do
           false ->
             lock_record(tid, ts, tab, key, lockKind)
-
           true ->
             lock_table(tid, ts, tab, lockKind)
         end
-
         objs = dirty_match_object(tab, pat)
         add_written_match(r_tidstore(ts, :store), pat, tab, objs)
-
       _Protocol ->
         dirty_match_object(tab, pat)
     end
@@ -1556,14 +1383,17 @@ defmodule :m_mnesia do
   end
 
   defp add_written_index(store, pos, tab, key, objs)
-       when is_integer(pos) do
-    pat = :erlang.setelement(pos, val({tab, :wild_pattern}), key)
+      when is_integer(pos) do
+    pat = :erlang.setelement(pos, val({tab, :wild_pattern}),
+                               key)
     add_written_match(store, pat, tab, objs)
   end
 
   defp add_written_index(store, pos, tab, key, objs)
-       when is_tuple(pos) do
-    ixF = :mnesia_index.index_vals_f(val({tab, :storage_type}), tab, pos)
+      when is_tuple(pos) do
+    ixF = :mnesia_index.index_vals_f(val({tab,
+                                            :storage_type}),
+                                       tab, pos)
     ops = find_ops(store, tab, :_)
     add_ix_match(ops, objs, ixF, key, val({tab, :setorbag}))
   end
@@ -1576,12 +1406,10 @@ defmodule :m_mnesia do
   end
 
   defp find_ops(s, tab, pat) do
-    getWritten = [
-      {{{tab, :_}, :_, :write}, [], [:"$_"]},
-      {{{tab, :_}, :_, :delete}, [], [:"$_"]},
-      {{{tab, :_}, pat, :delete_object}, [], [:"$_"]}
-    ]
-
+    getWritten = [{{{tab, :_}, :_, :write}, [], [:"$_"]},
+                      {{{tab, :_}, :_, :delete}, [], [:"$_"]}, {{{tab, :_}, pat,
+                                                                :delete_object},
+                                                               [], [:"$_"]}]
     :ets.select(s, getWritten)
   end
 
@@ -1597,7 +1425,8 @@ defmodule :m_mnesia do
     add_match(r, deloid(oid, objs), type)
   end
 
-  defp add_match([{_Oid, val, :delete_object} | r], objs, type) do
+  defp add_match([{_Oid, val, :delete_object} | r], objs,
+            type) do
     add_match(r, :lists.delete(val, objs), type)
   end
 
@@ -1614,45 +1443,44 @@ defmodule :m_mnesia do
   end
 
   defp add_ix_match(written, objs, ixF, key, :ordered_set) do
-    add_ordered_match(
-      :lists.keysort(
-        1,
-        ix_filter_ops(ixF, key, written)
-      ),
-      objs,
-      []
-    )
+    add_ordered_match(:lists.keysort(1,
+                                       ix_filter_ops(ixF, key, written)),
+                        objs, [])
   end
 
-  defp add_ix_match([{oid, _, :delete} | r], objs, ixF, key, type) do
+  defp add_ix_match([{oid, _, :delete} | r], objs, ixF, key,
+            type) do
     add_ix_match(r, deloid(oid, objs), ixF, key, type)
   end
 
-  defp add_ix_match([{_Oid, val, :delete_object} | r], objs, ixF, key, type) do
-    case ix_match(val, ixF, key) do
+  defp add_ix_match([{_Oid, val, :delete_object} | r], objs, ixF,
+            key, type) do
+    case (ix_match(val, ixF, key)) do
       true ->
-        add_ix_match(r, :lists.delete(val, objs), ixF, key, type)
-
+        add_ix_match(r, :lists.delete(val, objs), ixF, key,
+                       type)
       false ->
         add_ix_match(r, objs, ixF, key, type)
     end
   end
 
-  defp add_ix_match([{_Oid, val, :write} | r], objs, ixF, key, :bag) do
-    case ix_match(val, ixF, key) do
+  defp add_ix_match([{_Oid, val, :write} | r], objs, ixF, key,
+            :bag) do
+    case (ix_match(val, ixF, key)) do
       true ->
-        add_ix_match(r, [val | :lists.delete(val, objs)], ixF, key, :bag)
-
+        add_ix_match(r, [val | :lists.delete(val, objs)], ixF,
+                       key, :bag)
       false ->
         add_ix_match(r, objs, ixF, key, :bag)
     end
   end
 
-  defp add_ix_match([{oid, val, :write} | r], objs, ixF, key, :set) do
-    case ix_match(val, ixF, key) do
+  defp add_ix_match([{oid, val, :write} | r], objs, ixF, key,
+            :set) do
+    case (ix_match(val, ixF, key)) do
       true ->
-        add_ix_match(r, [val | deloid(oid, objs)], ixF, key, :set)
-
+        add_ix_match(r, [val | deloid(oid, objs)], ixF, key,
+                       :set)
       false ->
         add_ix_match(r, objs, ixF, key, :set)
     end
@@ -1663,30 +1491,29 @@ defmodule :m_mnesia do
   end
 
   defp ix_filter_ops(ixF, key, ops) do
-    :lists.filter(
-      fn
-        {_Oid, obj, :write} ->
-          ix_match(obj, ixF, key)
-
-        _ ->
-          true
-      end,
-      ops
-    )
+    :lists.filter(fn {_Oid, obj, :write} ->
+                       ix_match(obj, ixF, key)
+                     _ ->
+                       true
+                  end,
+                    ops)
   end
 
-  defp add_ordered_match(written = [{{_, key}, _, _} | _], [obj | objs], acc)
-       when key > :erlang.element(2, obj) do
+  defp add_ordered_match(written = [{{_, key}, _, _} | _], [obj | objs],
+            acc)
+      when key > :erlang.element(2, obj) do
     add_ordered_match(written, objs, [obj | acc])
   end
 
-  defp add_ordered_match([{{_, key}, val, :write} | rest], objs = [obj | _], acc)
-       when key < :erlang.element(2, obj) do
+  defp add_ordered_match([{{_, key}, val, :write} | rest],
+            objs = [obj | _], acc)
+      when key < :erlang.element(2, obj) do
     add_ordered_match(rest, [val | objs], acc)
   end
 
-  defp add_ordered_match([{{_, key}, _, _DelOP} | rest], objs = [obj | _], acc)
-       when key < :erlang.element(2, obj) do
+  defp add_ordered_match([{{_, key}, _, _DelOP} | rest],
+            objs = [obj | _], acc)
+      when key < :erlang.element(2, obj) do
     add_ordered_match(rest, objs, acc)
   end
 
@@ -1698,15 +1525,18 @@ defmodule :m_mnesia do
     add_ordered_match(rest, [], acc)
   end
 
-  defp add_ordered_match([{_, val, :write} | rest], [_Obj | objs], acc) do
+  defp add_ordered_match([{_, val, :write} | rest], [_Obj | objs],
+            acc) do
     add_ordered_match(rest, [val | objs], acc)
   end
 
-  defp add_ordered_match([{_, _Val, :delete} | rest], [_Obj | objs], acc) do
+  defp add_ordered_match([{_, _Val, :delete} | rest], [_Obj | objs],
+            acc) do
     add_ordered_match(rest, objs, acc)
   end
 
-  defp add_ordered_match([{_, val, :delete_object} | rest], [val | objs], acc) do
+  defp add_ordered_match([{_, val, :delete_object} | rest], [val | objs],
+            acc) do
     add_ordered_match(rest, objs, acc)
   end
 
@@ -1730,66 +1560,66 @@ defmodule :m_mnesia do
     {objs, :lists.reverse(acc)}
   end
 
-  defp add_sel_match([op = {oid, _, :delete} | r], objs, type, acc) do
-    case deloid(oid, objs) do
+  defp add_sel_match([op = {oid, _, :delete} | r], objs, type,
+            acc) do
+    case (deloid(oid, objs)) do
       ^objs ->
         add_sel_match(r, objs, type, [op | acc])
-
       newObjs when type == :set ->
         add_sel_match(r, newObjs, type, acc)
-
       newObjs ->
         add_sel_match(r, newObjs, type, [op | acc])
     end
   end
 
-  defp add_sel_match([op = {_Oid, val, :delete_object} | r], objs, type, acc) do
-    case :lists.delete(val, objs) do
+  defp add_sel_match([op = {_Oid, val, :delete_object} | r], objs,
+            type, acc) do
+    case (:lists.delete(val, objs)) do
       ^objs ->
         add_sel_match(r, objs, type, [op | acc])
-
       newObjs when type == :set ->
         add_sel_match(r, newObjs, type, acc)
-
       newObjs ->
         add_sel_match(r, newObjs, type, [op | acc])
     end
   end
 
-  defp add_sel_match([op = {oid = {_, key}, val, :write} | r], objs, :bag, acc) do
-    case :lists.keymember(key, 2, objs) do
+  defp add_sel_match([op = {oid = {_, key}, val, :write} | r], objs,
+            :bag, acc) do
+    case (:lists.keymember(key, 2, objs)) do
       true ->
-        add_sel_match(r, [val | :lists.delete(val, objs)], :bag, [
-          {oid, val, :delete_object} | acc
-        ])
-
+        add_sel_match(r, [val | :lists.delete(val, objs)], :bag,
+                        [{oid, val, :delete_object} | acc])
       false ->
         add_sel_match(r, objs, :bag, [op | acc])
     end
   end
 
-  defp add_sel_match([op = {oid, val, :write} | r], objs, :set, acc) do
-    case deloid(oid, objs) do
+  defp add_sel_match([op = {oid, val, :write} | r], objs, :set,
+            acc) do
+    case (deloid(oid, objs)) do
       ^objs ->
         add_sel_match(r, objs, :set, [op | acc])
-
       newObjs ->
         add_sel_match(r, [val | newObjs], :set, acc)
     end
   end
 
-  defp add_sel_ordered_match(written = [{{_, key}, _, _} | _], [obj | objs], acc)
-       when key > :erlang.element(2, obj) do
+  defp add_sel_ordered_match(written = [{{_, key}, _, _} | _], [obj | objs],
+            acc)
+      when key > :erlang.element(2, obj) do
     add_sel_ordered_match(written, objs, [obj | acc])
   end
 
-  defp add_sel_ordered_match([{{_, key}, val, :write} | rest], objs = [obj | _], acc)
-       when key < :erlang.element(2, obj) do
+  defp add_sel_ordered_match([{{_, key}, val, :write} | rest],
+            objs = [obj | _], acc)
+      when key < :erlang.element(2, obj) do
     add_sel_ordered_match(rest, [val | objs], acc)
   end
 
-  defp add_sel_ordered_match([{{_, key}, _, _DelOP} | rest], objs = [obj | _], acc)
-       when key < :erlang.element(2, obj) do
+  defp add_sel_ordered_match([{{_, key}, _, _DelOP} | rest],
+            objs = [obj | _], acc)
+      when key < :erlang.element(2, obj) do
     add_sel_ordered_match(rest, objs, acc)
   end
 
@@ -1797,15 +1627,18 @@ defmodule :m_mnesia do
     {:lists.reverse(acc), ops1}
   end
 
-  defp add_sel_ordered_match([{_, val, :write} | rest], [_Obj | objs], acc) do
+  defp add_sel_ordered_match([{_, val, :write} | rest], [_Obj | objs],
+            acc) do
     add_sel_ordered_match(rest, [val | objs], acc)
   end
 
-  defp add_sel_ordered_match([{_, _Val, :delete} | rest], [_Obj | objs], acc) do
+  defp add_sel_ordered_match([{_, _Val, :delete} | rest], [_Obj | objs],
+            acc) do
     add_sel_ordered_match(rest, objs, acc)
   end
 
-  defp add_sel_ordered_match([{_, val, :delete_object} | rest], [val | objs], acc) do
+  defp add_sel_ordered_match([{_, val, :delete_object} | rest], [val | objs],
+            acc) do
     add_sel_ordered_match(rest, objs, acc)
   end
 
@@ -1821,11 +1654,8 @@ defmodule :m_mnesia do
     []
   end
 
-  defp deloid({tab, key}, [h | t])
-       when :erlang.element(
-              2,
-              h
-            ) == key do
+  defp deloid({tab, key}, [h | t]) when :erlang.element(2,
+                                                      h) == key do
     deloid({tab, key}, t)
   end
 
@@ -1837,16 +1667,13 @@ defmodule :m_mnesia do
     select(tab, pat, :read)
   end
 
-  def select(tab, pat, lockKind)
-      when is_atom(tab) and
-             tab != :schema and is_list(pat) do
-    case :erlang.get(:mnesia_activity_state) do
+  def select(tab, pat, lockKind) when (is_atom(tab) and
+                                     tab != :schema and is_list(pat)) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         select(tid, ts, tab, pat, lockKind)
-
       {mod, tid, ts} ->
         mod.select(tid, ts, tab, pat, lockKind)
-
       _ ->
         abort(:no_transaction)
     end
@@ -1858,31 +1685,24 @@ defmodule :m_mnesia do
 
   def select(tid, ts, tab, spec, lockKind) do
     selectFun = fn fixedSpec ->
-      dirty_select(tab, fixedSpec)
-    end
-
+                     dirty_select(tab, fixedSpec)
+                end
     fun_select(tid, ts, tab, spec, lockKind, tab, selectFun)
   end
 
-  def fun_select(tid, ts, tab, spec, lockKind, tabPat, selectFun) do
-    case :erlang.element(1, tid) do
+  def fun_select(tid, ts, tab, spec, lockKind, tabPat,
+           selectFun) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         :mnesia_lib.db_select(:ram_copies, tab, spec)
-
       :tid ->
         select_lock(tid, ts, lockKind, spec, tab)
         store = r_tidstore(ts, :store)
-
-        written =
-          :ets.match_object(
-            store,
-            {{tabPat, :_}, :_, :_}
-          )
-
-        case written do
+        written = :ets.match_object(store,
+                                      {{tabPat, :_}, :_, :_})
+        case (written) do
           [] ->
             selectFun.(spec)
-
           _ ->
             type = val({tab, :setorbag})
             fixedSpec = get_record_pattern(spec)
@@ -1891,42 +1711,36 @@ defmodule :m_mnesia do
             cMS = :ets.match_spec_compile(spec)
             :ets.match_spec_run(fixedRes, cMS)
         end
-
       _Protocol ->
         selectFun.(spec)
     end
   end
 
   defp select_lock(tid, ts, lockKind, spec, tab) do
-    case spec do
-      [{headPat, _, _}]
-      when is_tuple(headPat) and
-             tuple_size(headPat) > 2 ->
+    case (spec) do
+      [{headPat, _, _}] when (is_tuple(headPat) and
+                                tuple_size(headPat) > 2)
+                             ->
         key = :erlang.element(2, headPat)
-
-        case has_var(key) do
+        case (has_var(key)) do
           false ->
             lock_record(tid, ts, tab, key, lockKind)
-
           true ->
             lock_table(tid, ts, tab, lockKind)
         end
-
       _ ->
         lock_table(tid, ts, tab, lockKind)
     end
   end
 
   def select(tab, pat, nObjects, lockKind)
-      when is_atom(tab) and tab != :schema and
-             is_list(pat) and is_integer(nObjects) do
-    case :erlang.get(:mnesia_activity_state) do
+      when (is_atom(tab) and tab != :schema and
+              is_list(pat) and is_integer(nObjects)) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         select(tid, ts, tab, pat, nObjects, lockKind)
-
       {mod, tid, ts} ->
         mod.select(tid, ts, tab, pat, nObjects, lockKind)
-
       _ ->
         abort(:no_transaction)
     end
@@ -1939,85 +1753,61 @@ defmodule :m_mnesia do
   def select(tid, ts, tab, spec, nObjects, lockKind) do
     where = val({tab, :where_to_read})
     type = :mnesia_lib.storage_type_at_node(where, tab)
-
     initFun = fn fixedSpec ->
-      dirty_sel_init(where, tab, fixedSpec, nObjects, type)
-    end
-
-    fun_select(tid, ts, tab, spec, lockKind, tab, initFun, nObjects, where, type)
+                   dirty_sel_init(where, tab, fixedSpec, nObjects, type)
+              end
+    fun_select(tid, ts, tab, spec, lockKind, tab, initFun,
+                 nObjects, where, type)
   end
 
-  Record.defrecord(:r_mnesia_select, :mnesia_select,
-    tab: :undefined,
-    tid: :undefined,
-    node: :undefined,
-    storage: :undefined,
-    cont: :undefined,
-    written: [],
-    spec: :undefined,
-    type: :undefined,
-    orig: :undefined
-  )
-
-  def fun_select(tid, ts, tab, spec, lockKind, tabPat, init, nObjects, node, storage) do
-    def__ = r_mnesia_select(tid: tid, node: node, storage: storage, tab: tab, orig: spec)
-
-    case :erlang.element(1, tid) do
+  Record.defrecord(:r_mnesia_select, :mnesia_select, tab: :undefined,
+                                         tid: :undefined, node: :undefined,
+                                         storage: :undefined, cont: :undefined,
+                                         written: [], spec: :undefined,
+                                         type: :undefined, orig: :undefined)
+  def fun_select(tid, ts, tab, spec, lockKind, tabPat, init,
+           nObjects, node, storage) do
+    def__ = r_mnesia_select(tid: tid, node: node, storage: storage,
+                tab: tab, orig: spec)
+    case (:erlang.element(1, tid)) do
       :ets ->
-        select_state(
-          :mnesia_lib.db_select_init(:ram_copies, tab, spec, nObjects),
-          def__
-        )
-
+        select_state(:mnesia_lib.db_select_init(:ram_copies,
+                                                  tab, spec, nObjects),
+                       def__)
       :tid ->
         select_lock(tid, ts, lockKind, spec, tab)
         store = r_tidstore(ts, :store)
         do_fixtable(tab, store)
-
-        written0 =
-          :ets.match_object(
-            store,
-            {{tabPat, :_}, :_, :_}
-          )
-
-        case written0 do
+        written0 = :ets.match_object(store,
+                                       {{tabPat, :_}, :_, :_})
+        case (written0) do
           [] ->
             select_state(init.(spec), def__)
-
           _ ->
             type = val({tab, :setorbag})
-
-            written =
-              cond do
-                type == :ordered_set ->
-                  :lists.keysort(1, written0)
-
-                true ->
-                  written0
-              end
-
+            written = (cond do
+                         type == :ordered_set ->
+                           :lists.keysort(1, written0)
+                         true ->
+                           written0
+                       end)
             fixedSpec = get_record_pattern(spec)
             cMS = :ets.match_spec_compile(spec)
-
-            trans_select(
-              init.(fixedSpec),
-              r_mnesia_select(def__, written: written, spec: cMS, type: type, orig: fixedSpec)
-            )
+            trans_select(init.(fixedSpec),
+                           r_mnesia_select(def__, written: written,  spec: cMS,  type: type, 
+                                      orig: fixedSpec))
         end
-
       _Protocol ->
         select_state(init.(spec), def__)
     end
   end
 
   def select(cont) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         select_cont(tid, ts, cont)
-
       {mod, tid, ts} ->
         mod.select_cont(tid, ts, cont)
-
       _ ->
         abort(:no_transaction)
     end
@@ -2027,17 +1817,16 @@ defmodule :m_mnesia do
     :"$end_of_table"
   end
 
-  def select_cont(tid, _Ts, state = r_mnesia_select(tid: tid, cont: cont, orig: ms))
+  def select_cont(tid, _Ts,
+           state = r_mnesia_select(tid: tid, cont: cont, orig: ms))
       when :erlang.element(1, tid) == :ets do
-    case cont do
+    case (cont) do
       :"$end_of_table" ->
         :"$end_of_table"
-
       _ ->
-        select_state(
-          :mnesia_lib.db_select_cont(:ram_copies, cont, ms),
-          state
-        )
+        select_state(:mnesia_lib.db_select_cont(:ram_copies,
+                                                  cont, ms),
+                       state)
     end
   end
 
@@ -2049,18 +1838,14 @@ defmodule :m_mnesia do
     trans_select(dirty_sel_cont(state), state)
   end
 
-  def select_cont(tid2, _, r_mnesia_select(tid: _Tid1))
-      when :erlang.element(
-             1,
-             tid2
-           ) == :tid do
+  def select_cont(tid2, _, r_mnesia_select(tid: _Tid1)) when :erlang.element(1,
+                                                        tid2) == :tid do
     abort(:wrong_transaction)
   end
 
   def select_cont(tid, ts, state = r_mnesia_select()) do
-    repairedState =
-      r_mnesia_select(state, tid: tid, written: [], spec: :undefined, type: :undefined)
-
+    repairedState = r_mnesia_select(state, tid: tid,  written: [], 
+                               spec: :undefined,  type: :undefined)
     select_cont(tid, ts, repairedState)
   end
 
@@ -2068,24 +1853,18 @@ defmodule :m_mnesia do
     abort({:badarg, cont})
   end
 
-  defp trans_select(
-         :"$end_of_table",
-         r_mnesia_select(written: written0, spec: cMS, type: type)
-       ) do
+  defp trans_select(:"$end_of_table",
+            r_mnesia_select(written: written0, spec: cMS, type: type)) do
     written = add_match(written0, [], type)
     {:ets.match_spec_run(written, cMS), :"$end_of_table"}
   end
 
-  defp trans_select(
-         {tabRecs, cont},
-         state = r_mnesia_select(written: written0, spec: cMS, type: type)
-       ) do
-    {fixedRes, written} = add_sel_match(written0, tabRecs, type)
-
-    select_state(
-      {:ets.match_spec_run(fixedRes, cMS), cont},
-      r_mnesia_select(state, written: written)
-    )
+  defp trans_select({tabRecs, cont},
+            state = r_mnesia_select(written: written0, spec: cMS, type: type)) do
+    {fixedRes, written} = add_sel_match(written0, tabRecs,
+                                          type)
+    select_state({:ets.match_spec_run(fixedRes, cMS), cont},
+                   r_mnesia_select(state, written: written))
   end
 
   defp select_state({matches, cont}, mS) do
@@ -2105,29 +1884,24 @@ defmodule :m_mnesia do
   end
 
   def all_keys(tab) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         all_keys(tid, ts, tab, :read)
-
       {mod, tid, ts} ->
         mod.all_keys(tid, ts, tab, :read)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
-  def all_keys(tid, ts, tab, lockKind)
-      when is_atom(tab) and
-             tab != :schema do
+  def all_keys(tid, ts, tab, lockKind) when (is_atom(tab) and
+                                         tab != :schema) do
     pat0 = val({tab, :wild_pattern})
     pat = :erlang.setelement(2, pat0, :"$1")
     keys = select(tid, ts, tab, [{pat, [], [:"$1"]}], lockKind)
-
-    case val({tab, :setorbag}) do
+    case (val({tab, :setorbag})) do
       :bag ->
         :mnesia_lib.uniq(keys)
-
       _ ->
         keys
     end
@@ -2137,9 +1911,8 @@ defmodule :m_mnesia do
     abort({:bad_type, tab})
   end
 
-  def index_match_object(pat, attr)
-      when is_tuple(pat) and
-             tuple_size(pat) > 2 do
+  def index_match_object(pat, attr) when (is_tuple(pat) and
+                            tuple_size(pat) > 2) do
     tab = :erlang.element(1, pat)
     index_match_object(tab, pat, attr, :read)
   end
@@ -2149,55 +1922,48 @@ defmodule :m_mnesia do
   end
 
   def index_match_object(tab, pat, attr, lockKind) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         index_match_object(tid, ts, tab, pat, attr, lockKind)
-
       {mod, tid, ts} ->
-        mod.index_match_object(tid, ts, tab, pat, attr, lockKind)
-
+        mod.index_match_object(tid, ts, tab, pat, attr,
+                                 lockKind)
       _ ->
         abort(:no_transaction)
     end
   end
 
   def index_match_object(tid, ts, tab, pat, attr, lockKind)
-      when is_atom(tab) and tab != :schema and
-             is_tuple(pat) and tuple_size(pat) > 2 do
-    case :erlang.element(1, tid) do
+      when (is_atom(tab) and tab != :schema and
+              is_tuple(pat) and tuple_size(pat) > 2) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         dirty_index_match_object(tab, pat, attr)
-
       :tid ->
-        case :mnesia_schema.attr_tab_to_pos(tab, attr) do
+        case (:mnesia_schema.attr_tab_to_pos(tab, attr)) do
           {_} ->
-            case lockKind do
+            case (lockKind) do
               :read ->
                 store = r_tidstore(ts, :store)
                 :mnesia_locker.rlock_table(tid, store, tab)
                 objs = dirty_match_object(tab, pat)
                 add_written_match(store, pat, tab, objs)
-
               _ ->
                 abort({:bad_type, tab, lockKind})
             end
-
           pos when pos <= tuple_size(pat) ->
-            case lockKind do
+            case (lockKind) do
               :read ->
                 store = r_tidstore(ts, :store)
                 :mnesia_locker.rlock_table(tid, store, tab)
                 objs = dirty_index_match_object(tab, pat, attr)
                 add_written_match(store, pat, tab, objs)
-
               _ ->
                 abort({:bad_type, tab, lockKind})
             end
-
           badPos ->
             abort({:bad_type, tab, badPos})
         end
-
       _Protocol ->
         dirty_index_match_object(tab, pat, attr)
     end
@@ -2208,43 +1974,36 @@ defmodule :m_mnesia do
   end
 
   def index_read(tab, key, attr) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         index_read(tid, ts, tab, key, attr, :read)
-
       {mod, tid, ts} ->
         mod.index_read(tid, ts, tab, key, attr, :read)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
   def index_read(tid, ts, tab, key, attr, lockKind)
-      when is_atom(tab) and tab != :schema do
-    case :erlang.element(1, tid) do
+      when (is_atom(tab) and tab != :schema) do
+    case (:erlang.element(1, tid)) do
       :ets ->
         dirty_index_read(tab, key, attr)
-
       :tid ->
         pos = :mnesia_schema.attr_tab_to_pos(tab, attr)
-
-        case lockKind do
+        case (lockKind) do
           :read ->
-            case has_var(key) do
+            case (has_var(key)) do
               false ->
                 store = r_tidstore(ts, :store)
                 objs = :mnesia_index.read(tid, store, tab, key, pos)
                 add_written_index(r_tidstore(ts, :store), pos, tab, key, objs)
-
               true ->
                 abort({:bad_type, tab, attr, key})
             end
-
           _ ->
             abort({:bad_type, tab, lockKind})
         end
-
       _Protocol ->
         dirty_index_read(tab, key, attr)
     end
@@ -2254,9 +2013,8 @@ defmodule :m_mnesia do
     abort({:bad_type, tab})
   end
 
-  def dirty_write(val)
-      when is_tuple(val) and
-             tuple_size(val) > 2 do
+  def dirty_write(val) when (is_tuple(val) and
+                      tuple_size(val) > 2) do
     tab = :erlang.element(1, val)
     dirty_write(tab, val)
   end
@@ -2269,10 +2027,9 @@ defmodule :m_mnesia do
     do_dirty_write(:async_dirty, tab, val)
   end
 
-  defp do_dirty_write(syncMode, tab, val)
-       when is_atom(tab) and
-              tab != :schema and is_tuple(val) and
-              tuple_size(val) > 2 do
+  defp do_dirty_write(syncMode, tab, val) when (is_atom(tab) and
+                                      tab != :schema and is_tuple(val) and
+                                      tuple_size(val) > 2) do
     {_, _, _} = :mnesia_lib.validate_record(tab, val)
     oid = {tab, :erlang.element(2, val)}
     :mnesia_tm.dirty(syncMode, {oid, val, :write})
@@ -2294,9 +2051,8 @@ defmodule :m_mnesia do
     do_dirty_delete(:async_dirty, tab, key)
   end
 
-  defp do_dirty_delete(syncMode, tab, key)
-       when is_atom(tab) and
-              tab != :schema do
+  defp do_dirty_delete(syncMode, tab, key) when (is_atom(tab) and
+                                      tab != :schema) do
     oid = {tab, key}
     :mnesia_tm.dirty(syncMode, {oid, oid, :delete})
   end
@@ -2305,9 +2061,8 @@ defmodule :m_mnesia do
     abort({:bad_type, tab})
   end
 
-  def dirty_delete_object(val)
-      when is_tuple(val) and
-             tuple_size(val) > 2 do
+  def dirty_delete_object(val) when (is_tuple(val) and
+                      tuple_size(val) > 2) do
     tab = :erlang.element(1, val)
     dirty_delete_object(tab, val)
   end
@@ -2320,16 +2075,13 @@ defmodule :m_mnesia do
     do_dirty_delete_object(:async_dirty, tab, val)
   end
 
-  defp do_dirty_delete_object(syncMode, tab, val)
-       when is_atom(tab) and
-              tab != :schema and is_tuple(val) and
-              tuple_size(val) > 2 do
+  defp do_dirty_delete_object(syncMode, tab, val) when (is_atom(tab) and
+                                      tab != :schema and is_tuple(val) and
+                                      tuple_size(val) > 2) do
     oid = {tab, :erlang.element(2, val)}
-
-    case has_var(val) do
+    case (has_var(val)) do
       false ->
         :mnesia_tm.dirty(syncMode, {oid, val, :delete_object})
-
       true ->
         abort({:bad_type, tab, val})
     end
@@ -2351,21 +2103,16 @@ defmodule :m_mnesia do
     do_dirty_update_counter(:async_dirty, tab, key, incr)
   end
 
-  defp do_dirty_update_counter(syncMode, tab, key, incr)
-       when is_atom(tab) and
-              tab != :schema and
-              is_integer(incr) do
-    case :mnesia_lib.validate_key(tab, key) do
-      {recName, 3, type}
-      when type == :set or
-             type == :ordered_set ->
+  defp do_dirty_update_counter(syncMode, tab, key, incr) when (is_atom(tab) and
+                                            tab != :schema and
+                                            is_integer(incr)) do
+    case (:mnesia_lib.validate_key(tab, key)) do
+      {recName, 3, type} when type == :set or
+                                type == :ordered_set
+                              ->
         oid = {tab, key}
-
-        :mnesia_tm.dirty(
-          syncMode,
-          {oid, {recName, incr}, :update_counter}
-        )
-
+        :mnesia_tm.dirty(syncMode,
+                           {oid, {recName, incr}, :update_counter})
       _ ->
         abort({:combine_error, tab, :update_counter})
     end
@@ -2383,9 +2130,8 @@ defmodule :m_mnesia do
     abort({:bad_type, oid})
   end
 
-  def dirty_read(tab, key)
-      when is_atom(tab) and
-             tab != :schema do
+  def dirty_read(tab, key) when (is_atom(tab) and
+                           tab != :schema) do
     dirty_rpc(tab, :mnesia_lib, :db_get, [tab, key])
   end
 
@@ -2393,9 +2139,8 @@ defmodule :m_mnesia do
     abort({:bad_type, tab})
   end
 
-  def dirty_match_object(pat)
-      when is_tuple(pat) and
-             tuple_size(pat) > 2 do
+  def dirty_match_object(pat) when (is_tuple(pat) and
+                      tuple_size(pat) > 2) do
     tab = :erlang.element(1, pat)
     dirty_match_object(tab, pat)
   end
@@ -2404,11 +2149,11 @@ defmodule :m_mnesia do
     abort({:bad_type, pat})
   end
 
-  def dirty_match_object(tab, pat)
-      when is_atom(tab) and
-             tab != :schema and is_tuple(pat) and
-             tuple_size(pat) > 2 do
-    dirty_rpc(tab, :mnesia, :remote_dirty_match_object, [tab, pat])
+  def dirty_match_object(tab, pat) when (is_atom(tab) and
+                           tab != :schema and is_tuple(pat) and
+                           tuple_size(pat) > 2) do
+    dirty_rpc(tab, :mnesia, :remote_dirty_match_object,
+                [tab, pat])
   end
 
   def dirty_match_object(tab, pat) do
@@ -2417,11 +2162,9 @@ defmodule :m_mnesia do
 
   def remote_dirty_match_object(tab, pat) do
     key = :erlang.element(2, pat)
-
-    case has_var(key) do
+    case (has_var(key)) do
       false ->
         :mnesia_lib.db_match_object(tab, pat)
-
       true ->
         posList = regular_indexes(tab)
         remote_dirty_match_object(tab, pat, posList)
@@ -2429,13 +2172,11 @@ defmodule :m_mnesia do
   end
 
   defp remote_dirty_match_object(tab, pat, [pos | tail])
-       when pos <= tuple_size(pat) do
+      when pos <= tuple_size(pat) do
     ixKey = :erlang.element(pos, pat)
-
-    case has_var(ixKey) do
+    case (has_var(ixKey)) do
       false ->
         :mnesia_index.dirty_match_object(tab, pat, pos)
-
       true ->
         remote_dirty_match_object(tab, pat, tail)
     end
@@ -2449,10 +2190,10 @@ defmodule :m_mnesia do
     abort({:bad_type, tab, pat})
   end
 
-  def dirty_select(tab, spec)
-      when is_atom(tab) and
-             tab != :schema and is_list(spec) do
-    dirty_rpc(tab, :mnesia, :remote_dirty_select, [tab, spec])
+  def dirty_select(tab, spec) when (is_atom(tab) and
+                            tab != :schema and is_list(spec)) do
+    dirty_rpc(tab, :mnesia, :remote_dirty_select,
+                [tab, spec])
   end
 
   def dirty_select(tab, spec) do
@@ -2460,44 +2201,37 @@ defmodule :m_mnesia do
   end
 
   def remote_dirty_select(tab, spec) do
-    case spec do
-      [{headPat, _, _}]
-      when is_tuple(headPat) and
-             tuple_size(headPat) > 2 ->
+    case (spec) do
+      [{headPat, _, _}] when (is_tuple(headPat) and
+                                tuple_size(headPat) > 2)
+                             ->
         key = :erlang.element(2, headPat)
-
-        case has_var(key) do
+        case (has_var(key)) do
           false ->
             :mnesia_lib.db_select(tab, spec)
-
           true ->
             posList = regular_indexes(tab)
             remote_dirty_select(tab, spec, posList)
         end
-
       _ ->
         :mnesia_lib.db_select(tab, spec)
     end
   end
 
   defp remote_dirty_select(tab, [{headPat, _, _}] = spec, [pos | tail])
-       when is_tuple(headPat) and tuple_size(headPat) > 2 and
-              pos <= tuple_size(headPat) do
+      when (is_tuple(headPat) and tuple_size(headPat) > 2 and
+              pos <= tuple_size(headPat)) do
     key = :erlang.element(pos, headPat)
-
-    case has_var(key) do
+    case (has_var(key)) do
       false ->
         recs = :mnesia_index.dirty_select(tab, headPat, pos)
         cMS = :ets.match_spec_compile(spec)
-
-        case val({tab, :setorbag}) do
+        case (val({tab, :setorbag})) do
           :ordered_set ->
             :ets.match_spec_run(:lists.sort(recs), cMS)
-
           _ ->
             :ets.match_spec_run(recs, cMS)
         end
-
       true ->
         remote_dirty_select(tab, spec, tail)
     end
@@ -2508,35 +2242,36 @@ defmodule :m_mnesia do
   end
 
   def dirty_sel_init(node, tab, spec, nObjects, type) do
-    do_dirty_rpc(tab, node, :mnesia_lib, :db_select_init, [type, tab, spec, nObjects])
+    do_dirty_rpc(tab, node, :mnesia_lib, :db_select_init,
+                   [type, tab, spec, nObjects])
   end
 
   defp dirty_sel_cont(r_mnesia_select(cont: :"$end_of_table")) do
     :"$end_of_table"
   end
 
-  defp dirty_sel_cont(r_mnesia_select(node: node, tab: tab, storage: type, cont: cont, orig: ms)) do
-    do_dirty_rpc(tab, node, :mnesia_lib, :db_select_cont, [type, cont, ms])
+  defp dirty_sel_cont(r_mnesia_select(node: node, tab: tab, storage: type,
+              cont: cont, orig: ms)) do
+    do_dirty_rpc(tab, node, :mnesia_lib, :db_select_cont,
+                   [type, cont, ms])
   end
 
-  def dirty_all_keys(tab) when is_atom(tab) and tab != :schema do
+  def dirty_all_keys(tab) when (is_atom(tab) and tab != :schema) do
     case (try do
-            :ets.lookup_element(:mnesia_gvar, {tab, :wild_pattern}, 2)
+            :ets.lookup_element(:mnesia_gvar, {tab, :wild_pattern},
+                                  2)
           catch
             :error, _ ->
               {:EXIT, {:badarg, []}}
           end) do
       {:EXIT, _} ->
         abort({:no_exists, tab})
-
       pat0 ->
         pat = :erlang.setelement(2, pat0, :"$1")
         keys = dirty_select(tab, [{pat, [], [:"$1"]}])
-
-        case val({tab, :setorbag}) do
+        case (val({tab, :setorbag})) do
           :bag ->
             :mnesia_lib.uniq(keys)
-
           _ ->
             keys
         end
@@ -2547,9 +2282,8 @@ defmodule :m_mnesia do
     abort({:bad_type, tab})
   end
 
-  def dirty_index_match_object(pat, attr)
-      when is_tuple(pat) and
-             tuple_size(pat) > 2 do
+  def dirty_index_match_object(pat, attr) when (is_tuple(pat) and
+                            tuple_size(pat) > 2) do
     tab = :erlang.element(1, pat)
     dirty_index_match_object(tab, pat, attr)
   end
@@ -2558,31 +2292,26 @@ defmodule :m_mnesia do
     abort({:bad_type, pat})
   end
 
-  def dirty_index_match_object(tab, pat, attr)
-      when is_atom(tab) and
-             tab != :schema and is_tuple(pat) and
-             tuple_size(pat) > 2 do
-    case :mnesia_schema.attr_tab_to_pos(tab, attr) do
+  def dirty_index_match_object(tab, pat, attr) when (is_atom(tab) and
+                                 tab != :schema and is_tuple(pat) and
+                                 tuple_size(pat) > 2) do
+    case (:mnesia_schema.attr_tab_to_pos(tab, attr)) do
       {_} ->
         dirty_match_object(tab, pat)
-
       pos when pos <= tuple_size(pat) ->
-        case has_var(:erlang.element(2, pat)) do
+        case (has_var(:erlang.element(2, pat))) do
           false ->
             dirty_match_object(tab, pat)
-
           true ->
             elem = :erlang.element(pos, pat)
-
-            case has_var(elem) do
+            case (has_var(elem)) do
               false ->
-                dirty_rpc(tab, :mnesia_index, :dirty_match_object, [tab, pat, pos])
-
+                dirty_rpc(tab, :mnesia_index, :dirty_match_object,
+                            [tab, pat, pos])
               true ->
                 abort({:bad_type, tab, attr, elem})
             end
         end
-
       badPos ->
         abort({:bad_type, tab, badPos})
     end
@@ -2592,15 +2321,12 @@ defmodule :m_mnesia do
     abort({:bad_type, tab, pat})
   end
 
-  def dirty_index_read(tab, key, attr)
-      when is_atom(tab) and
-             tab != :schema do
+  def dirty_index_read(tab, key, attr) when (is_atom(tab) and
+                                 tab != :schema) do
     pos = :mnesia_schema.attr_tab_to_pos(tab, attr)
-
-    case has_var(key) do
+    case (has_var(key)) do
       false ->
         :mnesia_index.dirty_read(tab, key, pos)
-
       true ->
         abort({:bad_type, tab, attr, key})
     end
@@ -2610,9 +2336,8 @@ defmodule :m_mnesia do
     abort({:bad_type, tab})
   end
 
-  def dirty_slot(tab, slot)
-      when is_atom(tab) and
-             tab != :schema and is_integer(slot) do
+  def dirty_slot(tab, slot) when (is_atom(tab) and
+                            tab != :schema and is_integer(slot)) do
     dirty_rpc(tab, :mnesia_lib, :db_slot, [tab, slot])
   end
 
@@ -2620,7 +2345,7 @@ defmodule :m_mnesia do
     abort({:bad_type, tab, slot})
   end
 
-  def dirty_first(tab) when is_atom(tab) and tab != :schema do
+  def dirty_first(tab) when (is_atom(tab) and tab != :schema) do
     dirty_rpc(tab, :mnesia_lib, :db_first, [tab])
   end
 
@@ -2628,7 +2353,7 @@ defmodule :m_mnesia do
     abort({:bad_type, tab})
   end
 
-  def dirty_last(tab) when is_atom(tab) and tab != :schema do
+  def dirty_last(tab) when (is_atom(tab) and tab != :schema) do
     dirty_rpc(tab, :mnesia_lib, :db_last, [tab])
   end
 
@@ -2636,9 +2361,8 @@ defmodule :m_mnesia do
     abort({:bad_type, tab})
   end
 
-  def dirty_next(tab, key)
-      when is_atom(tab) and
-             tab != :schema do
+  def dirty_next(tab, key) when (is_atom(tab) and
+                           tab != :schema) do
     dirty_rpc(tab, :mnesia_lib, :db_next_key, [tab, key])
   end
 
@@ -2646,9 +2370,8 @@ defmodule :m_mnesia do
     abort({:bad_type, tab})
   end
 
-  def dirty_prev(tab, key)
-      when is_atom(tab) and
-             tab != :schema do
+  def dirty_prev(tab, key) when (is_atom(tab) and
+                           tab != :schema) do
     dirty_rpc(tab, :mnesia_lib, :db_prev_key, [tab, key])
   end
 
@@ -2666,65 +2389,55 @@ defmodule :m_mnesia do
   end
 
   defp do_dirty_rpc(_Tab, local, m, f, args)
-       when local === node() do
+      when local === node() do
     try do
       apply(m, f, args)
     catch
       res ->
         res
-
       _, _ ->
         :mnesia.abort({:badarg, args})
     end
   end
 
   defp do_dirty_rpc(tab, node, m, f, args) do
-    case :mnesia_rpc.call(node, m, f, args) do
+    case (:mnesia_rpc.call(node, m, f, args)) do
       {:badrpc, reason} ->
         :timer.sleep(20)
-
-        _ =
-          try do
-            :sys.get_status(:mnesia_monitor)
-          catch
-            _, _ ->
-              :ok
-          end
-
-        case :mnesia_controller.call({:check_w2r, node, tab}) do
+        _ = (try do
+               :sys.get_status(:mnesia_monitor)
+             catch
+               _, _ ->
+                 :ok
+             end)
+        case (:mnesia_controller.call({:check_w2r, node,
+                                         tab})) do
           newNode when newNode === node ->
             errorTag = :mnesia_lib.dirty_rpc_error_tag(reason)
             :mnesia.abort({errorTag, args})
-
           newNode ->
-            case :erlang.get(:mnesia_activity_state) do
+            case (:erlang.get(:mnesia_activity_state)) do
               {_Mod, tid, _Ts} when elem(tid, 0) === :tid ->
                 :mnesia.abort({:node_not_running, node})
-
               {:error, {:node_not_running, _}} ->
                 :mnesia.abort({:no_exists, args})
-
               _ ->
                 do_dirty_rpc(tab, newNode, m, f, args)
             end
         end
-
       other ->
         other
     end
   end
 
   def table_info(tab, item) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       :undefined ->
         any_table_info(tab, item)
-
       {:mnesia, _Tid, _Ts} ->
         any_table_info(tab, item)
-
       {mod, tid, ts} ->
         mod.table_info(tid, ts, tab, item)
-
       _ ->
         abort(:no_transaction)
     end
@@ -2735,16 +2448,13 @@ defmodule :m_mnesia do
   end
 
   defp any_table_info(tab, item) when is_atom(tab) do
-    case item do
+    case (item) do
       :master_nodes ->
         :mnesia_recover.get_master_nodes(tab)
-
       :size ->
         raw_table_info(tab, item)
-
       :memory ->
         raw_table_info(tab, item)
-
       :type ->
         case (try do
                 :ets.lookup_element(:mnesia_gvar, {tab, :setorbag}, 2)
@@ -2754,31 +2464,23 @@ defmodule :m_mnesia do
               end) do
           {:EXIT, _} ->
             abort({:no_exists, tab, item})
-
           val ->
             val
         end
-
       :all ->
-        case :mnesia_schema.get_table_properties(tab) do
+        case (:mnesia_schema.get_table_properties(tab)) do
           [] ->
             abort({:no_exists, tab, item})
-
           props ->
-            rename = fn
-              {:setorbag, type} ->
-                {:type, type}
-
-              prop ->
-                prop
-            end
-
+            rename = fn {:setorbag, type} ->
+                          {:type, type}
+                        prop ->
+                          prop
+                     end
             :lists.sort(:lists.map(rename, props))
         end
-
       :name ->
         tab
-
       _ ->
         case (try do
                 :ets.lookup_element(:mnesia_gvar, {tab, item}, 2)
@@ -2788,7 +2490,6 @@ defmodule :m_mnesia do
               end) do
           {:EXIT, _} ->
             abort({:no_exists, tab, item})
-
           val ->
             val
         end
@@ -2801,19 +2502,16 @@ defmodule :m_mnesia do
 
   def raw_table_info(tab, item) do
     try do
-      case :ets.lookup_element(:mnesia_gvar, {tab, :storage_type}, 2) do
+      case (:ets.lookup_element(:mnesia_gvar,
+                                  {tab, :storage_type}, 2)) do
         :ram_copies ->
           info_reply(:ets.info(tab, item), tab, item)
-
         :disc_copies ->
           info_reply(:ets.info(tab, item), tab, item)
-
         :disc_only_copies ->
           info_reply(:dets.info(tab, item), tab, item)
-
         {:ext, alias, mod} ->
           info_reply(mod.info(alias, tab, item), tab, item)
-
         :unknown ->
           bad_info_reply(tab, item)
       end
@@ -2856,76 +2554,49 @@ defmodule :m_mnesia do
   end
 
   def info() do
-    case :mnesia_lib.is_running() do
+    case (:mnesia_lib.is_running()) do
       :yes ->
         tmInfo = :mnesia_tm.get_info(10000)
         held = system_info(:held_locks)
         queued = system_info(:lock_queue)
         :io.format('---> Processes holding locks <--- ~n', [])
-
-        :lists.foreach(
-          fn l ->
-            :io.format('Lock: ~p~n', [l])
-          end,
-          held
-        )
-
+        :lists.foreach(fn l ->
+                            :io.format('Lock: ~p~n', [l])
+                       end,
+                         held)
         :io.format('---> Processes waiting for locks <--- ~n', [])
-
-        :lists.foreach(
-          fn {oid, op, _Pid, tid, ownerTid} ->
-            :io.format('Tid ~p waits for ~p lock on oid ~p owned by ~p ~n', [
-              tid,
-              op,
-              oid,
-              ownerTid
-            ])
-          end,
-          queued
-        )
-
+        :lists.foreach(fn {oid, op, _Pid, tid, ownerTid} ->
+                            :io.format('Tid ~p waits for ~p lock on oid ~p owned by ~p ~n', [tid, op, oid, ownerTid])
+                       end,
+                         queued)
         :mnesia_tm.display_info(:erlang.group_leader(), tmInfo)
         pat = {:_, :unclear, :_}
         uncertain = :ets.match_object(:mnesia_decision, pat)
         :io.format('---> Uncertain transactions <--- ~n', [])
-
-        :lists.foreach(
-          fn {tid, _, nodes} ->
-            :io.format('Tid ~w waits for decision from ~w~n', [tid, nodes])
-          end,
-          uncertain
-        )
-
+        :lists.foreach(fn {tid, _, nodes} ->
+                            :io.format('Tid ~w waits for decision from ~w~n', [tid, nodes])
+                       end,
+                         uncertain)
         :mnesia_controller.info()
         display_system_info(held, queued, tmInfo, uncertain)
-
       _ ->
         mini_info()
     end
-
     :ok
   end
 
   defp mini_info() do
-    :io.format(
-      '===> System info in version ~p, debug level = ~p <===~n',
-      [system_info(:version), system_info(:debug)]
-    )
-
-    not__ =
-      case system_info(:use_dir) do
-        true ->
-          ''
-
-        false ->
-          'NOT '
-      end
-
-    :io.format(
-      '~w. Directory ~p is ~sused.~n',
-      [system_info(:schema_location), system_info(:directory), not__]
-    )
-
+    :io.format('===> System info in version ~p, debug level = ~p <===~n',
+                 [system_info(:version), system_info(:debug)])
+    not__ = (case (system_info(:use_dir)) do
+               true ->
+                 ''
+               false ->
+                 'NOT '
+             end)
+    :io.format('~w. Directory ~p is ~sused.~n',
+                 [system_info(:schema_location), system_info(:directory),
+                                                     not__])
     :io.format('use fallback at restart = ~w~n', [system_info(:fallback_activated)])
     running = system_info(:running_db_nodes)
     :io.format('running db nodes   = ~w~n', [running])
@@ -2936,132 +2607,97 @@ defmodule :m_mnesia do
   defp display_system_info(held, queued, tmInfo, uncertain) do
     mini_info()
     display_tab_info()
-
     s = fn items ->
-      for i <- items do
-        system_info(i)
-      end
-    end
-
-    :io.format(
-      '~w transactions committed, ~w aborted, ~w restarted, ~w logged to disc~n',
-      s.([
-        :transaction_commits,
-        :transaction_failures,
-        :transaction_restarts,
-        :transaction_log_writes
-      ])
-    )
-
-    {active, pending} =
-      case tmInfo do
-        {:timeout, _} ->
-          {:infinity, :infinity}
-
-        {:info, p, a} ->
-          {length(a), length(p)}
-      end
-
-    :io.format(
-      '~w held locks, ~w in queue; ~w local transactions, ~w remote~n',
-      [length(held), length(queued), active, pending]
-    )
-
-    ufold = fn {_, _, ns}, {c, old} ->
-      new =
-        for n <- ns, not :lists.member(n, old) do
-          n
+             for i <- items do
+               system_info(i)
+             end
         end
-
-      {c + 1, new ++ old}
-    end
-
-    {ucount, unodes} = :lists.foldl(ufold, {0, []}, uncertain)
+    :io.format('~w transactions committed, ~w aborted, ~w restarted, ~w logged to disc~n',
+                 s.([:transaction_commits, :transaction_failures,
+                                               :transaction_restarts,
+                                                   :transaction_log_writes]))
+    {active, pending} = (case (tmInfo) do
+                           {:timeout, _} ->
+                             {:infinity, :infinity}
+                           {:info, p, a} ->
+                             {length(a), length(p)}
+                         end)
+    :io.format('~w held locks, ~w in queue; ~w local transactions, ~w remote~n',
+                 [length(held), length(queued), active, pending])
+    ufold = fn {_, _, ns}, {c, old} ->
+                 new = (for n <- ns, not :lists.member(n, old) do
+                          n
+                        end)
+                 {c + 1, new ++ old}
+            end
+    {ucount, unodes} = :lists.foldl(ufold, {0, []},
+                                      uncertain)
     :io.format('~w transactions waits for other nodes: ~p~n', [ucount, unodes])
   end
 
   defp display_tab_info() do
     masterTabs = :mnesia_recover.get_master_node_tables()
     :io.format('master node tables = ~p~n', [:lists.sort(masterTabs)])
-
-    case get_backend_types() do
+    case (get_backend_types()) do
       [] ->
         :ok
-
       ts ->
         list_backend_types(ts, 'backend types      = ')
     end
-
-    case get_index_plugins() do
+    case (get_index_plugins()) do
       [] ->
         :ok
-
       ps ->
         list_index_plugins(ps, 'index plugins      = ')
     end
-
     tabs = system_info(:tables)
-
-    {unknown, ram, disc, discOnly, ext} =
-      :lists.foldl(&storage_count/2, {[], [], [], [], []}, tabs)
-
+    {unknown, ram, disc, discOnly,
+       ext} = :lists.foldl(&storage_count/2,
+                             {[], [], [], [], []}, tabs)
     :io.format('remote             = ~p~n', [:lists.sort(unknown)])
     :io.format('ram_copies         = ~p~n', [:lists.sort(ram)])
     :io.format('disc_copies        = ~p~n', [:lists.sort(disc)])
     :io.format('disc_only_copies   = ~p~n', [:lists.sort(discOnly)])
-
     for {a, ts} <- ext do
       :io.format('~-19s= ~p~n', [:erlang.atom_to_list(a), ts])
     end
-
     rfoldl = fn t, acc ->
-      rpat =
-        case val({t, :access_mode}) do
-          :read_only ->
-            :lists.sort(
-              for a <- val({t, :active_replicas}) do
-                {a, :read_only}
-              end
-            )
-
-          :read_write ->
-            for w <- table_info(t, :where_to_commit) do
-              fix_wtc(w)
-            end
-        end
-
-      case :lists.keysearch(rpat, 1, acc) do
-        {:value, {_Rpat, rtabs}} ->
-          :lists.keyreplace(rpat, 1, acc, {rpat, [t | rtabs]})
-
-        false ->
-          [{rpat, [t]} | acc]
-      end
-    end
-
+                  rpat = (case (val({t, :access_mode})) do
+                            :read_only ->
+                              :lists.sort(for a <- val({t, :active_replicas}) do
+                                            {a, :read_only}
+                                          end)
+                            :read_write ->
+                              for w <- table_info(t, :where_to_commit) do
+                                fix_wtc(w)
+                              end
+                          end)
+                  case (:lists.keysearch(rpat, 1, acc)) do
+                    {:value, {_Rpat, rtabs}} ->
+                      :lists.keyreplace(rpat, 1, acc, {rpat, [t | rtabs]})
+                    false ->
+                      [{rpat, [t]} | acc]
+                  end
+             end
     repl = :lists.foldl(rfoldl, [], tabs)
-
     rdisp = fn {rpat, rtabs} ->
-      :io.format('~p = ~p~n', [rpat, rtabs])
-    end
-
+                 :io.format('~p = ~p~n', [rpat, rtabs])
+            end
     :lists.foreach(rdisp, :lists.sort(repl))
   end
 
   defp get_backend_types() do
     case (try do
-            :ets.lookup_element(
-              :mnesia_gvar,
-              {:schema, :user_property, :mnesia_backend_types},
-              2
-            )
+            :ets.lookup_element(:mnesia_gvar,
+                                  {:schema, :user_property,
+                                     :mnesia_backend_types},
+                                  2)
           catch
             :error, _ ->
               {:EXIT, {:badarg, []}}
           end) do
       {:EXIT, _} ->
         []
-
       {:mnesia_backend_types, ts} ->
         :lists.sort(ts)
     end
@@ -3069,86 +2705,56 @@ defmodule :m_mnesia do
 
   defp get_index_plugins() do
     case (try do
-            :ets.lookup_element(
-              :mnesia_gvar,
-              {:schema, :user_property, :mnesia_index_plugins},
-              2
-            )
+            :ets.lookup_element(:mnesia_gvar,
+                                  {:schema, :user_property,
+                                     :mnesia_index_plugins},
+                                  2)
           catch
             :error, _ ->
               {:EXIT, {:badarg, []}}
           end) do
       {:EXIT, _} ->
         []
-
       {:mnesia_index_plugins, ps} ->
         :lists.sort(ps)
     end
   end
 
   defp list_backend_types([{a, m} | t] = ts, legend) do
-    indent =
-      for _ <- legend do
-        ?\s
-      end
-
-    w =
-      :erlang.integer_to_list(
-        :lists.foldl(
-          fn {alias, _}, wa ->
-            :erlang.max(
-              wa,
-              length(:erlang.atom_to_list(alias))
-            )
-          end,
-          0,
-          ts
-        )
-      )
-
-    :io.fwrite(
-      legend ++ '~-' ++ w ++ 's - ~s~n',
-      [:erlang.atom_to_list(a), :erlang.atom_to_list(m)]
-    )
-
+    indent = (for _ <- legend do
+                ?\s
+              end)
+    w = :erlang.integer_to_list(:lists.foldl(fn {alias, _},
+                                                  wa ->
+                                                  :erlang.max(wa,
+                                                                length(:erlang.atom_to_list(alias)))
+                                             end,
+                                               0, ts))
+    :io.fwrite(legend ++ '~-' ++ w ++ 's - ~s~n',
+                 [:erlang.atom_to_list(a), :erlang.atom_to_list(m)])
     for {a1, m1} <- t do
-      :io.fwrite(
-        indent ++ '~-' ++ w ++ 's - ~s~n',
-        [:erlang.atom_to_list(a1), :erlang.atom_to_list(m1)]
-      )
+      :io.fwrite(indent ++ '~-' ++ w ++ 's - ~s~n',
+                   [:erlang.atom_to_list(a1), :erlang.atom_to_list(m1)])
     end
   end
 
   defp list_index_plugins([{n, m, f} | t] = ps, legend) do
-    indent =
-      for _ <- legend do
-        ?\s
-      end
-
-    w =
-      :erlang.integer_to_list(
-        :lists.foldl(
-          fn {n1, _, _}, wa ->
-            :erlang.max(
-              wa,
-              length(pp_ix_name(n1))
-            )
-          end,
-          0,
-          ps
-        )
-      )
-
-    :io.fwrite(
-      legend ++ '~-' ++ w ++ 's - ~s:~ts~n',
-      [pp_ix_name(n), :erlang.atom_to_list(m), :erlang.atom_to_list(f)]
-    )
-
+    indent = (for _ <- legend do
+                ?\s
+              end)
+    w = :erlang.integer_to_list(:lists.foldl(fn {n1, _, _},
+                                                  wa ->
+                                                  :erlang.max(wa,
+                                                                length(pp_ix_name(n1)))
+                                             end,
+                                               0, ps))
+    :io.fwrite(legend ++ '~-' ++ w ++ 's - ~s:~ts~n',
+                 [pp_ix_name(n), :erlang.atom_to_list(m),
+                                     :erlang.atom_to_list(f)])
     for {n1, m1, f1} <- t do
-      :io.fwrite(
-        indent ++ '~-' ++ w ++ 's - ~s:~ts~n',
-        [pp_ix_name(n1), :erlang.atom_to_list(m1), :erlang.atom_to_list(f1)]
-      )
+      :io.fwrite(indent ++ '~-' ++ w ++ 's - ~s:~ts~n',
+                   [pp_ix_name(n1), :erlang.atom_to_list(m1),
+                                        :erlang.atom_to_list(f1)])
     end
   end
 
@@ -3165,19 +2771,15 @@ defmodule :m_mnesia do
   end
 
   defp storage_count(t, {u, r, d, dO, ext}) do
-    case table_info(t, :storage_type) do
+    case (table_info(t, :storage_type)) do
       :unknown ->
         {[t | u], r, d, dO, ext}
-
       :ram_copies ->
         {u, [t | r], d, dO, ext}
-
       :disc_copies ->
         {u, r, [t | d], dO, ext}
-
       :disc_only_copies ->
         {u, r, d, [t | dO], ext}
-
       {:ext, a, _} ->
         {u, r, d, dO, :orddict.append(a, t, ext)}
     end
@@ -3194,47 +2796,41 @@ defmodule :m_mnesia do
 
   defp system_info2(:all) do
     items = system_info_items(:mnesia_lib.is_running())
-
     for i <- items do
       {i, system_info(i)}
     end
   end
 
   defp system_info2(:db_nodes) do
-    discNs =
-      try do
-        :ets.lookup_element(:mnesia_gvar, {:schema, :disc_copies}, 2)
-      catch
-        :error, _ ->
-          {:EXIT, {:badarg, []}}
-      end
-
-    ramNs =
-      try do
-        :ets.lookup_element(:mnesia_gvar, {:schema, :ram_copies}, 2)
-      catch
-        :error, _ ->
-          {:EXIT, {:badarg, []}}
-      end
-
-    extNs =
-      try do
-        :ets.lookup_element(:mnesia_gvar, {:schema, :external_copies}, 2)
-      catch
-        :error, _ ->
-          {:EXIT, {:badarg, []}}
-      end
-
+    discNs = (try do
+                :ets.lookup_element(:mnesia_gvar,
+                                      {:schema, :disc_copies}, 2)
+              catch
+                :error, _ ->
+                  {:EXIT, {:badarg, []}}
+              end)
+    ramNs = (try do
+               :ets.lookup_element(:mnesia_gvar,
+                                     {:schema, :ram_copies}, 2)
+             catch
+               :error, _ ->
+                 {:EXIT, {:badarg, []}}
+             end)
+    extNs = (try do
+               :ets.lookup_element(:mnesia_gvar,
+                                     {:schema, :external_copies}, 2)
+             catch
+               :error, _ ->
+                 {:EXIT, {:badarg, []}}
+             end)
     cond do
-      is_list(discNs) and is_list(ramNs) and
-          is_list(extNs) ->
+      (is_list(discNs) and is_list(ramNs) and
+         is_list(extNs)) ->
         discNs ++ ramNs ++ extNs
-
       true ->
-        case :mnesia_schema.read_nodes() do
+        case (:mnesia_schema.read_nodes()) do
           {:ok, nodes} ->
             nodes
-
           {:error, reason} ->
             exit(reason)
         end
@@ -3243,7 +2839,8 @@ defmodule :m_mnesia do
 
   defp system_info2(:running_db_nodes) do
     case (try do
-            :ets.lookup_element(:mnesia_gvar, {:current, :db_nodes}, 2)
+            :ets.lookup_element(:mnesia_gvar, {:current, :db_nodes},
+                                  2)
           catch
             :error, _ ->
               {:EXIT, {:badarg, []}}
@@ -3251,7 +2848,6 @@ defmodule :m_mnesia do
       {:EXIT, _} ->
         load_mnesia_or_abort()
         :mnesia_lib.running_nodes()
-
       other ->
         other
     end
@@ -3267,7 +2863,6 @@ defmodule :m_mnesia do
       {:EXIT, _} ->
         load_mnesia_or_abort()
         :mnesia_monitor.get_env(:extra_db_nodes)
-
       other ->
         other
     end
@@ -3283,7 +2878,6 @@ defmodule :m_mnesia do
       {:EXIT, _} ->
         load_mnesia_or_abort()
         :mnesia_monitor.get_env(:dir)
-
       other ->
         other
     end
@@ -3299,7 +2893,6 @@ defmodule :m_mnesia do
       {:EXIT, _} ->
         load_mnesia_or_abort()
         :mnesia_monitor.use_dir()
-
       other ->
         other
     end
@@ -3315,7 +2908,6 @@ defmodule :m_mnesia do
       {:EXIT, _} ->
         load_mnesia_or_abort()
         :mnesia_monitor.get_env(:schema_location)
-
       other ->
         other
     end
@@ -3323,7 +2915,8 @@ defmodule :m_mnesia do
 
   defp system_info2(:fallback_activated) do
     case (try do
-            :ets.lookup_element(:mnesia_gvar, :fallback_activated, 2)
+            :ets.lookup_element(:mnesia_gvar, :fallback_activated,
+                                  2)
           catch
             :error, _ ->
               {:EXIT, {:badarg, []}}
@@ -3331,7 +2924,6 @@ defmodule :m_mnesia do
       {:EXIT, _} ->
         load_mnesia_or_abort()
         :mnesia_bup.fallback_exists()
-
       other ->
         other
     end
@@ -3346,15 +2938,12 @@ defmodule :m_mnesia do
           end) do
       {:EXIT, _} ->
         apps = :application.loaded_applications()
-
-        case :lists.keysearch(:mnesia, 1, apps) do
+        case (:lists.keysearch(:mnesia, 1, apps)) do
           {:value, {_Name, _Desc, version}} ->
             version
-
           false ->
             {:mnesia_not_loaded, node(), :erlang.timestamp()}
         end
-
       version ->
         version
     end
@@ -3492,88 +3081,81 @@ defmodule :m_mnesia do
     :mnesia_monitor.get_env(:send_compressed)
   end
 
+  defp system_info2(:max_transfer_size) do
+    :mnesia_monitor.get_env(:max_transfer_size)
+  end
+
   defp system_info2(item) do
     exit({:badarg, item})
   end
 
   defp system_info_items(:yes) do
-    [
-      :access_module,
-      :auto_repair,
-      :backend_types,
-      :backup_module,
-      :checkpoints,
-      :db_nodes,
-      :debug,
-      :directory,
-      :dump_log_load_regulation,
-      :dump_log_time_threshold,
-      :dump_log_update_in_place,
-      :dump_log_write_threshold,
-      :event_module,
-      :extra_db_nodes,
-      :fallback_activated,
-      :held_locks,
-      :ignore_fallback_at_startup,
-      :fallback_error_function,
-      :is_running,
-      :local_tables,
-      :lock_queue,
-      :log_version,
-      :master_node_tables,
-      :max_wait_for_decision,
-      :protocol_version,
-      :running_db_nodes,
-      :schema_location,
-      :schema_version,
-      :subscribers,
-      :tables,
-      :transaction_commits,
-      :transaction_failures,
-      :transaction_log_writes,
-      :transaction_restarts,
-      :transactions,
-      :use_dir,
-      :core_dir,
-      :no_table_loaders,
-      :dc_dump_limit,
-      :send_compressed,
-      :version
-    ]
+    [:access_module, :auto_repair, :backend_types,
+                                       :backup_module, :checkpoints, :db_nodes,
+                                                                         :debug,
+                                                                             :directory,
+                                                                                 :dump_log_load_regulation,
+                                                                                     :dump_log_time_threshold,
+                                                                                         :dump_log_update_in_place,
+                                                                                             :dump_log_write_threshold,
+                                                                                                 :event_module,
+                                                                                                     :extra_db_nodes,
+                                                                                                         :fallback_activated,
+                                                                                                             :held_locks,
+                                                                                                                 :ignore_fallback_at_startup,
+                                                                                                                     :fallback_error_function,
+                                                                                                                         :is_running,
+                                                                                                                             :local_tables,
+                                                                                                                                 :lock_queue,
+                                                                                                                                     :log_version,
+                                                                                                                                         :master_node_tables,
+                                                                                                                                             :max_wait_for_decision,
+                                                                                                                                                 :protocol_version,
+                                                                                                                                                     :running_db_nodes,
+                                                                                                                                                         :schema_location,
+                                                                                                                                                             :schema_version,
+                                                                                                                                                                 :subscribers,
+                                                                                                                                                                     :tables,
+                                                                                                                                                                         :transaction_commits,
+                                                                                                                                                                             :transaction_failures,
+                                                                                                                                                                                 :transaction_log_writes,
+                                                                                                                                                                                     :transaction_restarts,
+                                                                                                                                                                                         :transactions,
+                                                                                                                                                                                             :use_dir,
+                                                                                                                                                                                                 :core_dir,
+                                                                                                                                                                                                     :no_table_loaders,
+                                                                                                                                                                                                         :dc_dump_limit,
+                                                                                                                                                                                                             :send_compressed,
+                                                                                                                                                                                                                 :max_transfer_size,
+                                                                                                                                                                                                                     :version]
   end
 
   defp system_info_items(:no) do
-    [
-      :auto_repair,
-      :backup_module,
-      :db_nodes,
-      :debug,
-      :directory,
-      :dump_log_load_regulation,
-      :dump_log_time_threshold,
-      :dump_log_update_in_place,
-      :dump_log_write_threshold,
-      :event_module,
-      :extra_db_nodes,
-      :ignore_fallback_at_startup,
-      :fallback_error_function,
-      :is_running,
-      :log_version,
-      :max_wait_for_decision,
-      :protocol_version,
-      :running_db_nodes,
-      :schema_location,
-      :schema_version,
-      :use_dir,
-      :core_dir,
-      :version
-    ]
+    [:auto_repair, :backup_module, :db_nodes, :debug,
+                                                  :directory,
+                                                      :dump_log_load_regulation,
+                                                          :dump_log_time_threshold,
+                                                              :dump_log_update_in_place,
+                                                                  :dump_log_write_threshold,
+                                                                      :event_module,
+                                                                          :extra_db_nodes,
+                                                                              :ignore_fallback_at_startup,
+                                                                                  :fallback_error_function,
+                                                                                      :is_running,
+                                                                                          :log_version,
+                                                                                              :max_wait_for_decision,
+                                                                                                  :protocol_version,
+                                                                                                      :running_db_nodes,
+                                                                                                          :schema_location,
+                                                                                                              :schema_version,
+                                                                                                                  :use_dir,
+                                                                                                                      :core_dir,
+                                                                                                                          :version]
   end
 
   def system_info() do
     isRunning = :mnesia_lib.is_running()
-
-    case isRunning do
+    case (isRunning) do
       :yes ->
         tmInfo = :mnesia_tm.get_info(10000)
         held = system_info(:held_locks)
@@ -3581,19 +3163,16 @@ defmodule :m_mnesia do
         pat = {:_, :unclear, :_}
         uncertain = :ets.match_object(:mnesia_decision, pat)
         display_system_info(held, queued, tmInfo, uncertain)
-
       _ ->
         mini_info()
     end
-
     isRunning
   end
 
   defp load_mnesia_or_abort() do
-    case :mnesia_lib.ensure_loaded(:mnesia) do
+    case (:mnesia_lib.ensure_loaded(:mnesia)) do
       :ok ->
         :ok
-
       {:error, reason} ->
         abort(reason)
     end
@@ -3724,58 +3303,39 @@ defmodule :m_mnesia do
   end
 
   def clear_table(tab) do
-    case :erlang.get(:mnesia_activity_state) do
-      state = {mod, tid, _Ts}
-      when :erlang.element(
-             1,
-             tid
-           ) !== :tid ->
-        transaction(
-          state,
-          fn ->
-            do_clear_table(tab)
-          end,
-          [],
-          :infinity,
-          mod,
-          :sync
-        )
-
+    case (:erlang.get(:mnesia_activity_state)) do
+      state = {mod, tid, _Ts} when :erlang.element(1,
+                                                     tid) !== :tid
+                                   ->
+        transaction(state,
+                      fn () ->
+                           do_clear_table(tab)
+                      end,
+                      [], :infinity, mod, :sync)
       :undefined ->
-        transaction(
-          :undefined,
-          fn ->
-            do_clear_table(tab)
-          end,
-          [],
-          :infinity,
-          :mnesia,
-          :sync
-        )
-
+        transaction(:undefined,
+                      fn () ->
+                           do_clear_table(tab)
+                      end,
+                      [], :infinity, :mnesia, :sync)
       _ ->
         :mnesia.abort({:aborted, :nested_transaction})
     end
   end
 
   defp do_clear_table(tab) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {:mnesia, tid, ts} ->
         clear_table(tid, ts, tab, :_)
-
       {mod, tid, ts} ->
         mod.clear_table(tid, ts, tab, :_)
-
       _ ->
         abort(:no_transaction)
     end
   end
 
-  def clear_table(tid, ts, tab, obj)
-      when :erlang.element(
-             1,
-             tid
-           ) === :tid do
+  def clear_table(tid, ts, tab, obj) when :erlang.element(1,
+                                                   tid) === :tid do
     store = r_tidstore(ts, :store)
     :mnesia_locker.wlock_table(tid, store, tab)
     oid = {tab, :_}
@@ -3808,10 +3368,9 @@ defmodule :m_mnesia do
   end
 
   def force_load_table(tab) do
-    case :mnesia_controller.force_load_table(tab) do
+    case (:mnesia_controller.force_load_table(tab)) do
       :ok ->
         :yes
-
       other ->
         other
     end
@@ -3832,36 +3391,28 @@ defmodule :m_mnesia do
   def set_master_nodes(nodes) when is_list(nodes) do
     useDir = system_info(:use_dir)
     isRunning = system_info(:is_running)
-
-    case isRunning do
+    case (isRunning) do
       :yes ->
         csPat = {{:_, :cstruct}, :_}
         cstructs0 = :ets.match_object(:mnesia_gvar, csPat)
-
-        cstructs =
-          for {_, cs} <- cstructs0 do
-            cs
-          end
-
-        log_valid_master_nodes(cstructs, nodes, useDir, isRunning)
-
+        cstructs = (for {_, cs} <- cstructs0 do
+                      cs
+                    end)
+        log_valid_master_nodes(cstructs, nodes, useDir,
+                                 isRunning)
       _NotRunning ->
-        case useDir do
+        case (useDir) do
           true ->
             :mnesia_lib.lock_table(:schema)
-
-            res =
-              case :mnesia_schema.read_cstructs_from_disc() do
-                {:ok, cstructs} ->
-                  log_valid_master_nodes(cstructs, nodes, useDir, isRunning)
-
-                {:error, reason} ->
-                  {:error, reason}
-              end
-
+            res = (case (:mnesia_schema.read_cstructs_from_disc()) do
+                     {:ok, cstructs} ->
+                       log_valid_master_nodes(cstructs, nodes, useDir,
+                                                isRunning)
+                     {:error, reason} ->
+                       {:error, reason}
+                   end)
             :mnesia_lib.unlock_table(:schema)
             res
-
           false ->
             :ok
         end
@@ -3874,20 +3425,19 @@ defmodule :m_mnesia do
 
   defp log_valid_master_nodes(cstructs, nodes, useDir, isRunning) do
     fun = fn cs ->
-      copies = :mnesia_lib.copy_holders(cs)
-      valid = :mnesia_lib.intersect(nodes, copies)
-      {r_cstruct(cs, :name), valid}
-    end
-
+               copies = :mnesia_lib.copy_holders(cs)
+               valid = :mnesia_lib.intersect(nodes, copies)
+               {r_cstruct(cs, :name), valid}
+          end
     args = :lists.map(fun, cstructs)
-    :mnesia_recover.log_master_nodes(args, useDir, isRunning)
+    :mnesia_recover.log_master_nodes(args, useDir,
+                                       isRunning)
   end
 
   def set_master_nodes(tab, nodes) when is_list(nodes) do
     useDir = system_info(:use_dir)
     isRunning = system_info(:is_running)
-
-    case isRunning do
+    case (isRunning) do
       :yes ->
         case (try do
                 :ets.lookup_element(:mnesia_gvar, {tab, :cstruct}, 2)
@@ -3897,48 +3447,40 @@ defmodule :m_mnesia do
               end) do
           {:EXIT, _} ->
             {:error, {:no_exists, tab}}
-
           cs ->
-            case nodes -- :mnesia_lib.copy_holders(cs) do
+            case (nodes -- :mnesia_lib.copy_holders(cs)) do
               [] ->
                 args = [{tab, nodes}]
-                :mnesia_recover.log_master_nodes(args, useDir, isRunning)
-
+                :mnesia_recover.log_master_nodes(args, useDir,
+                                                   isRunning)
               badNodes ->
                 {:error, {:no_exists, tab, badNodes}}
             end
         end
-
       _NotRunning ->
-        case useDir do
+        case (useDir) do
           true ->
             :mnesia_lib.lock_table(:schema)
-
-            res =
-              case :mnesia_schema.read_cstructs_from_disc() do
-                {:ok, cstructs} ->
-                  case :lists.keysearch(tab, 2, cstructs) do
-                    {:value, cs} ->
-                      case nodes -- :mnesia_lib.copy_holders(cs) do
-                        [] ->
-                          args = [{tab, nodes}]
-                          :mnesia_recover.log_master_nodes(args, useDir, isRunning)
-
-                        badNodes ->
-                          {:error, {:no_exists, tab, badNodes}}
-                      end
-
-                    false ->
-                      {:error, {:no_exists, tab}}
-                  end
-
-                {:error, reason} ->
-                  {:error, reason}
-              end
-
+            res = (case (:mnesia_schema.read_cstructs_from_disc()) do
+                     {:ok, cstructs} ->
+                       case (:lists.keysearch(tab, 2, cstructs)) do
+                         {:value, cs} ->
+                           case (nodes -- :mnesia_lib.copy_holders(cs)) do
+                             [] ->
+                               args = [{tab, nodes}]
+                               :mnesia_recover.log_master_nodes(args, useDir,
+                                                                  isRunning)
+                             badNodes ->
+                               {:error, {:no_exists, tab, badNodes}}
+                           end
+                         false ->
+                           {:error, {:no_exists, tab}}
+                       end
+                     {:error, reason} ->
+                       {:error, reason}
+                   end)
             :mnesia_lib.unlock_table(:schema)
             res
-
           false ->
             :ok
         end
@@ -3977,50 +3519,42 @@ defmodule :m_mnesia do
     :mnesia_schema.del_snmp(tab)
   end
 
-  def snmp_get_row(tab, rowIndex)
-      when is_atom(tab) and
-             tab != :schema and is_list(rowIndex) do
-    case :erlang.get(:mnesia_activity_state) do
-      {mod, tid, ts = r_tidstore(store: store)}
-      when :erlang.element(
-             1,
-             tid
-           ) === :tid ->
-        case snmp_oid_to_mnesia_key(rowIndex, tab) do
+  def snmp_get_row(tab, rowIndex) when (is_atom(tab) and
+                                tab != :schema and is_list(rowIndex)) do
+    case (:erlang.get(:mnesia_activity_state)) do
+      {mod, tid, ts = r_tidstore(store: store)} when :erlang.element(1,
+                                                              tid) === :tid
+                                            ->
+        case (snmp_oid_to_mnesia_key(rowIndex, tab)) do
           :unknown ->
             ops = find_ops(store, tab, val({tab, :wild_pattern}))
             snmpType = val({tab, :snmp})
-
             fix = fn {{_, key}, row, op}, res ->
-              case :mnesia_snmp_hook.key_to_oid(tab, key, snmpType) do
-                ^rowIndex ->
-                  case op do
-                    :write ->
-                      {:ok, row}
-
-                    _ ->
-                      :undefined
+                       case (:mnesia_snmp_hook.key_to_oid(tab, key,
+                                                            snmpType)) do
+                         ^rowIndex ->
+                           case (op) do
+                             :write ->
+                               {:ok, row}
+                             _ ->
+                               :undefined
+                           end
+                         _ ->
+                           res
+                       end
                   end
-
-                _ ->
-                  res
-              end
-            end
-
             :lists.foldl(fix, :undefined, ops)
-
           key ->
-            case mod.read(tid, ts, tab, key, :read) do
+            case (mod.read(tid, ts, tab, key, :read)) do
               [row] ->
                 {:ok, row}
-
               _ ->
                 :undefined
             end
         end
-
       _ ->
-        dirty_rpc(tab, :mnesia_snmp_hook, :get_row, [tab, rowIndex])
+        dirty_rpc(tab, :mnesia_snmp_hook, :get_row,
+                    [tab, rowIndex])
     end
   end
 
@@ -4028,42 +3562,34 @@ defmodule :m_mnesia do
     abort({:bad_type, tab})
   end
 
-  def snmp_get_next_index(tab, rowIndex)
-      when is_atom(tab) and
-             tab != :schema and is_list(rowIndex) do
-    {next, origKey} = dirty_rpc(tab, :mnesia_snmp_hook, :get_next_index, [tab, rowIndex])
-
-    case :erlang.get(:mnesia_activity_state) do
-      {_Mod, tid, r_tidstore(store: store)}
-      when :erlang.element(
-             1,
-             tid
-           ) === :tid ->
-        case origKey do
+  def snmp_get_next_index(tab, rowIndex) when (is_atom(tab) and
+                                tab != :schema and is_list(rowIndex)) do
+    {next, origKey} = dirty_rpc(tab, :mnesia_snmp_hook,
+                                  :get_next_index, [tab, rowIndex])
+    case (:erlang.get(:mnesia_activity_state)) do
+      {_Mod, tid, r_tidstore(store: store)} when :erlang.element(1,
+                                                          tid) === :tid
+                                        ->
+        case (origKey) do
           :undefined ->
             snmp_order_keys(store, tab, rowIndex, [])
-
           _ ->
-            case :ets.match(store, {{tab, origKey}, :_, :"$1"}) do
+            case (:ets.match(store, {{tab, origKey}, :_, :"$1"})) do
               [] ->
                 snmp_order_keys(store, tab, rowIndex, [origKey])
-
               ops ->
-                case :lists.last(ops) do
+                case (:lists.last(ops)) do
                   [:delete] ->
                     snmp_get_next_index(tab, next)
-
                   _ ->
                     snmp_order_keys(store, tab, rowIndex, [origKey])
                 end
             end
         end
-
       _ ->
-        case next do
+        case (next) do
           :endOfTable ->
             :endOfTable
-
           _ ->
             {:ok, next}
         end
@@ -4077,12 +3603,9 @@ defmodule :m_mnesia do
   defp snmp_order_keys(store, tab, rowIndex, def__) do
     all = :ets.match(store, {{tab, :"$1"}, :_, :"$2"})
     snmpType = val({tab, :snmp})
-
-    keys0 =
-      for key <- ts_keys_1(all, def__) do
-        :mnesia_snmp_hook.key_to_oid(tab, key, snmpType)
-      end
-
+    keys0 = (for key <- ts_keys_1(all, def__) do
+               :mnesia_snmp_hook.key_to_oid(tab, key, snmpType)
+             end)
     keys = :lists.sort(keys0)
     get_ordered_snmp_key(rowIndex, keys)
   end
@@ -4099,16 +3622,16 @@ defmodule :m_mnesia do
     :endOfTable
   end
 
-  def snmp_get_mnesia_key(tab, rowIndex)
-      when is_atom(tab) and
-             tab != :schema and is_list(rowIndex) do
-    case :erlang.get(:mnesia_activity_state) do
+  def snmp_get_mnesia_key(tab, rowIndex) when (is_atom(tab) and
+                                tab != :schema and is_list(rowIndex)) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {_Mod, tid, ts} when :erlang.element(1, tid) === :tid ->
-        res = dirty_rpc(tab, :mnesia_snmp_hook, :get_mnesia_key, [tab, rowIndex])
+        res = dirty_rpc(tab, :mnesia_snmp_hook, :get_mnesia_key,
+                          [tab, rowIndex])
         snmp_filter_key(res, rowIndex, tab, r_tidstore(ts, :store))
-
       _ ->
-        dirty_rpc(tab, :mnesia_snmp_hook, :get_mnesia_key, [tab, rowIndex])
+        dirty_rpc(tab, :mnesia_snmp_hook, :get_mnesia_key,
+                    [tab, rowIndex])
     end
   end
 
@@ -4117,31 +3640,28 @@ defmodule :m_mnesia do
   end
 
   defp snmp_oid_to_mnesia_key(rowIndex, tab) do
-    case :mnesia_snmp_hook.oid_to_key(rowIndex, tab) do
+    case (:mnesia_snmp_hook.oid_to_key(rowIndex, tab)) do
       :unknown ->
-        case dirty_rpc(tab, :mnesia_snmp_hook, :get_mnesia_key, [tab, rowIndex]) do
+        case (dirty_rpc(tab, :mnesia_snmp_hook, :get_mnesia_key,
+                          [tab, rowIndex])) do
           {:ok, mnesiaKey} ->
             mnesiaKey
-
           :undefined ->
             :unknown
         end
-
       mnesiaKey ->
         mnesiaKey
     end
   end
 
   defp snmp_filter_key(res = {:ok, key}, _RowIndex, tab, store) do
-    case :ets.lookup(store, {tab, key}) do
+    case (:ets.lookup(store, {tab, key})) do
       [] ->
         res
-
       ops ->
-        case :lists.last(ops) do
+        case (:lists.last(ops)) do
           {_, _, :write} ->
             res
-
           _ ->
             :undefined
         end
@@ -4149,39 +3669,33 @@ defmodule :m_mnesia do
   end
 
   defp snmp_filter_key(:undefined, rowIndex, tab, store) do
-    case :mnesia_snmp_hook.oid_to_key(rowIndex, tab) do
+    case (:mnesia_snmp_hook.oid_to_key(rowIndex, tab)) do
       :unknown ->
         ops = find_ops(store, tab, val({tab, :wild_pattern}))
         snmpType = val({tab, :snmp})
-
         fix = fn {{_, key}, _, op}, res ->
-          case :mnesia_snmp_hook.key_to_oid(tab, key, snmpType) do
-            ^rowIndex ->
-              case op do
-                :write ->
-                  {:ok, key}
-
-                _ ->
-                  :undefined
+                   case (:mnesia_snmp_hook.key_to_oid(tab, key,
+                                                        snmpType)) do
+                     ^rowIndex ->
+                       case (op) do
+                         :write ->
+                           {:ok, key}
+                         _ ->
+                           :undefined
+                       end
+                     _ ->
+                       res
+                   end
               end
-
-            _ ->
-              res
-          end
-        end
-
         :lists.foldl(fix, :undefined, ops)
-
       key ->
-        case :ets.lookup(store, {tab, key}) do
+        case (:ets.lookup(store, {tab, key})) do
           [] ->
             :undefined
-
           ops ->
-            case :lists.last(ops) do
+            case (:lists.last(ops)) do
               {_, _, :write} ->
                 {:ok, key}
-
               _ ->
                 :undefined
             end
@@ -4202,111 +3716,87 @@ defmodule :m_mnesia do
   end
 
   def table(tab, opts) do
-    {[trav, lock, nObjects], qlcOptions0} =
-      qlc_opts(
-        opts,
-        [{:traverse, :select}, {:lock, :read}, {:n_objects, 100}]
-      )
-
-    tF =
-      case trav do
-        {:select, ms} ->
-          fn ->
-            qlc_select(select(tab, ms, nObjects, lock))
-          end
-
-        :select ->
-          fn ms ->
-            qlc_select(select(tab, ms, nObjects, lock))
-          end
-
-        _ ->
-          :erlang.error({:badarg, {trav, [tab, opts]}})
-      end
-
+    {[trav, lock, nObjects], qlcOptions0} = qlc_opts(opts,
+                                                       [{:traverse, :select},
+                                                            {:lock, :read},
+                                                                {:n_objects,
+                                                                   100}])
+    tF = (case (trav) do
+            {:select, ms} ->
+              fn () ->
+                   qlc_select(select(tab, ms, nObjects, lock))
+              end
+            :select ->
+              fn ms ->
+                   qlc_select(select(tab, ms, nObjects, lock))
+              end
+            _ ->
+              :erlang.error({:badarg, {trav, [tab, opts]}})
+          end)
     pre = fn arg ->
-      pre_qlc(arg, tab)
-    end
-
-    post = fn ->
-      post_qlc(tab)
-    end
-
-    info = fn tag ->
-      qlc_info(tab, tag)
-    end
-
-    parentFun = fn ->
-      {:mnesia_activity, :mnesia.get_activity_id()}
-    end
-
-    lookup =
-      case trav do
-        {:select, _} ->
-          []
-
-        _ ->
-          lFun = fn
-            2, keys ->
-              read = fn key ->
-                read(tab, key, lock)
-              end
-
-              :lists.flatmap(read, keys)
-
-            index, keys ->
-              idxRead = fn key ->
-                index_read(tab, key, index)
-              end
-
-              :lists.flatmap(idxRead, keys)
+               pre_qlc(arg, tab)
           end
-
-          [{:lookup_fun, lFun}]
-      end
-
+    post = fn () ->
+                post_qlc(tab)
+           end
+    info = fn tag ->
+                qlc_info(tab, tag)
+           end
+    parentFun = fn () ->
+                     {:mnesia_activity, :mnesia.get_activity_id()}
+                end
+    lookup = (case (trav) do
+                {:select, _} ->
+                  []
+                _ ->
+                  lFun = fn 2, keys ->
+                              read = fn key ->
+                                          read(tab, key, lock)
+                                     end
+                              :lists.flatmap(read, keys)
+                            index, keys ->
+                              idxRead = fn key ->
+                                             index_read(tab, key, index)
+                                        end
+                              :lists.flatmap(idxRead, keys)
+                         end
+                  [{:lookup_fun, lFun}]
+              end)
     mFA = fn type ->
-      qlc_format(type, tab, nObjects, lock, opts)
-    end
-
-    qlcOptions =
-      [
-        {:pre_fun, pre},
-        {:post_fun, post},
-        {:info_fun, info},
-        {:parent_fun, parentFun},
-        {:format_fun, mFA}
-        | lookup
-      ] ++ qlcOptions0
-
+               qlc_format(type, tab, nObjects, lock, opts)
+          end
+    qlcOptions = [{:pre_fun, pre}, {:post_fun, post},
+                                       {:info_fun, info}, {:parent_fun,
+                                                             parentFun},
+                                                              {:format_fun,
+                                                                 mFA} |
+                                                                  lookup] ++ qlcOptions0
     :qlc.table(tF, qlcOptions)
   end
 
   defp pre_qlc(opts, tab) do
-    {_, tid, _} =
-      case :erlang.get(:mnesia_activity_state) do
-        :undefined ->
-          case :lists.keysearch(:parent_value, 1, opts) do
-            {:value, {:parent_value, {:mnesia_activity, :undefined}}} ->
-              abort(:no_transaction)
-
-            {:value, {:parent_value, {:mnesia_activity, aid}}} ->
-              {:value, {:stop_fun, stop}} = :lists.keysearch(:stop_fun, 1, opts)
-              put_activity_id(aid, stop)
-              aid
-
-            _ ->
-              abort(:no_transaction)
-          end
-
-        else__ ->
-          else__
-      end
-
-    case :erlang.element(1, tid) do
+    {_, tid,
+       _} = (case (:erlang.get(:mnesia_activity_state)) do
+               :undefined ->
+                 case (:lists.keysearch(:parent_value, 1, opts)) do
+                   {:value,
+                      {:parent_value, {:mnesia_activity, :undefined}}} ->
+                     abort(:no_transaction)
+                   {:value, {:parent_value, {:mnesia_activity, aid}}} ->
+                     {:value,
+                        {:stop_fun, stop}} = :lists.keysearch(:stop_fun, 1,
+                                                                opts)
+                     put_activity_id(aid, stop)
+                     aid
+                   _ ->
+                     abort(:no_transaction)
+                 end
+               else__ ->
+                 else__
+             end)
+    case (:erlang.element(1, tid)) do
       :tid ->
         :ok
-
       _ ->
         case (try do
                 :ets.lookup_element(:mnesia_gvar, {tab, :setorbag}, 2)
@@ -4316,19 +3806,18 @@ defmodule :m_mnesia do
               end) do
           :ordered_set ->
             :ok
-
           _ ->
-            dirty_rpc(tab, :mnesia_tm, :fixtable, [tab, true, self()])
+            dirty_rpc(tab, :mnesia_tm, :fixtable,
+                        [tab, true, self()])
             :ok
         end
     end
   end
 
   defp post_qlc(tab) do
-    case :erlang.get(:mnesia_activity_state) do
+    case (:erlang.get(:mnesia_activity_state)) do
       {_, r_tid(), _} ->
         :ok
-
       _ ->
         case (try do
                 :ets.lookup_element(:mnesia_gvar, {tab, :setorbag}, 2)
@@ -4338,9 +3827,9 @@ defmodule :m_mnesia do
               end) do
           :ordered_set ->
             :ok
-
           _ ->
-            dirty_rpc(tab, :mnesia_tm, :fixtable, [tab, false, self()])
+            dirty_rpc(tab, :mnesia_tm, :fixtable,
+                        [tab, false, self()])
             :ok
         end
     end
@@ -4355,10 +3844,9 @@ defmodule :m_mnesia do
   end
 
   defp qlc_select({objects, cont}) do
-    objects ++
-      fn ->
-        qlc_select(select(cont))
-      end
+    objects ++ fn () ->
+                    qlc_select(select(cont))
+               end
   end
 
   defp qlc_opts(opts, keys) when is_list(opts) do
@@ -4370,16 +3858,14 @@ defmodule :m_mnesia do
   end
 
   defp qlc_opts(opts, [{key, def__} | keys], acc) do
-    opt =
-      case :lists.keysearch(key, 1, opts) do
-        {:value, {^key, value}} ->
-          value
-
-        false ->
-          def__
-      end
-
-    qlc_opts(:lists.keydelete(key, 1, opts), keys, [opt | acc])
+    opt = (case (:lists.keysearch(key, 1, opts)) do
+             {:value, {^key, value}} ->
+               value
+             false ->
+               def__
+           end)
+    qlc_opts(:lists.keydelete(key, 1, opts), keys,
+               [opt | acc])
   end
 
   defp qlc_opts(opts, [], acc) do
@@ -4399,20 +3885,18 @@ defmodule :m_mnesia do
   end
 
   defp qlc_info(tab, :is_unique_keys) do
-    case val({tab, :type}) do
+    case (val({tab, :type})) do
       :set ->
         true
-
       :ordered_set ->
         true
-
       _ ->
         false
     end
   end
 
   defp qlc_info(tab, :is_sorted_objects) do
-    case val({tab, :type}) do
+    case (val({tab, :type})) do
       :ordered_set ->
         case (try do
                 :ets.lookup_element(:mnesia_gvar, {tab, :frag_hash}, 2)
@@ -4422,11 +3906,9 @@ defmodule :m_mnesia do
               end) do
           {:EXIT, _} ->
             :ascending
-
           _ ->
             :no
         end
-
       _ ->
         :no
     end
@@ -4441,30 +3923,23 @@ defmodule :m_mnesia do
   end
 
   defp qlc_format(:all, tab, nObjects, lock, opts) do
-    {:mnesia, :table, [tab, [{:n_objects, nObjects}, {:lock, lock} | opts]]}
+    {:mnesia, :table,
+       [tab, [{:n_objects, nObjects}, {:lock, lock} | opts]]}
   end
 
   defp qlc_format({:match_spec, ms}, tab, nObjects, lock, opts) do
     {:mnesia, :table,
-     [tab, [{:traverse, {:select, ms}}, {:n_objects, nObjects}, {:lock, lock} | opts]]}
+       [tab, [{:traverse, {:select, ms}}, {:n_objects,
+                                             nObjects},
+                                              {:lock, lock} | opts]]}
   end
 
   defp qlc_format({:lookup, 2, keys}, tab, _, lock, _) do
-    :io_lib.format('lists:flatmap(fun(V) -> ~w:read(~w, V, ~w) end, ~w)', [
-      :mnesia,
-      tab,
-      lock,
-      keys
-    ])
+    :io_lib.format('lists:flatmap(fun(V) -> ~w:read(~w, V, ~w) end, ~w)', [:mnesia, tab, lock, keys])
   end
 
   defp qlc_format({:lookup, index, keys}, tab, _, _, _) do
-    :io_lib.format('lists:flatmap(fun(V) -> ~w:index_read(~w, V, ~w) end, ~w)', [
-      :mnesia,
-      tab,
-      index,
-      keys
-    ])
+    :io_lib.format('lists:flatmap(fun(V) -> ~w:index_read(~w, V, ~w) end, ~w)', [:mnesia, tab, index, keys])
   end
 
   defp do_fixtable(tab, r_tidstore(store: store)) do
@@ -4480,20 +3955,16 @@ defmodule :m_mnesia do
           end) do
       :ordered_set ->
         :ok
-
       _ ->
-        case :ets.match_object(
-               store,
-               {:fixtable, {tab, :_}}
-             ) do
+        case (:ets.match_object(store,
+                                  {:fixtable, {tab, :_}})) do
           [] ->
-            node = dirty_rpc(tab, :mnesia_tm, :fixtable, [tab, true, self()])
+            node = dirty_rpc(tab, :mnesia_tm, :fixtable,
+                               [tab, true, self()])
             :ets.insert(store, {:fixtable, {tab, node}})
-
           _ ->
             :ignore
         end
-
         :ok
     end
   end
@@ -4512,9 +3983,9 @@ defmodule :m_mnesia do
 
   defp regular_indexes(tab) do
     posList = val({tab, :index})
-
     for p <- posList, is_integer(p) do
       p
     end
   end
+
 end

@@ -1,55 +1,75 @@
 defmodule :m_edlin do
   use Bitwise
   import :lists, only: [reverse: 1, reverse: 2]
-
   def init() do
+    :erlang.put(:key_map, :edlin_key.get_key_map())
     :erlang.put(:kill_buffer, [])
   end
 
   def init(pid) do
-    copiedKillBuf =
-      case :erlang.process_info(
-             pid,
-             :dictionary
-           ) do
-        {:dictionary, dict} ->
-          case :proplists.get_value(:kill_buffer, dict) do
-            :undefined ->
-              []
-
-            buf ->
-              buf
-          end
-
-        :undefined ->
-          []
-      end
-
+    init()
+    copiedKillBuf = (case (:erlang.process_info(pid,
+                                                  :dictionary)) do
+                       {:dictionary, dict} ->
+                         case (:proplists.get_value(:kill_buffer, dict)) do
+                           :undefined ->
+                             []
+                           buf ->
+                             buf
+                         end
+                       :undefined ->
+                         []
+                     end)
     :erlang.put(:kill_buffer, copiedKillBuf)
   end
 
   def start(pbs) do
-    start(pbs, :none)
+    start(pbs, {:normal, :none})
   end
 
-  def start(pbs, mode) do
-    {:more_chars, {:line, pbs, {[], []}, mode}, [{:put_chars, :unicode, pbs}]}
+  def start(pbs, {_, {_, []}, []} = cont) do
+    {:more_chars, {:line, pbs, cont, {:normal, :none}},
+       [{:insert_chars, :unicode, multi_line_prompt(pbs)}]}
   end
 
-  def edit_line(cs, {:line, p, l, {:blink, n}}) do
-    edit(cs, p, l, :none, [{:move_rel, n}])
+  def start(pbs, {_, {_, _}, _} = cont) do
+    {:more_chars, {:line, pbs, cont, {:normal, :none}},
+       redraw(pbs, cont, [])}
+  end
+
+  def start(pbs, editState) do
+    {:more_chars,
+       {:line, pbs, {[], {[], []}, []}, editState},
+       [:new_prompt, {:insert_chars, :unicode, pbs}]}
+  end
+
+  def keymap() do
+    :erlang.get(:key_map)
+  end
+
+  def edit_line(cs, {:line, p, l, {:blink, n_Rs}}) do
+    edit(cs, p, l, {:normal, :none}, n_Rs)
   end
 
   def edit_line(cs, {:line, p, l, m}) do
     edit(cs, p, l, m, [])
   end
 
-  def edit_line1(cs, {:line, p, l, {:blink, n}}) do
-    edit(cs, p, l, :none, [{:move_rel, n}])
+  def edit_line1(cs, {:line, p, l, {:blink, n_Rs}}) do
+    edit(cs, p, l, {:normal, :none}, n_Rs)
   end
 
-  def edit_line1(cs, {:line, p, {[], []}, :none}) do
-    {:more_chars, {:line, p, {:string.reverse(cs), []}, :none}, [{:put_chars, :unicode, cs}]}
+  def edit_line1(cs,
+           {:line, p, {b, {[], []}, a}, {:normal, :none}}) do
+    [currentLine |
+         lines] = (for line <- reverse(:string.split(cs, '\n',
+                                                       :all)) do
+                     :string.to_graphemes(line)
+                   end)
+    cont = {lines ++ b, {reverse(currentLine), []}, a}
+    rs = redraw(p, cont, [])
+    {:more_chars, {:line, p, cont, {:normal, :none}},
+       [:delete_line | rs]}
   end
 
   def edit_line1(cs, {:line, p, l, m}) do
@@ -57,703 +77,619 @@ defmodule :m_edlin do
   end
 
   defp edit([c | cs], p, line, {:blink, _}, [_ | rs]) do
-    edit([c | cs], p, line, :none, rs)
-  end
-
-  defp edit([c | cs], p, {bef, aft}, prefix, rs0) do
-    case key_map(c, prefix) do
-      :meta ->
-        edit(cs, p, {bef, aft}, :meta, rs0)
-
-      :meta_o ->
-        edit(cs, p, {bef, aft}, :meta_o, rs0)
-
-      :meta_csi ->
-        edit(cs, p, {bef, aft}, :meta_csi, rs0)
-
-      :meta_meta ->
-        edit(cs, p, {bef, aft}, :meta_meta, rs0)
-
-      {:csi, _} = csi ->
-        edit(cs, p, {bef, aft}, csi, rs0)
-
-      :meta_left_sq_bracket ->
-        edit(cs, p, {bef, aft}, :meta_left_sq_bracket, rs0)
-
-      :search_meta ->
-        edit(cs, p, {bef, aft}, :search_meta, rs0)
-
-      :search_meta_left_sq_bracket ->
-        edit(cs, p, {bef, aft}, :search_meta_left_sq_bracket, rs0)
-
-      :ctlx ->
-        edit(cs, p, {bef, aft}, :ctlx, rs0)
-
-      :new_line ->
-        {:done, get_line(bef, aft ++ '\n'), cs,
-         reverse(
-           rs0,
-           [{:move_rel, cp_len(aft)}, {:put_chars, :unicode, '\n'}]
-         )}
-
-      :redraw_line ->
-        rs1 = erase(p, bef, aft, rs0)
-        rs = redraw(p, bef, aft, rs1)
-        edit(cs, p, {bef, aft}, :none, rs)
-
-      :tab_expand ->
-        {:expand, bef, cs, {:line, p, {bef, aft}, :none}, reverse(rs0)}
-
-      {:undefined, ^c} ->
-        {:undefined, {:none, prefix, c}, cs, {:line, p, {bef, aft}, :none}, reverse(rs0)}
-
-      op ->
-        case do_op(op, bef, aft, rs0) do
-          {:blink, n, line, rs} ->
-            edit(cs, p, line, {:blink, n}, rs)
-
-          {line, rs, mode} ->
-            edit(cs, p, line, mode, rs)
-
-          {line, rs} ->
-            edit(cs, p, line, :none, rs)
-        end
-    end
+    edit([c | cs], p, line, {:normal, :none}, rs)
   end
 
   defp edit([], p, l, {:blink, n}, rs) do
     {:blink, {:line, p, l, {:blink, n}}, reverse(rs)}
   end
 
-  defp edit([], p, l, prefix, rs) do
-    {:more_chars, {:line, p, l, prefix}, reverse(rs)}
-  end
-
-  defp edit(:eof, _, {bef, aft}, _, rs) do
-    {:done, get_line(bef, aft), [], reverse(rs, [{:move_rel, cp_len(aft)}])}
-  end
-
-  def prefix_arg(:none) do
-    1
-  end
-
-  def prefix_arg({:ctlu, n}) do
-    n
-  end
-
-  def prefix_arg(n) do
-    n
-  end
-
-  defp key_map(a, _) when is_atom(a) do
-    a
-  end
-
-  defp key_map(1, :none) do
-    :beginning_of_line
-  end
-
-  defp key_map(2, :none) do
-    :backward_char
-  end
-
-  defp key_map(4, :none) do
-    :forward_delete_char
-  end
-
-  defp key_map(5, :none) do
-    :end_of_line
-  end
-
-  defp key_map(6, :none) do
-    :forward_char
-  end
-
-  defp key_map(?\b, :none) do
-    :backward_delete_char
-  end
-
-  defp key_map(?\t, :none) do
-    :tab_expand
-  end
-
-  defp key_map(?\f, :none) do
-    :redraw_line
-  end
-
-  defp key_map(?\n, :none) do
-    :new_line
-  end
-
-  defp key_map(?\v, :none) do
-    :kill_line
-  end
-
-  defp key_map(?\r, :none) do
-    :new_line
-  end
-
-  defp key_map(20, :none) do
-    :transpose_char
-  end
-
-  defp key_map(21, :none) do
-    :ctlu
-  end
-
-  defp key_map(29, :none) do
-    :auto_blink
-  end
-
-  defp key_map(24, :none) do
-    :ctlx
-  end
-
-  defp key_map(25, :none) do
-    :yank
-  end
-
-  defp key_map(23, :none) do
-    :backward_kill_word
-  end
-
-  defp key_map(?\e, :none) do
-    :meta
-  end
-
-  defp key_map(?), prefix)
-       when prefix !== :meta and
-              prefix !== :search and prefix !== :search_meta do
-    {:blink, ?), ?(}
-  end
-
-  defp key_map(?}, prefix)
-       when prefix !== :meta and
-              prefix !== :search and prefix !== :search_meta do
-    {:blink, ?}, ?{}
-  end
-
-  defp key_map(?], prefix)
-       when prefix !== :meta and
-              prefix !== :search and prefix !== :search_meta do
-    {:blink, ?], ?[}
-  end
-
-  defp key_map(?B, :meta) do
-    :backward_word
-  end
-
-  defp key_map(?D, :meta) do
-    :kill_word
-  end
-
-  defp key_map(?F, :meta) do
-    :forward_word
-  end
-
-  defp key_map(?T, :meta) do
-    :transpose_word
-  end
-
-  defp key_map(?Y, :meta) do
-    :yank_pop
-  end
-
-  defp key_map(?b, :meta) do
-    :backward_word
-  end
-
-  defp key_map(?d, :meta) do
-    :kill_word
-  end
-
-  defp key_map(?f, :meta) do
-    :forward_word
-  end
-
-  defp key_map(?t, :meta) do
-    :transpose_word
-  end
-
-  defp key_map(?y, :meta) do
-    :yank_pop
-  end
-
-  defp key_map(?O, :meta) do
-    :meta_o
-  end
-
-  defp key_map(?H, :meta_o) do
-    :beginning_of_line
-  end
-
-  defp key_map(?F, :meta_o) do
-    :end_of_line
-  end
-
-  defp key_map(?\d, :none) do
-    :backward_delete_char
-  end
-
-  defp key_map(?\d, :meta) do
-    :backward_kill_word
-  end
-
-  defp key_map(?[, :meta) do
-    :meta_left_sq_bracket
-  end
-
-  defp key_map(?H, :meta_left_sq_bracket) do
-    :beginning_of_line
-  end
-
-  defp key_map(?F, :meta_left_sq_bracket) do
-    :end_of_line
-  end
-
-  defp key_map(?D, :meta_left_sq_bracket) do
-    :backward_char
-  end
-
-  defp key_map(?C, :meta_left_sq_bracket) do
-    :forward_char
-  end
-
-  defp key_map(?\e, :meta) do
-    :meta_meta
-  end
-
-  defp key_map(?[, :meta_meta) do
-    :meta_csi
-  end
-
-  defp key_map(?C, :meta_csi) do
-    :forward_word
-  end
-
-  defp key_map(?D, :meta_csi) do
-    :backward_word
-  end
-
-  defp key_map(?1, :meta_left_sq_bracket) do
-    {:csi, '1'}
-  end
-
-  defp key_map(?3, :meta_left_sq_bracket) do
-    {:csi, '3'}
-  end
-
-  defp key_map(?5, :meta_left_sq_bracket) do
-    {:csi, '5'}
-  end
-
-  defp key_map(?5, {:csi, '1;'}) do
-    {:csi, '1;5'}
-  end
-
-  defp key_map(?~, {:csi, '3'}) do
-    :forward_delete_char
-  end
-
-  defp key_map(?C, {:csi, '5'}) do
-    :forward_word
-  end
-
-  defp key_map(?C, {:csi, '1;5'}) do
-    :forward_word
-  end
-
-  defp key_map(?D, {:csi, '5'}) do
-    :backward_word
-  end
-
-  defp key_map(?D, {:csi, '1;5'}) do
-    :backward_word
-  end
-
-  defp key_map(?;, {:csi, '1'}) do
-    {:csi, '1;'}
-  end
-
-  defp key_map(c, :none) when c >= ?\s do
-    {:insert, c}
-  end
-
-  defp key_map(?\b, :search) do
-    {:search, :backward_delete_char}
-  end
-
-  defp key_map(?\d, :search) do
-    {:search, :backward_delete_char}
-  end
-
-  defp key_map(18, :search) do
-    {:search, :skip_up}
-  end
-
-  defp key_map(19, :search) do
-    {:search, :skip_down}
-  end
-
-  defp key_map(?\n, :search) do
-    {:search, :search_found}
-  end
-
-  defp key_map(?\r, :search) do
-    {:search, :search_found}
-  end
-
-  defp key_map(1, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(2, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(4, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(5, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(6, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(?\t, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(?\f, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(20, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(21, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(29, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(24, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(25, :search) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(?\e, :search) do
-    :search_meta
-  end
-
-  defp key_map(?[, :search_meta) do
-    :search_meta_left_sq_bracket
-  end
-
-  defp key_map(_, :search_meta) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(_C, :search_meta_left_sq_bracket) do
-    {:search, :search_quit}
-  end
-
-  defp key_map(c, :search) do
-    {:insert_search, c}
-  end
-
-  defp key_map(c, _) do
-    {:undefined, c}
-  end
-
-  defp do_op({:insert, c}, [], [], rs) do
-    {{[c], []}, [{:put_chars, :unicode, [c]} | rs]}
-  end
-
-  defp do_op({:insert, c}, [bef | bef0], [], rs) do
-    case :string.to_graphemes([bef, c]) do
-      [gC] ->
-        {{[gC | bef0], []}, [{:put_chars, :unicode, [c]} | rs]}
-
-      _ ->
-        {{[c, bef | bef0], []}, [{:put_chars, :unicode, [c]} | rs]}
+  defp edit([], p, l, editState, rs) do
+    {:more_chars, {:line, p, l, editState}, reverse(rs)}
+  end
+
+  defp edit(:eof, _, {_, {bef, aft0}, lA} = l, _, rs) do
+    aft1 = (case (lA) do
+              [last | _] ->
+                last
+              _ ->
+                aft0
+            end)
+    {:done, l, [],
+       reverse(rs,
+                 [{:move_combo, - cp_len(bef), length(lA),
+                     cp_len(aft1)}])}
+  end
+
+  defp edit(buf, p, {lB, {bef, aft}, lA} = multiLine,
+            {shellMode, escapePrefix}, rs0) do
+    case (:edlin_key.get_valid_escape_key(buf,
+                                            escapePrefix)) do
+      {:escape_prefix, escapePrefix1} ->
+        case (shellMode) do
+          :tab_expand ->
+            edit(buf, p, multiLine, {:normal, :none}, rs0)
+          _ ->
+            edit([], p, multiLine, {shellMode, escapePrefix1}, rs0)
+        end
+      {:invalid, _I, rest} ->
+        edit(rest, p, multiLine, {shellMode, :none}, rs0)
+      {:insert, c1, cs2} ->
+        op = (case (shellMode) do
+                :normal when c1 === ?) ->
+                  {:blink, ?), ?(}
+                :normal when c1 === ?] ->
+                  {:blink, ?], ?[}
+                :normal when c1 === ?} ->
+                  {:blink, ?}, ?{}
+                :normal ->
+                  {:insert, c1}
+                :search when ?\s <= c1 ->
+                  {:insert_search, c1}
+                :search ->
+                  :search_quit
+                :tab_expand ->
+                  :tab_expand_quit
+              end)
+        case (op) do
+          :tab_expand_quit ->
+            edit(buf, p, multiLine, {:normal, :none}, rs0)
+          :search_quit ->
+            {:search_quit, cs2,
+               {:line, p, multiLine, {:normal, :none}}, reverse(rs0)}
+          _ ->
+            case (do_op(op, multiLine, rs0)) do
+              {:blink, n, multiLine1, rs} ->
+                edit(cs2, p, multiLine1, {:blink, n}, rs)
+              {:redraw, multiLine1, rs} ->
+                edit(cs2, p, multiLine1, {shellMode, :none},
+                       redraw(p, multiLine1, rs))
+              {multiLine1, rs} ->
+                edit(cs2, p, multiLine1, {shellMode, :none}, rs)
+            end
+        end
+      {:key, key, cs} ->
+        keyMap = :erlang.get(:key_map)
+        value = (case (:maps.find(key,
+                                    :maps.get(shellMode, keyMap))) do
+                   :error ->
+                     case (:maps.find(:default,
+                                        :maps.get(shellMode, keyMap))) do
+                       :error ->
+                         :none
+                       {:ok, value0} ->
+                         value0
+                     end
+                   {:ok, value0} ->
+                     value0
+                 end)
+        case (value) do
+          :none ->
+            edit(cs, p, multiLine, {:normal, :none}, rs0)
+          :search ->
+            {:search, cs, {:line, p, multiLine, {:normal, :none}},
+               reverse(rs0)}
+          :search_found ->
+            {:search_found, cs,
+               {:line, p, multiLine, {:normal, :none}}, reverse(rs0)}
+          :search_cancel ->
+            {:search_cancel, cs,
+               {:line, p, multiLine, {:normal, :none}}, reverse(rs0)}
+          :search_quit ->
+            {:search_quit, cs,
+               {:line, p, multiLine, {:normal, :none}}, reverse(rs0)}
+          :open_editor ->
+            {:open_editor, cs,
+               {:line, p, multiLine, {:normal, :none}}, reverse(rs0)}
+          :history_up ->
+            {:history_up, cs,
+               {:line, p, multiLine, {:normal, :none}}, reverse(rs0)}
+          :history_down ->
+            {:history_down, cs,
+               {:line, p, multiLine, {:normal, :none}}, reverse(rs0)}
+          :new_line ->
+            multiLine1 = {[:lists.reverse(bef) | lB], {[], aft}, lA}
+            edit(cs, p, multiLine1, {:normal, :none},
+                   reverse(redraw(p, multiLine1, rs0)))
+          :new_line_finish ->
+            {{lB1, {bef1, []}, []}, rs1} = do_op(:end_of_expression,
+                                                   multiLine, rs0)
+            {:done, {[:lists.reverse(bef1) | lB1], {[], []}, []},
+               cs, reverse(rs1, [{:insert_chars, :unicode, '\n'}])}
+          :redraw_line ->
+            rs1 = erase_line(rs0)
+            rs = redraw(p, multiLine, rs1)
+            edit(cs, p, multiLine, {:normal, :none}, rs)
+          :clear ->
+            rs = redraw(p, multiLine, [:clear | rs0])
+            edit(cs, p, multiLine, {:normal, :none}, rs)
+          :tab_expand ->
+            {:expand, chars_before(multiLine), cs,
+               {:line, p, multiLine, {:tab_expand, :none}},
+               reverse(rs0)}
+          :tab_expand_full ->
+            {:expand_full, chars_before(multiLine), cs,
+               {:line, p, multiLine, {:tab_expand, :none}},
+               reverse(rs0)}
+          :tab_expand_quit ->
+            edit(buf, p, multiLine, {:normal, :none}, rs0)
+          op ->
+            op1 = (case (shellMode) do
+                     :search ->
+                       {:search, op}
+                     _ ->
+                       op
+                   end)
+            case (do_op(op1, multiLine, rs0)) do
+              {:blink, n, multiLine1, rs} ->
+                edit(cs, p, multiLine1, {:blink, n}, rs)
+              {:redraw, multiLine1, rs} ->
+                edit(cs, p, multiLine1, {:normal, :none},
+                       redraw(p, multiLine1, rs))
+              {multiLine1, rs} ->
+                edit(cs, p, multiLine1, {shellMode, :none}, rs)
+            end
+        end
     end
   end
 
-  defp do_op({:insert, c}, [], aft, rs) do
-    {{[c], aft}, [{:insert_chars, :unicode, [c]} | rs]}
+  defp do_op({:insert, c}, {lB, {[], []}, lA}, rs) do
+    {{lB, {[c], []}, lA},
+       [{:insert_chars, :unicode, [c]} | rs]}
   end
 
-  defp do_op({:insert, c}, [bef | bef0], aft, rs) do
-    case :string.to_graphemes([bef, c]) do
+  defp do_op({:insert, c}, {lB, {[bef | bef0], []}, lA},
+            rs) do
+    case (:string.to_graphemes([bef, c])) do
       [gC] ->
-        {{[gC | bef0], aft}, [{:insert_chars, :unicode, [c]} | rs]}
-
+        {{lB, {[gC | bef0], []}, lA},
+           [{:insert_chars, :unicode, [c]} | rs]}
       _ ->
-        {{[c, bef | bef0], aft}, [{:insert_chars, :unicode, [c]} | rs]}
+        {{lB, {[c, bef | bef0], []}, lA},
+           [{:insert_chars, :unicode, [c]} | rs]}
     end
   end
 
-  defp do_op({:insert_search, c}, bef, [], rs) do
-    aft = '\': '
-
-    {{[c | bef], aft},
-     [
-       {:insert_chars, :unicode, [c] ++ aft},
-       {:delete_chars, -3}
-       | rs
-     ], :search}
+  defp do_op({:insert, c}, {lB, {[], aft}, lA}, rs) do
+    {{lB, {[c], aft}, lA},
+       [{:insert_chars, :unicode, [c]} | rs]}
   end
 
-  defp do_op({:insert_search, c}, bef, aft, rs) do
-    offset = cp_len(aft)
-    nAft = '\': '
-
-    {{[c | bef], nAft},
-     [
-       {:insert_chars, :unicode, [c] ++ nAft},
-       {:delete_chars, -offset}
-       | rs
-     ], :search}
+  defp do_op({:insert, c}, {lB, {[bef | bef0], aft}, lA},
+            rs) do
+    case (:string.to_graphemes([bef, c])) do
+      [gC] ->
+        {{lB, {[gC | bef0], aft}, lA},
+           [{:insert_chars, :unicode, [c]} | rs]}
+      _ ->
+        {{lB, {[c, bef | bef0], aft}, lA},
+           [{:insert_chars, :unicode, [c]} | rs]}
+    end
   end
 
-  defp do_op({:search, :backward_delete_char}, [_ | bef], aft, rs) do
+  defp do_op({:insert_search, c}, {lB, {bef, []}, lA}, rs) do
+    {{lB, {[c | bef], []}, lA},
+       [{:insert_chars, :unicode, [c]}, :delete_after_cursor |
+                                            rs]}
+  end
+
+  defp do_op({:insert_search, c}, {lB, {bef, _Aft}, lA},
+            rs) do
+    {{lB, {[c | bef], []}, lA},
+       [{:insert_chars, :unicode, [c]}, :delete_after_cursor |
+                                            rs],
+       :search}
+  end
+
+  defp do_op({:search, :backward_delete_char},
+            {lB, {[_ | bef], aft}, lA}, rs) do
     offset = cp_len(aft) + 1
-    nAft = '\': '
-
-    {{bef, nAft},
-     [
-       {:insert_chars, :unicode, nAft},
-       {:delete_chars, -offset}
-       | rs
-     ], :search}
+    {{lB, {bef, aft}, lA},
+       [{:insert_chars, :unicode, aft}, {:delete_chars,
+                                           - offset} |
+                                            rs]}
   end
 
-  defp do_op({:search, :backward_delete_char}, [], _Aft, rs) do
-    aft = '\': '
-    {{[], aft}, rs, :search}
+  defp do_op({:search, :backward_delete_char},
+            {lB, {[], aft}, lA}, rs) do
+    {{lB, {[], aft}, lA},
+       [{:insert_chars, :unicode, aft}, {:delete_chars,
+                                           - cp_len(aft)} |
+                                            rs]}
   end
 
-  defp do_op({:search, :skip_up}, bef, aft, rs) do
+  defp do_op({:search, :skip_up}, {_, {bef, aft}, _}, rs) do
     offset = cp_len(aft)
-    nAft = '\': '
-
-    {{[18 | bef], nAft},
-     [
-       {:insert_chars, :unicode, nAft},
-       {:delete_chars, -offset}
-       | rs
-     ], :search}
+    {{[], {[18 | bef], aft}, []},
+       [{:insert_chars, :unicode, aft}, {:delete_chars,
+                                           - offset} |
+                                            rs]}
   end
 
-  defp do_op({:search, :skip_down}, bef, aft, rs) do
+  defp do_op({:search, :skip_down}, {_, {bef, aft}, _LA},
+            rs) do
     offset = cp_len(aft)
-    nAft = '\': '
-
-    {{[19 | bef], nAft},
-     [
-       {:insert_chars, :unicode, nAft},
-       {:delete_chars, -offset}
-       | rs
-     ], :search}
+    {{[], {[19 | bef], aft}, []},
+       [{:insert_chars, :unicode, aft}, {:delete_chars,
+                                           - offset} |
+                                            rs]}
   end
 
-  defp do_op({:search, :search_found}, _Bef, aft, rs) do
-    '\': ' ++ nAft = aft
-
-    {{[], nAft},
-     [
-       {:put_chars, :unicode, '\n'},
-       {:move_rel, -cp_len(aft)}
-       | rs
-     ], :search_found}
+  defp do_op({:blink, c, m},
+            {_, {[?$, ?$ | _], _}, _} = multiLine, rs) do
+    blink(over_paren(chars_before(multiLine), c, m), c,
+            multiLine, rs)
   end
 
-  defp do_op({:search, :search_quit}, _Bef, aft, rs) do
-    '\': ' ++ nAft = aft
-
-    {{[], nAft},
-     [
-       {:put_chars, :unicode, '\n'},
-       {:move_rel, -cp_len(aft)}
-       | rs
-     ], :search_quit}
+  defp do_op({:blink, c, _},
+            {_, {[?$ | _], _}, _} = multiLine, rs) do
+    do_op({:insert, c}, multiLine, rs)
   end
 
-  defp do_op({:blink, c, m}, bef = [?$, ?$ | _], aft, rs) do
-    n = over_paren(bef, c, m)
-
-    {:blink, n + 1, {[c | bef], aft},
-     [
-       {:move_rel, -(n + 1)},
-       {:insert_chars, :unicode, [c]}
-       | rs
-     ]}
+  defp do_op({:blink, c, m}, multiLine, rs) do
+    blink(over_paren(chars_before(multiLine), c, m), c,
+            multiLine, rs)
   end
 
-  defp do_op({:blink, c, _}, bef = [?$ | _], aft, rs) do
-    do_op({:insert, c}, bef, aft, rs)
+  defp do_op(:auto_blink, multiLine, rs) do
+    blink(over_paren_auto(chars_before(multiLine)),
+            multiLine, rs)
   end
 
-  defp do_op({:blink, c, m}, bef, aft, rs) do
-    case over_paren(bef, c, m) do
-      :beep ->
-        {{[c | bef], aft}, [:beep, {:insert_chars, :unicode, [c]} | rs]}
-
-      n ->
-        {:blink, n + 1, {[c | bef], aft},
-         [
-           {:move_rel, -(n + 1)},
-           {:insert_chars, :unicode, [c]}
-           | rs
-         ]}
-    end
+  defp do_op(:forward_delete_char,
+            {lB, {bef, []}, [nextLine | lA]}, rs) do
+    newLine = {lB, {bef, nextLine}, lA}
+    {:redraw, newLine, rs}
   end
 
-  defp do_op(:auto_blink, bef, aft, rs) do
-    case over_paren_auto(bef) do
-      {n, paren} ->
-        {:blink, n + 1, {[paren | bef], aft},
-         [
-           {:move_rel, -(n + 1)},
-           {:insert_chars, :unicode, [paren]}
-           | rs
-         ]}
-
-      n ->
-        {:blink, n + 1, {bef, aft}, [{:move_rel, -(n + 1)} | rs]}
-    end
+  defp do_op(:forward_delete_char,
+            {lB, {bef, [gC | aft]}, lA}, rs) do
+    {{lB, {bef, aft}, lA},
+       [{:delete_chars, gc_len(gC)} | rs]}
   end
 
-  defp do_op(:forward_delete_char, bef, [gC | aft], rs) do
-    {{bef, aft}, [{:delete_chars, gc_len(gC)} | rs]}
+  defp do_op(:backward_delete_char,
+            {[prevLine | lB], {[], aft}, lA}, rs) do
+    newLine = {lB, {:lists.reverse(prevLine), aft}, lA}
+    {:redraw, newLine, rs}
   end
 
-  defp do_op(:backward_delete_char, [gC | bef], aft, rs) do
-    {{bef, aft}, [{:delete_chars, -gc_len(gC)} | rs]}
+  defp do_op(:backward_delete_char,
+            {lB, {[gC | bef], aft}, lA}, rs) do
+    {{lB, {bef, aft}, lA},
+       [{:delete_chars, - gc_len(gC)} | rs]}
   end
 
-  defp do_op(:transpose_char, [c1, c2 | bef], [], rs) do
-    len = gc_len(c1) + gc_len(c2)
-
-    {{[c2, c1 | bef], []},
-     [
-       {:put_chars, :unicode, [c1, c2]},
-       {:move_rel, -len}
-       | rs
-     ]}
+  defp do_op(:forward_delete_word,
+            {lB, {bef, []}, [nextLine | lA]}, rs) do
+    newLine = {lB, {bef, nextLine}, lA}
+    {:redraw, newLine, rs}
   end
 
-  defp do_op(:transpose_char, [c2 | bef], [c1 | aft], rs) do
-    len = gc_len(c2)
-
-    {{[c2, c1 | bef], aft},
-     [
-       {:put_chars, :unicode, [c1, c2]},
-       {:move_rel, -len}
-       | rs
-     ]}
-  end
-
-  defp do_op(:kill_word, bef, aft0, rs) do
+  defp do_op(:forward_delete_word, {lB, {bef, aft0}, lA},
+            rs) do
     {aft1, kill0, n0} = over_non_word(aft0, [], 0)
     {aft, kill, n} = over_word(aft1, kill0, n0)
     :erlang.put(:kill_buffer, reverse(kill))
-    {{bef, aft}, [{:delete_chars, n} | rs]}
+    {{lB, {bef, aft}, lA}, [{:delete_chars, n} | rs]}
   end
 
-  defp do_op(:backward_kill_word, bef0, aft, rs) do
+  defp do_op(:backward_delete_word,
+            {[prevLine | lB], {[], aft}, lA}, rs) do
+    newLine = {lB, {:lists.reverse(prevLine), aft}, lA}
+    {:redraw, newLine, rs}
+  end
+
+  defp do_op(:backward_delete_word, {lB, {bef0, aft}, lA},
+            rs) do
     {bef1, kill0, n0} = over_non_word(bef0, [], 0)
     {bef, kill, n} = over_word(bef1, kill0, n0)
     :erlang.put(:kill_buffer, kill)
-    {{bef, aft}, [{:delete_chars, -n} | rs]}
+    {{lB, {bef, aft}, lA}, [{:delete_chars, - n} | rs]}
   end
 
-  defp do_op(:kill_line, bef, aft, rs) do
+  defp do_op(:transpose_char, {lB, {[c1, c2 | bef], []}, lA},
+            rs) do
+    len = gc_len(c1) + gc_len(c2)
+    {{lB, {[c2, c1 | bef], []}, lA},
+       [{:insert_chars_over, :unicode, [c1, c2]}, {:move_rel,
+                                                     - len} |
+                                                      rs]}
+  end
+
+  defp do_op(:transpose_char,
+            {lB, {[c2 | bef], [c1 | aft]}, lA}, rs) do
+    len = gc_len(c2)
+    {{lB, {[c2, c1 | bef], aft}, lA},
+       [{:insert_chars_over, :unicode, [c1, c2]}, {:move_rel,
+                                                     - len} |
+                                                      rs]}
+  end
+
+  defp do_op(:transpose_word, {lB, {bef0, aft0}, lA}, rs) do
+    {aft1, word2A, n0} = over_word(aft0, [], 0)
+    {bef, transposedWords, aft, n} = (case (n0) do
+                                        0 ->
+                                          {aft2, nonWord,
+                                             n1} = over_non_word(aft1, [], 0)
+                                          case (n1) do
+                                            0 ->
+                                              {bef1, word2B,
+                                                 b0} = over_word(bef0, [], 0)
+                                              {bef2, nonWordB,
+                                                 b1} = over_non_word(bef1, [],
+                                                                       b0)
+                                              {bef3, word1,
+                                                 b2} = over_word(bef2, [], b1)
+                                              {bef3,
+                                                 word2B ++ nonWordB ++ word1,
+                                                 aft0, b2}
+                                            _ ->
+                                              {aft3, word2,
+                                                 n2} = over_word(aft2, [], n1)
+                                              case (n2) do
+                                                0 ->
+                                                  {bef1, word2B,
+                                                     b0} = over_word(bef0, [],
+                                                                       0)
+                                                  {bef2, nonWordB,
+                                                     b1} = over_non_word(bef1,
+                                                                           [],
+                                                                           b0)
+                                                  {bef3, word1,
+                                                     b2} = over_word(bef2, [],
+                                                                       b1)
+                                                  {bef3,
+                                                     word2B ++ nonWordB ++ word1,
+                                                     aft0, b2}
+                                                _ ->
+                                                  {bef1, nonWord2,
+                                                     b0} = over_non_word(bef0,
+                                                                           [],
+                                                                           0)
+                                                  {bef2, word1,
+                                                     b1} = over_word(bef1, [],
+                                                                       b0)
+                                                  {bef2,
+                                                     reverse(word2) ++ nonWord2 ++ reverse(nonWord) ++ word1,
+                                                     aft3, b1}
+                                              end
+                                          end
+                                        _ ->
+                                          {bef1, word2B, b0} = over_word(bef0,
+                                                                           [],
+                                                                           0)
+                                          {bef2, nonWord,
+                                             b1} = over_non_word(bef1, [], b0)
+                                          {bef3, word1, b2} = over_word(bef2,
+                                                                          [],
+                                                                          b1)
+                                          {bef3,
+                                             word2B ++ reverse(word2A) ++ nonWord ++ word1,
+                                             aft1, b2}
+                                      end)
+    {{lB, {reverse(transposedWords) ++ bef, aft}, lA},
+       [{:insert_chars_over, :unicode, transposedWords},
+            {:move_rel, - n} | rs]}
+  end
+
+  defp do_op(:kill_word, {lB, {bef, aft0}, lA}, rs) do
+    {aft1, kill0, n0} = over_non_word(aft0, [], 0)
+    {aft, kill, n} = over_word(aft1, kill0, n0)
+    :erlang.put(:kill_buffer, reverse(kill))
+    {{lB, {bef, aft}, lA}, [{:delete_chars, n} | rs]}
+  end
+
+  defp do_op(:backward_kill_word, {lB, {bef0, aft}, lA},
+            rs) do
+    {bef1, kill0, n0} = over_non_word(bef0, [], 0)
+    {bef, kill, n} = over_word(bef1, kill0, n0)
+    :erlang.put(:kill_buffer, kill)
+    {{lB, {bef, aft}, lA}, [{:delete_chars, - n} | rs]}
+  end
+
+  defp do_op(:kill_line, {lB, {bef, aft}, lA}, rs) do
     :erlang.put(:kill_buffer, aft)
-    {{bef, []}, [{:delete_chars, cp_len(aft)} | rs]}
+    {{lB, {bef, []}, lA},
+       [{:delete_chars, cp_len(aft)} | rs]}
   end
 
-  defp do_op(:yank, bef, [], rs) do
+  defp do_op(:clear_line, _, rs) do
+    {:redraw, {[], {[], []}, []}, rs}
+  end
+
+  defp do_op(:yank, {lB, {bef, []}, lA}, rs) do
     kill = :erlang.get(:kill_buffer)
-    {{reverse(kill, bef), []}, [{:put_chars, :unicode, kill} | rs]}
+    {{lB, {reverse(kill, bef), []}, lA},
+       [{:insert_chars, :unicode, kill} | rs]}
   end
 
-  defp do_op(:yank, bef, aft, rs) do
+  defp do_op(:yank, {lB, {bef, aft}, lA}, rs) do
     kill = :erlang.get(:kill_buffer)
-    {{reverse(kill, bef), aft}, [{:insert_chars, :unicode, kill} | rs]}
+    {{lB, {reverse(kill, bef), aft}, lA},
+       [{:insert_chars, :unicode, kill} | rs]}
   end
 
-  defp do_op(:forward_char, bef, [c | aft], rs) do
-    {{[c | bef], aft}, [{:move_rel, gc_len(c)} | rs]}
+  defp do_op(:forward_line, {_, _, []} = multiLine, rs) do
+    {multiLine, rs}
   end
 
-  defp do_op(:backward_char, [c | bef], aft, rs) do
-    {{bef, [c | aft]}, [{:move_rel, -gc_len(c)} | rs]}
+  defp do_op(:forward_line, {lB, {bef, aft}, [aL | lA]},
+            rs) do
+    cL = :lists.reverse(bef, aft)
+    cursorPos = min(length(bef), length(aL))
+    {bef1, aft1} = :lists.split(cursorPos, aL)
+    {{[cL | lB], {:lists.reverse(bef1), aft1}, lA},
+       [{:move_combo, - cp_len(bef), 1, cp_len(bef1)} | rs]}
   end
 
-  defp do_op(:forward_word, bef0, aft0, rs) do
+  defp do_op(:backward_line, {[], _, _} = multiLine, rs) do
+    {multiLine, rs}
+  end
+
+  defp do_op(:backward_line, {[bL | lB], {bef, aft}, lA},
+            rs) do
+    cL = :lists.reverse(bef, aft)
+    cursorPos = min(length(bef), length(bL))
+    {bef1, aft1} = :lists.split(cursorPos, bL)
+    {{lB, {:lists.reverse(bef1), aft1}, [cL | lA]},
+       [{:move_combo, - cp_len(bef), - 1, cp_len(bef1)} | rs]}
+  end
+
+  defp do_op(:forward_char, {lB, {bef, []}, [aL | lA]},
+            rs) do
+    {{[:lists.reverse(bef) | lB],
+        {[], :string.to_graphemes(aL)}, lA},
+       [{:move_combo, - cp_len(bef), 1, 0} | rs]}
+  end
+
+  defp do_op(:forward_char, {lB, {bef, [c | aft]}, lA},
+            rs) do
+    {{lB, {[c | bef], aft}, lA},
+       [{:move_rel, gc_len(c)} | rs]}
+  end
+
+  defp do_op(:backward_char, {[bL | lB], {[], aft}, lA},
+            rs) do
+    {{lB, {:lists.reverse(:string.to_graphemes(bL)), []},
+        [aft | lA]},
+       [{:move_combo, 0, - 1, cp_len(bL)} | rs]}
+  end
+
+  defp do_op(:backward_char, {lB, {[c | bef], aft}, lA},
+            rs) do
+    {{lB, {bef, [c | aft]}, lA},
+       [{:move_rel, - gc_len(c)} | rs]}
+  end
+
+  defp do_op(:forward_word,
+            {lB, {bef0, []}, [nextLine | lA]}, rs) do
+    {{[reverse(bef0) | lB], {[], nextLine}, lA},
+       [{:move_combo, - cp_len(bef0), 1, 0} | rs]}
+  end
+
+  defp do_op(:forward_word, {lB, {bef0, aft0}, lA}, rs) do
     {aft1, bef1, n0} = over_non_word(aft0, bef0, 0)
     {aft, bef, n} = over_word(aft1, bef1, n0)
-    {{bef, aft}, [{:move_rel, n} | rs]}
+    {{lB, {bef, aft}, lA}, [{:move_rel, n} | rs]}
   end
 
-  defp do_op(:backward_word, bef0, aft0, rs) do
+  defp do_op(:backward_word,
+            {[prevLine | lB], {[], aft0}, lA}, rs) do
+    {{lB, {reverse(prevLine), []}, [aft0 | lA]},
+       [{:move_combo, 0, - 1, cp_len(prevLine)} | rs]}
+  end
+
+  defp do_op(:backward_word, {lB, {bef0, aft0}, lA}, rs) do
     {bef1, aft1, n0} = over_non_word(bef0, aft0, 0)
     {bef, aft, n} = over_word(bef1, aft1, n0)
-    {{bef, aft}, [{:move_rel, -n} | rs]}
+    {{lB, {bef, aft}, lA}, [{:move_rel, - n} | rs]}
   end
 
-  defp do_op(:beginning_of_line, [_ | _] = bef, aft, rs) do
-    {{[], reverse(bef, aft)}, [{:move_rel, -cp_len(bef)} | rs]}
+  defp do_op(:beginning_of_expression, {[], {[], aft}, lA},
+            rs) do
+    {{[], {[], aft}, lA}, rs}
   end
 
-  defp do_op(:beginning_of_line, [], aft, rs) do
-    {{[], aft}, rs}
+  defp do_op(:beginning_of_expression, {lB, {bef, aft}, lA},
+            rs) do
+    [first |
+         rest] = :lists.reverse(lB) ++ [:lists.reverse(bef, aft)]
+    {{[], {[], first}, rest ++ lA},
+       [{:move_combo, - cp_len(bef), - length(lB), 0} | rs]}
   end
 
-  defp do_op(:end_of_line, bef, [_ | _] = aft, rs) do
-    {{reverse(aft, bef), []}, [{:move_rel, cp_len(aft)} | rs]}
+  defp do_op(:end_of_expression, {lB, {bef, []}, []}, rs) do
+    {{lB, {bef, []}, []}, rs}
   end
 
-  defp do_op(:end_of_line, bef, [], rs) do
-    {{bef, []}, rs}
+  defp do_op(:end_of_expression, {lB, {bef, aft}, lA}, rs) do
+    [last |
+         rest] = :lists.reverse(lA) ++ [:lists.reverse(bef, aft)]
+    {{rest ++ lB, {:lists.reverse(last), []}, []},
+       [{:move_combo, - cp_len(bef), length(lA),
+           cp_len(last)} |
+            rs]}
   end
 
-  defp do_op(:ctlu, bef, aft, rs) do
+  defp do_op(:beginning_of_line,
+            {lB, {[_ | _] = bef, aft}, lA}, rs) do
+    {{lB, {[], reverse(bef, aft)}, lA},
+       [{:move_rel, - cp_len(bef)} | rs]}
+  end
+
+  defp do_op(:beginning_of_line, {lB, {[], aft}, lA}, rs) do
+    {{lB, {[], aft}, lA}, rs}
+  end
+
+  defp do_op(:end_of_line, {lB, {bef, [_ | _] = aft}, lA},
+            rs) do
+    {{lB, {reverse(aft, bef), []}, lA},
+       [{:move_rel, cp_len(aft)} | rs]}
+  end
+
+  defp do_op(:end_of_line, {lB, {bef, []}, lA}, rs) do
+    {{lB, {bef, []}, lA}, rs}
+  end
+
+  defp do_op(:backward_kill_line, {lB, {bef, aft}, lA},
+            rs) do
     :erlang.put(:kill_buffer, reverse(bef))
-    {{[], aft}, [{:delete_chars, -cp_len(bef)} | rs]}
+    {{lB, {[], aft}, lA},
+       [{:delete_chars, - cp_len(bef)} | rs]}
   end
 
-  defp do_op(:beep, bef, aft, rs) do
-    {{bef, aft}, [:beep | rs]}
+  defp do_op(:beep, {lB, {bef, aft}, lA}, rs) do
+    {{lB, {bef, aft}, lA}, [:beep | rs]}
   end
 
-  defp do_op(_, bef, aft, rs) do
-    {{bef, aft}, [:beep | rs]}
+  defp do_op(_, {lB, {bef, aft}, lA}, rs) do
+    {{lB, {bef, aft}, lA}, [:beep | rs]}
+  end
+
+  defp blink(:beep, c, {lB, {bef, aft}, lA}, rs) do
+    {{lB, {[c | bef], aft}, lA},
+       [:beep, {:insert_chars, :unicode, [c]} | rs]}
+  end
+
+  defp blink({n, r}, c, multiLine, rs) do
+    blink({n, r, c}, multiLine, rs)
+  end
+
+  defp blink(:beep, {lB, {bef, aft}, lA}, rs) do
+    {{lB, {bef, aft}, lA}, [:beep | rs]}
+  end
+
+  defp blink({n, 0, paren}, {lB, {bef, aft}, lA}, rs) do
+    moveBackToParen = {:move_rel, - n - 1}
+    moveForwardToParen = {:move_rel, n + 1}
+    {:blink, [moveForwardToParen],
+       {lB, {[paren | bef], aft}, lA},
+       [moveBackToParen, {:insert_chars, :unicode, [paren]} |
+                             rs]}
+  end
+
+  defp blink({n, r, paren}, {lB, {bef, aft}, lA}, rs) do
+    lengthToClosingParen = cp_len([paren | bef])
+    lengthOpeningParen = cp_len(:lists.nth(r, lB)) - n - 1
+    moveToOpeningParen = {:move_combo,
+                            - lengthToClosingParen, - r, lengthOpeningParen}
+    moveToClosingParen = {:move_combo, - lengthOpeningParen,
+                            r, lengthToClosingParen + 1}
+    {:blink, [moveToClosingParen],
+       {lB, {[paren | bef], aft}, lA},
+       [moveToOpeningParen, {:insert_chars, :unicode,
+                               [paren]} |
+                                rs]}
   end
 
   def over_word(cs, stack, n) do
-    l =
-      length(
-        for ?' <- cs do
-          1
-        end
-      )
-
-    case rem(l, 2) do
+    l = length(for ?' <- cs do
+                 1
+               end)
+    case (rem(l, 2)) do
       0 ->
         over_word1(cs, stack, n)
-
       1 ->
         until_quote(cs, stack, n)
     end
@@ -776,10 +712,9 @@ defmodule :m_edlin do
   end
 
   defp over_word2([c | cs], stack, n) do
-    case word_char(c) do
+    case (word_char(c)) do
       true ->
         over_word2(cs, [c | stack], n + gc_len(c))
-
       false ->
         {[c | cs], stack, n}
     end
@@ -790,10 +725,9 @@ defmodule :m_edlin do
   end
 
   defp over_non_word([c | cs], stack, n) do
-    case word_char(c) do
+    case (word_char(c)) do
       true ->
         {[c | cs], stack, n}
-
       false ->
         over_non_word(cs, [c | stack], n + gc_len(c))
     end
@@ -804,158 +738,225 @@ defmodule :m_edlin do
   end
 
   defp over_paren(chars, paren, match) do
-    over_paren(chars, paren, match, 1, 1, [])
+    over_paren(chars, paren, match, 1, 1, 0, [])
   end
 
-  defp over_paren([c, ?$, ?$ | cs], paren, match, d, n, l) do
-    over_paren([c | cs], paren, match, d, n + 2, l)
+  defp over_paren([c, ?$, ?$ | cs], paren, match, d, n, r, l) do
+    over_paren([c | cs], paren, match, d, n + 2, r, l)
   end
 
-  defp over_paren([gC, ?$ | cs], paren, match, d, n, l) do
-    over_paren(cs, paren, match, d, n + 1 + gc_len(gC), l)
+  defp over_paren([gC, ?$ | cs], paren, match, d, n, r, l) do
+    over_paren(cs, paren, match, d, n + 1 + gc_len(gC), r,
+                 l)
   end
 
-  defp over_paren([match | _], _Paren, match, 1, n, _) do
-    n
+  defp over_paren([?\n | cs], paren, match, d, _N, r, l) do
+    over_paren(cs, paren, match, d, 0, r + 1, l)
   end
 
-  defp over_paren([match | cs], paren, match, d, n, [match | l]) do
-    over_paren(cs, paren, match, d - 1, n + 1, l)
+  defp over_paren([match | _], _Paren, match, 1, n, r, _) do
+    {n, r}
   end
 
-  defp over_paren([paren | cs], paren, match, d, n, l) do
-    over_paren(cs, paren, match, d + 1, n + 1, [match | l])
+  defp over_paren([match | cs], paren, match, d, n, r,
+            [match | l]) do
+    over_paren(cs, paren, match, d - 1, n + 1, r, l)
   end
 
-  defp over_paren([?) | cs], paren, match, d, n, l) do
-    over_paren(cs, paren, match, d, n + 1, [?( | l])
+  defp over_paren([paren | cs], paren, match, d, n, r, l) do
+    over_paren(cs, paren, match, d + 1, n + 1, r,
+                 [match | l])
   end
 
-  defp over_paren([?] | cs], paren, match, d, n, l) do
-    over_paren(cs, paren, match, d, n + 1, [?[ | l])
+  defp over_paren([?) | cs], paren, match, d, n, r, l) do
+    over_paren(cs, paren, match, d, n + 1, r, [?( | l])
   end
 
-  defp over_paren([?} | cs], paren, match, d, n, l) do
-    over_paren(cs, paren, match, d, n + 1, [?{ | l])
+  defp over_paren([?] | cs], paren, match, d, n, r, l) do
+    over_paren(cs, paren, match, d, n + 1, r, [?[ | l])
   end
 
-  defp over_paren([?( | cs], paren, match, d, n, [?( | l]) do
-    over_paren(cs, paren, match, d, n + 1, l)
+  defp over_paren([?} | cs], paren, match, d, n, r, l) do
+    over_paren(cs, paren, match, d, n + 1, r, [?{ | l])
   end
 
-  defp over_paren([?[ | cs], paren, match, d, n, [?[ | l]) do
-    over_paren(cs, paren, match, d, n + 1, l)
+  defp over_paren([?( | cs], paren, match, d, n, r, [?( | l]) do
+    over_paren(cs, paren, match, d, n + 1, r, l)
   end
 
-  defp over_paren([?{ | cs], paren, match, d, n, [?{ | l]) do
-    over_paren(cs, paren, match, d, n + 1, l)
+  defp over_paren([?[ | cs], paren, match, d, n, r, [?[ | l]) do
+    over_paren(cs, paren, match, d, n + 1, r, l)
   end
 
-  defp over_paren([?( | _], _, _, _, _, _) do
+  defp over_paren([?{ | cs], paren, match, d, n, r, [?{ | l]) do
+    over_paren(cs, paren, match, d, n + 1, r, l)
+  end
+
+  defp over_paren([?( | _], _, _, _, _, _, _) do
     :beep
   end
 
-  defp over_paren([?[ | _], _, _, _, _, _) do
+  defp over_paren([?[ | _], _, _, _, _, _, _) do
     :beep
   end
 
-  defp over_paren([?{ | _], _, _, _, _, _) do
+  defp over_paren([?{ | _], _, _, _, _, _, _) do
     :beep
   end
 
-  defp over_paren([gC | cs], paren, match, d, n, l) do
-    over_paren(cs, paren, match, d, n + gc_len(gC), l)
+  defp over_paren([gC | cs], paren, match, d, n, r, l) do
+    over_paren(cs, paren, match, d, n + gc_len(gC), r, l)
   end
 
-  defp over_paren([], _, _, _, _, _) do
-    0
+  defp over_paren([], _, _, _, _, _, _) do
+    :beep
   end
 
   defp over_paren_auto(chars) do
-    over_paren_auto(chars, 1, 1, [])
+    over_paren_auto(chars, 1, 1, 0, [])
   end
 
-  defp over_paren_auto([c, ?$, ?$ | cs], d, n, l) do
-    over_paren_auto([c | cs], d, n + 2, l)
+  defp over_paren_auto([c, ?$, ?$ | cs], d, n, r, l) do
+    over_paren_auto([c | cs], d, n + 2, r, l)
   end
 
-  defp over_paren_auto([gC, ?$ | cs], d, n, l) do
-    over_paren_auto(cs, d, n + 1 + gc_len(gC), l)
+  defp over_paren_auto([gC, ?$ | cs], d, n, r, l) do
+    over_paren_auto(cs, d, n + 1 + gc_len(gC), r, l)
   end
 
-  defp over_paren_auto([?( | _], _, n, []) do
-    {n, ?)}
+  defp over_paren_auto([?\n | cs], d, _N, r, l) do
+    over_paren_auto(cs, d, 0, r + 1, l)
   end
 
-  defp over_paren_auto([?[ | _], _, n, []) do
-    {n, ?]}
+  defp over_paren_auto([?( | _], _, n, r, []) do
+    {n, r, ?)}
   end
 
-  defp over_paren_auto([?{ | _], _, n, []) do
-    {n, ?}}
+  defp over_paren_auto([?[ | _], _, n, r, []) do
+    {n, r, ?]}
   end
 
-  defp over_paren_auto([?) | cs], d, n, l) do
-    over_paren_auto(cs, d, n + 1, [?( | l])
+  defp over_paren_auto([?{ | _], _, n, r, []) do
+    {n, r, ?}}
   end
 
-  defp over_paren_auto([?] | cs], d, n, l) do
-    over_paren_auto(cs, d, n + 1, [?[ | l])
+  defp over_paren_auto([?) | cs], d, n, r, l) do
+    over_paren_auto(cs, d, n + 1, r, [?( | l])
   end
 
-  defp over_paren_auto([?} | cs], d, n, l) do
-    over_paren_auto(cs, d, n + 1, [?{ | l])
+  defp over_paren_auto([?] | cs], d, n, r, l) do
+    over_paren_auto(cs, d, n + 1, r, [?[ | l])
   end
 
-  defp over_paren_auto([?( | cs], d, n, [?( | l]) do
-    over_paren_auto(cs, d, n + 1, l)
+  defp over_paren_auto([?} | cs], d, n, r, l) do
+    over_paren_auto(cs, d, n + 1, r, [?{ | l])
   end
 
-  defp over_paren_auto([?[ | cs], d, n, [?[ | l]) do
-    over_paren_auto(cs, d, n + 1, l)
+  defp over_paren_auto([?( | cs], d, n, r, [?( | l]) do
+    over_paren_auto(cs, d, n + 1, r, l)
   end
 
-  defp over_paren_auto([?{ | cs], d, n, [?{ | l]) do
-    over_paren_auto(cs, d, n + 1, l)
+  defp over_paren_auto([?[ | cs], d, n, r, [?[ | l]) do
+    over_paren_auto(cs, d, n + 1, r, l)
   end
 
-  defp over_paren_auto([gC | cs], d, n, l) do
-    over_paren_auto(cs, d, n + gc_len(gC), l)
+  defp over_paren_auto([?{ | cs], d, n, r, [?{ | l]) do
+    over_paren_auto(cs, d, n + 1, r, l)
   end
 
-  defp over_paren_auto([], _, _, _) do
-    0
+  defp over_paren_auto([gC | cs], d, n, r, l) do
+    over_paren_auto(cs, d, n + gc_len(gC), r, l)
   end
 
-  def erase_line({:line, pbs, {bef, aft}, _}) do
-    reverse(erase(pbs, bef, aft, []))
+  defp over_paren_auto([], _, _, _, _) do
+    :beep
   end
 
-  def erase_inp({:line, _, {bef, aft}, _}) do
-    reverse(erase([], bef, aft, []))
+  def erase_line() do
+    [:delete_line]
   end
 
-  defp erase(pbs, bef, aft, rs) do
-    [{:delete_chars, -cp_len(pbs) - cp_len(bef)}, {:delete_chars, cp_len(aft)} | rs]
+  def erase_inp({:line, _, l, _}) do
+    reverse(erase([], l, []))
   end
 
-  def redraw_line({:line, pbs, {bef, aft}, _}) do
-    reverse(redraw(pbs, bef, aft, []))
+  defp erase_line(rs) do
+    [:delete_line | rs]
   end
 
-  defp redraw(pbs, bef, aft, rs) do
-    [
-      {:move_rel, -cp_len(aft)},
-      {:put_chars, :unicode, reverse(bef, aft)},
-      {:put_chars, :unicode, pbs} | rs
-    ]
+  defp erase(pbs, {_, {bef, aft}, _}, rs) do
+    [{:delete_chars, - cp_len(pbs) - cp_len(bef)},
+         {:delete_chars, cp_len(aft)} | rs]
   end
 
-  def length_before({:line, pbs, {bef, _Aft}, _}) do
+  def redraw_line({:line, pbs, l, _}) do
+    redraw(pbs, l, [])
+  end
+
+  defp multi_line_prompt(pbs) do
+    case (:application.get_env(:stdlib,
+                                 :shell_multiline_prompt, :default)) do
+      :default ->
+        default_multiline_prompt(pbs)
+      {m, f} when (is_atom(m) and is_atom(f)) ->
+        case ((try do
+                apply(m, f, [pbs])
+              catch
+                :error, e -> {:EXIT, {e, __STACKTRACE__}}
+                :exit, e -> {:EXIT, e}
+                e -> e
+              end)) do
+          prompt when is_list(prompt) ->
+            prompt
+          _ ->
+            :application.set_env(:stdlib, :shell_multiline_prompt,
+                                   :default)
+            :io.format('Invalid call: ~p:~p/1~n', [m, f])
+            default_multiline_prompt(pbs)
+        end
+      prompt when is_list(prompt) ->
+        :lists.duplicate(max(0,
+                               :prim_tty.npwcwidthstring(pbs) - :prim_tty.npwcwidthstring(prompt)),
+                           ?\s) ++ prompt
+      prompt ->
+        :application.set_env(:stdlib, :shell_multiline_prompt,
+                               :default)
+        :io.format('Invalid multiline prompt: ~p~n', [prompt])
+        default_multiline_prompt(pbs)
+    end
+  end
+
+  defp default_multiline_prompt(pbs) do
+    :lists.duplicate(max(0,
+                           :prim_tty.npwcwidthstring(pbs) - 3),
+                       ?\s) ++ '.. '
+  end
+
+  def inverted_space_prompt(pbs) do
+    '\e[7m' ++ :lists.duplicate(:prim_tty.npwcwidthstring(pbs) - 1,
+                            ?\s) ++ '\e[27m '
+  end
+
+  defp redraw(pbs, {_, {_, _}, _} = l, rs) do
+    [{:redraw_prompt, pbs, multi_line_prompt(pbs), l} | rs]
+  end
+
+  defp chars_before({[], {bef, _}, _}) do
+    bef
+  end
+
+  defp chars_before({lB, {bef, _}, _}) do
+    :lists.flatten(:lists.join(?\n,
+                                 [bef | for line <- lB do
+                                          reverse(line)
+                                        end]))
+  end
+
+  def length_before({:line, pbs, {_, {bef, _Aft}, _}, _}) do
     cp_len(pbs) + cp_len(bef)
   end
 
-  def length_after({:line, _, {_Bef, aft}, _}) do
+  def length_after({:line, _, {_, {_Bef, aft}, _}, _}) do
     cp_len(aft)
   end
 
@@ -963,16 +964,21 @@ defmodule :m_edlin do
     pbs
   end
 
-  def current_line({:line, _, {bef, aft}, _}) do
-    get_line(bef, aft ++ '\n')
+  def current_chars({:line, _, multiLine, _}) do
+    current_line(multiLine)
   end
 
-  def current_chars({:line, _, {bef, aft}, _}) do
-    get_line(bef, aft)
+  def current_line({:line, _, multiLine, _}) do
+    current_line(multiLine) ++ '\n'
   end
 
-  defp get_line(bef, aft) do
-    :unicode.characters_to_list(reverse(bef, aft))
+  def current_line({linesBefore, {before, after__}, linesAfter}) do
+    currentLine = :lists.reverse(before, after__)
+    :unicode.characters_to_list(:lists.flatten(:lists.filter(fn x ->
+                                                                  x != []
+                                                             end,
+                                                               :lists.join(?\n,
+                                                                             :lists.reverse(linesBefore) ++ [currentLine] ++ linesAfter))))
   end
 
   defp gc_len(cP) when is_integer(cP) do
@@ -994,4 +1000,5 @@ defmodule :m_edlin do
   defp cp_len([], len) do
     len
   end
+
 end

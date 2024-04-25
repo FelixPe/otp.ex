@@ -1,27 +1,20 @@
 defmodule :m_digraph do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_digraph, :digraph,
-    vtab: :notable,
-    etab: :notable,
-    ntab: :notable,
-    cyclic: true
-  )
-
+  Record.defrecord(:r_digraph, :digraph, vtab: :notable,
+                                   etab: :notable, ntab: :notable, cyclic: true)
   def new() do
     new([])
   end
 
   def new(type) do
-    case check_type(type, :protected, []) do
+    case (check_type(type, :protected, [])) do
       {access, ts} ->
         v = :ets.new(:vertices, [:set, access])
         e = :ets.new(:edges, [:set, access])
         n = :ets.new(:neighbours, [:bag, access])
         :ets.insert(n, [{:"$vid", 0}, {:"$eid", 0}])
         set_type(ts, r_digraph(vtab: v, etab: e, ntab: n))
-
       :error ->
         :erlang.error(:badarg)
     end
@@ -69,30 +62,18 @@ defmodule :m_digraph do
     vT = r_digraph(g, :vtab)
     eT = r_digraph(g, :etab)
     nT = r_digraph(g, :ntab)
-
-    cyclicity =
-      case r_digraph(g, :cyclic) do
-        true ->
-          :cyclic
-
-        false ->
-          :acyclic
-      end
-
+    cyclicity = (case (r_digraph(g, :cyclic)) do
+                   true ->
+                     :cyclic
+                   false ->
+                     :acyclic
+                 end)
     protection = :ets.info(vT, :protection)
-
-    memory =
-      :ets.info(vT, :memory) +
-        :ets.info(
-          eT,
-          :memory
-        ) +
-        :ets.info(
-          nT,
-          :memory
-        )
-
-    [{:cyclicity, cyclicity}, {:memory, memory}, {:protection, protection}]
+    memory = :ets.info(vT, :memory) + :ets.info(eT,
+                                                  :memory) + :ets.info(nT,
+                                                                         :memory)
+    [{:cyclicity, cyclicity}, {:memory, memory},
+                                  {:protection, protection}]
   end
 
   def add_vertex(g) do
@@ -116,10 +97,9 @@ defmodule :m_digraph do
   end
 
   def vertex(g, v) do
-    case :ets.lookup(r_digraph(g, :vtab), v) do
+    case (:ets.lookup(r_digraph(g, :vtab), v)) do
       [] ->
         false
-
       [vertex] ->
         vertex
     end
@@ -152,11 +132,8 @@ defmodule :m_digraph do
   end
 
   def in_edges(g, v) do
-    for {{:in, _}, e} <-
-          :ets.lookup(
-            r_digraph(g, :ntab),
-            {:in, v}
-          ) do
+    for {{:in, _}, e} <- :ets.lookup(r_digraph(g, :ntab),
+                                       {:in, v}) do
       e
     end
   end
@@ -172,11 +149,8 @@ defmodule :m_digraph do
   end
 
   def out_edges(g, v) do
-    for {{:out, _}, e} <-
-          :ets.lookup(
-            r_digraph(g, :ntab),
-            {:out, v}
-          ) do
+    for {{:out, _}, e} <- :ets.lookup(r_digraph(g, :ntab),
+                                        {:out, v}) do
       e
     end
   end
@@ -210,17 +184,15 @@ defmodule :m_digraph do
   end
 
   def edges(g, v) do
-    :ets.select(
-      r_digraph(g, :ntab),
-      [{{{:out, v}, :"$1"}, [], [:"$1"]}, {{{:in, v}, :"$1"}, [], [:"$1"]}]
-    )
+    :ets.select(r_digraph(g, :ntab),
+                  [{{{:out, v}, :"$1"}, [], [:"$1"]}, {{{:in, v}, :"$1"}, [],
+                                                   [:"$1"]}])
   end
 
   def edge(g, e) do
-    case :ets.lookup(r_digraph(g, :etab), e) do
+    case (:ets.lookup(r_digraph(g, :etab), e)) do
       [] ->
         false
-
       [edge] ->
         edge
     end
@@ -247,7 +219,8 @@ defmodule :m_digraph do
   end
 
   defp collect_elems([{_, key} | keys], table, index, acc) do
-    collect_elems(keys, table, index, [:ets.lookup_element(table, key, index) | acc])
+    collect_elems(keys, table, index,
+                    [:ets.lookup_element(table, key, index) | acc])
   end
 
   defp collect_elems([], _, _, acc) do
@@ -261,20 +234,15 @@ defmodule :m_digraph do
 
   defp collect_vertices(g, type) do
     vs = vertices(g)
-
-    :lists.foldl(
-      fn v, a ->
-        case :ets.member(r_digraph(g, :ntab), {type, v}) do
-          true ->
-            a
-
-          false ->
-            [v | a]
-        end
-      end,
-      [],
-      vs
-    )
+    :lists.foldl(fn v, a ->
+                      case (:ets.member(r_digraph(g, :ntab), {type, v})) do
+                        true ->
+                          a
+                        false ->
+                          [v | a]
+                      end
+                 end,
+                   [], vs)
   end
 
   defp do_del_vertices([v | vs], g) do
@@ -293,11 +261,10 @@ defmodule :m_digraph do
   end
 
   defp do_del_nedges([{_, e} | ns], g) do
-    case :ets.lookup(r_digraph(g, :etab), e) do
+    case (:ets.lookup(r_digraph(g, :etab), e)) do
       [{^e, v1, v2, _}] ->
         do_del_edge(e, v1, v2, g)
         do_del_nedges(ns, g)
-
       [] ->
         do_del_nedges(ns, g)
     end
@@ -308,11 +275,10 @@ defmodule :m_digraph do
   end
 
   defp do_del_edges([e | es], g) do
-    case :ets.lookup(r_digraph(g, :etab), e) do
+    case (:ets.lookup(r_digraph(g, :etab), e)) do
       [{^e, v1, v2, _}] ->
         do_del_edge(e, v1, v2, g)
         do_del_edges(es, g)
-
       [] ->
         do_del_edges(es, g)
     end
@@ -323,11 +289,9 @@ defmodule :m_digraph do
   end
 
   defp do_del_edge(e, v1, v2, g) do
-    :ets.select_delete(
-      r_digraph(g, :ntab),
-      [{{{:in, v2}, e}, [], [true]}, {{{:out, v1}, e}, [], [true]}]
-    )
-
+    :ets.select_delete(r_digraph(g, :ntab),
+                         [{{{:in, v2}, e}, [], [true]}, {{{:out, v1}, e}, [],
+                                                           [true]}])
     :ets.delete(r_digraph(g, :etab), e)
   end
 
@@ -346,11 +310,10 @@ defmodule :m_digraph do
   end
 
   defp rm_edge_0([e | es], v1, v2, g) do
-    case :ets.lookup(r_digraph(g, :etab), e) do
+    case (:ets.lookup(r_digraph(g, :etab), e)) do
       [{^e, ^v1, ^v2, _}] ->
         do_del_edge(e, v1, v2, g)
         rm_edge_0(es, v1, v2, g)
-
       _ ->
         rm_edge_0(es, v1, v2, g)
     end
@@ -361,23 +324,19 @@ defmodule :m_digraph do
   end
 
   defp do_add_edge({e, v1, v2, label}, g) do
-    case :ets.member(r_digraph(g, :vtab), v1) do
+    case (:ets.member(r_digraph(g, :vtab), v1)) do
       false ->
         {:error, {:bad_vertex, v1}}
-
       true ->
-        case :ets.member(r_digraph(g, :vtab), v2) do
+        case (:ets.member(r_digraph(g, :vtab), v2)) do
           false ->
             {:error, {:bad_vertex, v2}}
-
           true ->
-            case other_edge_exists(g, e, v1, v2) do
+            case (other_edge_exists(g, e, v1, v2)) do
               true ->
                 {:error, {:bad_edge, [v1, v2]}}
-
               false when r_digraph(g, :cyclic) === false ->
                 acyclic_add_edge(e, v1, v2, label, g)
-
               false ->
                 do_insert_edge(e, v1, v2, label, g)
             end
@@ -386,12 +345,11 @@ defmodule :m_digraph do
   end
 
   defp other_edge_exists(r_digraph(etab: eT), e, v1, v2) do
-    case :ets.lookup(eT, e) do
-      [{^e, vert1, vert2, _}]
-      when vert1 !== v1 or
-             vert2 !== v2 ->
+    case (:ets.lookup(eT, e)) do
+      [{^e, vert1, vert2, _}] when vert1 !== v1 or
+                                     vert2 !== v2
+                                   ->
         true
-
       _ ->
         false
     end
@@ -408,20 +366,18 @@ defmodule :m_digraph do
   end
 
   defp acyclic_add_edge(e, v1, v2, label, g) do
-    case get_path(g, v2, v1) do
+    case (get_path(g, v2, v1)) do
       false ->
         do_insert_edge(e, v1, v2, label, g)
-
       path ->
         {:error, {:bad_edge, path}}
     end
   end
 
   def del_path(g, v1, v2) do
-    case get_path(g, v1, v2) do
+    case (get_path(g, v1, v2)) do
       false ->
         true
-
       path ->
         rm_edges(path, g)
         del_path(g, v1, v2)
@@ -429,23 +385,23 @@ defmodule :m_digraph do
   end
 
   def get_cycle(g, v) do
-    case one_path(out_neighbours(g, v), v, [], [v], [v], 2, g, 1) do
+    case (one_path(out_neighbours(g, v), v, [], [v], [v], 2,
+                     g, 1)) do
       false ->
-        case :lists.member(v, out_neighbours(g, v)) do
+        case (:lists.member(v, out_neighbours(g, v))) do
           true ->
             [v]
-
           false ->
             false
         end
-
       vs ->
         vs
     end
   end
 
   def get_path(g, v1, v2) do
-    one_path(out_neighbours(g, v1), v2, [], [v1], [v1], 1, g, 1)
+    one_path(out_neighbours(g, v1), v2, [], [v1], [v1], 1,
+               g, 1)
   end
 
   defp prune_short_path(counter, min) when counter < min do
@@ -457,35 +413,26 @@ defmodule :m_digraph do
   end
 
   defp one_path([w | ws], w, cont, xs, ps, prune, g, counter) do
-    case prune_short_path(counter, prune) do
+    case (prune_short_path(counter, prune)) do
       :short ->
         one_path(ws, w, cont, xs, ps, prune, g, counter)
-
       :ok ->
         :lists.reverse([w | ps])
     end
   end
 
   defp one_path([v | vs], w, cont, xs, ps, prune, g, counter) do
-    case :lists.member(v, xs) do
+    case (:lists.member(v, xs)) do
       true ->
         one_path(vs, w, cont, xs, ps, prune, g, counter)
-
       false ->
-        one_path(
-          out_neighbours(g, v),
-          w,
-          [{vs, ps} | cont],
-          [v | xs],
-          [v | ps],
-          prune,
-          g,
-          counter + 1
-        )
+        one_path(out_neighbours(g, v), w, [{vs, ps} | cont],
+                   [v | xs], [v | ps], prune, g, counter + 1)
     end
   end
 
-  defp one_path([], w, [{vs, ps} | cont], xs, _, prune, g, counter) do
+  defp one_path([], w, [{vs, ps} | cont], xs, _, prune, g,
+            counter) do
     one_path(vs, w, cont, xs, ps, prune, g, counter - 1)
   end
 
@@ -508,27 +455,23 @@ defmodule :m_digraph do
   end
 
   defp spath(q, g, sink, t) do
-    case :queue.out(q) do
+    case (:queue.out(q)) do
       {{:value, e}, q1} ->
         {_E, v1, v2, _Label} = edge(g, e)
-
         cond do
           sink === v2 ->
             follow_path(v1, t, [v2])
-
           true ->
-            case vertex(t, v2) do
+            case (vertex(t, v2)) do
               false ->
                 add_vertex(t, v2)
                 add_edge(t, v2, v1)
                 nQ = queue_out_neighbours(v2, g, q1)
                 spath(nQ, g, sink, t)
-
               _V ->
                 spath(q1, g, sink, t)
             end
         end
-
       {:empty, _Q1} ->
         false
     end
@@ -536,23 +479,19 @@ defmodule :m_digraph do
 
   defp follow_path(v, t, p) do
     p1 = [v | p]
-
-    case out_neighbours(t, v) do
+    case (out_neighbours(t, v)) do
       [n] ->
         follow_path(n, t, p1)
-
       [] ->
         p1
     end
   end
 
   defp queue_out_neighbours(v, g, q0) do
-    :lists.foldl(
-      fn e, q ->
-        :queue.in(e, q)
-      end,
-      q0,
-      out_edges(g, v)
-    )
+    :lists.foldl(fn e, q ->
+                      :queue.in(e, q)
+                 end,
+                   q0, out_edges(g, v))
   end
+
 end

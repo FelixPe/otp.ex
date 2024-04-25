@@ -1,18 +1,17 @@
 defmodule :m_asn1ct_tok do
   use Bitwise
-
   def file(file0) do
-    case :file.open(file0, [:read]) do
+    case (:file.open(file0, [:read])) do
       {:error, reason} ->
         {:error, {file0, :file.format_error(reason)}}
-
       {:ok, stream} ->
         try do
           process(stream, 1, [])
         catch
           {:error, line, reason} ->
             file = :filename.basename(file0)
-            error = {:structured_error, {file, line}, :asn1ct_tok, reason}
+            error = {:structured_error, {file, line}, :asn1ct_tok,
+                       reason}
             {:error, [error]}
         end
     end
@@ -36,7 +35,6 @@ defmodule :m_asn1ct_tok do
     else
       {lno, []} ->
         process(stream, lno, acc)
-
       {lno, ts} ->
         process(stream, lno, ts ++ acc)
     end
@@ -62,29 +60,29 @@ defmodule :m_asn1ct_tok do
     :io_lib.format('~p', [other])
   end
 
-  defp tokenise(stream, [?&, h | t], lno, r)
-       when ?A <= h and
-              h <= ?Z do
+  defp tokenise(stream, [?&, h | t], lno, r) when (?A <= h and
+                                               h <= ?Z) do
     {x, t1} = get_name(t, [h])
-    tokenise(stream, t1, lno, [{:typefieldreference, lno, x} | r])
+    tokenise(stream, t1, lno,
+               [{:typefieldreference, lno, x} | r])
   end
 
-  defp tokenise(stream, [?&, h | t], lno, r)
-       when ?a <= h and
-              h <= ?z do
+  defp tokenise(stream, [?&, h | t], lno, r) when (?a <= h and
+                                               h <= ?z) do
     {x, t1} = get_name(t, [h])
-    tokenise(stream, t1, lno, [{:valuefieldreference, lno, x} | r])
+    tokenise(stream, t1, lno,
+               [{:valuefieldreference, lno, x} | r])
   end
 
   defp tokenise(stream, '--' ++ t, lno, r) do
     tokenise(stream, skip_comment(t), lno, r)
   end
 
-  defp tokenise(stream, [?-, h | t], lno, r)
-       when ?0 <= h and
-              h <= ?9 do
+  defp tokenise(stream, [?-, h | t], lno, r) when (?0 <= h and
+                                               h <= ?9) do
     {x, t1} = get_number(t, [h])
-    tokenise(stream, t1, lno, [{:number, lno, -:erlang.list_to_integer(x)} | r])
+    tokenise(stream, t1, lno,
+               [{:number, lno, - :erlang.list_to_integer(x)} | r])
   end
 
   defp tokenise(stream, '/*' ++ t, lno0, r) do
@@ -139,50 +137,47 @@ defmodule :m_asn1ct_tok do
   end
 
   defp tokenise(stream, '...' ++ t, lno, r) do
-    tokenise(stream, t, lno, [{:..., lno} | r])
+    tokenise(stream, t, lno, [{:"...", lno} | r])
   end
 
   defp tokenise(stream, '..' ++ t, lno, r) do
-    tokenise(stream, t, lno, [{:.., lno} | r])
+    tokenise(stream, t, lno, [{:"..", lno} | r])
   end
 
   defp tokenise(stream, '.' ++ t, lno, r) do
-    tokenise(stream, t, lno, [{:., lno} | r])
+    tokenise(stream, t, lno, [{:".", lno} | r])
   end
 
   defp tokenise(stream, '|' ++ t, lno, r) do
-    tokenise(stream, t, lno, [{:|, lno} | r])
+    tokenise(stream, t, lno, [{:"|", lno} | r])
   end
 
-  defp tokenise(stream, [h | t], lno, r)
-       when ?A <= h and
-              h <= ?Z do
+  defp tokenise(stream, [h | t], lno, r) when (?A <= h and
+                                           h <= ?Z) do
     {x, t1} = get_name(t, [h])
-
-    case reserved_word(x) do
+    case (reserved_word(x)) do
       true ->
         tokenise(stream, t1, lno, [{x, lno} | r])
-
       false ->
-        tokenise(stream, t1, lno, [{:typereference, lno, x} | r])
-
+        tokenise(stream, t1, lno,
+                   [{:typereference, lno, x} | r])
       :rstrtype ->
-        tokenise(stream, t1, lno, [{:restrictedcharacterstringtype, lno, x} | r])
+        tokenise(stream, t1, lno,
+                   [{:restrictedcharacterstringtype, lno, x} | r])
     end
   end
 
-  defp tokenise(stream, [h | t], lno, r)
-       when ?a <= h and
-              h <= ?z do
+  defp tokenise(stream, [h | t], lno, r) when (?a <= h and
+                                           h <= ?z) do
     {x, t1} = get_name(t, [h])
     tokenise(stream, t1, lno, [{:identifier, lno, x} | r])
   end
 
-  defp tokenise(stream, [h | t], lno, r)
-       when ?0 <= h and
-              h <= ?9 do
+  defp tokenise(stream, [h | t], lno, r) when (?0 <= h and
+                                           h <= ?9) do
     {x, t1} = get_number(t, [h])
-    tokenise(stream, t1, lno, [{:number, lno, :erlang.list_to_integer(x)} | r])
+    tokenise(stream, t1, lno,
+               [{:number, lno, :erlang.list_to_integer(x)} | r])
   end
 
   defp tokenise(stream, [h | t], lno, r) when h <= ?\s do
@@ -190,7 +185,8 @@ defmodule :m_asn1ct_tok do
   end
 
   defp tokenise(stream, [h | t], lno, r) do
-    tokenise(stream, t, lno, [{:erlang.list_to_atom([h]), lno} | r])
+    tokenise(stream, t, lno,
+               [{:erlang.list_to_atom([h]), lno} | r])
   end
 
   defp tokenise(_Stream, [], lno, r) do
@@ -214,10 +210,9 @@ defmodule :m_asn1ct_tok do
   end
 
   defp get_name([?-, char | t] = t0, acc) do
-    case isalnum(char) do
+    case (isalnum(char)) do
       true ->
         get_name(t, [char, ?- | acc])
-
       false ->
         {:erlang.list_to_atom(:lists.reverse(acc)), t0}
     end
@@ -228,10 +223,9 @@ defmodule :m_asn1ct_tok do
   end
 
   defp get_name([char | t] = t0, acc) do
-    case isalnum(char) do
+    case (isalnum(char)) do
       true ->
         get_name(t, [char | acc])
-
       false ->
         {:erlang.list_to_atom(:lists.reverse(acc)), t0}
     end
@@ -241,15 +235,15 @@ defmodule :m_asn1ct_tok do
     {:erlang.list_to_atom(:lists.reverse(acc)), []}
   end
 
-  defp isalnum(h) when ?A <= h and h <= ?Z do
+  defp isalnum(h) when (?A <= h and h <= ?Z) do
     true
   end
 
-  defp isalnum(h) when ?a <= h and h <= ?z do
+  defp isalnum(h) when (?a <= h and h <= ?z) do
     true
   end
 
-  defp isalnum(h) when ?0 <= h and h <= ?9 do
+  defp isalnum(h) when (?0 <= h and h <= ?9) do
     true
   end
 
@@ -257,7 +251,7 @@ defmodule :m_asn1ct_tok do
     false
   end
 
-  defp isdigit(h) when ?0 <= h and h <= ?9 do
+  defp isdigit(h) when (?0 <= h and h <= ?9) do
     true
   end
 
@@ -266,10 +260,9 @@ defmodule :m_asn1ct_tok do
   end
 
   defp get_number([h | t] = t0, l) do
-    case isdigit(h) do
+    case (isdigit(h)) do
       true ->
         get_number(t, [h | l])
-
       false ->
         {:lists.reverse(l), t0}
     end
@@ -292,10 +285,9 @@ defmodule :m_asn1ct_tok do
   end
 
   defp skip_multiline_comment(stream, [], lno, level) do
-    case :io.get_line(stream, :"") do
+    case (:io.get_line(stream, :"")) do
       :eof ->
         throw({:error, :eof_in_comment})
-
       line ->
         skip_multiline_comment(stream, line, lno + 1, level)
     end
@@ -318,22 +310,22 @@ defmodule :m_asn1ct_tok do
   end
 
   defp collect_quoted('\'B' ++ t, lno, l) do
-    case validate_bin(l) do
+    case (validate_bin(l)) do
       {:ok, bin} ->
         {{:bstring, lno, bin}, t}
-
       false ->
-        throw({:error, {:invalid_binary_number, :lists.reverse(l)}})
+        throw({:error,
+                 {:invalid_binary_number, :lists.reverse(l)}})
     end
   end
 
   defp collect_quoted('\'H' ++ t, lno, l) do
-    case validate_hex(l) do
+    case (validate_hex(l)) do
       {:ok, hex} ->
         {{:hstring, lno, hex}, t}
-
       false ->
-        throw({:error, {:invalid_hex_number, :lists.reverse(l)}})
+        throw({:error,
+                 {:invalid_hex_number, :lists.reverse(l)}})
     end
   end
 
@@ -369,11 +361,11 @@ defmodule :m_asn1ct_tok do
     validate_hex(l, [])
   end
 
-  defp validate_hex([h | t], a) when ?0 <= h and h <= ?9 do
+  defp validate_hex([h | t], a) when (?0 <= h and h <= ?9) do
     validate_hex(t, [h | a])
   end
 
-  defp validate_hex([h | t], a) when ?A <= h and h <= ?F do
+  defp validate_hex([h | t], a) when (?A <= h and h <= ?F) do
     validate_hex(t, [h | a])
   end
 
@@ -708,4 +700,5 @@ defmodule :m_asn1ct_tok do
   defp reserved_word(_) do
     false
   end
+
 end

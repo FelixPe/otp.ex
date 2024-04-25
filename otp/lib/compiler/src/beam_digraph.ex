@@ -2,8 +2,8 @@ defmodule :m_beam_digraph do
   use Bitwise
   import :lists, only: [foldl: 3, reverse: 1]
   require Record
-  Record.defrecord(:r_dg, :dg, vs: %{}, in_es: %{}, out_es: %{})
-
+  Record.defrecord(:r_dg, :dg, vs: %{}, in_es: %{},
+                              out_es: %{})
   def new() do
     r_dg()
   end
@@ -17,14 +17,13 @@ defmodule :m_beam_digraph do
     inEsMap = init_edge_map(v, inEsMap0)
     outEsMap = init_edge_map(v, outEsMap0)
     vs = Map.put(vs0, v, label)
-    r_dg(dg, vs: vs, in_es: inEsMap, out_es: outEsMap)
+    r_dg(dg, vs: vs,  in_es: inEsMap,  out_es: outEsMap)
   end
 
   defp init_edge_map(v, esMap) do
-    case :erlang.is_map_key(v, esMap) do
+    case (:erlang.is_map_key(v, esMap)) do
       true ->
         esMap
-
       false ->
         Map.put(esMap, v, :ordsets.new())
     end
@@ -39,7 +38,7 @@ defmodule :m_beam_digraph do
     name = {from, to, label}
     inEsMap = edge_map_add(to, name, inEsMap0)
     outEsMap = edge_map_add(from, name, outEsMap0)
-    r_dg(dg, in_es: inEsMap, out_es: outEsMap)
+    r_dg(dg, in_es: inEsMap,  out_es: outEsMap)
   end
 
   defp edge_map_add(v, e, esMap) do
@@ -52,7 +51,7 @@ defmodule :m_beam_digraph do
     r_dg(in_es: inEsMap0, out_es: outEsMap0) = dg
     inEsMap = edge_map_del(to, e, inEsMap0)
     outEsMap = edge_map_del(from, e, outEsMap0)
-    r_dg(dg, in_es: inEsMap, out_es: outEsMap)
+    r_dg(dg, in_es: inEsMap,  out_es: outEsMap)
   end
 
   defp edge_map_del(v, e, esMap) do
@@ -62,13 +61,10 @@ defmodule :m_beam_digraph do
   end
 
   def del_edges(g, es) when is_list(es) do
-    foldl(
-      fn e, a ->
-        del_edge(a, e)
-      end,
-      g,
-      es
-    )
+    foldl(fn e, a ->
+               del_edge(a, e)
+          end,
+            g, es)
   end
 
   def has_vertex(r_dg(vs: vs), v) do
@@ -90,8 +86,7 @@ defmodule :m_beam_digraph do
   end
 
   def is_path(g, from, to) do
-    seen = :cerl_sets.new()
-
+    seen = :sets.new([{:version, 2}])
     try do
       _ = is_path_1([from], to, g, seen)
       false
@@ -106,12 +101,11 @@ defmodule :m_beam_digraph do
   end
 
   defp is_path_1([v | vs], to, g, seen0) do
-    case :cerl_sets.is_element(v, seen0) do
+    case (:sets.is_element(v, seen0)) do
       true ->
         is_path_1(vs, to, g, seen0)
-
       false ->
-        seen1 = :cerl_sets.add_element(v, seen0)
+        seen1 = :sets.add_element(v, seen0)
         successors = out_neighbours(g, v)
         seen = is_path_1(successors, to, g, seen1)
         is_path_1(vs, to, g, seen)
@@ -145,20 +139,20 @@ defmodule :m_beam_digraph do
   end
 
   def reverse_postorder(g, vs) do
-    seen = :cerl_sets.new()
+    seen = :sets.new([{:version, 2}])
     {rPO, _} = reverse_postorder_1(vs, g, seen, [])
     rPO
   end
 
   defp reverse_postorder_1([v | vs], g, seen0, acc0) do
-    case :cerl_sets.is_element(v, seen0) do
+    case (:sets.is_element(v, seen0)) do
       true ->
         reverse_postorder_1(vs, g, seen0, acc0)
-
       false ->
-        seen1 = :cerl_sets.add_element(v, seen0)
+        seen1 = :sets.add_element(v, seen0)
         successors = out_neighbours(g, v)
-        {acc, seen} = reverse_postorder_1(successors, g, seen1, acc0)
+        {acc, seen} = reverse_postorder_1(successors, g, seen1,
+                                            acc0)
         reverse_postorder_1(vs, g, seen, [v | acc])
     end
   end
@@ -172,10 +166,9 @@ defmodule :m_beam_digraph do
   end
 
   defp roots_1([{v, _} | vs], g) do
-    case in_degree(g, v) do
+    case (in_degree(g, v)) do
       0 ->
         [v | roots_1(vs, g)]
-
       _ ->
         roots_1(vs, g)
     end
@@ -194,14 +187,16 @@ defmodule :m_beam_digraph do
     sc_1(vs, g, %{}, %{})
   end
 
-  defp sc_1([v | vs], g, roots0, components) when not :erlang.is_map_key(v, roots0) do
+  defp sc_1([v | vs], g, roots0, components) when not
+                                                :erlang.is_map_key(v, roots0) do
     {roots, component} = sc_2([v], g, v, roots0, [])
     sc_1(vs, g, roots, Map.put(components, v, component))
   end
 
   defp sc_1([v | vs], g, roots, components0) do
     root = :erlang.map_get(v, roots)
-    components = Map.put(components0, v, :erlang.map_get(root, components0))
+    components = Map.put(components0, v,
+                                        :erlang.map_get(root, components0))
     sc_1(vs, g, roots, components)
   end
 
@@ -209,8 +204,10 @@ defmodule :m_beam_digraph do
     components
   end
 
-  defp sc_2([v | vs], g, root, roots, acc) when not :erlang.is_map_key(v, roots) do
-    sc_2(in_neighbours(g, v) ++ vs, g, root, Map.put(roots, v, root), [v | acc])
+  defp sc_2([v | vs], g, root, roots, acc) when not
+                                              :erlang.is_map_key(v, roots) do
+    sc_2(in_neighbours(g, v) ++ vs, g, root,
+           Map.put(roots, v, root), [v | acc])
   end
 
   defp sc_2([_V | vs], g, root, roots, acc) do
@@ -220,4 +217,5 @@ defmodule :m_beam_digraph do
   defp sc_2([], _G, _Root, roots, acc) do
     {roots, reverse(acc)}
   end
+
 end

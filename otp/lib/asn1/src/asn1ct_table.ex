@@ -1,6 +1,5 @@
 defmodule :m_asn1ct_table do
   use Bitwise
-
   def new(table) do
     :undefined = :erlang.get(table)
     tableId = :ets.new(table, [])
@@ -39,17 +38,16 @@ defmodule :m_asn1ct_table do
     for t <- tables do
       delete(t)
     end
-
     true
   end
 
   def delete(table) when is_atom(table) do
-    case :erlang.erase(table) do
+    case (:erlang.erase(table)) do
       :undefined ->
         true
-
       tableId ->
         :ets.delete(tableId)
     end
   end
+
 end

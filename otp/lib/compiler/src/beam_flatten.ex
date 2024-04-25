@@ -1,13 +1,13 @@
 defmodule :m_beam_flatten do
   use Bitwise
   import :lists, only: [reverse: 1, reverse: 2]
-
   def module({mod, exp, attr, fs, lc}, _Opt) do
     {:ok,
-     {mod, exp, attr,
-      for f <- fs do
-        function(f)
-      end, lc}}
+       {mod, exp, attr,
+          for f <- fs do
+            function(f)
+          end,
+          lc}}
   end
 
   defp function({:function, name, arity, cLabel, is0}) do
@@ -31,10 +31,8 @@ defmodule :m_beam_flatten do
     reverse(acc)
   end
 
-  defp norm_block(
-         [{:set, [], [], {:alloc, r, alloc}} | is],
-         acc0
-       ) do
+  defp norm_block([{:set, [], [], {:alloc, r, alloc}} | is],
+            acc0) do
     norm_block(is, reverse(norm_allocate(alloc, r), acc0))
   end
 
@@ -50,12 +48,9 @@ defmodule :m_beam_flatten do
     {:bif, n, f, as, d}
   end
 
-  defp norm({:set, [d], as, {:alloc, r, {:gc_bif, n, f}}}) do
+  defp norm({:set, [d], as,
+             {:alloc, r, {:gc_bif, n, f}}}) do
     {:gc_bif, n, f, r, as, d}
-  end
-
-  defp norm({:set, [d], [], :init}) do
-    {:init, d}
   end
 
   defp norm({:set, [d], [s], :move}) do
@@ -78,14 +73,6 @@ defmodule :m_beam_flatten do
     {:put_tuple2, d, {:list, els}}
   end
 
-  defp norm({:set, [d], [], {:put_tuple, a}}) do
-    {:put_tuple, a, d}
-  end
-
-  defp norm({:set, [], [s], :put}) do
-    {:put, s}
-  end
-
   defp norm({:set, [d], [s], {:get_tuple_element, i}}) do
     {:get_tuple_element, s, i, d}
   end
@@ -102,20 +89,13 @@ defmodule :m_beam_flatten do
     {:get_tl, s, d}
   end
 
-  defp norm({:set, [d], [s | puts], {:alloc, r, {:put_map, op, f}}}) do
+  defp norm({:set, [d], [s | puts],
+             {:alloc, r, {:put_map, op, f}}}) do
     {:put_map, f, op, s, d, r, {:list, puts}}
   end
 
   defp norm({:set, [], [], :remove_message}) do
     :remove_message
-  end
-
-  defp norm({:set, [], [], :fclearerror}) do
-    :fclearerror
-  end
-
-  defp norm({:set, [], [], :fcheckerror}) do
-    {:fcheckerror, {:f, 0}}
   end
 
   defp norm({:set, [], [], {:line, _} = line}) do
@@ -133,4 +113,5 @@ defmodule :m_beam_flatten do
   defp norm_allocate({:nozero, ns, nh, inits}, regs) do
     [{:allocate_heap, ns, nh, regs} | inits]
   end
+
 end

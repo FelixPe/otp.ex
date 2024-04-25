@@ -2,7 +2,8 @@ defmodule :m_tftp_sup do
   use Bitwise
   @behaviour :supervisor
   def start_link(tftpServices) do
-    :supervisor.start_link({:local, :tftp_sup}, :tftp_sup, [tftpServices])
+    :supervisor.start_link({:local, :tftp_sup}, :tftp_sup,
+                             [tftpServices])
   end
 
   def start_child(options) do
@@ -13,22 +14,18 @@ defmodule :m_tftp_sup do
 
   def stop_child(pid) when is_pid(pid) do
     children = :supervisor.which_children(:tftp_sup)
-
     case (for {id, p, _Type, _Modules} <- children,
-              p === pid do
+                p === pid do
             id
           end) do
       [] ->
         {:error, :not_found}
-
       [id] ->
-        case :supervisor.terminate_child(:tftp_sup, id) do
+        case (:supervisor.terminate_child(:tftp_sup, id)) do
           :ok ->
             :supervisor.delete_child(:tftp_sup, id)
-
           {:error, :not_found} ->
             :supervisor.delete_child(:tftp_sup, id)
-
           {:error, reason} ->
             {:error, reason}
         end
@@ -37,9 +34,8 @@ defmodule :m_tftp_sup do
 
   def which_children() do
     children = :supervisor.which_children(:tftp_sup)
-
     for {_Id, pid, _Type, _Modules} <- children,
-        pid !== :undefined do
+          pid !== :undefined do
       {:tftpd, pid}
     end
   end
@@ -49,12 +45,9 @@ defmodule :m_tftp_sup do
     maxR = 10
     maxT = 3600
     killAfter = default_kill_after()
-
-    children =
-      for {:tftpd, options} <- services do
-        worker_spec(killAfter, options)
-      end
-
+    children = (for {:tftpd, options} <- services do
+                  worker_spec(killAfter, options)
+                end)
     {:ok, {{restartStrategy, maxR, maxT}, children}}
   end
 
@@ -62,14 +55,15 @@ defmodule :m_tftp_sup do
     modules = [:proc_lib, :tftp, :tftp_engine]
     kA = supervisor_timeout(killAfter)
     name = unique_name(options)
-    {name, {:tftp, :start, [options]}, :permanent, kA, :worker, modules}
+    {name, {:tftp, :start, [options]}, :permanent, kA,
+       :worker, modules}
   end
 
   defp unique_name(options) do
-    case :lists.keysearch(:port, 1, options) do
-      {:value, {_, port}} when is_integer(port) and port > 0 ->
+    case (:lists.keysearch(:port, 1, options)) do
+      {:value, {_, port}} when (is_integer(port) and port > 0)
+                               ->
         {:tftpd, port}
-
       _ ->
         {:tftpd, :erlang.unique_integer([:positive])}
     end
@@ -82,4 +76,5 @@ defmodule :m_tftp_sup do
   defp supervisor_timeout(killAfter) do
     killAfter
   end
+
 end

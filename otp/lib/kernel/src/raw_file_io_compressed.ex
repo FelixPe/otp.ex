@@ -1,68 +1,51 @@
 defmodule :m_raw_file_io_compressed do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_file_info, :file_info,
-    size: :undefined,
-    type: :undefined,
-    access: :undefined,
-    atime: :undefined,
-    mtime: :undefined,
-    ctime: :undefined,
-    mode: :undefined,
-    links: :undefined,
-    major_device: :undefined,
-    minor_device: :undefined,
-    inode: :undefined,
-    uid: :undefined,
-    gid: :undefined
-  )
-
-  Record.defrecord(:r_file_descriptor, :file_descriptor,
-    module: :undefined,
-    data: :undefined
-  )
-
+  Record.defrecord(:r_file_info, :file_info, size: :undefined,
+                                     type: :undefined, access: :undefined,
+                                     atime: :undefined, mtime: :undefined,
+                                     ctime: :undefined, mode: :undefined,
+                                     links: :undefined,
+                                     major_device: :undefined,
+                                     minor_device: :undefined,
+                                     inode: :undefined, uid: :undefined,
+                                     gid: :undefined)
+  Record.defrecord(:r_file_descriptor, :file_descriptor, module: :undefined,
+                                           data: :undefined)
   def open_layer(filename, modes, options) do
     isAppend = :lists.member(:append, modes)
     isDeflate = :lists.member(:write, modes)
     isInflate = :lists.member(:read, modes)
-
     cond do
       (isDeflate and isInflate) or isAppend ->
         {:error, :einval}
-
-      isDeflate and not isInflate ->
-        start_server_module(:raw_file_io_deflate, filename, modes, options)
-
+      (isDeflate and not isInflate) ->
+        start_server_module(:raw_file_io_deflate, filename,
+                              modes, options)
       isInflate ->
-        start_server_module(:raw_file_io_inflate, filename, modes, options)
+        start_server_module(:raw_file_io_inflate, filename,
+                              modes, options)
     end
   end
 
   defp start_server_module(module, filename, modes, options) do
     secret = make_ref()
-
-    case :gen_statem.start(module, {self(), secret, options}, []) do
+    case (:gen_statem.start(module,
+                              {self(), secret, options}, [])) do
       {:ok, pid} ->
         open_next_layer(pid, secret, filename, modes)
-
       other ->
         other
     end
   end
 
   defp open_next_layer(pid, secret, filename, modes) do
-    case :gen_statem.call(pid, {:"$open", secret, filename, modes}, :infinity) do
+    case (:gen_statem.call(pid,
+                             {:"$open", secret, filename, modes}, :infinity)) do
       :ok ->
-        publicFd =
-          r_file_descriptor(
-            module: :raw_file_io_compressed,
-            data: {self(), pid}
-          )
-
+        publicFd = r_file_descriptor(module: :raw_file_io_compressed,
+                       data: {self(), pid})
         {:ok, publicFd}
-
       other ->
         other
     end
@@ -118,11 +101,9 @@ defmodule :m_raw_file_io_compressed do
 
   def pwrite(fd, locBytes) do
     try do
-      compactedLocBytes =
-        for {offset, iOData} <- locBytes do
-          {offset, :erlang.iolist_to_iovec(iOData)}
-        end
-
+      compactedLocBytes = (for {offset, iOData} <- locBytes do
+                             {offset, :erlang.iolist_to_iovec(iOData)}
+                           end)
       wrap_call(fd, [:pwrite, compactedLocBytes])
     catch
       :error, :badarg ->
@@ -154,19 +135,21 @@ defmodule :m_raw_file_io_compressed do
     {:error, :enotsup}
   end
 
+  def internal_get_nif_resource(_) do
+    {:error, :enotsup}
+  end
+
   def read_handle_info(fd, opts) do
     wrap_call(fd, [opts])
   end
 
   defp wrap_call(fd, command) do
     {_Owner, pid} = get_fd_data(fd)
-
     try do
       :gen_statem.call(pid, command, :infinity)
     catch
       :exit, {:normal, _StackTrace} ->
         {:error, :einval}
-
       :exit, {:noproc, _StackTrace} ->
         {:error, :einval}
     else
@@ -177,13 +160,12 @@ defmodule :m_raw_file_io_compressed do
 
   defp get_fd_data(r_file_descriptor(data: data)) do
     {owner, _ServerPid} = data
-
-    case self() do
+    case (self()) do
       ^owner ->
         data
-
       _ ->
         :erlang.error(:not_on_controlling_process)
     end
   end
+
 end

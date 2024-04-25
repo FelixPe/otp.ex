@@ -1,313 +1,167 @@
 defmodule :m_xmerl_lib do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_xmlDecl, :xmlDecl,
-    vsn: :undefined,
-    encoding: :undefined,
-    standalone: :undefined,
-    attributes: :undefined
-  )
-
-  Record.defrecord(:r_xmlAttribute, :xmlAttribute,
-    name: :undefined,
-    expanded_name: [],
-    nsinfo: [],
-    namespace: [],
-    parents: [],
-    pos: :undefined,
-    language: [],
-    value: :undefined,
-    normalized: :undefined
-  )
-
-  Record.defrecord(:r_xmlNamespace, :xmlNamespace,
-    default: [],
-    nodes: []
-  )
-
-  Record.defrecord(:r_xmlNsNode, :xmlNsNode,
-    parents: [],
-    pos: :undefined,
-    prefix: :undefined,
-    uri: []
-  )
-
-  Record.defrecord(:r_xmlElement, :xmlElement,
-    name: :undefined,
-    expanded_name: [],
-    nsinfo: [],
-    namespace: :EFE_TODO_NESTED_RECORD,
-    parents: [],
-    pos: :undefined,
-    attributes: [],
-    content: [],
-    language: '',
-    xmlbase: '',
-    elementdef: :undeclared
-  )
-
-  Record.defrecord(:r_xmlText, :xmlText,
-    parents: [],
-    pos: :undefined,
-    language: [],
-    value: :undefined,
-    type: :text
-  )
-
-  Record.defrecord(:r_xmlComment, :xmlComment,
-    parents: [],
-    pos: :undefined,
-    language: [],
-    value: :undefined
-  )
-
-  Record.defrecord(:r_xmlPI, :xmlPI,
-    name: :undefined,
-    parents: [],
-    pos: :undefined,
-    value: :undefined
-  )
-
+  Record.defrecord(:r_xmlDecl, :xmlDecl, vsn: :undefined,
+                                   encoding: :undefined, standalone: :undefined,
+                                   attributes: :undefined)
+  Record.defrecord(:r_xmlAttribute, :xmlAttribute, name: :undefined,
+                                        expanded_name: [], nsinfo: [],
+                                        namespace: [], parents: [],
+                                        pos: :undefined, language: [],
+                                        value: :undefined,
+                                        normalized: :undefined)
+  Record.defrecord(:r_xmlNamespace, :xmlNamespace, default: [],
+                                        nodes: [])
+  Record.defrecord(:r_xmlNsNode, :xmlNsNode, parents: [],
+                                     pos: :undefined, prefix: :undefined,
+                                     uri: [])
+  Record.defrecord(:r_xmlElement, :xmlElement, name: :undefined,
+                                      expanded_name: [], nsinfo: [],
+                                      namespace: :EFE_TODO_NESTED_RECORD,
+                                      parents: [], pos: :undefined,
+                                      attributes: [], content: [], language: '',
+                                      xmlbase: '', elementdef: :undeclared)
+  Record.defrecord(:r_xmlText, :xmlText, parents: [],
+                                   pos: :undefined, language: [],
+                                   value: :undefined, type: :text)
+  Record.defrecord(:r_xmlComment, :xmlComment, parents: [],
+                                      pos: :undefined, language: [],
+                                      value: :undefined)
+  Record.defrecord(:r_xmlPI, :xmlPI, name: :undefined,
+                                 parents: [], pos: :undefined,
+                                 value: :undefined)
   Record.defrecord(:r_xmlDocument, :xmlDocument, content: :undefined)
-
-  Record.defrecord(:r_xmlContext, :xmlContext,
-    axis_type: :forward,
-    context_node: :undefined,
-    context_position: 1,
-    nodeset: [],
-    bindings: [],
-    functions: [],
-    namespace: [],
-    whole_document: :undefined
-  )
-
-  Record.defrecord(:r_xmlNode, :xmlNode, type: :element, node: :undefined, parents: [], pos: 1)
-
-  Record.defrecord(:r_xmlObj, :xmlObj,
-    type: :undefined,
-    value: :undefined
-  )
-
-  Record.defrecord(:r_xmerl_fun_states, :xmerl_fun_states,
-    event: :undefined,
-    hook: :undefined,
-    rules: :undefined,
-    fetch: :undefined,
-    cont: :undefined
-  )
-
-  Record.defrecord(:r_xmerl_scanner, :xmerl_scanner,
-    encoding: :undefined,
-    standalone: :no,
-    environment: :prolog,
-    declarations: [],
-    doctype_name: :undefined,
-    doctype_DTD: :internal,
-    comments: true,
-    document: false,
-    default_attrs: false,
-    rules: :undefined,
-    keep_rules: false,
-    namespace_conformant: false,
-    xmlbase: :undefined,
-    xmlbase_cache: :undefined,
-    fetch_path: [],
-    filename: :file_name_unknown,
-    validation: :off,
-    schemaLocation: [],
-    space: :preserve,
-    event_fun: :undefined,
-    hook_fun: :undefined,
-    acc_fun: :undefined,
-    fetch_fun: :undefined,
-    close_fun: :undefined,
-    continuation_fun: :undefined,
-    rules_read_fun: :undefined,
-    rules_write_fun: :undefined,
-    rules_delete_fun: :undefined,
-    user_state: :undefined,
-    fun_states: :EFE_TODO_NESTED_RECORD,
-    entity_references: [],
-    text_decl: false,
-    quiet: false,
-    col: 1,
-    line: 1,
-    common_data: []
-  )
-
-  Record.defrecord(:r_xmerl_event, :xmerl_event,
-    event: :undefined,
-    line: :undefined,
-    col: :undefined,
-    pos: :undefined,
-    data: :undefined
-  )
-
-  Record.defrecord(:r_xsd_state, :xsd_state,
-    schema_name: :undefined,
-    vsn: :undefined,
-    schema_preprocessed: false,
-    external_xsd_base: false,
-    xsd_base: :undefined,
-    xml_options: [],
-    scope: [],
-    schemaLocations: [],
-    elementFormDefault: :unqualified,
-    attributeFormDefault: :unqualified,
-    localElementsNamespace: :undefined,
-    targetNamespace: :undefined,
-    namespace_nodes: [{'xml', :"http://www.w3.org/XML/1998/namespace"}],
-    global_namespace_nodes: [],
-    checked_namespace_nodes: [{'xml', [], :"http://www.w3.org/XML/1998/namespace"}],
-    table: :undefined,
-    tab2file: false,
-    redefine: false,
-    finalDefault: :undefined,
-    blockDefault: :undefined,
-    fetch_fun: :undefined,
-    fetch_path: [],
-    num_el: 0,
-    global_element_source: [],
-    keyrefs: [],
-    IDs: [],
-    substitutionGroups: [],
-    derived_types: [],
-    unchecked_references: [],
-    circularity_stack: [],
-    circularity_disallowed: [],
-    errors: []
-  )
-
-  Record.defrecord(:r_schema, :schema,
-    elementFormDefault: :undefined,
-    attributeFormDefault: :undefined,
-    targetNamespace: :undefined,
-    blockDefault: [],
-    finalDefault: [],
-    id: :undefined,
-    content: []
-  )
-
-  Record.defrecord(:r_schema_element, :schema_element,
-    name: :undefined,
-    type: :undefined,
-    resolved: false,
-    substitutionGroup: :undefined,
-    uniqueness: :undefined,
-    key: :undefined,
-    scope: :undefined,
-    form: :undefined,
-    id: :undefined,
-    occurance: {1, 1},
-    value_constraint: :undefined,
-    nillable: false,
-    abstract: false,
-    block: [],
-    final: []
-  )
-
-  Record.defrecord(:r_schema_simple_type, :schema_simple_type,
-    name: :undefined,
-    scope: :undefined,
-    base_type: :undefined,
-    resolved: false,
-    final: [],
-    id: :undefined,
-    facets: [],
-    variety: :atomic,
-    content: :undefined
-  )
-
-  Record.defrecord(:r_schema_complex_type, :schema_complex_type,
-    name: :undefined,
-    base_type: :undefined,
-    resolved: false,
-    scope: :undefined,
-    derivation: :undefined,
-    final: [],
-    id: :undefined,
-    block: [],
-    abstract: false,
-    content_type: :"element-only",
-    complexity: :undefined,
-    attributes: [],
-    content: [],
-    prohibited: :undefined
-  )
-
-  Record.defrecord(:r_schema_attribute, :schema_attribute,
-    name: :undefined,
-    type: :undefined,
-    resolved: false,
-    scope: :undefined,
-    use: :optional,
-    default: :undefined,
-    fixed: :undefined,
-    form: :undefined,
-    id: :undefined
-  )
-
-  Record.defrecord(:r_schema_attribute_group, :schema_attribute_group,
-    name: :undefined,
-    id: :undefined,
-    ref: :undefined,
-    content: []
-  )
-
-  Record.defrecord(:r_schema_anyAttribute, :schema_anyAttribute,
-    id: :undefined,
-    processContents: :strict,
-    namespace: :undefined,
-    scope: :undefined
-  )
-
-  Record.defrecord(:r_schema_group, :schema_group,
-    name: :undefined,
-    id: :undefined,
-    ref: :undefined,
-    content: [],
-    occurance: {1, 1}
-  )
-
-  Record.defrecord(:r_schema_extension, :schema_extension,
-    base: :undefined,
-    id: :undefined,
-    content: []
-  )
-
-  Record.defrecord(:r_schema_restriction, :schema_restriction,
-    base: :undefined,
-    id: :undefined,
-    content: []
-  )
-
-  Record.defrecord(:r_schema_list, :schema_list,
-    id: :undefined,
-    itemType: :undefined
-  )
-
-  Record.defrecord(:r_id_constraint, :id_constraint,
-    category: :undefined,
-    id: :undefined,
-    name: :undefined,
-    refer: :undefined,
-    type: :undefined,
-    selector: :undefined,
-    fields: :undefined,
-    key_sequence: :undefined
-  )
-
-  Record.defrecord(:r_chain, :chain,
-    content: :undefined,
-    occurance: {1, 1}
-  )
-
-  Record.defrecord(:r_alternative, :alternative,
-    content: :undefined,
-    occurance: {0, 1}
-  )
-
+  Record.defrecord(:r_xmlContext, :xmlContext, axis_type: :forward,
+                                      context_node: :undefined,
+                                      context_position: 1, nodeset: [],
+                                      bindings: [], functions: [],
+                                      namespace: [], whole_document: :undefined)
+  Record.defrecord(:r_xmlNode, :xmlNode, type: :element,
+                                   node: :undefined, parents: [], pos: 1)
+  Record.defrecord(:r_xmlObj, :xmlObj, type: :undefined,
+                                  value: :undefined)
+  Record.defrecord(:r_xmerl_fun_states, :xmerl_fun_states, event: :undefined,
+                                            hook: :undefined, rules: :undefined,
+                                            fetch: :undefined, cont: :undefined)
+  Record.defrecord(:r_xmerl_scanner, :xmerl_scanner, encoding: :undefined,
+                                         standalone: :no, environment: :prolog,
+                                         declarations: [],
+                                         doctype_name: :undefined,
+                                         doctype_DTD: :internal, comments: true,
+                                         document: false, default_attrs: false,
+                                         rules: :undefined, keep_rules: false,
+                                         namespace_conformant: false,
+                                         xmlbase: :undefined,
+                                         xmlbase_cache: :undefined,
+                                         fetch_path: [],
+                                         filename: :file_name_unknown,
+                                         validation: :off, schemaLocation: [],
+                                         space: :preserve,
+                                         event_fun: :undefined,
+                                         hook_fun: :undefined,
+                                         acc_fun: :undefined,
+                                         fetch_fun: :undefined,
+                                         close_fun: :undefined,
+                                         continuation_fun: :undefined,
+                                         rules_read_fun: :undefined,
+                                         rules_write_fun: :undefined,
+                                         rules_delete_fun: :undefined,
+                                         user_state: :undefined,
+                                         fun_states: :EFE_TODO_NESTED_RECORD,
+                                         entity_references: [],
+                                         text_decl: false, quiet: false, col: 1,
+                                         line: 1, common_data: [],
+                                         allow_entities: true)
+  Record.defrecord(:r_xmerl_event, :xmerl_event, event: :undefined,
+                                       line: :undefined, col: :undefined,
+                                       pos: :undefined, data: :undefined)
+  Record.defrecord(:r_xsd_state, :xsd_state, schema_name: :undefined,
+                                     vsn: :undefined,
+                                     schema_preprocessed: false,
+                                     external_xsd_base: false,
+                                     xsd_base: :undefined, xml_options: [],
+                                     scope: [], schemaLocations: [],
+                                     elementFormDefault: :unqualified,
+                                     attributeFormDefault: :unqualified,
+                                     localElementsNamespace: :undefined,
+                                     targetNamespace: :undefined,
+                                     namespace_nodes: [{'xml', :"http://www.w3.org/XML/1998/namespace"}],
+                                     global_namespace_nodes: [],
+                                     checked_namespace_nodes: [{'xml', [], :"http://www.w3.org/XML/1998/namespace"}],
+                                     table: :undefined, tab2file: false,
+                                     redefine: false, finalDefault: :undefined,
+                                     blockDefault: :undefined,
+                                     fetch_fun: :undefined, fetch_path: [],
+                                     num_el: 0, global_element_source: [],
+                                     keyrefs: [], "IDs": [], substitutionGroups: [],
+                                     derived_types: [],
+                                     unchecked_references: [],
+                                     circularity_stack: [],
+                                     circularity_disallowed: [], errors: [])
+  Record.defrecord(:r_schema, :schema, elementFormDefault: :undefined,
+                                  attributeFormDefault: :undefined,
+                                  targetNamespace: :undefined, blockDefault: [],
+                                  finalDefault: [], id: :undefined, content: [])
+  Record.defrecord(:r_schema_element, :schema_element, name: :undefined,
+                                          type: :undefined, resolved: false,
+                                          substitutionGroup: :undefined,
+                                          uniqueness: :undefined,
+                                          key: :undefined, scope: :undefined,
+                                          form: :undefined, id: :undefined,
+                                          occurrence: {1, 1},
+                                          value_constraint: :undefined,
+                                          nillable: false, abstract: false,
+                                          block: [], final: [])
+  Record.defrecord(:r_schema_simple_type, :schema_simple_type, name: :undefined,
+                                              scope: :undefined,
+                                              base_type: :undefined,
+                                              resolved: false, final: [],
+                                              id: :undefined, facets: [],
+                                              variety: :atomic,
+                                              content: :undefined)
+  Record.defrecord(:r_schema_complex_type, :schema_complex_type, name: :undefined,
+                                               base_type: :undefined,
+                                               resolved: false,
+                                               scope: :undefined,
+                                               derivation: :undefined,
+                                               final: [], id: :undefined,
+                                               block: [], abstract: false,
+                                               content_type: :"element-only",
+                                               complexity: :undefined,
+                                               attributes: [], content: [],
+                                               prohibited: :undefined)
+  Record.defrecord(:r_schema_attribute, :schema_attribute, name: :undefined,
+                                            type: :undefined, resolved: false,
+                                            scope: :undefined, use: :optional,
+                                            default: :undefined,
+                                            fixed: :undefined, form: :undefined,
+                                            id: :undefined)
+  Record.defrecord(:r_schema_attribute_group, :schema_attribute_group, name: :undefined,
+                                                  id: :undefined,
+                                                  ref: :undefined, content: [])
+  Record.defrecord(:r_schema_anyAttribute, :schema_anyAttribute, id: :undefined,
+                                               processContents: :strict,
+                                               namespace: :undefined,
+                                               scope: :undefined)
+  Record.defrecord(:r_schema_group, :schema_group, name: :undefined,
+                                        id: :undefined, ref: :undefined,
+                                        content: [], occurrence: {1, 1})
+  Record.defrecord(:r_schema_extension, :schema_extension, base: :undefined,
+                                            id: :undefined, content: [])
+  Record.defrecord(:r_schema_restriction, :schema_restriction, base: :undefined,
+                                              id: :undefined, content: [])
+  Record.defrecord(:r_schema_list, :schema_list, id: :undefined,
+                                       itemType: :undefined)
+  Record.defrecord(:r_id_constraint, :id_constraint, category: :undefined,
+                                         id: :undefined, name: :undefined,
+                                         refer: :undefined, type: :undefined,
+                                         selector: :undefined,
+                                         fields: :undefined,
+                                         key_sequence: :undefined)
+  Record.defrecord(:r_chain, :chain, content: :undefined,
+                                 occurrence: {1, 1})
+  Record.defrecord(:r_alternative, :alternative, content: :undefined,
+                                       occurrence: {0, 1})
   def export_text(t) do
     export_text(t, [])
   end
@@ -430,21 +284,27 @@ defmodule :m_xmerl_lib do
 
   defp expand_element(e = r_xmlElement(name: n), pos, parents, norm) do
     newParents = [{n, pos} | parents]
-    content = expand_content(r_xmlElement(e, :content), 1, newParents, norm)
-    attrs = expand_attributes(r_xmlElement(e, :attributes), 1, newParents)
-    r_xmlElement(e, pos: pos, parents: parents, attributes: attrs, content: content)
+    content = expand_content(r_xmlElement(e, :content), 1, newParents,
+                               norm)
+    attrs = expand_attributes(r_xmlElement(e, :attributes), 1,
+                                newParents)
+    r_xmlElement(e, pos: pos,  parents: parents,  attributes: attrs, 
+           content: content)
   end
 
   defp expand_element(e = r_xmlText(), pos, parents, norm) do
-    r_xmlText(e, pos: pos, parents: parents, value: expand_text(r_xmlText(e, :value), norm))
+    r_xmlText(e, pos: pos,  parents: parents, 
+           value: expand_text(r_xmlText(e, :value), norm))
   end
 
   defp expand_element(e = r_xmlPI(), pos, parents, norm) do
-    r_xmlPI(e, pos: pos, parents: parents, value: expand_text(r_xmlPI(e, :value), norm))
+    r_xmlPI(e, pos: pos,  parents: parents, 
+           value: expand_text(r_xmlPI(e, :value), norm))
   end
 
   defp expand_element(e = r_xmlComment(), pos, parents, norm) do
-    r_xmlComment(e, pos: pos, parents: parents, value: expand_text(r_xmlComment(e, :value), norm))
+    r_xmlComment(e, pos: pos,  parents: parents, 
+           value: expand_text(r_xmlComment(e, :value), norm))
   end
 
   defp expand_element(e = r_xmlDecl(), _Pos, _Parents, _Norm) do
@@ -453,38 +313,29 @@ defmodule :m_xmerl_lib do
   end
 
   defp expand_element({tag, attrs, content}, pos, parents, norm)
-       when is_atom(tag) do
+      when is_atom(tag) do
     newParents = [{tag, pos} | parents]
-
-    r_xmlElement(
-      name: tag,
-      pos: pos,
-      parents: parents,
-      attributes: expand_attributes(attrs, 1, newParents),
-      content: expand_content(content, 1, newParents, norm)
-    )
+    r_xmlElement(name: tag, pos: pos, parents: parents,
+        attributes: expand_attributes(attrs, 1, newParents),
+        content: expand_content(content, 1, newParents, norm))
   end
 
   defp expand_element({tag, content}, pos, parents, norm)
-       when is_atom(tag) do
+      when is_atom(tag) do
     newParents = [{tag, pos} | parents]
-
-    r_xmlElement(
-      name: tag,
-      pos: pos,
-      parents: parents,
-      attributes: [],
-      content: expand_content(content, 1, newParents, norm)
-    )
+    r_xmlElement(name: tag, pos: pos, parents: parents, attributes: [],
+        content: expand_content(content, 1, newParents, norm))
   end
 
   defp expand_element(tag, pos, parents, _Norm) when is_atom(tag) do
-    r_xmlElement(name: tag, pos: pos, parents: parents, attributes: [], content: [])
+    r_xmlElement(name: tag, pos: pos, parents: parents, attributes: [],
+        content: [])
   end
 
   defp expand_element(string, pos, parents, norm)
-       when is_list(string) do
-    r_xmlText(pos: pos, parents: parents, value: expand_text(string, norm))
+      when is_list(string) do
+    r_xmlText(pos: pos, parents: parents,
+        value: expand_text(string, norm))
   end
 
   defp expand_text(s, false) do
@@ -516,21 +367,18 @@ defmodule :m_xmerl_lib do
   end
 
   defp expand_content([{f, s} | t], pos, parents, norm)
-       when is_function(f) do
-    case f.(s) do
+      when is_function(f) do
+    case (f.(s)) do
       :done ->
         expand_content(t, pos, parents, norm)
-
       {c, s2} ->
         expand_content([{f, s2}, c | t], pos, parents, norm)
     end
   end
 
   defp expand_content([h | t], pos, parents, norm) do
-    [
-      expand_element(h, pos, parents, norm)
-      | expand_content(t, pos + 1, parents, norm)
-    ]
+    [expand_element(h, pos, parents, norm) |
+         expand_content(t, pos + 1, parents, norm)]
   end
 
   defp expand_content([], _Pos, _Parents, _Norm) do
@@ -542,28 +390,24 @@ defmodule :m_xmerl_lib do
   end
 
   def expand_attributes([h = r_xmlAttribute() | t], pos, parents) do
-    [
-      r_xmlAttribute(h, pos: pos, value: expand_value(r_xmlAttribute(h, :value)))
-      | expand_attributes(t, pos + 1, parents)
-    ]
+    [r_xmlAttribute(h, pos: pos,  value: expand_value(r_xmlAttribute(h, :value))) |
+         expand_attributes(t, pos + 1, parents)]
   end
 
   def expand_attributes([{p, s} | t], pos, parents)
       when is_function(p) do
-    case p.(s) do
+    case (p.(s)) do
       :done ->
         expand_attributes(t, pos, parents)
-
       {a, s2} ->
         expand_attributes([{p, s2}, a | t], pos, parents)
     end
   end
 
   def expand_attributes([{k, v} | t], pos, parents) do
-    [
-      r_xmlAttribute(name: k, pos: pos, parents: parents, value: expand_value(v))
-      | expand_attributes(t, pos + 1, parents)
-    ]
+    [r_xmlAttribute(name: k, pos: pos, parents: parents,
+         value: expand_value(v)) |
+         expand_attributes(t, pos + 1, parents)]
   end
 
   def expand_attributes([], _Pos, _Parents) do
@@ -582,14 +426,16 @@ defmodule :m_xmerl_lib do
     flatten_text(s)
   end
 
-  def simplify_element(
-        r_xmlElement(expanded_name: [], name: tag, attributes: attrs, content: content)
-      ) do
-    {tag, simplify_attributes(attrs), simplify_content(content)}
+  def simplify_element(r_xmlElement(expanded_name: [], name: tag,
+             attributes: attrs, content: content)) do
+    {tag, simplify_attributes(attrs),
+       simplify_content(content)}
   end
 
-  def simplify_element(r_xmlElement(expanded_name: name, attributes: attrs, content: content)) do
-    {name, simplify_attributes(attrs), simplify_content(content)}
+  def simplify_element(r_xmlElement(expanded_name: name, attributes: attrs,
+             content: content)) do
+    {name, simplify_attributes(attrs),
+       simplify_content(content)}
   end
 
   def simplify_element(r_xmlText(value: text)) do
@@ -597,7 +443,8 @@ defmodule :m_xmerl_lib do
   end
 
   def simplify_element({tag, attrs, content}) when is_atom(tag) do
-    {tag, simplify_attributes(attrs), simplify_content(content)}
+    {tag, simplify_attributes(attrs),
+       simplify_content(content)}
   end
 
   def simplify_element({tag, content}) when is_atom(tag) do
@@ -645,10 +492,9 @@ defmodule :m_xmerl_lib do
   end
 
   def find_attribute(name, attrs) do
-    case :lists.keysearch(name, r_xmlAttribute(:name), attrs) do
+    case (:lists.keysearch(name, r_xmlAttribute(:name), attrs)) do
       {:value, r_xmlAttribute(value: v)} ->
         {:value, v}
-
       false ->
         false
     end
@@ -721,10 +567,9 @@ defmodule :m_xmerl_lib do
   end
 
   def is_empty_data([x | xs]) do
-    case is_empty_data(x) do
+    case (is_empty_data(x)) do
       false ->
         false
-
       true ->
         is_empty_data(xs)
     end
@@ -739,10 +584,8 @@ defmodule :m_xmerl_lib do
   end
 
   def remove_whitespace([e = r_xmlElement(content: content) | data]) do
-    [
-      r_xmlElement(e, content: remove_whitespace(content))
-      | remove_whitespace(data)
-    ]
+    [r_xmlElement(e, content: remove_whitespace(content)) |
+         remove_whitespace(data)]
   end
 
   def remove_whitespace([other | data]) do
@@ -761,9 +604,8 @@ defmodule :m_xmerl_lib do
 
   def mapxml(fun, list) when is_list(list) do
     aFun = fn e ->
-      mapxml(fun, e)
-    end
-
+                mapxml(fun, e)
+           end
     :lists.map(aFun, list)
   end
 
@@ -778,9 +620,8 @@ defmodule :m_xmerl_lib do
 
   def foldxml(fun, accu, list) when is_list(list) do
     aFun = fn e, a ->
-      foldxml(fun, a, e)
-    end
-
+                foldxml(fun, a, e)
+           end
     :lists.foldl(aFun, accu, list)
   end
 
@@ -790,15 +631,15 @@ defmodule :m_xmerl_lib do
 
   def mapfoldxml(fun, accu0, r_xmlElement() = e) do
     {c1, accu1} = fun.(e, accu0)
-    {c2, accu2} = mapfoldxml(fun, accu1, :lists.flatten(r_xmlElement(c1, :content)))
+    {c2, accu2} = mapfoldxml(fun, accu1,
+                               :lists.flatten(r_xmlElement(c1, :content)))
     {r_xmlElement(c1, content: c2), accu2}
   end
 
   def mapfoldxml(fun, accu, list) when is_list(list) do
     aFun = fn e, a ->
-      mapfoldxml(fun, a, e)
-    end
-
+                mapfoldxml(fun, a, e)
+           end
     :lists.mapfoldl(aFun, accu, list)
   end
 
@@ -811,23 +652,18 @@ defmodule :m_xmerl_lib do
   end
 
   def detect_charset(extCharset, content) when is_list(extCharset) do
-    detect_charset(
-      :erlang.list_to_atom(extCharset),
-      content
-    )
+    detect_charset(:erlang.list_to_atom(extCharset),
+                     content)
   end
 
   def detect_charset(extCharset, content) do
-    case autodetect(extCharset, content) do
+    case (autodetect(extCharset, content)) do
       {:auto, content1} ->
         {:auto, :"iso-10646-utf-1", content1}
-
       {:external, content1} ->
         {:external, :"iso-10646-utf-1", content1}
-
       {:undefined, _} ->
         {:undefined, :undefined, content}
-
       {^extCharset, ^content} ->
         {:external, extCharset, content}
     end
@@ -886,7 +722,8 @@ defmodule :m_xmerl_lib do
   end
 
   defp autodetect(:"iso-10646-utf-1", [0, 0, 0, 60 | input]) do
-    {:external, :xmerl_ucs.from_ucs4be([0, 0, 0, 60 | input])}
+    {:external,
+       :xmerl_ucs.from_ucs4be([0, 0, 0, 60 | input])}
   end
 
   defp autodetect(:undefined, [60, 0, 0, 0 | input]) do
@@ -894,7 +731,8 @@ defmodule :m_xmerl_lib do
   end
 
   defp autodetect(:"iso-10646-utf-1", [60, 0, 0, 0 | input]) do
-    {:external, :xmerl_ucs.from_ucs4le([60, 0, 0, 0 | input])}
+    {:external,
+       :xmerl_ucs.from_ucs4le([60, 0, 0, 0 | input])}
   end
 
   defp autodetect(:undefined, [0, 60, 0, 63 | input]) do
@@ -902,7 +740,8 @@ defmodule :m_xmerl_lib do
   end
 
   defp autodetect(:"utf-16be", [0, 60, 0, 63 | input]) do
-    {:external, :xmerl_ucs.from_utf16be([0, 60, 0, 63 | input])}
+    {:external,
+       :xmerl_ucs.from_utf16be([0, 60, 0, 63 | input])}
   end
 
   defp autodetect(:undefined, [60, 0, 63, 0 | input]) do
@@ -910,7 +749,8 @@ defmodule :m_xmerl_lib do
   end
 
   defp autodetect(:"utf-16le", [60, 0, 63, 0 | input]) do
-    {:external, :xmerl_ucs.from_utf16le([60, 0, 63, 0 | input])}
+    {:external,
+       :xmerl_ucs.from_utf16le([60, 0, 63, 0 | input])}
   end
 
   defp autodetect(extCharset, content) do
@@ -926,10 +766,9 @@ defmodule :m_xmerl_lib do
   end
 
   def is_ncname([h | t]) do
-    case is_letter(h) do
+    case (is_letter(h)) do
       true ->
         is_name1(t)
-
       _ ->
         false
     end
@@ -948,10 +787,9 @@ defmodule :m_xmerl_lib do
   end
 
   def is_name([h | t]) do
-    case is_letter(h) do
+    case (is_letter(h)) do
       true ->
         is_name1(t)
-
       _ ->
         false
     end
@@ -962,10 +800,9 @@ defmodule :m_xmerl_lib do
   end
 
   defp is_name1([h | t]) do
-    case is_namechar(h) do
+    case (is_namechar(h)) do
       true ->
         is_name1(t)
-
       _ ->
         false
     end
@@ -983,15 +820,15 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  def is_char(x) when x >= 32 and x <= 55295 do
+  def is_char(x) when (x >= 32 and x <= 55295) do
     true
   end
 
-  def is_char(x) when x >= 57344 and x <= 65533 do
+  def is_char(x) when (x >= 57344 and x <= 65533) do
     true
   end
 
-  def is_char(x) when x >= 65536 and x <= 1_114_111 do
+  def is_char(x) when (x >= 65536 and x <= 1114111) do
     true
   end
 
@@ -1001,34 +838,35 @@ defmodule :m_xmerl_lib do
 
   def is_namechar(x) do
     try do
-      :erlang.element(
-        x,
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 0, 0,
-         0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-         0, 0, 0, 0, 3, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-         1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-         0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-         1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-         1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1}
-      ) > 0
+      :erlang.element(x,
+                        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 2, 2, 2, 2, 2, 2, 2,
+                           2, 2, 2, 3, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                           0, 0, 0, 0, 3, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,
+                           1, 1, 1}) > 0
     catch
       _, _ ->
-        case is_letter(x) do
+        case (is_letter(x)) do
           true ->
             true
-
           false ->
-            case is_digit(x) do
+            case (is_digit(x)) do
               true ->
                 true
-
               false ->
-                case is_combining_char(x) do
+                case (is_combining_char(x)) do
                   true ->
                     true
-
                   false ->
                     is_extender(x)
                 end
@@ -1039,87 +877,90 @@ defmodule :m_xmerl_lib do
 
   def is_letter(x) do
     try do
-      :erlang.element(
-        x,
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 0, 0,
-         0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-         0, 0, 0, 0, 3, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-         1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-         0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-         1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-         1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1}
-      ) === 1
+      :erlang.element(x,
+                        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 2, 2, 2, 2, 2, 2, 2,
+                           2, 2, 2, 3, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                           0, 0, 0, 0, 3, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                           0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,
+                           1, 1, 1}) === 1
     catch
       _, _ ->
-        case is_base_char(x) do
+        case (is_base_char(x)) do
           false ->
             is_ideographic(x)
-
           true ->
             true
         end
     end
   end
 
-  defp is_base_char(x) when x >= 65 and x <= 90 do
+  defp is_base_char(x) when (x >= 65 and x <= 90) do
     true
   end
 
-  defp is_base_char(x) when x >= 97 and x <= 122 do
+  defp is_base_char(x) when (x >= 97 and x <= 122) do
     true
   end
 
-  defp is_base_char(x) when x >= 192 and x <= 214 do
+  defp is_base_char(x) when (x >= 192 and x <= 214) do
     true
   end
 
-  defp is_base_char(x) when x >= 216 and x <= 246 do
+  defp is_base_char(x) when (x >= 216 and x <= 246) do
     true
   end
 
-  defp is_base_char(x) when x >= 248 and x <= 255 do
+  defp is_base_char(x) when (x >= 248 and x <= 255) do
     true
   end
 
-  defp is_base_char(x) when x >= 256 and x <= 305 do
+  defp is_base_char(x) when (x >= 256 and x <= 305) do
     true
   end
 
-  defp is_base_char(x) when x >= 308 and x <= 318 do
+  defp is_base_char(x) when (x >= 308 and x <= 318) do
     true
   end
 
-  defp is_base_char(x) when x >= 321 and x <= 328 do
+  defp is_base_char(x) when (x >= 321 and x <= 328) do
     true
   end
 
-  defp is_base_char(x) when x >= 330 and x <= 382 do
+  defp is_base_char(x) when (x >= 330 and x <= 382) do
     true
   end
 
-  defp is_base_char(x) when x >= 384 and x <= 451 do
+  defp is_base_char(x) when (x >= 384 and x <= 451) do
     true
   end
 
-  defp is_base_char(x) when x >= 461 and x <= 496 do
+  defp is_base_char(x) when (x >= 461 and x <= 496) do
     true
   end
 
-  defp is_base_char(x) when x >= 500 and x <= 501 do
+  defp is_base_char(x) when (x >= 500 and x <= 501) do
     true
   end
 
-  defp is_base_char(x) when x >= 506 and x <= 535 do
+  defp is_base_char(x) when (x >= 506 and x <= 535) do
     true
   end
 
-  defp is_base_char(x) when x >= 592 and x <= 680 do
+  defp is_base_char(x) when (x >= 592 and x <= 680) do
     true
   end
 
-  defp is_base_char(x) when x >= 699 and x <= 705 do
+  defp is_base_char(x) when (x >= 699 and x <= 705) do
     true
   end
 
@@ -1127,7 +968,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 904 and x <= 906 do
+  defp is_base_char(x) when (x >= 904 and x <= 906) do
     true
   end
 
@@ -1135,15 +976,15 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 910 and x <= 929 do
+  defp is_base_char(x) when (x >= 910 and x <= 929) do
     true
   end
 
-  defp is_base_char(x) when x >= 931 and x <= 974 do
+  defp is_base_char(x) when (x >= 931 and x <= 974) do
     true
   end
 
-  defp is_base_char(x) when x >= 976 and x <= 982 do
+  defp is_base_char(x) when (x >= 976 and x <= 982) do
     true
   end
 
@@ -1163,51 +1004,51 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 994 and x <= 1011 do
+  defp is_base_char(x) when (x >= 994 and x <= 1011) do
     true
   end
 
-  defp is_base_char(x) when x >= 1025 and x <= 1036 do
+  defp is_base_char(x) when (x >= 1025 and x <= 1036) do
     true
   end
 
-  defp is_base_char(x) when x >= 1038 and x <= 1103 do
+  defp is_base_char(x) when (x >= 1038 and x <= 1103) do
     true
   end
 
-  defp is_base_char(x) when x >= 1105 and x <= 1116 do
+  defp is_base_char(x) when (x >= 1105 and x <= 1116) do
     true
   end
 
-  defp is_base_char(x) when x >= 1118 and x <= 1153 do
+  defp is_base_char(x) when (x >= 1118 and x <= 1153) do
     true
   end
 
-  defp is_base_char(x) when x >= 1168 and x <= 1220 do
+  defp is_base_char(x) when (x >= 1168 and x <= 1220) do
     true
   end
 
-  defp is_base_char(x) when x >= 1223 and x <= 1224 do
+  defp is_base_char(x) when (x >= 1223 and x <= 1224) do
     true
   end
 
-  defp is_base_char(x) when x >= 1227 and x <= 1228 do
+  defp is_base_char(x) when (x >= 1227 and x <= 1228) do
     true
   end
 
-  defp is_base_char(x) when x >= 1232 and x <= 1259 do
+  defp is_base_char(x) when (x >= 1232 and x <= 1259) do
     true
   end
 
-  defp is_base_char(x) when x >= 1262 and x <= 1269 do
+  defp is_base_char(x) when (x >= 1262 and x <= 1269) do
     true
   end
 
-  defp is_base_char(x) when x >= 1272 and x <= 1273 do
+  defp is_base_char(x) when (x >= 1272 and x <= 1273) do
     true
   end
 
-  defp is_base_char(x) when x >= 1329 and x <= 1366 do
+  defp is_base_char(x) when (x >= 1329 and x <= 1366) do
     true
   end
 
@@ -1215,39 +1056,39 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 1377 and x <= 1414 do
+  defp is_base_char(x) when (x >= 1377 and x <= 1414) do
     true
   end
 
-  defp is_base_char(x) when x >= 1488 and x <= 1514 do
+  defp is_base_char(x) when (x >= 1488 and x <= 1514) do
     true
   end
 
-  defp is_base_char(x) when x >= 1520 and x <= 1522 do
+  defp is_base_char(x) when (x >= 1520 and x <= 1522) do
     true
   end
 
-  defp is_base_char(x) when x >= 1569 and x <= 1594 do
+  defp is_base_char(x) when (x >= 1569 and x <= 1594) do
     true
   end
 
-  defp is_base_char(x) when x >= 1601 and x <= 1610 do
+  defp is_base_char(x) when (x >= 1601 and x <= 1610) do
     true
   end
 
-  defp is_base_char(x) when x >= 1649 and x <= 1719 do
+  defp is_base_char(x) when (x >= 1649 and x <= 1719) do
     true
   end
 
-  defp is_base_char(x) when x >= 1722 and x <= 1726 do
+  defp is_base_char(x) when (x >= 1722 and x <= 1726) do
     true
   end
 
-  defp is_base_char(x) when x >= 1728 and x <= 1742 do
+  defp is_base_char(x) when (x >= 1728 and x <= 1742) do
     true
   end
 
-  defp is_base_char(x) when x >= 1744 and x <= 1747 do
+  defp is_base_char(x) when (x >= 1744 and x <= 1747) do
     true
   end
 
@@ -1255,11 +1096,11 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 1765 and x <= 1766 do
+  defp is_base_char(x) when (x >= 1765 and x <= 1766) do
     true
   end
 
-  defp is_base_char(x) when x >= 2309 and x <= 2361 do
+  defp is_base_char(x) when (x >= 2309 and x <= 2361) do
     true
   end
 
@@ -1267,23 +1108,23 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 2392 and x <= 2401 do
+  defp is_base_char(x) when (x >= 2392 and x <= 2401) do
     true
   end
 
-  defp is_base_char(x) when x >= 2437 and x <= 2444 do
+  defp is_base_char(x) when (x >= 2437 and x <= 2444) do
     true
   end
 
-  defp is_base_char(x) when x >= 2447 and x <= 2448 do
+  defp is_base_char(x) when (x >= 2447 and x <= 2448) do
     true
   end
 
-  defp is_base_char(x) when x >= 2451 and x <= 2472 do
+  defp is_base_char(x) when (x >= 2451 and x <= 2472) do
     true
   end
 
-  defp is_base_char(x) when x >= 2474 and x <= 2480 do
+  defp is_base_char(x) when (x >= 2474 and x <= 2480) do
     true
   end
 
@@ -1291,51 +1132,51 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 2486 and x <= 2489 do
+  defp is_base_char(x) when (x >= 2486 and x <= 2489) do
     true
   end
 
-  defp is_base_char(x) when x >= 2524 and x <= 2525 do
+  defp is_base_char(x) when (x >= 2524 and x <= 2525) do
     true
   end
 
-  defp is_base_char(x) when x >= 2527 and x <= 2529 do
+  defp is_base_char(x) when (x >= 2527 and x <= 2529) do
     true
   end
 
-  defp is_base_char(x) when x >= 2544 and x <= 2545 do
+  defp is_base_char(x) when (x >= 2544 and x <= 2545) do
     true
   end
 
-  defp is_base_char(x) when x >= 2565 and x <= 2570 do
+  defp is_base_char(x) when (x >= 2565 and x <= 2570) do
     true
   end
 
-  defp is_base_char(x) when x >= 2575 and x <= 2576 do
+  defp is_base_char(x) when (x >= 2575 and x <= 2576) do
     true
   end
 
-  defp is_base_char(x) when x >= 2579 and x <= 2600 do
+  defp is_base_char(x) when (x >= 2579 and x <= 2600) do
     true
   end
 
-  defp is_base_char(x) when x >= 2602 and x <= 2608 do
+  defp is_base_char(x) when (x >= 2602 and x <= 2608) do
     true
   end
 
-  defp is_base_char(x) when x >= 2610 and x <= 2611 do
+  defp is_base_char(x) when (x >= 2610 and x <= 2611) do
     true
   end
 
-  defp is_base_char(x) when x >= 2613 and x <= 2614 do
+  defp is_base_char(x) when (x >= 2613 and x <= 2614) do
     true
   end
 
-  defp is_base_char(x) when x >= 2616 and x <= 2617 do
+  defp is_base_char(x) when (x >= 2616 and x <= 2617) do
     true
   end
 
-  defp is_base_char(x) when x >= 2649 and x <= 2652 do
+  defp is_base_char(x) when (x >= 2649 and x <= 2652) do
     true
   end
 
@@ -1343,11 +1184,11 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 2674 and x <= 2676 do
+  defp is_base_char(x) when (x >= 2674 and x <= 2676) do
     true
   end
 
-  defp is_base_char(x) when x >= 2693 and x <= 2699 do
+  defp is_base_char(x) when (x >= 2693 and x <= 2699) do
     true
   end
 
@@ -1355,23 +1196,23 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 2703 and x <= 2705 do
+  defp is_base_char(x) when (x >= 2703 and x <= 2705) do
     true
   end
 
-  defp is_base_char(x) when x >= 2707 and x <= 2728 do
+  defp is_base_char(x) when (x >= 2707 and x <= 2728) do
     true
   end
 
-  defp is_base_char(x) when x >= 2730 and x <= 2736 do
+  defp is_base_char(x) when (x >= 2730 and x <= 2736) do
     true
   end
 
-  defp is_base_char(x) when x >= 2738 and x <= 2739 do
+  defp is_base_char(x) when (x >= 2738 and x <= 2739) do
     true
   end
 
-  defp is_base_char(x) when x >= 2741 and x <= 2745 do
+  defp is_base_char(x) when (x >= 2741 and x <= 2745) do
     true
   end
 
@@ -1383,27 +1224,27 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 2821 and x <= 2828 do
+  defp is_base_char(x) when (x >= 2821 and x <= 2828) do
     true
   end
 
-  defp is_base_char(x) when x >= 2831 and x <= 2832 do
+  defp is_base_char(x) when (x >= 2831 and x <= 2832) do
     true
   end
 
-  defp is_base_char(x) when x >= 2835 and x <= 2856 do
+  defp is_base_char(x) when (x >= 2835 and x <= 2856) do
     true
   end
 
-  defp is_base_char(x) when x >= 2858 and x <= 2864 do
+  defp is_base_char(x) when (x >= 2858 and x <= 2864) do
     true
   end
 
-  defp is_base_char(x) when x >= 2866 and x <= 2867 do
+  defp is_base_char(x) when (x >= 2866 and x <= 2867) do
     true
   end
 
-  defp is_base_char(x) when x >= 2870 and x <= 2873 do
+  defp is_base_char(x) when (x >= 2870 and x <= 2873) do
     true
   end
 
@@ -1411,27 +1252,27 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 2908 and x <= 2909 do
+  defp is_base_char(x) when (x >= 2908 and x <= 2909) do
     true
   end
 
-  defp is_base_char(x) when x >= 2911 and x <= 2913 do
+  defp is_base_char(x) when (x >= 2911 and x <= 2913) do
     true
   end
 
-  defp is_base_char(x) when x >= 2949 and x <= 2954 do
+  defp is_base_char(x) when (x >= 2949 and x <= 2954) do
     true
   end
 
-  defp is_base_char(x) when x >= 2958 and x <= 2960 do
+  defp is_base_char(x) when (x >= 2958 and x <= 2960) do
     true
   end
 
-  defp is_base_char(x) when x >= 2962 and x <= 2965 do
+  defp is_base_char(x) when (x >= 2962 and x <= 2965) do
     true
   end
 
-  defp is_base_char(x) when x >= 2969 and x <= 2970 do
+  defp is_base_char(x) when (x >= 2969 and x <= 2970) do
     true
   end
 
@@ -1439,67 +1280,67 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 2974 and x <= 2975 do
+  defp is_base_char(x) when (x >= 2974 and x <= 2975) do
     true
   end
 
-  defp is_base_char(x) when x >= 2979 and x <= 2980 do
+  defp is_base_char(x) when (x >= 2979 and x <= 2980) do
     true
   end
 
-  defp is_base_char(x) when x >= 2984 and x <= 2986 do
+  defp is_base_char(x) when (x >= 2984 and x <= 2986) do
     true
   end
 
-  defp is_base_char(x) when x >= 2990 and x <= 2997 do
+  defp is_base_char(x) when (x >= 2990 and x <= 2997) do
     true
   end
 
-  defp is_base_char(x) when x >= 2999 and x <= 3001 do
+  defp is_base_char(x) when (x >= 2999 and x <= 3001) do
     true
   end
 
-  defp is_base_char(x) when x >= 3077 and x <= 3084 do
+  defp is_base_char(x) when (x >= 3077 and x <= 3084) do
     true
   end
 
-  defp is_base_char(x) when x >= 3086 and x <= 3088 do
+  defp is_base_char(x) when (x >= 3086 and x <= 3088) do
     true
   end
 
-  defp is_base_char(x) when x >= 3090 and x <= 3112 do
+  defp is_base_char(x) when (x >= 3090 and x <= 3112) do
     true
   end
 
-  defp is_base_char(x) when x >= 3114 and x <= 3123 do
+  defp is_base_char(x) when (x >= 3114 and x <= 3123) do
     true
   end
 
-  defp is_base_char(x) when x >= 3125 and x <= 3129 do
+  defp is_base_char(x) when (x >= 3125 and x <= 3129) do
     true
   end
 
-  defp is_base_char(x) when x >= 3168 and x <= 3169 do
+  defp is_base_char(x) when (x >= 3168 and x <= 3169) do
     true
   end
 
-  defp is_base_char(x) when x >= 3205 and x <= 3212 do
+  defp is_base_char(x) when (x >= 3205 and x <= 3212) do
     true
   end
 
-  defp is_base_char(x) when x >= 3214 and x <= 3216 do
+  defp is_base_char(x) when (x >= 3214 and x <= 3216) do
     true
   end
 
-  defp is_base_char(x) when x >= 3218 and x <= 3240 do
+  defp is_base_char(x) when (x >= 3218 and x <= 3240) do
     true
   end
 
-  defp is_base_char(x) when x >= 3242 and x <= 3251 do
+  defp is_base_char(x) when (x >= 3242 and x <= 3251) do
     true
   end
 
-  defp is_base_char(x) when x >= 3253 and x <= 3257 do
+  defp is_base_char(x) when (x >= 3253 and x <= 3257) do
     true
   end
 
@@ -1507,31 +1348,31 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 3296 and x <= 3297 do
+  defp is_base_char(x) when (x >= 3296 and x <= 3297) do
     true
   end
 
-  defp is_base_char(x) when x >= 3333 and x <= 3340 do
+  defp is_base_char(x) when (x >= 3333 and x <= 3340) do
     true
   end
 
-  defp is_base_char(x) when x >= 3342 and x <= 3344 do
+  defp is_base_char(x) when (x >= 3342 and x <= 3344) do
     true
   end
 
-  defp is_base_char(x) when x >= 3346 and x <= 3368 do
+  defp is_base_char(x) when (x >= 3346 and x <= 3368) do
     true
   end
 
-  defp is_base_char(x) when x >= 3370 and x <= 3385 do
+  defp is_base_char(x) when (x >= 3370 and x <= 3385) do
     true
   end
 
-  defp is_base_char(x) when x >= 3424 and x <= 3425 do
+  defp is_base_char(x) when (x >= 3424 and x <= 3425) do
     true
   end
 
-  defp is_base_char(x) when x >= 3585 and x <= 3630 do
+  defp is_base_char(x) when (x >= 3585 and x <= 3630) do
     true
   end
 
@@ -1539,15 +1380,15 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 3634 and x <= 3635 do
+  defp is_base_char(x) when (x >= 3634 and x <= 3635) do
     true
   end
 
-  defp is_base_char(x) when x >= 3648 and x <= 3653 do
+  defp is_base_char(x) when (x >= 3648 and x <= 3653) do
     true
   end
 
-  defp is_base_char(x) when x >= 3713 and x <= 3714 do
+  defp is_base_char(x) when (x >= 3713 and x <= 3714) do
     true
   end
 
@@ -1555,7 +1396,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 3719 and x <= 3720 do
+  defp is_base_char(x) when (x >= 3719 and x <= 3720) do
     true
   end
 
@@ -1567,15 +1408,15 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 3732 and x <= 3735 do
+  defp is_base_char(x) when (x >= 3732 and x <= 3735) do
     true
   end
 
-  defp is_base_char(x) when x >= 3737 and x <= 3743 do
+  defp is_base_char(x) when (x >= 3737 and x <= 3743) do
     true
   end
 
-  defp is_base_char(x) when x >= 3745 and x <= 3747 do
+  defp is_base_char(x) when (x >= 3745 and x <= 3747) do
     true
   end
 
@@ -1587,11 +1428,11 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 3754 and x <= 3755 do
+  defp is_base_char(x) when (x >= 3754 and x <= 3755) do
     true
   end
 
-  defp is_base_char(x) when x >= 3757 and x <= 3758 do
+  defp is_base_char(x) when (x >= 3757 and x <= 3758) do
     true
   end
 
@@ -1599,7 +1440,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 3762 and x <= 3763 do
+  defp is_base_char(x) when (x >= 3762 and x <= 3763) do
     true
   end
 
@@ -1607,23 +1448,23 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 3776 and x <= 3780 do
+  defp is_base_char(x) when (x >= 3776 and x <= 3780) do
     true
   end
 
-  defp is_base_char(x) when x >= 3904 and x <= 3911 do
+  defp is_base_char(x) when (x >= 3904 and x <= 3911) do
     true
   end
 
-  defp is_base_char(x) when x >= 3913 and x <= 3945 do
+  defp is_base_char(x) when (x >= 3913 and x <= 3945) do
     true
   end
 
-  defp is_base_char(x) when x >= 4256 and x <= 4293 do
+  defp is_base_char(x) when (x >= 4256 and x <= 4293) do
     true
   end
 
-  defp is_base_char(x) when x >= 4304 and x <= 4342 do
+  defp is_base_char(x) when (x >= 4304 and x <= 4342) do
     true
   end
 
@@ -1631,11 +1472,11 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 4354 and x <= 4355 do
+  defp is_base_char(x) when (x >= 4354 and x <= 4355) do
     true
   end
 
-  defp is_base_char(x) when x >= 4357 and x <= 4359 do
+  defp is_base_char(x) when (x >= 4357 and x <= 4359) do
     true
   end
 
@@ -1643,11 +1484,11 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 4363 and x <= 4364 do
+  defp is_base_char(x) when (x >= 4363 and x <= 4364) do
     true
   end
 
-  defp is_base_char(x) when x >= 4366 and x <= 4370 do
+  defp is_base_char(x) when (x >= 4366 and x <= 4370) do
     true
   end
 
@@ -1675,7 +1516,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 4436 and x <= 4437 do
+  defp is_base_char(x) when (x >= 4436 and x <= 4437) do
     true
   end
 
@@ -1683,7 +1524,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 4447 and x <= 4449 do
+  defp is_base_char(x) when (x >= 4447 and x <= 4449) do
     true
   end
 
@@ -1703,11 +1544,11 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 4461 and x <= 4462 do
+  defp is_base_char(x) when (x >= 4461 and x <= 4462) do
     true
   end
 
-  defp is_base_char(x) when x >= 4466 and x <= 4467 do
+  defp is_base_char(x) when (x >= 4466 and x <= 4467) do
     true
   end
 
@@ -1727,11 +1568,11 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 4526 and x <= 4527 do
+  defp is_base_char(x) when (x >= 4526 and x <= 4527) do
     true
   end
 
-  defp is_base_char(x) when x >= 4535 and x <= 4536 do
+  defp is_base_char(x) when (x >= 4535 and x <= 4536) do
     true
   end
 
@@ -1739,7 +1580,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 4540 and x <= 4546 do
+  defp is_base_char(x) when (x >= 4540 and x <= 4546) do
     true
   end
 
@@ -1755,31 +1596,31 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 7680 and x <= 7835 do
+  defp is_base_char(x) when (x >= 7680 and x <= 7835) do
     true
   end
 
-  defp is_base_char(x) when x >= 7840 and x <= 7929 do
+  defp is_base_char(x) when (x >= 7840 and x <= 7929) do
     true
   end
 
-  defp is_base_char(x) when x >= 7936 and x <= 7957 do
+  defp is_base_char(x) when (x >= 7936 and x <= 7957) do
     true
   end
 
-  defp is_base_char(x) when x >= 7960 and x <= 7965 do
+  defp is_base_char(x) when (x >= 7960 and x <= 7965) do
     true
   end
 
-  defp is_base_char(x) when x >= 7968 and x <= 8005 do
+  defp is_base_char(x) when (x >= 7968 and x <= 8005) do
     true
   end
 
-  defp is_base_char(x) when x >= 8008 and x <= 8013 do
+  defp is_base_char(x) when (x >= 8008 and x <= 8013) do
     true
   end
 
-  defp is_base_char(x) when x >= 8016 and x <= 8023 do
+  defp is_base_char(x) when (x >= 8016 and x <= 8023) do
     true
   end
 
@@ -1795,15 +1636,15 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 8031 and x <= 8061 do
+  defp is_base_char(x) when (x >= 8031 and x <= 8061) do
     true
   end
 
-  defp is_base_char(x) when x >= 8064 and x <= 8116 do
+  defp is_base_char(x) when (x >= 8064 and x <= 8116) do
     true
   end
 
-  defp is_base_char(x) when x >= 8118 and x <= 8124 do
+  defp is_base_char(x) when (x >= 8118 and x <= 8124) do
     true
   end
 
@@ -1811,31 +1652,31 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 8130 and x <= 8132 do
+  defp is_base_char(x) when (x >= 8130 and x <= 8132) do
     true
   end
 
-  defp is_base_char(x) when x >= 8134 and x <= 8140 do
+  defp is_base_char(x) when (x >= 8134 and x <= 8140) do
     true
   end
 
-  defp is_base_char(x) when x >= 8144 and x <= 8147 do
+  defp is_base_char(x) when (x >= 8144 and x <= 8147) do
     true
   end
 
-  defp is_base_char(x) when x >= 8150 and x <= 8155 do
+  defp is_base_char(x) when (x >= 8150 and x <= 8155) do
     true
   end
 
-  defp is_base_char(x) when x >= 8160 and x <= 8172 do
+  defp is_base_char(x) when (x >= 8160 and x <= 8172) do
     true
   end
 
-  defp is_base_char(x) when x >= 8178 and x <= 8180 do
+  defp is_base_char(x) when (x >= 8178 and x <= 8180) do
     true
   end
 
-  defp is_base_char(x) when x >= 8182 and x <= 8188 do
+  defp is_base_char(x) when (x >= 8182 and x <= 8188) do
     true
   end
 
@@ -1843,7 +1684,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 8490 and x <= 8491 do
+  defp is_base_char(x) when (x >= 8490 and x <= 8491) do
     true
   end
 
@@ -1851,23 +1692,23 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_base_char(x) when x >= 8576 and x <= 8578 do
+  defp is_base_char(x) when (x >= 8576 and x <= 8578) do
     true
   end
 
-  defp is_base_char(x) when x >= 12353 and x <= 12436 do
+  defp is_base_char(x) when (x >= 12353 and x <= 12436) do
     true
   end
 
-  defp is_base_char(x) when x >= 12449 and x <= 12538 do
+  defp is_base_char(x) when (x >= 12449 and x <= 12538) do
     true
   end
 
-  defp is_base_char(x) when x >= 12549 and x <= 12588 do
+  defp is_base_char(x) when (x >= 12549 and x <= 12588) do
     true
   end
 
-  defp is_base_char(x) when x >= 44032 and x <= 55203 do
+  defp is_base_char(x) when (x >= 44032 and x <= 55203) do
     true
   end
 
@@ -1875,7 +1716,7 @@ defmodule :m_xmerl_lib do
     false
   end
 
-  defp is_ideographic(x) when x >= 19968 and x <= 40869 do
+  defp is_ideographic(x) when (x >= 19968 and x <= 40869) do
     true
   end
 
@@ -1883,7 +1724,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_ideographic(x) when x >= 12321 and x <= 12329 do
+  defp is_ideographic(x) when (x >= 12321 and x <= 12329) do
     true
   end
 
@@ -1891,27 +1732,27 @@ defmodule :m_xmerl_lib do
     false
   end
 
-  defp is_combining_char(x) when x >= 768 and x <= 837 do
+  defp is_combining_char(x) when (x >= 768 and x <= 837) do
     true
   end
 
-  defp is_combining_char(x) when x >= 864 and x <= 865 do
+  defp is_combining_char(x) when (x >= 864 and x <= 865) do
     true
   end
 
-  defp is_combining_char(x) when x >= 1155 and x <= 1158 do
+  defp is_combining_char(x) when (x >= 1155 and x <= 1158) do
     true
   end
 
-  defp is_combining_char(x) when x >= 1425 and x <= 1441 do
+  defp is_combining_char(x) when (x >= 1425 and x <= 1441) do
     true
   end
 
-  defp is_combining_char(x) when x >= 1443 and x <= 1465 do
+  defp is_combining_char(x) when (x >= 1443 and x <= 1465) do
     true
   end
 
-  defp is_combining_char(x) when x >= 1467 and x <= 1469 do
+  defp is_combining_char(x) when (x >= 1467 and x <= 1469) do
     true
   end
 
@@ -1919,7 +1760,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 1473 and x <= 1474 do
+  defp is_combining_char(x) when (x >= 1473 and x <= 1474) do
     true
   end
 
@@ -1927,7 +1768,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 1611 and x <= 1618 do
+  defp is_combining_char(x) when (x >= 1611 and x <= 1618) do
     true
   end
 
@@ -1935,27 +1776,27 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 1750 and x <= 1756 do
+  defp is_combining_char(x) when (x >= 1750 and x <= 1756) do
     true
   end
 
-  defp is_combining_char(x) when x >= 1757 and x <= 1759 do
+  defp is_combining_char(x) when (x >= 1757 and x <= 1759) do
     true
   end
 
-  defp is_combining_char(x) when x >= 1760 and x <= 1764 do
+  defp is_combining_char(x) when (x >= 1760 and x <= 1764) do
     true
   end
 
-  defp is_combining_char(x) when x >= 1767 and x <= 1768 do
+  defp is_combining_char(x) when (x >= 1767 and x <= 1768) do
     true
   end
 
-  defp is_combining_char(x) when x >= 1770 and x <= 1773 do
+  defp is_combining_char(x) when (x >= 1770 and x <= 1773) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2305 and x <= 2307 do
+  defp is_combining_char(x) when (x >= 2305 and x <= 2307) do
     true
   end
 
@@ -1963,7 +1804,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 2366 and x <= 2380 do
+  defp is_combining_char(x) when (x >= 2366 and x <= 2380) do
     true
   end
 
@@ -1971,15 +1812,15 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 2385 and x <= 2388 do
+  defp is_combining_char(x) when (x >= 2385 and x <= 2388) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2402 and x <= 2403 do
+  defp is_combining_char(x) when (x >= 2402 and x <= 2403) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2433 and x <= 2435 do
+  defp is_combining_char(x) when (x >= 2433 and x <= 2435) do
     true
   end
 
@@ -1995,15 +1836,15 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 2496 and x <= 2500 do
+  defp is_combining_char(x) when (x >= 2496 and x <= 2500) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2503 and x <= 2504 do
+  defp is_combining_char(x) when (x >= 2503 and x <= 2504) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2507 and x <= 2509 do
+  defp is_combining_char(x) when (x >= 2507 and x <= 2509) do
     true
   end
 
@@ -2011,7 +1852,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 2530 and x <= 2531 do
+  defp is_combining_char(x) when (x >= 2530 and x <= 2531) do
     true
   end
 
@@ -2031,23 +1872,23 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 2624 and x <= 2626 do
+  defp is_combining_char(x) when (x >= 2624 and x <= 2626) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2631 and x <= 2632 do
+  defp is_combining_char(x) when (x >= 2631 and x <= 2632) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2635 and x <= 2637 do
+  defp is_combining_char(x) when (x >= 2635 and x <= 2637) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2672 and x <= 2673 do
+  defp is_combining_char(x) when (x >= 2672 and x <= 2673) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2689 and x <= 2691 do
+  defp is_combining_char(x) when (x >= 2689 and x <= 2691) do
     true
   end
 
@@ -2055,19 +1896,19 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 2750 and x <= 2757 do
+  defp is_combining_char(x) when (x >= 2750 and x <= 2757) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2759 and x <= 2761 do
+  defp is_combining_char(x) when (x >= 2759 and x <= 2761) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2763 and x <= 2765 do
+  defp is_combining_char(x) when (x >= 2763 and x <= 2765) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2817 and x <= 2819 do
+  defp is_combining_char(x) when (x >= 2817 and x <= 2819) do
     true
   end
 
@@ -2075,35 +1916,35 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 2878 and x <= 2883 do
+  defp is_combining_char(x) when (x >= 2878 and x <= 2883) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2887 and x <= 2888 do
+  defp is_combining_char(x) when (x >= 2887 and x <= 2888) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2891 and x <= 2893 do
+  defp is_combining_char(x) when (x >= 2891 and x <= 2893) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2902 and x <= 2903 do
+  defp is_combining_char(x) when (x >= 2902 and x <= 2903) do
     true
   end
 
-  defp is_combining_char(x) when x >= 2946 and x <= 2947 do
+  defp is_combining_char(x) when (x >= 2946 and x <= 2947) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3006 and x <= 3010 do
+  defp is_combining_char(x) when (x >= 3006 and x <= 3010) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3014 and x <= 3016 do
+  defp is_combining_char(x) when (x >= 3014 and x <= 3016) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3018 and x <= 3021 do
+  defp is_combining_char(x) when (x >= 3018 and x <= 3021) do
     true
   end
 
@@ -2111,59 +1952,59 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 3073 and x <= 3075 do
+  defp is_combining_char(x) when (x >= 3073 and x <= 3075) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3134 and x <= 3140 do
+  defp is_combining_char(x) when (x >= 3134 and x <= 3140) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3142 and x <= 3144 do
+  defp is_combining_char(x) when (x >= 3142 and x <= 3144) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3146 and x <= 3149 do
+  defp is_combining_char(x) when (x >= 3146 and x <= 3149) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3157 and x <= 3158 do
+  defp is_combining_char(x) when (x >= 3157 and x <= 3158) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3202 and x <= 3203 do
+  defp is_combining_char(x) when (x >= 3202 and x <= 3203) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3262 and x <= 3268 do
+  defp is_combining_char(x) when (x >= 3262 and x <= 3268) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3270 and x <= 3272 do
+  defp is_combining_char(x) when (x >= 3270 and x <= 3272) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3274 and x <= 3277 do
+  defp is_combining_char(x) when (x >= 3274 and x <= 3277) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3285 and x <= 3286 do
+  defp is_combining_char(x) when (x >= 3285 and x <= 3286) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3330 and x <= 3331 do
+  defp is_combining_char(x) when (x >= 3330 and x <= 3331) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3390 and x <= 3395 do
+  defp is_combining_char(x) when (x >= 3390 and x <= 3395) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3398 and x <= 3400 do
+  defp is_combining_char(x) when (x >= 3398 and x <= 3400) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3402 and x <= 3405 do
+  defp is_combining_char(x) when (x >= 3402 and x <= 3405) do
     true
   end
 
@@ -2175,11 +2016,11 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 3636 and x <= 3642 do
+  defp is_combining_char(x) when (x >= 3636 and x <= 3642) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3655 and x <= 3662 do
+  defp is_combining_char(x) when (x >= 3655 and x <= 3662) do
     true
   end
 
@@ -2187,19 +2028,19 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 3764 and x <= 3769 do
+  defp is_combining_char(x) when (x >= 3764 and x <= 3769) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3771 and x <= 3772 do
+  defp is_combining_char(x) when (x >= 3771 and x <= 3772) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3784 and x <= 3789 do
+  defp is_combining_char(x) when (x >= 3784 and x <= 3789) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3864 and x <= 3865 do
+  defp is_combining_char(x) when (x >= 3864 and x <= 3865) do
     true
   end
 
@@ -2223,15 +2064,15 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 3953 and x <= 3972 do
+  defp is_combining_char(x) when (x >= 3953 and x <= 3972) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3974 and x <= 3979 do
+  defp is_combining_char(x) when (x >= 3974 and x <= 3979) do
     true
   end
 
-  defp is_combining_char(x) when x >= 3984 and x <= 3989 do
+  defp is_combining_char(x) when (x >= 3984 and x <= 3989) do
     true
   end
 
@@ -2239,11 +2080,11 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 3993 and x <= 4013 do
+  defp is_combining_char(x) when (x >= 3993 and x <= 4013) do
     true
   end
 
-  defp is_combining_char(x) when x >= 4017 and x <= 4023 do
+  defp is_combining_char(x) when (x >= 4017 and x <= 4023) do
     true
   end
 
@@ -2251,7 +2092,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 8400 and x <= 8412 do
+  defp is_combining_char(x) when (x >= 8400 and x <= 8412) do
     true
   end
 
@@ -2259,7 +2100,7 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_combining_char(x) when x >= 12330 and x <= 12335 do
+  defp is_combining_char(x) when (x >= 12330 and x <= 12335) do
     true
   end
 
@@ -2275,63 +2116,63 @@ defmodule :m_xmerl_lib do
     false
   end
 
-  defp is_digit(x) when x >= 48 and x <= 57 do
+  defp is_digit(x) when (x >= 48 and x <= 57) do
     true
   end
 
-  defp is_digit(x) when x >= 1632 and x <= 1641 do
+  defp is_digit(x) when (x >= 1632 and x <= 1641) do
     true
   end
 
-  defp is_digit(x) when x >= 1776 and x <= 1785 do
+  defp is_digit(x) when (x >= 1776 and x <= 1785) do
     true
   end
 
-  defp is_digit(x) when x >= 2406 and x <= 2415 do
+  defp is_digit(x) when (x >= 2406 and x <= 2415) do
     true
   end
 
-  defp is_digit(x) when x >= 2534 and x <= 2543 do
+  defp is_digit(x) when (x >= 2534 and x <= 2543) do
     true
   end
 
-  defp is_digit(x) when x >= 2662 and x <= 2671 do
+  defp is_digit(x) when (x >= 2662 and x <= 2671) do
     true
   end
 
-  defp is_digit(x) when x >= 2790 and x <= 2799 do
+  defp is_digit(x) when (x >= 2790 and x <= 2799) do
     true
   end
 
-  defp is_digit(x) when x >= 2918 and x <= 2927 do
+  defp is_digit(x) when (x >= 2918 and x <= 2927) do
     true
   end
 
-  defp is_digit(x) when x >= 3047 and x <= 3055 do
+  defp is_digit(x) when (x >= 3047 and x <= 3055) do
     true
   end
 
-  defp is_digit(x) when x >= 3174 and x <= 3183 do
+  defp is_digit(x) when (x >= 3174 and x <= 3183) do
     true
   end
 
-  defp is_digit(x) when x >= 3302 and x <= 3311 do
+  defp is_digit(x) when (x >= 3302 and x <= 3311) do
     true
   end
 
-  defp is_digit(x) when x >= 3430 and x <= 3439 do
+  defp is_digit(x) when (x >= 3430 and x <= 3439) do
     true
   end
 
-  defp is_digit(x) when x >= 3664 and x <= 3673 do
+  defp is_digit(x) when (x >= 3664 and x <= 3673) do
     true
   end
 
-  defp is_digit(x) when x >= 3792 and x <= 3801 do
+  defp is_digit(x) when (x >= 3792 and x <= 3801) do
     true
   end
 
-  defp is_digit(x) when x >= 3872 and x <= 3881 do
+  defp is_digit(x) when (x >= 3872 and x <= 3881) do
     true
   end
 
@@ -2371,15 +2212,15 @@ defmodule :m_xmerl_lib do
     true
   end
 
-  defp is_extender(x) when x >= 12337 and x <= 12341 do
+  defp is_extender(x) when (x >= 12337 and x <= 12341) do
     true
   end
 
-  defp is_extender(x) when x >= 12445 and x <= 12446 do
+  defp is_extender(x) when (x >= 12445 and x <= 12446) do
     true
   end
 
-  defp is_extender(x) when x >= 12540 and x <= 12542 do
+  defp is_extender(x) when (x >= 12540 and x <= 12542) do
     true
   end
 
@@ -2391,7 +2232,7 @@ defmodule :m_xmerl_lib do
     to_lower(str, [])
   end
 
-  defp to_lower([c | cs], acc) when c >= ?A and c <= ?Z do
+  defp to_lower([c | cs], acc) when (c >= ?A and c <= ?Z) do
     to_lower(cs, [c + (?a - ?A) | acc])
   end
 
@@ -2718,4 +2559,5 @@ defmodule :m_xmerl_lib do
   def is_xsd_string(_) do
     false
   end
+
 end

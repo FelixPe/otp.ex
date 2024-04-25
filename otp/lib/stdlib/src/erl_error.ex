@@ -1,70 +1,88 @@
 defmodule :m_erl_error do
   use Bitwise
-
-  def format_exception(i, class, reason, stackTrace, stackFun, formatFun) do
-    format_exception(i, class, reason, stackTrace, stackFun, formatFun, :latin1)
+  def format_exception(class, reason, stackTrace) do
+    format_exception(class, reason, stackTrace, %{})
   end
 
-  def format_exception(i, class, reason, stackTrace, stackFun, formatFun, encoding) do
+  def format_exception(class, reason, stackTrace, options) do
+    column = :maps.get(:column, options, 1)
+    stackFun0 = fn _, _, _ ->
+                     false
+                end
+    stackFun = :maps.get(:stack_trim_fun, options,
+                           stackFun0)
+    formatFun0 = fn term, i ->
+                      :io_lib.print(term, i, 80, 30)
+                 end
+    formatFun = :maps.get(:format_fun, options, formatFun0)
+    format_exception(column, class, reason, stackTrace,
+                       stackFun, formatFun, :unicode)
+  end
+
+  def format_exception(i, class, reason, stackTrace, stackFun,
+           formatFun) do
+    format_exception(i, class, reason, stackTrace, stackFun,
+                       formatFun, :latin1)
+  end
+
+  def format_exception(i, class, reason, stackTrace, stackFun,
+           formatFun, encoding) do
     fF = wrap_format_fun_2(formatFun)
-    format_exception(i, class, reason, stackTrace, stackFun, fF, encoding, -1)
+    format_exception(i, class, reason, stackTrace, stackFun,
+                       fF, encoding, - 1)
   end
 
-  def format_exception(i, class, reason, stackTrace, stackFun, formatFun, encoding, charsLimit)
-      when is_integer(i) and i >= 1 and
-             is_function(stackFun, 3) and
-             is_function(formatFun, 3) and is_integer(charsLimit) do
+  def format_exception(i, class, reason, stackTrace, stackFun,
+           formatFun, encoding, charsLimit)
+      when (is_integer(i) and i >= 1 and
+              is_function(stackFun, 3) and
+              is_function(formatFun, 3) and is_integer(charsLimit)) do
     s = n_spaces(i - 1)
-    {term, trace1, trace} = analyze_exception(class, reason, stackTrace)
-
-    stLimit =
-      cond do
-        charsLimit < 0 ->
-          charsLimit
-
-        true ->
-          div(charsLimit, 3)
-      end
-
-    st = format_stacktrace1(s, trace, formatFun, stackFun, encoding, stLimit)
-    lim = sub(sub(charsLimit, exited(class), :latin1), st, encoding)
-    expl0 = explain_reason(term, class, trace1, formatFun, s, encoding, lim)
-
-    formatString =
-      case encoding do
-        :latin1 ->
-          '~s~s'
-
-        _ ->
-          '~s~ts'
-      end
-
-    expl =
-      :io_lib.fwrite(
-        formatString,
-        [exited(class), expl0]
-      )
-
-    case st do
+    {term, trace1, trace} = analyze_exception(class, reason,
+                                                stackTrace)
+    stLimit = (cond do
+                 charsLimit < 0 ->
+                   charsLimit
+                 true ->
+                   div(charsLimit, 3)
+               end)
+    errorMap = get_extended_error(reason, trace)
+    st = format_stacktrace1(s, trace, formatFun, stackFun,
+                              encoding, stLimit, reason, errorMap)
+    lim = sub(sub(charsLimit, exited(class), :latin1), st,
+                encoding)
+    defaultReason = explain_reason(term, class, trace1,
+                                     formatFun, s, encoding, lim)
+    expl0 = :maps.get(:reason, errorMap, defaultReason)
+    formatString = (case (encoding) do
+                      :latin1 ->
+                        '~s~s'
+                      _ ->
+                        '~s~ts'
+                    end)
+    expl = :io_lib.fwrite(formatString,
+                            [exited(class), expl0])
+    case (st) do
       [] ->
         expl
-
       _ ->
         [expl, ?\n, st]
     end
   end
 
   def format_stacktrace(i, stackTrace, stackFun, formatFun) do
-    format_stacktrace(i, stackTrace, stackFun, formatFun, :latin1)
+    format_stacktrace(i, stackTrace, stackFun, formatFun,
+                        :latin1)
   end
 
   def format_stacktrace(i, stackTrace, stackFun, formatFun, encoding)
-      when is_integer(i) and i >= 1 and
-             is_function(stackFun, 3) and
-             is_function(formatFun, 2) do
+      when (is_integer(i) and i >= 1 and
+              is_function(stackFun, 3) and
+              is_function(formatFun, 2)) do
     s = n_spaces(i - 1)
     fF = wrap_format_fun_2(formatFun)
-    format_stacktrace1(s, stackTrace, fF, stackFun, encoding, -1)
+    format_stacktrace1(s, stackTrace, fF, stackFun,
+                         encoding, - 1, :none)
   end
 
   def format_call(i, forMForFun, as, formatFun) do
@@ -72,8 +90,8 @@ defmodule :m_erl_error do
   end
 
   def format_call(i, forMForFun, as, formatFun, enc)
-      when is_integer(i) and i >= 1 and is_list(as) and
-             is_function(formatFun, 2) do
+      when (is_integer(i) and i >= 1 and is_list(as) and
+              is_function(formatFun, 2)) do
     fF = wrap_format_fun_2(formatFun)
     format_call('', n_spaces(i - 1), forMForFun, as, fF, enc)
   end
@@ -86,17 +104,13 @@ defmodule :m_erl_error do
     {:module, m} = :erlang.fun_info(fun, :module)
     {:name, f} = :erlang.fun_info(fun, :name)
     {:arity, a} = :erlang.fun_info(fun, :arity)
-
-    case :erlang.fun_info(fun, :type) do
+    case (:erlang.fun_info(fun, :type)) do
       {:type, :local} when f === '' ->
         :io_lib.fwrite("~w", [fun])
-
       {:type, :local} when m === :erl_eval ->
         :io_lib.fwrite("interpreted function with arity ~w", [a])
-
       {:type, :local} ->
         mfa_to_string(m, f, a, enc)
-
       {:type, :external} ->
         mfa_to_string(m, f, a, enc)
     end
@@ -104,36 +118,31 @@ defmodule :m_erl_error do
 
   defp wrap_format_fun_2(formatFun) do
     fn t, i1, cL ->
-      {formatFun.(t, i1), cL}
+         {formatFun.(t, i1), cL}
     end
   end
 
   defp analyze_exception(:error, term, stack) do
-    case {is_stacktrace(stack), stack, term} do
+    case ({is_stacktrace(stack), stack, term}) do
       {true, [{_, _, as, _} = mFAL | mFAs], :function_clause}
-      when is_list(as) ->
+          when is_list(as) ->
         {term, [mFAL], mFAs}
-
       {true, [{:shell, f, a, _}], :function_clause}
-      when is_integer(a) ->
+          when is_integer(a) ->
         {term, [{f, a}], []}
-
       {true, [{_, _, _, _} = mFAL | mFAs], :undef} ->
         {term, [mFAL], mFAs}
-
       {true, _, _} ->
         {term, [], stack}
-
       {false, _, _} ->
         {{term, stack}, [], []}
     end
   end
 
   defp analyze_exception(_Class, term, stack) do
-    case is_stacktrace(stack) do
+    case (is_stacktrace(stack)) do
       true ->
         {term, [], stack}
-
       false ->
         {{term, stack}, [], []}
     end
@@ -143,17 +152,15 @@ defmodule :m_erl_error do
     true
   end
 
-  defp is_stacktrace([{m, f, a, i} | fs])
-       when is_atom(m) and
-              is_atom(f) and is_integer(a) and
-              is_list(i) do
+  defp is_stacktrace([{m, f, a, i} | fs]) when (is_atom(m) and
+                                       is_atom(f) and is_integer(a) and
+                                       is_list(i)) do
     is_stacktrace(fs)
   end
 
-  defp is_stacktrace([{m, f, as, i} | fs])
-       when is_atom(m) and
-              is_atom(f) and length(as) >= 0 and
-              is_list(i) do
+  defp is_stacktrace([{m, f, as, i} | fs]) when (is_atom(m) and
+                                        is_atom(f) and length(as) >= 0 and
+                                        is_list(i)) do
     is_stacktrace(fs)
   end
 
@@ -165,43 +172,65 @@ defmodule :m_erl_error do
     "bad argument"
   end
 
-  defp explain_reason({:badarg, v}, :error = cl, [], pF, s, _Enc, cL) do
+  defp explain_reason({:badarg, v}, :error = cl, [], pF, s, _Enc,
+            cL) do
     format_value(v, "bad argument: ", cl, pF, s, cL)
+  end
+
+  defp explain_reason({:badkey, v}, :error = cl, [], pF, s, _Enc,
+            cL) do
+    format_value(v, "bad key: ", cl, pF, s, cL)
+  end
+
+  defp explain_reason({:badmap, v}, :error = cl, [], pF, s, _Enc,
+            cL) do
+    format_value(v, "bad map: ", cl, pF, s, cL)
   end
 
   defp explain_reason(:badarith, :error, [], _PF, _S, _Enc, _CL) do
     "an error occurred when evaluating an arithmetic expression"
   end
 
-  defp explain_reason({:badarity, {fun, as}}, :error, [], _PF, _S, enc, _CL)
-       when is_function(fun) do
-    :io_lib.fwrite(
-      "~ts called with ~s",
-      [format_fun(fun, enc), argss(length(as))]
-    )
+  defp explain_reason({:badarity, {fun, as}}, :error, [], _PF, _S,
+            enc, _CL)
+      when is_function(fun) do
+    :io_lib.fwrite("~ts called with ~s",
+                     [format_fun(fun, enc), argss(length(as))])
   end
 
-  defp explain_reason({:badfun, term}, :error = cl, [], pF, s, _Enc, cL) do
+  defp explain_reason({:badfun, term}, :error = cl, [], pF, s, _Enc,
+            cL) do
     format_value(term, "bad function ", cl, pF, s, cL)
   end
 
-  defp explain_reason({:badmatch, term}, :error = cl, [], pF, s, _Enc, cL) do
+  defp explain_reason({:badmatch, term}, :error = cl, [], pF, s, _Enc,
+            cL) do
     str = "no match of right hand side value "
     format_value(term, str, cl, pF, s, cL)
   end
 
-  defp explain_reason({:case_clause, v}, :error = cl, [], pF, s, _Enc, cL) do
+  defp explain_reason({:case_clause, v}, :error = cl, [], pF, s, _Enc,
+            cL) do
     format_value(v, "no case clause matching ", cl, pF, s, cL)
   end
 
-  defp explain_reason(:function_clause, :error, [{f, a}], _PF, _S, _Enc, _CL) do
+  defp explain_reason({:else_clause, v}, :error = cl, [], pF, s, _Enc,
+            cL) do
+    format_value(v, "no else clause matching ", cl, pF, s, cL)
+  end
+
+  defp explain_reason(:function_clause, :error, [{f, a}], _PF, _S,
+            _Enc, _CL) do
     fAs = :io_lib.fwrite("~w/~w", [f, a])
     ["no function clause matching call to " | fAs]
   end
 
-  defp explain_reason(:function_clause, :error = cl, [{m, f, as, loc}], pF, s, enc, cL) do
+  defp explain_reason(:function_clause, :error = cl,
+            [{m, f, as, loc}], pF, s, enc, cL) do
     str = "no function clause matching "
-    [format_errstr_call(str, cl, {m, f}, as, pF, s, enc, cL), ?\s | location(loc)]
+    [format_errstr_call(str, cl, {m, f}, as, pF, s, enc,
+                          cL),
+         ?\s | location(loc)]
   end
 
   defp explain_reason(:if_clause, :error, [], _PF, _S, _Enc, _CL) do
@@ -216,63 +245,81 @@ defmodule :m_erl_error do
     "the node cannot be part of a distributed system"
   end
 
-  defp explain_reason(:system_limit, :error, [], _PF, _S, _Enc, _CL) do
+  defp explain_reason(:system_limit, :error, [], _PF, _S, _Enc,
+            _CL) do
     "a system limit has been reached"
   end
 
-  defp explain_reason(:timeout_value, :error, [], _PF, _S, _Enc, _CL) do
+  defp explain_reason(:timeout_value, :error, [], _PF, _S, _Enc,
+            _CL) do
     "bad receive timeout value"
   end
 
-  defp explain_reason({:try_clause, v}, :error = cl, [], pF, s, _Enc, cL) do
+  defp explain_reason({:try_clause, v}, :error = cl, [], pF, s, _Enc,
+            cL) do
     format_value(v, "no try clause matching ", cl, pF, s, cL)
   end
 
-  defp explain_reason(:undef, :error, [{m, f, a, _}], _PF, _S, enc, _CL) do
+  defp explain_reason(:undef, :error, [{m, f, a, _}], _PF, _S, enc,
+            _CL) do
     :io_lib.fwrite("undefined function ~ts", [mfa_to_string(m, f, n_args(a), enc)])
   end
 
-  defp explain_reason({:shell_undef, f, a, _}, :error, [], _PF, _S, enc, _CL) do
+  defp explain_reason({:shell_undef, f, a, _}, :error, [], _PF, _S,
+            enc, _CL) do
     fS = to_string(f, enc)
     :io_lib.fwrite("undefined shell command ~ts/~w", [fS, n_args(a)])
   end
 
-  defp explain_reason({:argument_limit, _Fun}, :error, [], _PF, _S, _Enc, _CL) do
+  defp explain_reason({:argument_limit, _Fun}, :error, [], _PF, _S,
+            _Enc, _CL) do
     :io_lib.fwrite("limit of number of arguments to interpreted function exceeded", [])
   end
 
-  defp explain_reason({:bad_filter, v}, :error = cl, [], pF, s, _Enc, cL) do
+  defp explain_reason({:bad_filter, v}, :error = cl, [], pF, s, _Enc,
+            cL) do
     format_value(v, "bad filter ", cl, pF, s, cL)
   end
 
-  defp explain_reason({:bad_generator, v}, :error = cl, [], pF, s, _Enc, cL) do
+  defp explain_reason({:bad_generator, v}, :error = cl, [], pF, s,
+            _Enc, cL) do
     format_value(v, "bad generator ", cl, pF, s, cL)
   end
 
-  defp explain_reason({:unbound, v}, :error, [], _PF, _S, _Enc, _CL) do
+  defp explain_reason({:unbound, v}, :error, [], _PF, _S, _Enc,
+            _CL) do
     :io_lib.fwrite("variable ~w is unbound", [v])
   end
 
-  defp explain_reason({:restricted_shell_bad_return, v}, :exit = cl, [], pF, s, _Enc, cL) do
+  defp explain_reason({:restricted_shell_bad_return, v}, :exit = cl,
+            [], pF, s, _Enc, cL) do
     str = "restricted shell module returned bad value "
     format_value(v, str, cl, pF, s, cL)
   end
 
-  defp explain_reason({:restricted_shell_disallowed, {forMF, as}}, :exit = cl, [], pF, s, enc, cL) do
+  defp explain_reason({:restricted_shell_disallowed, {forMF, as}},
+            :exit = cl, [], pF, s, enc, cL) do
     str = "restricted shell does not allow "
     format_errstr_call(str, cl, forMF, as, pF, s, enc, cL)
   end
 
-  defp explain_reason(:restricted_shell_started, :exit, [], _PF, _S, _Enc, _CL) do
+  defp explain_reason(:restricted_shell_started, :exit, [], _PF, _S,
+            _Enc, _CL) do
     "restricted shell starts now"
   end
 
-  defp explain_reason(:restricted_shell_stopped, :exit, [], _PF, _S, _Enc, _CL) do
+  defp explain_reason(:restricted_shell_stopped, :exit, [], _PF, _S,
+            _Enc, _CL) do
     "restricted shell stopped"
   end
 
+  defp explain_reason(:calling_self, :exit, [], _PF, _S, _Enc, _CL) do
+    "the current process attempted to call itself"
+  end
+
   defp explain_reason(reason, class, [], pF, s, _Enc, cL) do
-    {l, _} = pF.(reason, :erlang.iolist_size(s) + 1 + exited_size(class), cL)
+    {l, _} = pF.(reason,
+                   :erlang.iolist_size(s) + 1 + exited_size(class), cL)
     l
   end
 
@@ -300,64 +347,137 @@ defmodule :m_erl_error do
     :io_lib.fwrite("~w arguments", [i])
   end
 
-  defp format_stacktrace1(s0, stack0, pF, sF, enc, cL) do
-    stack1 =
-      :lists.dropwhile(
-        fn {m, f, a, _} ->
-          sF.(m, f, a)
-        end,
-        :lists.reverse(stack0)
-      )
-
-    s = ['  ' | s0]
-    stack = :lists.reverse(stack1)
-    format_stacktrace2(s, stack, 1, pF, enc, cL)
+  defp format_stacktrace1(sep, stack, pF, sF, enc, cL, reason) do
+    format_stacktrace1(sep, stack, pF, sF, enc, cL, reason,
+                         get_extended_error(reason, stack))
   end
 
-  defp format_stacktrace2(_S, _Stack, _N, _PF, _Enc, _CL = 0) do
+  defp format_stacktrace1(s0, stack0, pF, sF, enc, cL, reason,
+            errorMap) do
+    stack1 = :lists.dropwhile(fn {m, f, a, _} ->
+                                   sF.(m, f, a)
+                              end,
+                                :lists.reverse(stack0))
+    s = ['  ' | s0]
+    stack = :lists.reverse(stack1)
+    format_stacktrace2(s, stack, 1, pF, enc, cL, reason,
+                         errorMap)
+  end
+
+  defp format_stacktrace2(_S, _Stack, _N, _PF, _Enc, _CL = 0, _Reason,
+            _ErrorMap) do
     []
   end
 
-  defp format_stacktrace2(s, [{m, f, a, l} | fs], n, pF, enc, cL)
-       when is_integer(a) do
-    cs =
-      :io_lib.fwrite(
-        "~s~s ~ts ~ts",
-        [sep(n, s), origin(n, m, f, a), mfa_to_string(m, f, a, enc), location(l)]
-      )
-
+  defp format_stacktrace2(s, [{m, f, a, l} | fs], n, pF, enc, cL, reason,
+            errorMap)
+      when is_integer(a) do
+    formattedError = call_format_error(errorMap, a,
+                                         sep(n, s))
+    cs = :io_lib.fwrite("~s~s ~ts ~ts~ts",
+                          [sep(n, s), origin(n, m, f, a), mfa_to_string(m, f, a,
+                                                                          enc),
+                                                              location(l),
+                                                                  formattedError])
     cL1 = sub(cL, cs, enc)
-    [cs | format_stacktrace2(s, fs, n + 1, pF, enc, cL1)]
+    [cs | format_stacktrace2(s, fs, n + 1, pF, enc, cL1,
+                               reason, %{})]
   end
 
-  defp format_stacktrace2(s, [{m, f, as, _} | fs], n, pF, enc, cL)
-       when is_list(as) do
+  defp format_stacktrace2(s, [{m, f, as, _Info} | fs], n, pF, enc, cL,
+            reason, errorMap)
+      when is_list(as) do
     a = length(as)
     calledAs = [s, "   called as "]
     c = format_call('', calledAs, {m, f}, as, pF, enc, cL)
-
-    cs =
-      :io_lib.fwrite(
-        "~s~s ~ts\n~s~ts",
-        [sep(n, s), origin(n, m, f, a), mfa_to_string(m, f, a, enc), calledAs, c]
-      )
-
-    cL1 = sub(cL, enc, cs)
-    [cs | format_stacktrace2(s, fs, n + 1, pF, enc, cL1)]
+    formattedError = call_format_error(errorMap, as,
+                                         sep(n, s))
+    cs = :io_lib.fwrite("~s~s ~ts\n~s~ts~ts",
+                          [sep(n, s), origin(n, m, f, a), mfa_to_string(m, f, a,
+                                                                          enc),
+                                                              calledAs, c,
+                                                                            formattedError])
+    cL1 = sub(cL, cs, enc)
+    [cs | format_stacktrace2(s, fs, n + 1, pF, enc, cL1,
+                               reason, %{})]
   end
 
-  defp format_stacktrace2(_S, [], _N, _PF, _Enc, _CL) do
+  defp format_stacktrace2(_S, [], _N, _PF, _Enc, _CL, _Reason,
+            _ErrorMap) do
     ''
+  end
+
+  defp call_format_error(errorMap, as, sep) do
+    case (format_arg_errors(1, as, errorMap)) do
+      [] ->
+        []
+      [_ | _] = errors ->
+        :lists.join([?\n, sep, "   "], ['' | errors])
+    end
+  end
+
+  defp get_extended_error(reason,
+            [{m, _F, _As, info} | _] = stackTrace) do
+    case (:lists.keyfind(:error_info, 1, info)) do
+      {:error_info, errorInfoMap} when is_map(errorInfoMap) ->
+        formatModule = :maps.get(:module, errorInfoMap, m)
+        formatFunction = :maps.get(:function, errorInfoMap,
+                                     :format_error)
+        try do
+          apply(formatModule, formatFunction,
+                  [reason, stackTrace])
+        catch
+          :error, _ ->
+            %{}
+        end
+      _ ->
+        %{}
+    end
+  end
+
+  defp get_extended_error(_Reason, []) do
+    %{}
+  end
+
+  defp format_arg_errors(argNum, a, errorMap) when is_integer(a) do
+    format_arg_errors(argNum, :lists.duplicate(a, a),
+                        errorMap)
+  end
+
+  defp format_arg_errors(argNum, [_ | as], errorMap) do
+    case (errorMap) do
+      %{^argNum => err} ->
+        [firstLine | lines] = :string.lexemes(err, '\r\n')
+        argStr = :io_lib.format("*** argument ~w: ", [argNum])
+        [:io_lib.format("~ts~ts",
+                          [argStr, firstLine])] ++ (for line <- lines do
+                                                      :io_lib.format("~*ts~ts",
+                                                                       [:string.length(argStr),
+                                                                            '',
+                                                                                line])
+                                                    end) ++ format_arg_errors(argNum + 1,
+                                                                                as,
+                                                                                errorMap)
+      %{} ->
+        format_arg_errors(argNum + 1, as, errorMap)
+    end
+  end
+
+  defp format_arg_errors(_, _, errorMap) do
+    case (errorMap) do
+      %{general: err} ->
+        [:io_lib.format("*** ~ts", [err])]
+      %{} ->
+        []
+    end
   end
 
   defp location(l) do
     file = :proplists.get_value(:file, l)
     line = :proplists.get_value(:line, l)
-
     cond do
-      file !== :undefined and line !== :undefined ->
+      (file !== :undefined and line !== :undefined) ->
         :io_lib.format('(~ts, line ~w)', [file, line])
-
       true ->
         ''
     end
@@ -372,10 +492,9 @@ defmodule :m_erl_error do
   end
 
   defp origin(1, m, f, a) do
-    case is_op({m, f}, n_args(a)) do
+    case (is_op({m, f}, n_args(a))) do
       {:yes, ^f} ->
         "in operator "
-
       :no ->
         "in function "
     end
@@ -385,41 +504,36 @@ defmodule :m_erl_error do
     "in call from"
   end
 
-  defp format_errstr_call(errStr, class, forMForFun, as, pF, pre0, enc, cL) do
+  defp format_errstr_call(errStr, class, forMForFun, as, pF, pre0, enc,
+            cL) do
     pre1 = [pre0 | n_spaces(exited_size(class))]
     format_call(errStr, pre1, forMForFun, as, pF, enc, cL)
   end
 
   defp format_call(errStr, pre1, forMForFun, as, pF, enc) do
-    format_call(errStr, pre1, forMForFun, as, pF, enc, -1)
+    format_call(errStr, pre1, forMForFun, as, pF, enc, - 1)
   end
 
   defp format_call(errStr, pre1, forMForFun, as, pF, enc, cL) do
     arity = length(as)
-
-    [
-      errStr
-      | case is_op(forMForFun, arity) do
-          {:yes, op} ->
-            format_op(errStr, pre1, op, as, pF, enc, cL)
-
-          :no ->
-            mFs = mf_to_string(forMForFun, arity, enc)
-            i1 = :string.length([pre1, errStr | mFs])
-            s1 = pp_arguments(pF, as, i1, enc, cL)
-            s2 = pp_arguments(pF, as, :string.length([pre1 | mFs]), enc, cL)
-            s3 = pp_arguments(pF, [:a2345, :b2345], i1, enc, cL)
-            long = count_nl(s3) > 0
-
-            case :erlang.or(long, count_nl(s2) < count_nl(s1)) do
-              true ->
-                [?\n, pre1, mFs, s2]
-
-              false ->
-                [mFs, s1]
-            end
-        end
-    ]
+    [errStr | case (is_op(forMForFun, arity)) do
+                {:yes, op} ->
+                  format_op(errStr, pre1, op, as, pF, enc, cL)
+                :no ->
+                  mFs = mf_to_string(forMForFun, arity, enc)
+                  i1 = :string.length([pre1, errStr | mFs])
+                  s1 = pp_arguments(pF, as, i1, enc, cL)
+                  s2 = pp_arguments(pF, as, :string.length([pre1 | mFs]),
+                                      enc, cL)
+                  s3 = pp_arguments(pF, [:a2345, :b2345], i1, enc, cL)
+                  long = count_nl(s3) > 0
+                  case (:erlang.or(long, count_nl(s2) < count_nl(s1))) do
+                    true ->
+                      [?\n, pre1, mFs, s2]
+                    false ->
+                      [mFs, s1]
+                  end
+              end]
   end
 
   defp format_op(errStr, pre, op, [a1], pF, _Enc, cL) do
@@ -435,21 +549,17 @@ defmodule :m_erl_error do
     {s2, _} = pF.(a2, i1 + 1, cL1)
     opS = :erlang.atom_to_list(op)
     pre1 = [?\n | n_spaces(i1)]
-
-    case count_nl(s1) > 0 do
+    case (count_nl(s1) > 0) do
       true ->
         [s1, pre1, opS, pre1 | s2]
-
       false ->
         opS2 = :io_lib.fwrite(" ~s ", [op])
         size1 = :erlang.iolist_size([errStr, pre | opS2])
         size2 = size(enc, s1)
         {s2_2, _} = pF.(a2, size1 + size2 + 1, cL1)
-
-        case count_nl(s2) < count_nl(s2_2) do
+        case (count_nl(s2) < count_nl(s2_2)) do
           true ->
             [s1, pre1, opS, pre1 | s2]
-
           false ->
             [s1, opS2 | s2_2]
         end
@@ -457,19 +567,15 @@ defmodule :m_erl_error do
   end
 
   defp pp_arguments(pF, as, i, enc, cL) do
-    case {as, printable_list(enc, as)} do
+    case ({as, printable_list(enc, as)}) do
       {[int | t], true} ->
         l = :erlang.integer_to_list(int)
         ll = length(l)
         a = :erlang.list_to_atom(:lists.duplicate(ll, ?a))
         {s0, _} = pF.([a | t], i + 1, cL)
         s = :unicode.characters_to_list(s0, enc)
-
-        brackets_to_parens(
-          [?[, l, :string.slice(s, 1 + ll)],
-          enc
-        )
-
+        brackets_to_parens([?[, l, :string.slice(s, 1 + ll)],
+                             enc)
       _ ->
         {s, _CL1} = pF.(as, i + 1, cL)
         brackets_to_parens(s, enc)
@@ -479,7 +585,7 @@ defmodule :m_erl_error do
   defp brackets_to_parens(s, enc) do
     b = :unicode.characters_to_binary(s, enc)
     sz = byte_size(b) - 2
-    <<?[, r::size(sz)-binary, ?]>> = b
+    <<?[, r :: size(sz) - binary, ?]>> = b
     [?(, r, ?)]
   end
 
@@ -496,18 +602,15 @@ defmodule :m_erl_error do
   end
 
   defp mf_to_string({m, f}, a, enc) do
-    case :erl_internal.bif(m, f, a) do
+    case (:erl_internal.bif(m, f, a)) do
       true ->
         :io_lib.fwrite("~w", [f])
-
       false ->
-        case is_op({m, f}, a) do
-          {:yes, :/} ->
+        case (is_op({m, f}, a)) do
+          {:yes, :"/"} ->
             :io_lib.fwrite("~w", [f])
-
           {:yes, ^f} ->
             :erlang.atom_to_list(f)
-
           :no ->
             fS = to_string(f, enc)
             :io_lib.fwrite("~w:~ts", [m, fS])
@@ -526,26 +629,21 @@ defmodule :m_erl_error do
 
   defp format_value(v, errStr, class, pF, s, cL) do
     pre1Sz = exited_size(class)
-    {s1, _} = pF.(v, pre1Sz + :erlang.iolist_size([s, errStr]) + 1, cL)
-
-    [
-      errStr
-      | case count_nl(s1) do
-          n1 when n1 > 1 ->
-            {s2, _} = pF.(v, :erlang.iolist_size(s) + 1 + pre1Sz, cL)
-
-            case count_nl(s2) < n1 do
-              true ->
-                [?\n, s, n_spaces(pre1Sz) | s2]
-
-              false ->
-                s1
-            end
-
-          _ ->
-            s1
-        end
-    ]
+    {s1, _} = pF.(v,
+                    pre1Sz + :erlang.iolist_size([s, errStr]) + 1, cL)
+    [errStr | case (count_nl(s1)) do
+                n1 when n1 > 1 ->
+                  {s2, _} = pF.(v, :erlang.iolist_size(s) + 1 + pre1Sz,
+                                  cL)
+                  case (count_nl(s2) < n1) do
+                    true ->
+                      [?\n, s, n_spaces(pre1Sz) | s2]
+                    false ->
+                      s1
+                  end
+                _ ->
+                  s1
+              end]
   end
 
   defp count_nl([e | es]) do
@@ -626,4 +724,5 @@ defmodule :m_erl_error do
   defp size(_, s) do
     :string.length(s)
   end
+
 end

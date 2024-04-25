@@ -28,6 +28,15 @@ defmodule :m_observer_backend do
     end
   end
 
+  def socket_info() do
+    info0 = :socket.info()
+    {counters, info1} = :maps.take(:counters, info0)
+    iovMax = :maps.get(:iov_max, info1)
+    numMons = :socket.number_of_monitors()
+    [{:iov_max, iovMax}, {:num_monitors, numMons} |
+                             :maps.to_list(counters)]
+  end
+
   def sys_info() do
     memInfo = (try do
                  :erlang.memory()
@@ -178,14 +187,20 @@ defmodule :m_observer_backend do
   def get_port_list() do
     extraItems = [:monitors, :monitored_by, :parallelism,
                                                 :locking, :queue_size, :memory]
-    for p <- :erlang.ports() do
-      (
-        [{:port_id, p} | :erlang.port_info(p)] ++ port_info(p,
-                                                              extraItems) ++ inet_port_extra(:erlang.port_info(p,
-                                                                                                                 :name),
-                                                                                               p)
-      )
-    end
+    portInfo = fn p, acc ->
+                    case (:erlang.port_info(p)) do
+                      :undefined ->
+                        acc
+                      info ->
+                        [[{:port_id, p} | info] ++ port_info(p,
+                                                               extraItems) ++ inet_port_extra(:erlang.port_info(p,
+                                                                                                                  :name),
+                                                                                                p) |
+                             acc]
+                    end
+               end
+    pIs = :lists.foldl(portInfo, [], :erlang.ports())
+    :lists.reverse(pIs)
   end
 
   defp port_info(p, [item | items]) do
@@ -227,48 +242,212 @@ defmodule :m_observer_backend do
                                   [{:local_address, lAddr}]
                                 {:error, _} ->
                                   []
-                              end) ++ (case (:inet.getopts(port,
-                                                             [:active,
-                                                                  :broadcast,
-                                                                      :buffer,
-                                                                          :bind_to_device,
-                                                                              :delay_send,
-                                                                                  :deliver,
-                                                                                      :dontroute,
-                                                                                          :exit_on_close,
-                                                                                              :header,
-                                                                                                  :high_msgq_watermark,
-                                                                                                      :high_watermark,
-                                                                                                          :ipv6_v6only,
-                                                                                                              :keepalive,
-                                                                                                                  :linger,
-                                                                                                                      :low_msgq_watermark,
-                                                                                                                          :low_watermark,
-                                                                                                                              :mode,
-                                                                                                                                  :netns,
-                                                                                                                                      :nodelay,
-                                                                                                                                          :packet,
-                                                                                                                                              :packet_size,
-                                                                                                                                                  :priority,
-                                                                                                                                                      :read_packets,
-                                                                                                                                                          :recbuf,
-                                                                                                                                                              :reuseaddr,
-                                                                                                                                                                  :send_timeout,
-                                                                                                                                                                      :send_timeout_close,
-                                                                                                                                                                          :show_econnreset,
-                                                                                                                                                                              :sndbuf,
-                                                                                                                                                                                  :tos,
-                                                                                                                                                                                      :tclass])) do
-                                         {:ok, opts} ->
-                                           [{:options, opts}]
-                                         {:error, _} ->
-                                           []
-                                       end)
+                              end) ++ [{:options, get_sock_opts(port)}]
     [{:inet, data}]
   end
 
   defp inet_port_extra(_, _) do
     []
+  end
+
+  defp sock_opts() do
+    [:active, :broadcast, :buffer, :bind_to_device,
+                                       :delay_send, :deliver, :dontroute,
+                                                                  :exit_on_close,
+                                                                      :header,
+                                                                          :high_msgq_watermark,
+                                                                              :high_watermark,
+                                                                                  :ipv6_v6only,
+                                                                                      :keepalive,
+                                                                                          :linger,
+                                                                                              :low_msgq_watermark,
+                                                                                                  :low_watermark,
+                                                                                                      :mode,
+                                                                                                          :netns,
+                                                                                                              :nodelay,
+                                                                                                                  :packet,
+                                                                                                                      :packet_size,
+                                                                                                                          :priority,
+                                                                                                                              :read_packets,
+                                                                                                                                  :recbuf,
+                                                                                                                                      :reuseaddr,
+                                                                                                                                          :send_timeout,
+                                                                                                                                              :send_timeout_close,
+                                                                                                                                                  :show_econnreset,
+                                                                                                                                                      :sndbuf,
+                                                                                                                                                          :tos,
+                                                                                                                                                              :tclass]
+  end
+
+  defp get_sock_opts(port) do
+    get_sock_opts(port, sock_opts())
+  end
+
+  defp get_sock_opts(port, opts) do
+    get_sock_opts(port, opts, [])
+  end
+
+  defp get_sock_opts(_Port, [], acc) do
+    :lists.reverse(acc)
+  end
+
+  defp get_sock_opts(port, [opt | opts], acc) do
+    case (:inet.getopts(port, [opt])) do
+      {:ok, [res]} ->
+        get_sock_opts(port, opts, [res | acc])
+      {:ok, []} ->
+        res = {opt, '-'}
+        get_sock_opts(port, opts, [res | acc])
+      {:error, :einval} ->
+        res = {opt, 'Not Supported'}
+        get_sock_opts(port, opts, [res | acc])
+      {:error, reason} ->
+        res = {opt, f('error:~p', [reason])}
+        get_sock_opts(port, opts, [res | acc])
+    end
+  end
+
+  def get_socket_list() do
+    getOpt = fn _Sock, {opt, false} ->
+                  {opt, 'Not Supported'}
+                sock, {opt, true} ->
+                  case (:socket.getopt(sock, opt)) do
+                    {:ok, value0} ->
+                      value = (cond do
+                                 value0 === [] ->
+                                   '-'
+                                 true ->
+                                   value0
+                               end)
+                      {opt, value}
+                    {:error, :enotsup} = _ERROR ->
+                      {opt, 'Not Supported'}
+                    {:error, :enoprotoopt} = _ERROR ->
+                      {opt, 'Not Supported'}
+                    {:error, :enotconn} = _ERROR ->
+                      {opt, 'Not Connected'}
+                    {:error, {:invalid, _}} = _ERROR ->
+                      {opt, 'Not Implemented'}
+                    {:error, reason} ->
+                      {opt, f('error:~p', [reason])}
+                  end
+             end
+    for s <- :socket.which_sockets() do
+      (
+        kind = :socket.which_socket_kind(s)
+        fD = (case (:socket.getopt(s, :otp, :fd)) do
+                {:ok, fD0} ->
+                  fD0
+                _ ->
+                  - 1
+              end)
+        info0 = :socket.info(s)
+        idStr0 = :socket.to_list(s)
+        idStr = (case (info0) do
+                   %{type: :stream, protocol: :tcp} when kind === :compat
+                                                         ->
+                     '#Socket' ++ id = idStr0
+                     '#InetSocket' ++ id
+                   _ ->
+                     idStr0
+                 end)
+        {counters0, info1} = :maps.take(:counters, info0)
+        counters = :maps.to_list(counters0)
+        info2 = :maps.remove(:ctype, info1)
+        info3 = :maps.remove(:num_acceptors, info2)
+        info4 = :maps.remove(:num_readers, info3)
+        info5 = :maps.remove(:num_writers, info4)
+        info6 = (case (:socket.peername(s)) do
+                   {:ok, rAddr} ->
+                     rAddrStr = sockaddr_to_list(rAddr)
+                     :maps.put(:raddress, rAddrStr, info5)
+                   _ ->
+                     info5
+                 end)
+        info7 = (case (:socket.sockname(s)) do
+                   {:ok, lAddr} ->
+                     lAddrStr = sockaddr_to_list(lAddr)
+                     :maps.put(:laddress, lAddrStr, info6)
+                   _ ->
+                     info6
+                 end)
+        sockOpts = (for {opt,
+                           supported} <- :socket.supports(:options, :socket),
+                          true do
+                      {{:socket, opt}, supported}
+                    end)
+        domainOpts = (case (info7) do
+                        %{domain: :inet6} ->
+                          for {opt, supported} <- :socket.supports(:options,
+                                                                     :ipv6),
+                                true do
+                            {{:ipv6, opt}, supported}
+                          end
+                        _ ->
+                          for {opt, supported} <- :socket.supports(:options,
+                                                                     :ip),
+                                true do
+                            {{:ip, opt}, supported}
+                          end
+                      end)
+        protoOpts = (case (info7) do
+                       %{domain: domain, type: :stream, protocol: :tcp}
+                           when domain === :inet or domain === :inet6 ->
+                         for {opt, supported} <- :socket.supports(:options,
+                                                                    :tcp),
+                               true do
+                           {{:tcp, opt}, supported}
+                         end
+                       %{domain: domain, type: :dgram, protocol: :udp}
+                           when domain === :inet or domain === :inet6 ->
+                         for {opt, supported} <- :socket.supports(:options,
+                                                                    :udp),
+                               true do
+                           {{:udp, opt}, supported}
+                         end
+                       %{domain: domain, type: :seqpacket, protocol: :sctp}
+                           when domain === :inet or domain === :inet6 ->
+                         for {opt, supported} <- :socket.supports(:options,
+                                                                    :sctp),
+                               true do
+                           {{:sctp, opt}, supported}
+                         end
+                       _ ->
+                         []
+                     end)
+        opts = sockOpts ++ domainOpts ++ protoOpts
+        options = (for opt <- opts do
+                     getOpt.(s, opt)
+                   end)
+        Map.merge(info7, %{id: s, id_str: idStr, fd: fD,
+                             kind: kind, monitored_by: :socket.monitored_by(s),
+                             statistics: counters,
+                             options: :lists.sort(options)})
+      )
+    end
+  end
+
+  defp sockaddr_to_list(%{family: :local, path: pathBin})
+      when is_binary(pathBin) do
+    :erlang.binary_to_list(pathBin)
+  end
+
+  defp sockaddr_to_list(%{family: :local, path: path})
+      when is_list(path) do
+    path
+  end
+
+  defp sockaddr_to_list(%{family: :inet, addr: addr, port: port}) do
+    :inet_parse.ntoa(addr) ++ ' : ' ++ :erlang.integer_to_list(port)
+  end
+
+  defp sockaddr_to_list(%{family: :inet6, addr: addr, port: port,
+              flowinfo: fI, scope_id: sID}) do
+    :inet_parse.ntoa(addr) ++ ' : ' ++ :erlang.integer_to_list(port) ++ ' , ' ++ :erlang.integer_to_list(fI) ++ ' , ' ++ :erlang.integer_to_list(sID)
+  end
+
+  defp sockaddr_to_list(addr) do
+    f('~p', [addr])
   end
 
   def get_table_list(:ets, opts) do
@@ -1100,6 +1279,10 @@ defmodule :m_observer_backend do
 
   defp ignore(_, _) do
     :ok
+  end
+
+  defp f(f, a) do
+    :lists.flatten(:io_lib.format(f, a))
   end
 
 end

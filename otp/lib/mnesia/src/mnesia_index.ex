@@ -2,90 +2,52 @@ defmodule :m_mnesia_index do
   use Bitwise
   import :mnesia_lib, only: [val: 1, verbose: 2]
   require Record
-
-  Record.defrecord(:r_tid, :tid,
-    counter: :undefined,
-    pid: :undefined
-  )
-
-  Record.defrecord(:r_tidstore, :tidstore, store: :undefined, up_stores: [], level: 1)
-
-  Record.defrecord(:r_cstruct, :cstruct,
-    name: :undefined,
-    type: :set,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    external_copies: [],
-    load_order: 0,
-    access_mode: :read_write,
-    majority: false,
-    index: [],
-    snmp: [],
-    local_content: false,
-    record_name: {:bad_record_name},
-    attributes: [:key, :val],
-    user_properties: [],
-    frag_properties: [],
-    storage_properties: [],
-    cookie:
-      {{:erlang.monotonic_time() + :erlang.time_offset(), :erlang.unique_integer(), 1}, node()},
-    version: {{2, 0}, []}
-  )
-
-  Record.defrecord(:r_log_header, :log_header,
-    log_kind: :undefined,
-    log_version: :undefined,
-    mnesia_version: :undefined,
-    node: :undefined,
-    now: :undefined
-  )
-
-  Record.defrecord(:r_commit, :commit,
-    node: :undefined,
-    decision: :undefined,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    ext: [],
-    schema_ops: []
-  )
-
-  Record.defrecord(:r_decision, :decision,
-    tid: :undefined,
-    outcome: :undefined,
-    disc_nodes: :undefined,
-    ram_nodes: :undefined
-  )
-
-  Record.defrecord(:r_cyclic, :cyclic,
-    node: node(),
-    oid: :undefined,
-    op: :undefined,
-    lock: :undefined,
-    lucky: :undefined
-  )
-
-  Record.defrecord(:r_index, :index,
-    setorbag: :undefined,
-    pos_list: :undefined
-  )
-
+  Record.defrecord(:r_tid, :tid, counter: :undefined,
+                               pid: :undefined)
+  Record.defrecord(:r_tidstore, :tidstore, store: :undefined,
+                                    up_stores: [], level: 1)
+  Record.defrecord(:r_cstruct, :cstruct, name: :undefined,
+                                   type: :set, ram_copies: [], disc_copies: [],
+                                   disc_only_copies: [], external_copies: [],
+                                   load_order: 0, access_mode: :read_write,
+                                   majority: false, index: [], snmp: [],
+                                   local_content: false,
+                                   record_name: {:bad_record_name},
+                                   attributes: [:key, :val],
+                                   user_properties: [], frag_properties: [],
+                                   storage_properties: [],
+                                   cookie: {{:erlang.monotonic_time() + :erlang.time_offset(),
+                                               :erlang.unique_integer(), 1},
+                                              node()},
+                                   version: {{2, 0}, []})
+  Record.defrecord(:r_log_header, :log_header, log_kind: :undefined,
+                                      log_version: :undefined,
+                                      mnesia_version: :undefined,
+                                      node: :undefined, now: :undefined)
+  Record.defrecord(:r_commit, :commit, node: :undefined,
+                                  decision: :undefined, ram_copies: [],
+                                  disc_copies: [], disc_only_copies: [],
+                                  ext: [], schema_ops: [])
+  Record.defrecord(:r_decision, :decision, tid: :undefined,
+                                    outcome: :undefined, disc_nodes: :undefined,
+                                    ram_nodes: :undefined)
+  Record.defrecord(:r_cyclic, :cyclic, node: node(),
+                                  oid: :undefined, op: :undefined,
+                                  lock: :undefined, lucky: :undefined)
+  Record.defrecord(:r_index, :index, setorbag: :undefined,
+                                 pos_list: :undefined)
   def read(tid, store, tab, ixKey, pos) do
-    resList = :mnesia_locker.ixrlock(tid, store, tab, ixKey, pos)
-
-    case val({tab, :setorbag}) do
+    resList = :mnesia_locker.ixrlock(tid, store, tab, ixKey,
+                                       pos)
+    case (val({tab, :setorbag})) do
       :bag when is_integer(pos) ->
         :mnesia_lib.key_search_all(ixKey, pos, resList)
-
       :bag when is_tuple(pos) ->
         tabStorage = val({tab, :storage_type})
         valsF = index_vals_f(tabStorage, tab, pos)
-
         for obj <- resList, :lists.member(ixKey, valsF.(obj)) do
           obj
         end
-
       _ ->
         resList
     end
@@ -93,61 +55,50 @@ defmodule :m_mnesia_index do
 
   def ext_index_instances(tab) do
     r_index(pos_list: posL) = val({tab, :index_info})
-
-    :lists.foldr(
-      fn
-        {_, {{:ext, alias, mod}, tag}}, acc ->
-          [{alias, mod, tag} | acc]
-
-        _, acc ->
-          acc
-      end,
-      [],
-      posL
-    )
+    :lists.foldr(fn {_, {{:ext, alias, mod}, tag}}, acc ->
+                      [{alias, mod, tag} | acc]
+                    _, acc ->
+                      acc
+                 end,
+                   [], posL)
   end
 
-  def add_index(r_index(pos_list: posL, setorbag: sorB), storage, tab, key, obj, old) do
+  def add_index(r_index(pos_list: posL, setorbag: sorB), storage, tab,
+           key, obj, old) do
     add_index2(posL, sorB, storage, tab, key, obj, old)
   end
 
-  defp add_index2([{{pos, type}, ixt} | tail], :bag, storage, tab, k, obj, oldRecs) do
+  defp add_index2([{{pos, type}, ixt} | tail], :bag, storage, tab,
+            k, obj, oldRecs) do
     valsF = index_vals_f(storage, tab, pos)
     vals = valsF.(obj)
     put_index_vals(type, ixt, vals, k)
     add_index2(tail, :bag, storage, tab, k, obj, oldRecs)
   end
 
-  defp add_index2([{{pos, type}, ixt} | tail], sorB, storage, tab, k, obj, oldRecs0) do
+  defp add_index2([{{pos, type}, ixt} | tail], sorB, storage, tab,
+            k, obj, oldRecs0) do
     valsF = index_vals_f(storage, tab, pos)
     newVals = valsF.(obj)
-
-    oldRecs1 =
-      case oldRecs0 do
-        :undefined ->
-          :mnesia_lib.db_get(storage, tab, k)
-
-        _ ->
-          oldRecs0
-      end
-
+    oldRecs1 = (case (oldRecs0) do
+                  :undefined ->
+                    :mnesia_lib.db_get(storage, tab, k)
+                  _ ->
+                    oldRecs0
+                end)
     idxVal = valsF.(obj)
-
     case (for old <- oldRecs1, valsF.(old) !== idxVal do
             old
           end) do
       [] when oldRecs1 === [] ->
         put_index_vals(type, ixt, newVals, k)
         add_index2(tail, sorB, storage, tab, k, obj, oldRecs1)
-
       [] ->
         add_index2(tail, sorB, storage, tab, k, obj, oldRecs1)
-
       oldRecs ->
         for oldObj <- oldRecs do
           del_ixes(type, ixt, valsF, oldObj, k)
         end
-
         put_index_vals(type, ixt, newVals, k)
         add_index2(tail, sorB, storage, tab, k, obj, oldRecs1)
     end
@@ -164,11 +115,9 @@ defmodule :m_mnesia_index do
   defp delete_index2([{{pos, type}, ixt} | tail], storage, tab, k) do
     delObjs = :mnesia_lib.db_get(storage, tab, k)
     valsF = index_vals_f(storage, tab, pos)
-
     for obj <- delObjs do
       del_ixes(type, ixt, valsF, obj, k)
     end
-
     delete_index2(tail, storage, tab, k)
   end
 
@@ -190,7 +139,6 @@ defmodule :m_mnesia_index do
 
   defp del_ixes(:bag, ixt, valsF, obj, key) do
     vals = valsF.(obj)
-
     for v <- vals do
       db_match_erase(ixt, {v, key})
     end
@@ -198,13 +146,13 @@ defmodule :m_mnesia_index do
 
   defp del_ixes(:ordered, ixt, valsF, obj, key) do
     vals = valsF.(obj)
-
     for v <- vals do
       db_erase(ixt, {v, key})
     end
   end
 
-  def del_object_index(r_index(pos_list: posL, setorbag: sorB), storage, tab, k, obj) do
+  def del_object_index(r_index(pos_list: posL, setorbag: sorB), storage, tab,
+           k, obj) do
     del_object_index2(posL, sorB, storage, tab, k, obj)
   end
 
@@ -212,53 +160,38 @@ defmodule :m_mnesia_index do
     :ok
   end
 
-  defp del_object_index2([{{pos, type}, ixt} | tail], soB, storage, tab, k, obj) do
+  defp del_object_index2([{{pos, type}, ixt} | tail], soB, storage, tab,
+            key, obj) do
     valsF = index_vals_f(storage, tab, pos)
-
-    case soB do
-      :bag ->
-        del_object_bag(type, valsF, tab, k, obj, ixt)
-
-      _ ->
-        del_ixes(type, ixt, valsF, obj, k)
-    end
-
-    del_object_index2(tail, soB, storage, tab, k, obj)
-  end
-
-  defp del_object_bag(type, valsF, tab, key, obj, ixt) do
+    found = (for x <- :mnesia_lib.db_get(tab, key) do
+               {x, valsF.(x)}
+             end)
     ixKeys = valsF.(obj)
-
-    found =
-      for x <- :mnesia_lib.db_get(tab, key) do
-        {x, valsF.(x)}
-      end
-
-    del_object_bag_(ixKeys, found, type, tab, key, obj, ixt)
+    del_object_index3(ixKeys, found, type, tab, key, obj,
+                        ixt)
+    del_object_index2(tail, soB, storage, tab, key, obj)
   end
 
-  defp del_object_bag_([ixK | ixKs], found, type, tab, key, obj, ixt) do
+  defp del_object_index3([ixK | ixKs], found, type, tab, key, obj,
+            ixt) do
     case (for {x, ixes} <- found,
-              :lists.member(ixK, ixes) do
+                :lists.member(ixK, ixes) do
             x
           end) do
       [old] when old === obj ->
-        case type do
+        case (type) do
           :bag ->
             db_match_erase(ixt, {ixK, key})
-
           :ordered ->
             db_erase(ixt, {ixK, key})
         end
-
       _ ->
         :ok
     end
-
-    del_object_bag_(ixKs, found, type, tab, key, obj, ixt)
+    del_object_index3(ixKs, found, type, tab, key, obj, ixt)
   end
 
-  defp del_object_bag_([], _, _, _, _, _, _) do
+  defp del_object_index3([], _, _, _, _, _, _) do
     :ok
   end
 
@@ -276,12 +209,11 @@ defmodule :m_mnesia_index do
   end
 
   def dirty_match_object(tab, pat, pos) when is_integer(pos) do
-    case :erlang.element(2, pat) do
+    case (:erlang.element(2, pat)) do
       :_ ->
         ixKey = :erlang.element(pos, pat)
         realKeys = realkeys(tab, pos, ixKey)
         merge(realKeys, tab, pat, [])
-
       _Else ->
         :mnesia_lib.db_match_object(tab, pat)
     end
@@ -306,66 +238,48 @@ defmodule :m_mnesia_index do
     ixKey = :erlang.element(pos, spec)
     realKeys = realkeys(tab, pos, ixKey)
     storageType = val({tab, :storage_type})
-
-    :lists.append(
-      for {_, key} <- realKeys do
-        :mnesia_lib.db_get(storageType, tab, key)
-      end
-    )
+    :lists.append(for {_, key} <- realKeys do
+                    :mnesia_lib.db_get(storageType, tab, key)
+                  end)
   end
 
   def dirty_read(tab, ixKey, pos) do
-    :mnesia.dirty_rpc(tab, :mnesia_index, :dirty_read2, [tab, ixKey, pos])
+    :mnesia.dirty_rpc(tab, :mnesia_index, :dirty_read2,
+                        [tab, ixKey, pos])
   end
 
   def dirty_read2(tab, ixKey, pos) do
     r_index(pos_list: posL) = val({tab, :index_info})
     storage = val({tab, :storage_type})
     {type, ixt} = pick_index(posL, tab, pos)
-
-    pat =
-      case type do
-        :ordered ->
-          [{{{ixKey, :"$1"}}, [], [:"$1"]}]
-
-        :bag ->
-          [{{ixKey, :"$1"}, [], [:"$1"]}]
-      end
-
+    pat = (case (type) do
+             :ordered ->
+               [{{{ixKey, :"$1"}}, [], [:"$1"]}]
+             :bag ->
+               [{{ixKey, :"$1"}, [], [:"$1"]}]
+           end)
     keys = db_select(ixt, pat)
     valsF = index_vals_f(storage, tab, pos)
-
-    :lists.reverse(
-      :lists.foldl(
-        fn k, acc ->
-          :lists.foldl(
-            fn obj, acc1 ->
-              case :lists.member(
-                     ixKey,
-                     valsF.(obj)
-                   ) do
-                true ->
-                  [obj | acc1]
-
-                false ->
-                  acc1
-              end
-            end,
-            acc,
-            :mnesia_lib.db_get(
-              storage,
-              tab,
-              k
-            )
-          )
-        end,
-        [],
-        keys
-      )
-    )
+    :lists.reverse(:lists.foldl(fn k, acc ->
+                                     :lists.foldl(fn obj, acc1 ->
+                                                       case (:lists.member(ixKey,
+                                                                             valsF.(obj))) do
+                                                         true ->
+                                                           [obj | acc1]
+                                                         false ->
+                                                           acc1
+                                                       end
+                                                  end,
+                                                    acc,
+                                                    :mnesia_lib.db_get(storage,
+                                                                         tab,
+                                                                         k))
+                                end,
+                                  [], keys))
   end
 
-  defp pick_index([{{{pfx, _, _}, ixType}, ixt} | _], _Tab, {_} = pfx) do
+  defp pick_index([{{{pfx, _, _}, ixType}, ixt} | _], _Tab,
+            {_} = pfx) do
     {ixType, ixt}
   end
 
@@ -400,19 +314,15 @@ defmodule :m_mnesia_index do
   end
 
   def init_indecies(tab, storage, posList) do
-    case storage do
+    case (storage) do
       :unknown ->
         :ignore
-
       {:ext, alias, mod} ->
         init_ext_index(tab, storage, alias, mod, posList)
-
       :disc_only_copies ->
         init_disc_index(tab, storage, posList)
-
       :ram_copies ->
         make_ram_index(tab, storage, posList)
-
       :disc_copies ->
         make_ram_index(tab, storage, posList)
     end
@@ -447,16 +357,13 @@ defmodule :m_mnesia_index do
   end
 
   defp delete_transient_index(tab, pos, {:ext, alias, mod}) do
-    posInfo =
-      case pos do
-        _ when is_integer(pos) ->
-          cs = val({tab, :cstruct})
-          :lists.keyfind(pos, 1, r_cstruct(cs, :index))
-
-        {p, t} ->
-          {p, t}
-      end
-
+    posInfo = (case (pos) do
+                 _ when is_integer(pos) ->
+                   cs = val({tab, :cstruct})
+                   :lists.keyfind(pos, 1, r_cstruct(cs, :index))
+                 {p, t} ->
+                   {p, t}
+               end)
     tag = {tab, :index, posInfo}
     mod.close_table(alias, tag)
     mod.delete_table(alias, tag)
@@ -483,7 +390,8 @@ defmodule :m_mnesia_index do
     :done
   end
 
-  defp init_disc_index(tab, :disc_only_copies, [{pos, _Pref} | tail]) do
+  defp init_disc_index(tab, :disc_only_copies,
+            [{pos, _Pref} | tail]) do
     posInfo = {pos, :bag}
     fn__ = tab2filename(tab, pos)
     ixTag = {tab, :index, posInfo}
@@ -493,20 +401,16 @@ defmodule :m_mnesia_index do
     storage = :disc_only_copies
     key = :mnesia_lib.db_first(storage, tab)
     recs = :mnesia_lib.db_get(storage, tab, key)
-    binSize = :erlang.size(:erlang.term_to_binary(recs))
+    binSize = byte_size(:erlang.term_to_binary(recs))
     keysPerChunk = div(4000, binSize) + 1
     init = {:start, keysPerChunk}
     :mnesia_lib.db_fixtable(storage, tab, true)
-
-    :ok =
-      :dets.init_table(
-        ixTag,
-        create_fun(init, tab, pos)
-      )
-
+    :ok = :dets.init_table(ixTag,
+                             create_fun(init, tab, pos))
     :mnesia_lib.db_fixtable(storage, tab, false)
     :mnesia_lib.set({tab, {:index, posInfo}}, ixTag)
-    add_index_info(tab, val({tab, :setorbag}), {posInfo, {:dets, ixTag}})
+    add_index_info(tab, val({tab, :setorbag}),
+                     {posInfo, {:dets, ixTag}})
     init_disc_index(tab, storage, tail)
   end
 
@@ -514,106 +418,80 @@ defmodule :m_mnesia_index do
     :done
   end
 
-  defp init_ext_index(tab, storage, alias, mod, [{pos, type} | tail]) do
+  defp init_ext_index(tab, storage, alias, mod,
+            [{pos, type} | tail]) do
     posInfo = {pos, type}
     ixTag = {tab, :index, posInfo}
     cS = val({tab, :cstruct})
     csList = :mnesia_schema.cs2list(cS)
-    _Res = :mnesia_monitor.unsafe_create_external(ixTag, alias, mod, csList)
+    _Res = :mnesia_monitor.unsafe_create_external(ixTag,
+                                                    alias, mod, csList)
     mod.load_table(alias, ixTag, :init_index, csList)
-
-    case mod.is_index_consistent(alias, ixTag) do
+    case (mod.is_index_consistent(alias, ixTag)) do
       false ->
         mod.index_is_consistent(alias, ixTag, false)
         mod.match_delete(alias, ixTag, :_)
         ixValsF = index_vals_f(storage, tab, pos)
-
-        ixObjF =
-          case type do
-            :bag ->
-              fn ixVal, key ->
-                {ixVal, key}
-              end
-
-            :ordered ->
-              fn ixVal, key ->
-                {{ixVal, key}}
-              end
-          end
-
+        ixObjF = (case (type) do
+                    :bag ->
+                      fn ixVal, key ->
+                           {ixVal, key}
+                      end
+                    :ordered ->
+                      fn ixVal, key ->
+                           {{ixVal, key}}
+                      end
+                  end)
         :mnesia_lib.db_fixtable(storage, tab, true)
-
-        :mnesia_lib.db_foldl(
-          storage,
-          fn rec, acc ->
-            key = :erlang.element(2, rec)
-
-            :lists.foreach(
-              fn v ->
-                ixObj = ixObjF.(v, key)
-                mod.insert(alias, ixTag, ixObj)
-              end,
-              ixValsF.(rec)
-            )
-
-            acc
-          end,
-          :ok,
-          tab,
-          [{:_, [], [:"$_"]}],
-          100
-        )
-
+        :mnesia_lib.db_foldl(storage,
+                               fn rec, acc ->
+                                    key = :erlang.element(2, rec)
+                                    :lists.foreach(fn v ->
+                                                        ixObj = ixObjF.(v, key)
+                                                        mod.insert(alias, ixTag,
+                                                                     ixObj)
+                                                   end,
+                                                     ixValsF.(rec))
+                                    acc
+                               end,
+                               :ok, tab, [{:_, [], [:"$_"]}], 100)
         mod.index_is_consistent(alias, ixTag, true)
-
       true ->
         :ignore
     end
-
     :mnesia_lib.set({tab, {:index, posInfo}}, ixTag)
-    add_index_info(tab, val({tab, :setorbag}), {posInfo, {storage, ixTag}})
+    add_index_info(tab, val({tab, :setorbag}),
+                     {posInfo, {storage, ixTag}})
     init_ext_index(tab, storage, alias, mod, tail)
   end
 
   defp create_fun(cont, tab, pos) do
     ixF = index_vals_f(:disc_only_copies, tab, pos)
-
-    fn
-      :read ->
-        data =
-          case cont do
-            {:start, keysPerChunk} ->
-              :mnesia_lib.db_init_chunk(:disc_only_copies, tab, keysPerChunk)
-
-            :"$end_of_table" ->
-              :"$end_of_table"
-
-            _Else ->
-              :mnesia_lib.db_chunk(:disc_only_copies, cont)
-          end
-
-        case data do
-          :"$end_of_table" ->
-            :end_of_input
-
-          {recs, next} ->
-            idxElems =
-              :lists.flatmap(
-                fn obj ->
-                  primK = :erlang.element(2, obj)
-
-                  for v <- ixF.(obj) do
-                    {v, primK}
-                  end
-                end,
-                recs
-              )
-
-            {idxElems, create_fun(next, tab, pos)}
-        end
-
-      :close ->
-        :ok
+    fn :read ->
+         data = (case (cont) do
+                   {:start, keysPerChunk} ->
+                     :mnesia_lib.db_init_chunk(:disc_only_copies, tab,
+                                                 keysPerChunk)
+                   :"$end_of_table" ->
+                     :"$end_of_table"
+                   _Else ->
+                     :mnesia_lib.db_chunk(:disc_only_copies, cont)
+                 end)
+         case (data) do
+           :"$end_of_table" ->
+             :end_of_input
+           {recs, next} ->
+             idxElems = :lists.flatmap(fn obj ->
+                                            primK = :erlang.element(2, obj)
+                                            for v <- ixF.(obj) do
+                                              {v, primK}
+                                            end
+                                       end,
+                                         recs)
+             {idxElems, create_fun(next, tab, pos)}
+         end
+       :close ->
+         :ok
     end
   end
 
@@ -631,34 +509,24 @@ defmodule :m_mnesia_index do
     verbose('Creating index for ~tw ~p ~p~n', [tab, pos, type])
     setOrBag = val({tab, :setorbag})
     ixValsF = index_vals_f(storage, tab, pos)
-
     ixFun = fn val, key ->
-      {{val, key}}
-    end
-
-    index =
-      :mnesia_monitor.mktab(
-        :mnesia_index,
-        [:ordered_set, :public]
-      )
-
+                 {{val, key}}
+            end
+    index = :mnesia_monitor.mktab(:mnesia_index,
+                                    [:ordered_set, :public])
     insert = fn rec, _Acc ->
-      primK = :erlang.element(2, rec)
-
-      true =
-        :ets.insert(
-          index,
-          for v <- ixValsF.(rec) do
-            ixFun.(v, primK)
-          end
-        )
-    end
-
+                  primK = :erlang.element(2, rec)
+                  true = :ets.insert(index,
+                                       for v <- ixValsF.(rec) do
+                                         ixFun.(v, primK)
+                                       end)
+             end
     :mnesia_lib.db_fixtable(:ram_copies, tab, true)
     true = :mnesia_lib.db_foldl(storage, insert, true, tab)
     :mnesia_lib.db_fixtable(:ram_copies, tab, false)
     :mnesia_lib.set({tab, {:index, pos}}, index)
-    add_index_info(tab, setOrBag, {{pos, type}, {:ram, index}})
+    add_index_info(tab, setOrBag,
+                     {{pos, type}, {:ram, index}})
   end
 
   defp add_ram_index(_Tab, _, :snmp) do
@@ -667,53 +535,37 @@ defmodule :m_mnesia_index do
 
   def index_info(setOrBag, posList) do
     ixPlugins = :mnesia_schema.index_plugins()
-
-    expPosList =
-      :lists.map(
-        fn {{p, type}, ixt} = pI ->
-          case p do
-            {_} = ixN ->
-              {_, m, f} = :lists.keyfind(ixN, 1, ixPlugins)
-              {{{ixN, m, f}, type}, ixt}
-
-            _ ->
-              pI
-          end
-        end,
-        posList
-      )
-
+    expPosList = :lists.map(fn {{p, type}, ixt} = pI ->
+                                 case (p) do
+                                   {_} = ixN ->
+                                     {_, m, f} = :lists.keyfind(ixN, 1,
+                                                                  ixPlugins)
+                                     {{{ixN, m, f}, type}, ixt}
+                                   _ ->
+                                     pI
+                                 end
+                            end,
+                              posList)
     r_index(setorbag: setOrBag, pos_list: expPosList)
   end
 
   defp add_index_info(tab, setOrBag, ixElem) do
     commit = val({tab, :commit_work})
-
-    case :lists.keysearch(:index, 1, commit) do
+    case (:lists.keysearch(:index, 1, commit)) do
       false ->
         indexInfo = index_info(setOrBag, [ixElem])
         :mnesia_lib.set({tab, :index_info}, indexInfo)
-
-        :mnesia_lib.set(
-          {tab, :index},
-          index_positions(indexInfo)
-        )
-
-        :mnesia_lib.set(
-          {tab, :commit_work},
-          :mnesia_lib.sort_commit([indexInfo | commit])
-        )
-
+        :mnesia_lib.set({tab, :index},
+                          index_positions(indexInfo))
+        :mnesia_lib.set({tab, :commit_work},
+                          :mnesia_lib.sort_commit([indexInfo | commit]))
       {:value, old} ->
         index = r_index(old, pos_list: [ixElem | r_index(old, :pos_list)])
         :mnesia_lib.set({tab, :index_info}, index)
         :mnesia_lib.set({tab, :index}, index_positions(index))
         newC = :lists.keyreplace(:index, 1, commit, index)
-
-        :mnesia_lib.set(
-          {tab, :commit_work},
-          :mnesia_lib.sort_commit(newC)
-        )
+        :mnesia_lib.set({tab, :commit_work},
+                          :mnesia_lib.sort_commit(newC))
     end
   end
 
@@ -725,44 +577,29 @@ defmodule :m_mnesia_index do
 
   defp del_index_info(tab, pos) do
     commit = val({tab, :commit_work})
-
-    case :lists.keysearch(:index, 1, commit) do
+    case (:lists.keysearch(:index, 1, commit)) do
       false ->
         :skip
-
       {:value, old} ->
-        case :lists.filter(
-               fn {p, _} ->
-                 :erlang.element(1, p) !== pos
-               end,
-               r_index(old, :pos_list)
-             ) do
+        case (:lists.filter(fn {p, _} ->
+                                 :erlang.element(1, p) !== pos
+                            end,
+                              r_index(old, :pos_list))) do
           [] ->
             indexInfo = index_info(r_index(old, :setorbag), [])
             :mnesia_lib.set({tab, :index_info}, indexInfo)
-
-            :mnesia_lib.set(
-              {tab, :index},
-              index_positions(indexInfo)
-            )
-
+            :mnesia_lib.set({tab, :index},
+                              index_positions(indexInfo))
             newC = :lists.keydelete(:index, 1, commit)
-
-            :mnesia_lib.set(
-              {tab, :commit_work},
-              :mnesia_lib.sort_commit(newC)
-            )
-
+            :mnesia_lib.set({tab, :commit_work},
+                              :mnesia_lib.sort_commit(newC))
           new ->
             index = r_index(old, pos_list: new)
             :mnesia_lib.set({tab, :index_info}, index)
             :mnesia_lib.set({tab, :index}, index_positions(index))
             newC = :lists.keyreplace(:index, 1, commit, index)
-
-            :mnesia_lib.set(
-              {tab, :commit_work},
-              :mnesia_lib.sort_commit(newC)
-            )
+            :mnesia_lib.set({tab, :commit_work},
+                              :mnesia_lib.sort_commit(newC))
         end
     end
   end
@@ -784,19 +621,15 @@ defmodule :m_mnesia_index do
     db_select(ixt, pat)
   end
 
-  def db_get(
-        {{:ext, _, _} = _Storage, {_, _, {_, type}}} = ixt,
-        ixKey
-      ) do
-    pat =
-      case type do
-        :ordered ->
-          [{{{ixKey, :"$1"}}, [], [{:element, 1, :"$_"}]}]
-
-        :bag ->
-          [{{ixKey, :_}, [], [:"$_"]}]
-      end
-
+  def db_get({{:ext, _, _} = _Storage,
+            {_, _, {_, type}}} = ixt,
+           ixKey) do
+    pat = (case (type) do
+             :ordered ->
+               [{{{ixKey, :"$1"}}, [], [{:element, 1, :"$_"}]}]
+             :bag ->
+               [{{ixKey, :_}, [], [:"$_"]}]
+           end)
     db_select(ixt, pat)
   end
 
@@ -851,28 +684,28 @@ defmodule :m_mnesia_index do
   end
 
   def index_vals_f(storage, tab, {_} = pos) do
-    index_vals_f(storage, tab, :lists.keyfind(pos, 1, :mnesia_schema.index_plugins()))
+    index_vals_f(storage, tab,
+                   :lists.keyfind(pos, 1, :mnesia_schema.index_plugins()))
   end
 
   def index_vals_f(_Storage, tab, {pos, m, f}) do
     fn obj ->
-      apply(m, f, [tab, pos, obj])
+         apply(m, f, [tab, pos, obj])
     end
   end
 
   def index_vals_f(storage, tab, pos) when is_integer(pos) do
-    case :mnesia_lib.semantics(storage, :index_fun) do
+    case (:mnesia_lib.semantics(storage, :index_fun)) do
       :undefined ->
         fn obj ->
-          [:erlang.element(pos, obj)]
+             [:erlang.element(pos, obj)]
         end
-
       f when is_function(f, 4) ->
         {:ext, alias, _Mod} = storage
-
         fn obj ->
-          f.(alias, tab, pos, obj)
+             f.(alias, tab, pos, obj)
         end
     end
   end
+
 end

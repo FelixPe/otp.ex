@@ -2,48 +2,24 @@ defmodule :m_eunit_surefire do
   use Bitwise
   @behaviour :eunit_listener
   require Record
-
-  Record.defrecord(:r_test, :test,
-    f: :undefined,
-    desc: :undefined,
-    timeout: :undefined,
-    location: :undefined,
-    line: 0
-  )
-
-  Record.defrecord(:r_group, :group,
-    desc: :undefined,
-    order: :undefined,
-    timeout: :undefined,
-    context: :undefined,
-    spawn: :undefined,
-    tests: :undefined
-  )
-
-  Record.defrecord(:r_context, :context, setup: :undefined, cleanup: :undefined, process: :local)
-
-  Record.defrecord(:r_testcase, :testcase,
-    name: :undefined,
-    description: :undefined,
-    result: :undefined,
-    time: :undefined,
-    output: :undefined
-  )
-
-  Record.defrecord(:r_testsuite, :testsuite,
-    id: 0,
-    name: <<>>,
-    time: 0,
-    output: <<>>,
-    succeeded: 0,
-    failed: 0,
-    aborted: 0,
-    skipped: 0,
-    testcases: []
-  )
-
-  Record.defrecord(:r_state, :state, verbose: false, indent: 0, xmldir: '.', testsuites: [])
-
+  Record.defrecord(:r_test, :test, f: :undefined,
+                                desc: :undefined, timeout: :undefined,
+                                location: :undefined, line: 0)
+  Record.defrecord(:r_group, :group, desc: :undefined,
+                                 options: :undefined, order: :undefined,
+                                 timeout: :undefined, context: :undefined,
+                                 spawn: :undefined, tests: :undefined)
+  Record.defrecord(:r_context, :context, setup: :undefined,
+                                   cleanup: :undefined, process: :local)
+  Record.defrecord(:r_testcase, :testcase, name: :undefined,
+                                    description: :undefined, result: :undefined,
+                                    time: :undefined, output: :undefined)
+  Record.defrecord(:r_testsuite, :testsuite, id: 0, name: <<>>,
+                                     time: 0, output: <<>>, succeeded: 0,
+                                     failed: 0, aborted: 0, skipped: 0,
+                                     testcases: [])
+  Record.defrecord(:r_state, :state, verbose: false, indent: 0,
+                                 xmldir: '.', testsuites: [])
   def start() do
     start([])
   end
@@ -54,8 +30,9 @@ defmodule :m_eunit_surefire do
 
   def init(options) do
     xMLDir = :proplists.get_value(:dir, options, '.')
-    st = r_state(verbose: :proplists.get_bool(:verbose, options), xmldir: xMLDir, testsuites: [])
-
+    ensure_xmldir(xMLDir)
+    st = r_state(verbose: :proplists.get_bool(:verbose, options),
+             xmldir: xMLDir, testsuites: [])
     receive do
       {:start, _Reference} ->
         st
@@ -73,49 +50,33 @@ defmodule :m_eunit_surefire do
     :ok
   end
 
-  def handle_begin(kind, data, st)
-      when kind == :group or
-             kind == :test do
+  def handle_begin(kind, data, st) when kind == :group or
+                                kind == :test do
     newId = :proplists.get_value(:id, data)
-
-    case newId do
+    case (newId) do
       [] ->
         st
-
       [groupId] ->
         desc = :proplists.get_value(:desc, data)
         testSuite = r_testsuite(id: groupId, name: desc)
-
-        r_state(st,
-          testsuites:
-            store_suite(
-              testSuite,
-              r_state(st, :testsuites)
-            )
-        )
-
+        r_state(st, testsuites: store_suite(testSuite,
+                                        r_state(st, :testsuites)))
       _ ->
         st
     end
   end
 
   def handle_end(:group, data, st) do
-    case :proplists.get_value(:id, data) do
+    case (:proplists.get_value(:id, data)) do
       [] ->
         st
-
       [groupId | _] ->
         testSuites = r_state(st, :testsuites)
-
-        testSuite =
-          lookup_suite_by_group_id(
-            groupId,
-            testSuites
-          )
-
+        testSuite = lookup_suite_by_group_id(groupId,
+                                               testSuites)
         time = :proplists.get_value(:time, data)
         output = :proplists.get_value(:output, data)
-        newTestSuite = r_testsuite(testSuite, time: time, output: output)
+        newTestSuite = r_testsuite(testSuite, time: time,  output: output)
         r_state(st, testsuites: store_suite(newTestSuite, testSuites))
     end
   end
@@ -123,60 +84,45 @@ defmodule :m_eunit_surefire do
   def handle_end(:test, data, st) do
     [groupId | _] = :proplists.get_value(:id, data)
     testSuites = r_state(st, :testsuites)
-
-    testSuite =
-      lookup_suite_by_group_id(
-        groupId,
-        testSuites
-      )
-
-    name =
-      format_name(
-        :proplists.get_value(:source, data),
-        :proplists.get_value(:line, data)
-      )
-
+    testSuite = lookup_suite_by_group_id(groupId,
+                                           testSuites)
+    name = format_name(:proplists.get_value(:source, data),
+                         :proplists.get_value(:line, data))
     desc = format_desc(:proplists.get_value(:desc, data))
     result = :proplists.get_value(:status, data)
     time = :proplists.get_value(:time, data)
     output = :proplists.get_value(:output, data)
-    testCase = r_testcase(name: name, description: desc, time: time, output: output)
-    newTestSuite = add_testcase_to_testsuite(result, testCase, testSuite)
+    testCase = r_testcase(name: name, description: desc, time: time,
+                   output: output)
+    newTestSuite = add_testcase_to_testsuite(result,
+                                               testCase, testSuite)
     r_state(st, testsuites: store_suite(newTestSuite, testSuites))
   end
 
   def handle_cancel(:group, data, st) do
-    case :proplists.get_value(:reason, data) do
+    case (:proplists.get_value(:reason, data)) do
       {:abort, {somethingFailed, exception}}
-      when somethingFailed === :setup_failed or
-             somethingFailed === :cleanup_failed ->
+          when somethingFailed === :setup_failed or
+                 somethingFailed === :cleanup_failed
+               ->
         [groupId | _] = :proplists.get_value(:id, data)
         testSuites = r_state(st, :testsuites)
-
-        testSuite =
-          lookup_suite_by_group_id(
-            groupId,
-            testSuites
-          )
-
-        name =
-          case somethingFailed do
-            :setup_failed ->
-              'fixture setup '
-
-            :cleanup_failed ->
-              'fixture cleanup '
-          end ++
-            :io_lib.format(
-              '~w',
-              [:proplists.get_value(:id, data)]
-            )
-
+        testSuite = lookup_suite_by_group_id(groupId,
+                                               testSuites)
+        name = (case (somethingFailed) do
+                  :setup_failed ->
+                    'fixture setup '
+                  :cleanup_failed ->
+                    'fixture cleanup '
+                end) ++ :io_lib.format('~w',
+                                         [:proplists.get_value(:id, data)])
         desc = format_desc(:proplists.get_value(:desc, data))
-        testCase = r_testcase(name: name, description: desc, time: 0, output: <<>>)
-        newTestSuite = add_testcase_to_testsuite({:error, exception}, testCase, testSuite)
+        testCase = r_testcase(name: name, description: desc, time: 0,
+                       output: <<>>)
+        newTestSuite = add_testcase_to_testsuite({:error,
+                                                    exception},
+                                                   testCase, testSuite)
         r_state(st, testsuites: store_suite(newTestSuite, testSuites))
-
       _ ->
         st
     end
@@ -185,45 +131,25 @@ defmodule :m_eunit_surefire do
   def handle_cancel(:test, data, st) do
     [groupId | _] = :proplists.get_value(:id, data)
     testSuites = r_state(st, :testsuites)
-
-    testSuite =
-      lookup_suite_by_group_id(
-        groupId,
-        testSuites
-      )
-
-    name =
-      format_name(
-        :proplists.get_value(:source, data),
-        :proplists.get_value(:line, data)
-      )
-
+    testSuite = lookup_suite_by_group_id(groupId,
+                                           testSuites)
+    name = format_name(:proplists.get_value(:source, data),
+                         :proplists.get_value(:line, data))
     desc = format_desc(:proplists.get_value(:desc, data))
     reason = :proplists.get_value(:reason, data)
-
-    testCase =
-      r_testcase(name: name, description: desc, result: {:skipped, reason}, time: 0, output: <<>>)
-
-    newTestSuite =
-      r_testsuite(testSuite,
-        skipped: r_testsuite(testSuite, :skipped) + 1,
-        testcases: [
-          testCase
-          | r_testsuite(testSuite, :testcases)
-        ]
-      )
-
+    testCase = r_testcase(name: name, description: desc,
+                   result: {:skipped, reason}, time: 0, output: <<>>)
+    newTestSuite = r_testsuite(testSuite, skipped: r_testsuite(testSuite, :skipped) + 1, 
+                                  testcases: [testCase |
+                                                  r_testsuite(testSuite, :testcases)])
     r_state(st, testsuites: store_suite(newTestSuite, testSuites))
   end
 
   defp format_name({module, function, _Arity}, line) do
-    :lists.flatten([
-      :erlang.atom_to_list(module),
-      ':',
-      :erlang.integer_to_list(line),
-      ' ',
-      :erlang.atom_to_list(function)
-    ])
+    :lists.flatten([:erlang.atom_to_list(module), ':',
+                                                      :erlang.integer_to_list(line),
+                                                          ' ',
+                                                              :erlang.atom_to_list(function)])
   end
 
   defp format_desc(:undefined) do
@@ -248,66 +174,64 @@ defmodule :m_eunit_surefire do
 
   defp add_testcase_to_testsuite(:ok, testCaseTmp, testSuite) do
     testCase = r_testcase(testCaseTmp, result: :ok)
-
-    r_testsuite(testSuite,
-      succeeded: r_testsuite(testSuite, :succeeded) + 1,
-      testcases: [testCase | r_testsuite(testSuite, :testcases)]
-    )
+    r_testsuite(testSuite, succeeded: r_testsuite(testSuite, :succeeded) + 1, 
+                   testcases: [testCase | r_testsuite(testSuite, :testcases)])
   end
 
   defp add_testcase_to_testsuite({:error, exception}, testCaseTmp, testSuite) do
-    case exception do
+    case (exception) do
       {:error, {assertionException, _}, _}
-      when assertionException == :assertion_failed or
-             assertionException == :assertMatch_failed or
-             assertionException == :assertEqual_failed or
-             assertionException == :assertException_failed or
-             assertionException == :assertCmd_failed or
-             assertionException == :assertCmdOutput_failed ->
+          when assertionException == :assertion_failed or
+                 assertionException == :assertMatch_failed or
+                 assertionException == :assertEqual_failed or
+                 assertionException == :assertException_failed or
+                 assertionException == :assertCmd_failed or
+                 assertionException == :assertCmdOutput_failed
+               ->
         testCase = r_testcase(testCaseTmp, result: {:failed, exception})
-
-        r_testsuite(testSuite,
-          failed: r_testsuite(testSuite, :failed) + 1,
-          testcases: [testCase | r_testsuite(testSuite, :testcases)]
-        )
-
+        r_testsuite(testSuite, failed: r_testsuite(testSuite, :failed) + 1, 
+                       testcases: [testCase | r_testsuite(testSuite, :testcases)])
       _ ->
         testCase = r_testcase(testCaseTmp, result: {:aborted, exception})
+        r_testsuite(testSuite, aborted: r_testsuite(testSuite, :aborted) + 1, 
+                       testcases: [testCase | r_testsuite(testSuite, :testcases)])
+    end
+  end
 
-        r_testsuite(testSuite,
-          aborted: r_testsuite(testSuite, :aborted) + 1,
-          testcases: [testCase | r_testsuite(testSuite, :testcases)]
-        )
+  defp ensure_xmldir(xMLDir) do
+    steps = [&:filelib.ensure_dir/1, &:file.make_dir/1]
+    :lists.foldl(&ensure_xmldir/2, xMLDir, steps)
+  end
+
+  defp ensure_xmldir(fun, xMLDir) do
+    case (fun.(xMLDir)) do
+      :ok ->
+        xMLDir
+      {:error, :eexist} ->
+        xMLDir
+      {:error, _Reason} = error ->
+        throw(error)
     end
   end
 
   defp write_reports(testSuites, xmlDir) do
-    :lists.foreach(
-      fn testSuite ->
-        write_report(testSuite, xmlDir)
-      end,
-      testSuites
-    )
+    :lists.foreach(fn testSuite ->
+                        write_report(testSuite, xmlDir)
+                   end,
+                     testSuites)
   end
 
   defp write_report(r_testsuite(name: name) = testSuite, xmlDir) do
-    filename =
-      :filename.join(
-        xmlDir,
-        :lists.flatten(['TEST-', escape_suitename(name)], '.xml')
-      )
-
-    case :file.open(
-           filename,
-           [:write, {:encoding, :utf8}]
-         ) do
+    filename = :filename.join(xmlDir,
+                                :lists.flatten(['TEST-', escape_suitename(name)], '.xml'))
+    case (:file.open(filename,
+                       [:write, {:encoding, :utf8}])) do
       {:ok, fileDescriptor} ->
         try do
           write_report_to(testSuite, fileDescriptor)
         after
           :file.close(fileDescriptor)
         end
-
       {:error, _Reason} = error ->
         throw(error)
     end
@@ -316,12 +240,8 @@ defmodule :m_eunit_surefire do
   defp write_report_to(testSuite, fileDescriptor) do
     write_header(fileDescriptor)
     write_start_tag(testSuite, fileDescriptor)
-
-    write_testcases(
-      :lists.reverse(r_testsuite(testSuite, :testcases)),
-      fileDescriptor
-    )
-
+    write_testcases(:lists.reverse(r_testsuite(testSuite, :testcases)),
+                      fileDescriptor)
     write_end_tag(fileDescriptor)
   end
 
@@ -329,36 +249,22 @@ defmodule :m_eunit_surefire do
     :io.format(fileDescriptor, '~ts~ts', ["<?xml version=\"1.0\" encoding=\"UTF-8\" ?>", "\n"])
   end
 
-  defp write_start_tag(
-         r_testsuite(
-           name: name,
-           time: time,
-           succeeded: succeeded,
-           failed: failed,
-           skipped: skipped,
-           aborted: aborted
-         ),
-         fileDescriptor
-       ) do
+  defp write_start_tag(r_testsuite(name: name, time: time, succeeded: succeeded,
+              failed: failed, skipped: skipped, aborted: aborted),
+            fileDescriptor) do
     total = succeeded + failed + skipped + aborted
-
-    startTag = [
-      "<testsuite tests=\"",
-      :erlang.integer_to_list(total),
-      "\" failures=\"",
-      :erlang.integer_to_list(failed),
-      "\" errors=\"",
-      :erlang.integer_to_list(aborted),
-      "\" skipped=\"",
-      :erlang.integer_to_list(skipped),
-      "\" time=\"",
-      format_time(time),
-      "\" name=\"",
-      escape_attr(name),
-      "\">",
-      "\n"
-    ]
-
+    startTag = ["<testsuite tests=\"", :erlang.integer_to_list(total), "\" failures=\"",
+                                                       :erlang.integer_to_list(failed),
+                                                           "\" errors=\"",
+                                                               :erlang.integer_to_list(aborted),
+                                                                   "\" skipped=\"",
+                                                                       :erlang.integer_to_list(skipped),
+                                                                           "\" time=\"",
+                                                                               format_time(time),
+                                                                                   "\" name=\"",
+                                                                                       escape_attr(name),
+                                                                                           "\">",
+                                                                                               "\n"]
     :io.format(fileDescriptor, '~ts', [startTag])
   end
 
@@ -375,53 +281,27 @@ defmodule :m_eunit_surefire do
     :io.format(fileDescriptor, '~ts~ts', ["</testsuite>", "\n"])
   end
 
-  defp write_testcase(
-         r_testcase(
-           name: name,
-           description: description,
-           result: result,
-           time: time,
-           output: output
-         ),
-         fileDescriptor
-       ) do
-    descriptionAttr =
-      case description do
-        [] ->
-          []
-
-        _ ->
-          [" (", escape_attr(description), ")"]
-      end
-
-    startTag = [
-      "  ",
-      "<testcase time=\"",
-      format_time(time),
-      "\" name=\"",
-      escape_attr(name),
-      descriptionAttr,
-      "\""
-    ]
-
-    contentAndEndTag =
-      case {result, output} do
-        {:ok, <<>>} ->
-          ["/>", "\n"]
-
-        _ ->
-          [
-            ">",
-            "\n",
-            format_testcase_result(result),
-            format_testcase_output(output),
-            "  ",
-            "</testcase>",
-            "\n"
-          ]
-      end
-
-    :io.format(fileDescriptor, '~ts~ts', [startTag, contentAndEndTag])
+  defp write_testcase(r_testcase(name: name, description: description,
+              result: result, time: time, output: output),
+            fileDescriptor) do
+    descriptionAttr = (case (description) do
+                         [] ->
+                           []
+                         _ ->
+                           [" (", escape_attr(description), ")"]
+                       end)
+    startTag = ["  ", "<testcase time=\"", format_time(time), "\" name=\"",
+                                             escape_attr(name), descriptionAttr,
+                                                                    "\""]
+    contentAndEndTag = (case ({result, output}) do
+                          {:ok, <<>>} ->
+                            ["/>", "\n"]
+                          _ ->
+                            [">", "\n", format_testcase_result(result),
+                                       format_testcase_output(output), "  ", "</testcase>", "\n"]
+                        end)
+    :io.format(fileDescriptor, '~ts~ts',
+                 [startTag, contentAndEndTag])
   end
 
   defp format_testcase_result(:ok) do
@@ -429,117 +309,55 @@ defmodule :m_eunit_surefire do
   end
 
   defp format_testcase_result({:failed, {:error, {type, _}, _} = exception})
-       when is_atom(type) do
-    [
-      "  ",
-      "  ",
-      "<failure type=\"",
-      escape_attr(:erlang.atom_to_list(type)),
-      "\">",
-      "\n",
-      "::",
-      escape_text(
-        :eunit_lib.format_exception(
-          exception,
-          100
-        )
-      ),
-      "  ",
-      "  ",
-      "</failure>",
-      "\n"
-    ]
+      when is_atom(type) do
+    ["  ", "  ", "<failure type=\"", escape_attr(:erlang.atom_to_list(type)), "\">", "\n",
+                                                              "::",
+                                                                  escape_text(:eunit_lib.format_exception(exception,
+                                                                                                            100)),
+                                                                      "  ", "  ", "</failure>",
+                                                                                "\n"]
   end
 
   defp format_testcase_result({:failed, term}) do
-    [
-      "  ",
-      "  ",
-      "<failure type=\"unknown\">",
-      "\n",
-      escape_text(:io_lib.write(term)),
-      "  ",
-      "  ",
-      "</failure>",
-      "\n"
-    ]
+    ["  ", "  ", "<failure type=\"unknown\">", "\n", escape_text(:io_lib.write(term)), "  ", "  ", "</failure>",
+                                                             "\n"]
   end
 
   defp format_testcase_result({:aborted, {class, _Term, _Trace} = exception})
-       when is_atom(class) do
-    [
-      "  ",
-      "  ",
-      "<error type=\"",
-      escape_attr(:erlang.atom_to_list(class)),
-      "\">",
-      "\n",
-      "::",
-      escape_text(
-        :eunit_lib.format_exception(
-          exception,
-          100
-        )
-      ),
-      "  ",
-      "  ",
-      "</error>",
-      "\n"
-    ]
+      when is_atom(class) do
+    ["  ", "  ", "<error type=\"", escape_attr(:erlang.atom_to_list(class)), "\">",
+                                                            "\n", "::",
+                                                                   escape_text(:eunit_lib.format_exception(exception,
+                                                                                                             100)),
+                                                                       "  ", "  ", "</error>",
+                                                                                 "\n"]
   end
 
   defp format_testcase_result({:aborted, term}) do
-    [
-      "  ",
-      "  ",
-      "<error type=\"unknown\">",
-      "\n",
-      escape_text(:io_lib.write(term)),
-      "  ",
-      "  ",
-      "</error>",
-      "\n"
-    ]
+    ["  ", "  ", "<error type=\"unknown\">", "\n", escape_text(:io_lib.write(term)), "  ", "  ", "</error>",
+                                                             "\n"]
   end
 
   defp format_testcase_result({:skipped, {:abort, error}})
-       when is_tuple(error) do
-    [
-      "  ",
-      "  ",
-      "<skipped type=\"",
-      escape_attr(
-        :erlang.atom_to_list(
-          :erlang.element(
-            1,
-            error
-          )
-        )
-      ),
-      "\">",
-      "\n",
-      escape_text(:eunit_lib.format_error(error)),
-      "  ",
-      "  ",
-      "</skipped>",
-      "\n"
-    ]
+      when is_tuple(error) do
+    ["  ", "  ", "<skipped type=\"",
+               escape_attr(:erlang.atom_to_list(:erlang.element(1,
+                                                                  error))),
+                   "\">", "\n", escape_text(:eunit_lib.format_error(error)), "  ", "  ",
+                                                                             "</skipped>",
+                                                                                 "\n"]
+  end
+
+  defp format_testcase_result({:skipped, {:timeout, %{stacktrace: stack}}}) do
+    ["  ", "  ", "<skipped type=\"timeout\">", "\n",
+                  escape_text(:eunit_lib.format_stacktrace(stack)), "  ", "  ",
+                                                                           "</skipped>", "\n"]
   end
 
   defp format_testcase_result({:skipped, {type, term}}) when is_atom(type) do
-    [
-      "  ",
-      "  ",
-      "<skipped type=\"",
-      escape_attr(:erlang.atom_to_list(type)),
-      "\">",
-      "\n",
-      escape_text(:io_lib.write(term)),
-      "  ",
-      "  ",
-      "</skipped>",
-      "\n"
-    ]
+    ["  ", "  ", "<skipped type=\"", escape_attr(:erlang.atom_to_list(type)), "\">", "\n",
+                                                              escape_text(:io_lib.write(term)),
+                                                                  "  ", "  ", "</skipped>", "\n"]
   end
 
   defp format_testcase_result({:skipped, :timeout}) do
@@ -547,17 +365,8 @@ defmodule :m_eunit_surefire do
   end
 
   defp format_testcase_result({:skipped, term}) do
-    [
-      "  ",
-      "  ",
-      "<skipped type=\"unknown\">",
-      "\n",
-      escape_text(:io_lib.write(term)),
-      "  ",
-      "  ",
-      "</skipped>",
-      "\n"
-    ]
+    ["  ", "  ", "<skipped type=\"unknown\">", "\n", escape_text(:io_lib.write(term)), "  ", "  ", "</skipped>",
+                                                             "\n"]
   end
 
   defp format_testcase_output(output) do
@@ -668,28 +477,25 @@ defmodule :m_eunit_surefire do
     escape_xml(tail, [?;, ?t, ?o, ?u, ?q, ?& | acc], true)
   end
 
-  defp escape_xml([char | tail], acc, forAttr)
-       when char == ?\n or
-              char == ?\r or char == ?\t do
+  defp escape_xml([char | tail], acc, forAttr) when char == ?\n or
+                                              char == ?\r or char == ?\t do
     escape_xml(tail, [char | acc], forAttr)
   end
 
-  defp escape_xml([char | tail], acc, forAttr)
-       when 0 <= char and
-              char <= 31 do
+  defp escape_xml([char | tail], acc, forAttr) when (0 <= char and
+                                               char <= 31) do
     escape_xml(tail, acc, forAttr)
   end
 
   defp escape_xml([char | tail], acc, forAttr)
-       when is_integer(char) do
+      when is_integer(char) do
     escape_xml(tail, [char | acc], forAttr)
   end
 
   defp to_utf8(desc) when is_binary(desc) do
-    case :unicode.characters_to_list(desc) do
+    case (:unicode.characters_to_list(desc)) do
       {_, _, _} ->
         :unicode.characters_to_list(desc, :latin1)
-
       x ->
         x
     end
@@ -703,4 +509,5 @@ defmodule :m_eunit_surefire do
         desc
     end
   end
+
 end

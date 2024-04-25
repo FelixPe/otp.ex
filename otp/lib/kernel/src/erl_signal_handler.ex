@@ -3,14 +3,13 @@ defmodule :m_erl_signal_handler do
   @behaviour :gen_event
   require Record
   Record.defrecord(:r_state, :state, [])
-
   def start() do
-    case :erlang.whereis(:erl_signal_server) do
+    case (:erlang.whereis(:erl_signal_server)) do
       :undefined ->
         :ok
-
       _ ->
-        :gen_event.add_handler(:erl_signal_server, :erl_signal_handler, [])
+        :gen_event.add_handler(:erl_signal_server,
+                                 :erl_signal_handler, [])
     end
   end
 
@@ -57,4 +56,5 @@ defmodule :m_erl_signal_handler do
   def terminate(_Args, _S) do
     :ok
   end
+
 end

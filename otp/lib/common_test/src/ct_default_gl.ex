@@ -1,6 +1,5 @@
 defmodule :m_ct_default_gl do
   use Bitwise
-
   def start_link(parentGL) do
     do_start(parentGL, 3)
   end
@@ -10,16 +9,15 @@ defmodule :m_ct_default_gl do
   end
 
   defp do_start(parentGL, retries) do
-    case :erlang.whereis(:ct_default_gl) do
+    case (:erlang.whereis(:ct_default_gl)) do
       :undefined ->
-        case :gen_server.start_link(:ct_default_gl, [parentGL], []) do
+        case (:gen_server.start_link(:ct_default_gl, [parentGL],
+                                       [])) do
           {:ok, pid} ->
             {:ok, pid}
-
           other ->
             other
         end
-
       pid ->
         :erlang.exit(pid, :kill)
         :timer.sleep(1000)
@@ -34,27 +32,25 @@ defmodule :m_ct_default_gl do
   def init([parentGL]) do
     :erlang.register(:ct_default_gl, self())
     :ct_util.mark_process()
-    {:ok, %{parent_gl_pid: parentGL, parent_gl_monitor: :erlang.monitor(:process, parentGL)}}
+    {:ok,
+       %{parent_gl_pid: parentGL,
+           parent_gl_monitor: :erlang.monitor(:process, parentGL)}}
   end
 
   def handle_cast(:stop, st) do
     {:stop, :normal, st}
   end
 
-  def handle_info(
-        {:DOWN, ref, :process, _, _Reason},
-        %{parent_gl_monitor: ref} = st
-      ) do
+  def handle_info({:DOWN, ref, :process, _, _Reason},
+           %{parent_gl_monitor: ref} = st) do
     user = :erlang.whereis(:user)
-
     {:noreply,
-     Map.merge(st, %{parent_gl_pid: user, parent_gl_monitor: :erlang.monitor(:process, user)})}
+       Map.merge(st, %{parent_gl_pid: user,
+                         parent_gl_monitor: :erlang.monitor(:process, user)})}
   end
 
-  def handle_info(
-        {:io_request, _From, _ReplyAs, _Req} = ioReq,
-        %{parent_gl_pid: parentGL} = st
-      ) do
+  def handle_info({:io_request, _From, _ReplyAs, _Req} = ioReq,
+           %{parent_gl_pid: parentGL} = st) do
     send(parentGL, ioReq)
     {:noreply, st}
   end
@@ -71,4 +67,5 @@ defmodule :m_ct_default_gl do
   def terminate(_, _) do
     :ok
   end
+
 end

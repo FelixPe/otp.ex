@@ -1,91 +1,49 @@
 defmodule :m_mnesia_lib do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_tid, :tid,
-    counter: :undefined,
-    pid: :undefined
-  )
-
-  Record.defrecord(:r_tidstore, :tidstore, store: :undefined, up_stores: [], level: 1)
-
-  Record.defrecord(:r_cstruct, :cstruct,
-    name: :undefined,
-    type: :set,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    external_copies: [],
-    load_order: 0,
-    access_mode: :read_write,
-    majority: false,
-    index: [],
-    snmp: [],
-    local_content: false,
-    record_name: {:bad_record_name},
-    attributes: [:key, :val],
-    user_properties: [],
-    frag_properties: [],
-    storage_properties: [],
-    cookie:
-      {{:erlang.monotonic_time() + :erlang.time_offset(), :erlang.unique_integer(), 1}, node()},
-    version: {{2, 0}, []}
-  )
-
-  Record.defrecord(:r_log_header, :log_header,
-    log_kind: :undefined,
-    log_version: :undefined,
-    mnesia_version: :undefined,
-    node: :undefined,
-    now: :undefined
-  )
-
-  Record.defrecord(:r_commit, :commit,
-    node: :undefined,
-    decision: :undefined,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    ext: [],
-    schema_ops: []
-  )
-
-  Record.defrecord(:r_decision, :decision,
-    tid: :undefined,
-    outcome: :undefined,
-    disc_nodes: :undefined,
-    ram_nodes: :undefined
-  )
-
-  Record.defrecord(:r_cyclic, :cyclic,
-    node: node(),
-    oid: :undefined,
-    op: :undefined,
-    lock: :undefined,
-    lucky: :undefined
-  )
-
-  Record.defrecord(:r_file_info, :file_info,
-    size: :undefined,
-    type: :undefined,
-    access: :undefined,
-    atime: :undefined,
-    mtime: :undefined,
-    ctime: :undefined,
-    mode: :undefined,
-    links: :undefined,
-    major_device: :undefined,
-    minor_device: :undefined,
-    inode: :undefined,
-    uid: :undefined,
-    gid: :undefined
-  )
-
-  Record.defrecord(:r_file_descriptor, :file_descriptor,
-    module: :undefined,
-    data: :undefined
-  )
-
+  Record.defrecord(:r_tid, :tid, counter: :undefined,
+                               pid: :undefined)
+  Record.defrecord(:r_tidstore, :tidstore, store: :undefined,
+                                    up_stores: [], level: 1)
+  Record.defrecord(:r_cstruct, :cstruct, name: :undefined,
+                                   type: :set, ram_copies: [], disc_copies: [],
+                                   disc_only_copies: [], external_copies: [],
+                                   load_order: 0, access_mode: :read_write,
+                                   majority: false, index: [], snmp: [],
+                                   local_content: false,
+                                   record_name: {:bad_record_name},
+                                   attributes: [:key, :val],
+                                   user_properties: [], frag_properties: [],
+                                   storage_properties: [],
+                                   cookie: {{:erlang.monotonic_time() + :erlang.time_offset(),
+                                               :erlang.unique_integer(), 1},
+                                              node()},
+                                   version: {{2, 0}, []})
+  Record.defrecord(:r_log_header, :log_header, log_kind: :undefined,
+                                      log_version: :undefined,
+                                      mnesia_version: :undefined,
+                                      node: :undefined, now: :undefined)
+  Record.defrecord(:r_commit, :commit, node: :undefined,
+                                  decision: :undefined, ram_copies: [],
+                                  disc_copies: [], disc_only_copies: [],
+                                  ext: [], schema_ops: [])
+  Record.defrecord(:r_decision, :decision, tid: :undefined,
+                                    outcome: :undefined, disc_nodes: :undefined,
+                                    ram_nodes: :undefined)
+  Record.defrecord(:r_cyclic, :cyclic, node: node(),
+                                  oid: :undefined, op: :undefined,
+                                  lock: :undefined, lucky: :undefined)
+  Record.defrecord(:r_file_info, :file_info, size: :undefined,
+                                     type: :undefined, access: :undefined,
+                                     atime: :undefined, mtime: :undefined,
+                                     ctime: :undefined, mode: :undefined,
+                                     links: :undefined,
+                                     major_device: :undefined,
+                                     minor_device: :undefined,
+                                     inode: :undefined, uid: :undefined,
+                                     gid: :undefined)
+  Record.defrecord(:r_file_descriptor, :file_descriptor, module: :undefined,
+                                           data: :undefined)
   def search_delete(obj, list) do
     search_delete(obj, list, [], :none)
   end
@@ -107,7 +65,7 @@ defmodule :m_mnesia_lib do
   end
 
   defp key_search_delete(key, pos, [h | t], _Obj, ack)
-       when :erlang.element(pos, h) == key do
+      when :erlang.element(pos, h) == key do
     key_search_delete(key, pos, t, h, ack)
   end
 
@@ -123,11 +81,8 @@ defmodule :m_mnesia_lib do
     key_search_all(key, pos, tupleList, [])
   end
 
-  defp key_search_all(key, n, [h | t], ack)
-       when :erlang.element(
-              n,
-              h
-            ) == key do
+  defp key_search_all(key, n, [h | t], ack) when :erlang.element(n,
+                                                       h) == key do
     key_search_all(key, n, t, [h | ack])
   end
 
@@ -169,9 +124,8 @@ defmodule :m_mnesia_lib do
 
   def is_string([h | t]) do
     cond do
-      0 <= h and h < 256 and is_integer(h) ->
+      (0 <= h and h < 256 and is_integer(h)) ->
         is_string(t)
-
       true ->
         false
     end
@@ -182,10 +136,9 @@ defmodule :m_mnesia_lib do
   end
 
   def union([h | l1], l2) do
-    case :lists.member(h, l2) do
+    case (:lists.member(h, l2)) do
       true ->
         union(l1, l2)
-
       false ->
         [h | union(l1, l2)]
     end
@@ -234,8 +187,8 @@ defmodule :m_mnesia_lib do
   end
 
   def running_nodes(ns) do
-    {replies, _BadNs} = :rpc.multicall(ns, :mnesia_lib, :is_running_remote, [])
-
+    {replies, _BadNs} = :rpc.multicall(ns, :mnesia_lib,
+                                         :is_running_remote, [])
     for {goodState, n} <- replies, goodState == true do
       n
     end
@@ -247,10 +200,9 @@ defmodule :m_mnesia_lib do
   end
 
   def is_running(node) when is_atom(node) do
-    case :rpc.call(node, :mnesia_lib, :is_running, []) do
+    case (:rpc.call(node, :mnesia_lib, :is_running, [])) do
       {:badrpc, _} ->
         :no
-
       x ->
         x
     end
@@ -265,13 +217,10 @@ defmodule :m_mnesia_lib do
           end) do
       {:EXIT, _} ->
         :no
-
       :running ->
         :yes
-
       :starting ->
         :starting
-
       :stopping ->
         :stopping
     end
@@ -298,10 +247,9 @@ defmodule :m_mnesia_lib do
   end
 
   defp active_here(tab) do
-    case val({tab, :where_to_read}) do
+    case (val({tab, :where_to_read})) do
       node when node == node() ->
         true
-
       _ ->
         false
     end
@@ -348,27 +296,24 @@ defmodule :m_mnesia_lib do
   end
 
   def storage_type_at_node(node, tab) do
-    search_key(
-      node,
-      [
-        {:disc_copies, val({tab, :disc_copies})},
-        {:ram_copies, val({tab, :ram_copies})},
-        {:disc_only_copies, val({tab, :disc_only_copies})}
-        | wrap_external(val({tab, :external_copies}))
-      ]
-    )
+    search_key(node,
+                 [{:disc_copies, val({tab, :disc_copies})}, {:ram_copies,
+                                                               val({tab,
+                                                                      :ram_copies})},
+                                                                {:disc_only_copies,
+                                                                   val({tab,
+                                                                          :disc_only_copies})} |
+                                                                    wrap_external(val({tab,
+                                                                                         :external_copies}))])
   end
 
   def cs_to_storage_type(node, cs) do
-    search_key(
-      node,
-      [
-        {:disc_copies, r_cstruct(cs, :disc_copies)},
-        {:ram_copies, r_cstruct(cs, :ram_copies)},
-        {:disc_only_copies, r_cstruct(cs, :disc_only_copies)}
-        | wrap_external(r_cstruct(cs, :external_copies))
-      ]
-    )
+    search_key(node,
+                 [{:disc_copies, r_cstruct(cs, :disc_copies)}, {:ram_copies,
+                                                          r_cstruct(cs, :ram_copies)},
+                                                           {:disc_only_copies,
+                                                              r_cstruct(cs, :disc_only_copies)} |
+                                                               wrap_external(r_cstruct(cs, :external_copies))])
   end
 
   def semantics({:ext, alias, mod}, item) do
@@ -379,17 +324,15 @@ defmodule :m_mnesia_lib do
     mod.semantics(alias, item)
   end
 
-  def semantics(type, :storage)
-      when type == :ram_copies or
-             type == :disc_copies or
-             type == :disc_only_copies do
+  def semantics(type, :storage) when type == :ram_copies or
+                                type == :disc_copies or
+                                type == :disc_only_copies do
     type
   end
 
-  def semantics(type, :types)
-      when type == :ram_copies or
-             type == :disc_copies or
-             type == :disc_only_copies do
+  def semantics(type, :types) when type == :ram_copies or
+                              type == :disc_copies or
+                              type == :disc_only_copies do
     [:set, :ordered_set, :bag]
   end
 
@@ -397,10 +340,9 @@ defmodule :m_mnesia_lib do
     [:bag]
   end
 
-  def semantics(type, :index_types)
-      when type == :ram_copies or
-             type == :disc_copies or
-             type == :disc_only_copies do
+  def semantics(type, :index_types) when type == :ram_copies or
+                                    type == :disc_copies or
+                                    type == :disc_only_copies do
     [:bag, :ordered]
   end
 
@@ -415,20 +357,18 @@ defmodule :m_mnesia_lib do
   end
 
   def schema_cs_to_storage_type(node, cs) do
-    case cs_to_storage_type(node, cs) do
+    case (cs_to_storage_type(node, cs)) do
       :unknown when r_cstruct(cs, :name) == :schema ->
         :ram_copies
-
       other ->
         other
     end
   end
 
   defp search_key(key, [{val, list} | tail]) do
-    case :lists.member(key, list) do
+    case (:lists.member(key, list)) do
       true ->
         val
-
       false ->
         search_key(key, tail)
     end
@@ -440,17 +380,16 @@ defmodule :m_mnesia_lib do
 
   def validate_key(tab, key) do
     case (try do
-            :ets.lookup_element(:mnesia_gvar, {tab, :record_validation}, 2)
+            :ets.lookup_element(:mnesia_gvar,
+                                  {tab, :record_validation}, 2)
           catch
             :error, _ ->
               {:EXIT, {:badarg, []}}
           end) do
       {recName, arity, type} ->
         {recName, arity, type}
-
       {recName, arity, type, alias, mod} ->
         mod.validate_key(alias, tab, recName, arity, type, key)
-
       {:EXIT, _} ->
         :mnesia.abort({:no_exists, tab})
     end
@@ -458,24 +397,25 @@ defmodule :m_mnesia_lib do
 
   def validate_record(tab, obj) do
     case (try do
-            :ets.lookup_element(:mnesia_gvar, {tab, :record_validation}, 2)
+            :ets.lookup_element(:mnesia_gvar,
+                                  {tab, :record_validation}, 2)
           catch
             :error, _ ->
               {:EXIT, {:badarg, []}}
           end) do
       {recName, arity, type}
-      when tuple_size(obj) == arity and
-             recName == :erlang.element(1, obj) ->
+          when (tuple_size(obj) == arity and
+                  recName == :erlang.element(1, obj))
+               ->
         {recName, arity, type}
-
       {recName, arity, type, alias, mod}
-      when tuple_size(obj) == arity and
-             recName == :erlang.element(1, obj) ->
-        mod.validate_record(alias, tab, recName, arity, type, obj)
-
+          when (tuple_size(obj) == arity and
+                  recName == :erlang.element(1, obj))
+               ->
+        mod.validate_record(alias, tab, recName, arity, type,
+                              obj)
       {:EXIT, _} ->
         :mnesia.abort({:no_exists, tab})
-
       _ ->
         :mnesia.abort({:bad_type, obj})
     end
@@ -490,7 +430,6 @@ defmodule :m_mnesia_lib do
           end) do
       {:EXIT, stacktrace} ->
         other_val(var, stacktrace)
-
       _VaLuE_ ->
         _VaLuE_
     end
@@ -505,46 +444,37 @@ defmodule :m_mnesia_lib do
   end
 
   def other_val(var, stacktrace) do
-    case other_val_1(var) do
+    case (other_val_1(var)) do
       :error ->
         pr_other(var, stacktrace)
-
       val ->
         val
     end
   end
 
   defp other_val_1(var) do
-    case var do
+    case (var) do
       {_, :where_to_read} ->
         :nowhere
-
       {_, :where_to_write} ->
         []
-
       {_, :active_replicas} ->
         []
-
       _ ->
         :error
     end
   end
 
   defp pr_other(var, stacktrace) do
-    why =
-      case is_running() do
-        :no ->
-          {:node_not_running, node()}
-
-        _ ->
-          {:no_exists, var}
-      end
-
-    verbose(
-      '~p (~tp) val(mnesia_gvar, ~tw) -> ~p ~tp ~n',
-      [self(), :erlang.process_info(self(), :registered_name), var, why, stacktrace]
-    )
-
+    why = (case (is_running()) do
+             :no ->
+               {:node_not_running, node()}
+             _ ->
+               {:no_exists, var}
+           end)
+    verbose('~p (~tp) val(mnesia_gvar, ~tw) -> ~p ~tp ~n',
+              [self(), :erlang.process_info(self(), :registered_name),
+                           var, why, stacktrace])
     :mnesia.abort(why)
   end
 
@@ -569,38 +499,33 @@ defmodule :m_mnesia_lib do
   end
 
   def add_lsort(var, val) do
-    case val(var) do
+    case (val(var)) do
       [head | rest] when head == node() ->
         set(var, [head | lsort_add(val, rest)])
-
       list ->
         set(var, lsort_add(val, list))
     end
   end
 
   defp lsort_add(val, list) do
-    case :ordsets.is_element(val, list) do
+    case (:ordsets.is_element(val, list)) do
       true ->
         list
-
       false ->
         :ordsets.add_element(val, list)
     end
   end
 
   def ensure_loaded(appl) do
-    case :application_controller.get_loaded(appl) do
+    case (:application_controller.get_loaded(appl)) do
       {true, _} ->
         :ok
-
       false ->
-        case :application.load(appl) do
+        case (:application.load(appl)) do
           :ok ->
             :ok
-
           {:error, {:already_loaded, ^appl}} ->
             :ok
-
           {:error, reason} ->
             {:error, {:application_load_error, reason}}
         end
@@ -609,28 +534,22 @@ defmodule :m_mnesia_lib do
 
   def local_active_tables() do
     tabs = val({:schema, :local_tables})
-
-    :lists.zf(
-      fn tab ->
-        active_here(tab)
-      end,
-      tabs
-    )
+    :lists.zf(fn tab ->
+                   active_here(tab)
+              end,
+                tabs)
   end
 
   def active_tables() do
     tabs = val({:schema, :tables})
-
     f = fn tab ->
-      case val({tab, :where_to_read}) do
-        :nowhere ->
-          false
-
-        _ ->
-          {true, tab}
-      end
-    end
-
+             case (val({tab, :where_to_read})) do
+               :nowhere ->
+                 false
+               _ ->
+                 {true, tab}
+             end
+        end
     :lists.zf(f, tabs)
   end
 
@@ -667,10 +586,9 @@ defmodule :m_mnesia_lib do
   end
 
   def copy_holders(cs) when r_cstruct(cs, :local_content) == true do
-    case :lists.member(node(), cs_to_nodes(cs)) do
+    case (:lists.member(node(), cs_to_nodes(cs))) do
       true ->
         [node()]
-
       false ->
         []
     end
@@ -682,32 +600,22 @@ defmodule :m_mnesia_lib do
 
   def set_remote_where_to_read(tab, ignore) do
     active = val({tab, :active_replicas})
-
-    valid =
-      case :mnesia_recover.get_master_nodes(tab) do
-        [] ->
-          active
-
-        masters ->
-          :mnesia_lib.intersect(masters, active)
-      end
-
-    available =
-      :mnesia_lib.intersect(
-        val({:current, :db_nodes}),
-        valid -- ignore
-      )
-
+    valid = (case (:mnesia_recover.get_master_nodes(tab)) do
+               [] ->
+                 active
+               masters ->
+                 :mnesia_lib.intersect(masters, active)
+             end)
+    available = :mnesia_lib.intersect(val({:current,
+                                             :db_nodes}),
+                                        valid -- ignore)
     discOnlyC = val({tab, :disc_only_copies})
-    prefered = available -- discOnlyC
-
+    preferred = available -- discOnlyC
     cond do
-      prefered != [] ->
-        set({tab, :where_to_read}, hd(prefered))
-
+      preferred != [] ->
+        set({tab, :where_to_read}, hd(preferred))
       available != [] ->
         set({tab, :where_to_read}, hd(available))
-
       true ->
         set({tab, :where_to_read}, :nowhere)
     end
@@ -741,18 +649,14 @@ defmodule :m_mnesia_lib do
   end
 
   def cs_to_nodes(cs) do
-    ext_nodes(r_cstruct(cs, :external_copies)) ++
-      r_cstruct(cs, :disc_only_copies) ++
-      r_cstruct(cs, :disc_copies) ++ r_cstruct(cs, :ram_copies)
+    ext_nodes(r_cstruct(cs, :external_copies)) ++ r_cstruct(cs, :disc_only_copies) ++ r_cstruct(cs, :disc_copies) ++ r_cstruct(cs, :ram_copies)
   end
 
   defp ext_nodes(ext) do
-    :lists.flatmap(
-      fn {_, ns} ->
-        ns
-      end,
-      ext
-    )
+    :lists.flatmap(fn {_, ns} ->
+                        ns
+                   end,
+                     ext)
   end
 
   defp overload_types() do
@@ -760,10 +664,9 @@ defmodule :m_mnesia_lib do
   end
 
   defp valid_overload_type(t) do
-    case :lists.member(t, overload_types()) do
+    case (:lists.member(t, overload_types())) do
       false ->
         :erlang.error(:bad_type)
-
       true ->
         true
     end
@@ -790,7 +693,6 @@ defmodule :m_mnesia_lib do
       {:EXIT, _} ->
         valid_overload_type(t)
         false
-
       flag when is_boolean(flag) ->
         flag
     end
@@ -801,7 +703,8 @@ defmodule :m_mnesia_lib do
   end
 
   defp dist_coredump(ns) do
-    {replies, _} = :rpc.multicall(ns, :mnesia_lib, :coredump, [])
+    {replies, _} = :rpc.multicall(ns, :mnesia_lib,
+                                    :coredump, [])
     replies
   end
 
@@ -819,29 +722,18 @@ defmodule :m_mnesia_lib do
 
   def core_file() do
     integers = :erlang.tuple_to_list(:erlang.date()) ++ :erlang.tuple_to_list(:erlang.time())
-
-    fun = fn
-      i when i < 10 ->
-        ['_0', i]
-
-      i ->
-        ['_', i]
-    end
-
-    list =
-      :lists.append(
-        for i <- integers do
-          fun.(i)
-        end
-      )
-
-    case :mnesia_monitor.get_env(:core_dir) do
+    fun = fn i when i < 10 ->
+               ['_0', i]
+             i ->
+               ['_', i]
+          end
+    list = :lists.append(for i <- integers do
+                           fun.(i)
+                         end)
+    case (:mnesia_monitor.get_env(:core_dir)) do
       dir when is_list(dir) ->
-        :filename.absname(
-          :lists.concat(['MnesiaCore.', node()] ++ list),
-          dir
-        )
-
+        :filename.absname(:lists.concat(['MnesiaCore.', node()] ++ list),
+                            dir)
       _ ->
         :filename.absname(:lists.concat(['MnesiaCore.', node()] ++ list))
     end
@@ -849,223 +741,274 @@ defmodule :m_mnesia_lib do
 
   def mkcore(crashInfo) do
     nodes = [node() | :erlang.nodes()]
-
-    heldLocks =
-      (fn ->
-         try do
-           :mnesia.system_info(:held_locks)
-         catch
-           _, _Reason ->
-             {:EXIT, _Reason}
-         end
-       end).()
-
-    core = [
-      crashInfo,
-      {:time, {:erlang.date(), :erlang.time()}},
-      {:self, proc_dbg_info(self())},
-      {:nodes,
-       (fn ->
-          try do
-            :rpc.multicall(
-              nodes,
-              :mnesia_lib,
-              :get_node_number,
-              []
-            )
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:applications,
-       (fn ->
-          try do
-            :lists.sort(:application.loaded_applications())
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:flags,
-       (fn ->
-          try do
-            :init.get_arguments()
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:code_path,
-       (fn ->
-          try do
-            :code.get_path()
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:code_loaded,
-       (fn ->
-          try do
-            :lists.sort(:code.all_loaded())
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:etsinfo,
-       (fn ->
-          try do
-            ets_info(:ets.all())
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:version,
-       (fn ->
-          try do
-            :mnesia.system_info(:version)
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:schema,
-       (fn ->
-          try do
-            :ets.tab2list(:schema)
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:gvar,
-       (fn ->
-          try do
-            :ets.tab2list(:mnesia_gvar)
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:master_nodes,
-       (fn ->
-          try do
-            :mnesia_recover.get_master_node_info()
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:processes,
-       (fn ->
-          try do
-            procs()
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:relatives,
-       (fn ->
-          try do
-            relatives()
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:workers,
-       (fn ->
-          try do
-            workers(:mnesia_controller.get_workers(2000))
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:locking_procs,
-       (fn ->
-          try do
-            locking_procs(heldLocks)
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:held_locks, heldLocks},
-      {:lock_queue,
-       (fn ->
-          try do
-            :mnesia.system_info(:lock_queue)
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:load_info,
-       (fn ->
-          try do
-            :mnesia_controller.get_info(2000)
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:trans_info,
-       (fn ->
-          try do
-            :mnesia_tm.get_info(2000)
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:schema_file,
-       (fn ->
-          try do
-            :file.read_file(tab2dat(:schema))
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:dir_info,
-       (fn ->
-          try do
-            dir_info()
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()},
-      {:logfile,
-       (fn ->
-          try do
-            {:ok, read_log_files()}
-          catch
-            _, _Reason ->
-              {:EXIT, _Reason}
-          end
-        end).()}
-    ]
-
+    heldLocks = (fn () ->
+                      try do
+                        :mnesia.system_info(:held_locks)
+                      catch
+                        _, _Reason ->
+                          {:EXIT, _Reason}
+                      end
+                 end).()
+    core = [crashInfo, {:time,
+                          {:erlang.date(), :erlang.time()}},
+                           {:self, proc_dbg_info(self())}, {:nodes,
+                                                              (fn () ->
+                                                                    try do
+                                                                      :rpc.multicall(nodes,
+                                                                                       :mnesia_lib,
+                                                                                       :get_node_number,
+                                                                                       [])
+                                                                    catch
+                                                                      _, _Reason
+                                                                      ->
+                                                                        {:EXIT,
+                                                                           _Reason}
+                                                                    end
+                                                               end).()},
+                                                               {:applications,
+                                                                  (fn () ->
+                                                                        try do
+                                                                          :lists.sort(:application.loaded_applications())
+                                                                        catch
+                                                                          _,
+                                                                            _Reason
+                                                                          ->
+                                                                            {:EXIT,
+                                                                               _Reason}
+                                                                        end
+                                                                   end).()},
+                                                                   {:flags,
+                                                                      (fn () ->
+                                                                            try do
+                                                                              :init.get_arguments()
+                                                                            catch
+                                                                              _,
+                                                                                _Reason
+                                                                              ->
+                                                                                {:EXIT,
+                                                                                   _Reason}
+                                                                            end
+                                                                       end).()},
+                                                                       {:code_path,
+                                                                          (fn () ->
+                                                                                try do
+                                                                                  :code.get_path()
+                                                                                catch
+                                                                                  _,
+                                                                                    _Reason
+                                                                                  ->
+                                                                                    {:EXIT,
+                                                                                       _Reason}
+                                                                                end
+                                                                           end).()},
+                                                                           {:code_loaded,
+                                                                              (fn () ->
+                                                                                    try do
+                                                                                      :lists.sort(:code.all_loaded())
+                                                                                    catch
+                                                                                      _,
+                                                                                        _Reason
+                                                                                      ->
+                                                                                        {:EXIT,
+                                                                                           _Reason}
+                                                                                    end
+                                                                               end).()},
+                                                                               {:etsinfo,
+                                                                                  (fn () ->
+                                                                                        try do
+                                                                                          ets_info(:ets.all())
+                                                                                        catch
+                                                                                          _,
+                                                                                            _Reason
+                                                                                          ->
+                                                                                            {:EXIT,
+                                                                                               _Reason}
+                                                                                        end
+                                                                                   end).()},
+                                                                                   {:version,
+                                                                                      (fn () ->
+                                                                                            try do
+                                                                                              :mnesia.system_info(:version)
+                                                                                            catch
+                                                                                              _,
+                                                                                                _Reason
+                                                                                              ->
+                                                                                                {:EXIT,
+                                                                                                   _Reason}
+                                                                                            end
+                                                                                       end).()},
+                                                                                       {:schema,
+                                                                                          (fn () ->
+                                                                                                try do
+                                                                                                  :ets.tab2list(:schema)
+                                                                                                catch
+                                                                                                  _,
+                                                                                                    _Reason
+                                                                                                  ->
+                                                                                                    {:EXIT,
+                                                                                                       _Reason}
+                                                                                                end
+                                                                                           end).()},
+                                                                                           {:gvar,
+                                                                                              (fn () ->
+                                                                                                    try do
+                                                                                                      :ets.tab2list(:mnesia_gvar)
+                                                                                                    catch
+                                                                                                      _,
+                                                                                                        _Reason
+                                                                                                      ->
+                                                                                                        {:EXIT,
+                                                                                                           _Reason}
+                                                                                                    end
+                                                                                               end).()},
+                                                                                               {:master_nodes,
+                                                                                                  (fn () ->
+                                                                                                        try do
+                                                                                                          :mnesia_recover.get_master_node_info()
+                                                                                                        catch
+                                                                                                          _,
+                                                                                                            _Reason
+                                                                                                          ->
+                                                                                                            {:EXIT,
+                                                                                                               _Reason}
+                                                                                                        end
+                                                                                                   end).()},
+                                                                                                   {:processes,
+                                                                                                      (fn () ->
+                                                                                                            try do
+                                                                                                              procs()
+                                                                                                            catch
+                                                                                                              _,
+                                                                                                                _Reason
+                                                                                                              ->
+                                                                                                                {:EXIT,
+                                                                                                                   _Reason}
+                                                                                                            end
+                                                                                                       end).()},
+                                                                                                       {:relatives,
+                                                                                                          (fn () ->
+                                                                                                                try do
+                                                                                                                  relatives()
+                                                                                                                catch
+                                                                                                                  _,
+                                                                                                                    _Reason
+                                                                                                                  ->
+                                                                                                                    {:EXIT,
+                                                                                                                       _Reason}
+                                                                                                                end
+                                                                                                           end).()},
+                                                                                                           {:workers,
+                                                                                                              (fn () ->
+                                                                                                                    try do
+                                                                                                                      workers(:mnesia_controller.get_workers(2000))
+                                                                                                                    catch
+                                                                                                                      _,
+                                                                                                                        _Reason
+                                                                                                                      ->
+                                                                                                                        {:EXIT,
+                                                                                                                           _Reason}
+                                                                                                                    end
+                                                                                                               end).()},
+                                                                                                               {:locking_procs,
+                                                                                                                  (fn () ->
+                                                                                                                        try do
+                                                                                                                          locking_procs(heldLocks)
+                                                                                                                        catch
+                                                                                                                          _,
+                                                                                                                            _Reason
+                                                                                                                          ->
+                                                                                                                            {:EXIT,
+                                                                                                                               _Reason}
+                                                                                                                        end
+                                                                                                                   end).()},
+                                                                                                                   {:held_locks,
+                                                                                                                      heldLocks},
+                                                                                                                       {:lock_queue,
+                                                                                                                          (fn () ->
+                                                                                                                                try do
+                                                                                                                                  :mnesia.system_info(:lock_queue)
+                                                                                                                                catch
+                                                                                                                                  _,
+                                                                                                                                    _Reason
+                                                                                                                                  ->
+                                                                                                                                    {:EXIT,
+                                                                                                                                       _Reason}
+                                                                                                                                end
+                                                                                                                           end).()},
+                                                                                                                           {:load_info,
+                                                                                                                              (fn () ->
+                                                                                                                                    try do
+                                                                                                                                      :mnesia_controller.get_info(2000)
+                                                                                                                                    catch
+                                                                                                                                      _,
+                                                                                                                                        _Reason
+                                                                                                                                      ->
+                                                                                                                                        {:EXIT,
+                                                                                                                                           _Reason}
+                                                                                                                                    end
+                                                                                                                               end).()},
+                                                                                                                               {:trans_info,
+                                                                                                                                  (fn () ->
+                                                                                                                                        try do
+                                                                                                                                          :mnesia_tm.get_info(2000)
+                                                                                                                                        catch
+                                                                                                                                          _,
+                                                                                                                                            _Reason
+                                                                                                                                          ->
+                                                                                                                                            {:EXIT,
+                                                                                                                                               _Reason}
+                                                                                                                                        end
+                                                                                                                                   end).()},
+                                                                                                                                   {:schema_file,
+                                                                                                                                      (fn () ->
+                                                                                                                                            try do
+                                                                                                                                              :file.read_file(tab2dat(:schema))
+                                                                                                                                            catch
+                                                                                                                                              _,
+                                                                                                                                                _Reason
+                                                                                                                                              ->
+                                                                                                                                                {:EXIT,
+                                                                                                                                                   _Reason}
+                                                                                                                                            end
+                                                                                                                                       end).()},
+                                                                                                                                       {:dir_info,
+                                                                                                                                          (fn () ->
+                                                                                                                                                try do
+                                                                                                                                                  dir_info()
+                                                                                                                                                catch
+                                                                                                                                                  _,
+                                                                                                                                                    _Reason
+                                                                                                                                                  ->
+                                                                                                                                                    {:EXIT,
+                                                                                                                                                       _Reason}
+                                                                                                                                                end
+                                                                                                                                           end).()},
+                                                                                                                                           {:logfile,
+                                                                                                                                              (fn () ->
+                                                                                                                                                    try do
+                                                                                                                                                      {:ok,
+                                                                                                                                                         read_log_files()}
+                                                                                                                                                    catch
+                                                                                                                                                      _,
+                                                                                                                                                        _Reason
+                                                                                                                                                      ->
+                                                                                                                                                        {:EXIT,
+                                                                                                                                                           _Reason}
+                                                                                                                                                    end
+                                                                                                                                               end).()}]
     :erlang.term_to_binary(core)
   end
 
   defp procs() do
     fun = fn p ->
-      {p,
-       try do
-         :lists.zf(&proc_info/1, :erlang.process_info(p))
-       catch
-         _, _Reason ->
-           {:EXIT, _Reason}
-       end}
-    end
-
+               {p,
+                  try do
+                    :lists.zf(&proc_info/1, :erlang.process_info(p))
+                  catch
+                    _, _Reason ->
+                      {:EXIT, _Reason}
+                  end}
+          end
     :lists.map(fun, :erlang.processes())
   end
 
@@ -1106,35 +1049,39 @@ defmodule :m_mnesia_lib do
   defp read_log_files() do
     for f <- :mnesia_log.log_files() do
       {f,
-       try do
-         :file.read_file(f)
-       catch
-         _, _Reason ->
-           {:EXIT, _Reason}
-       end}
+         try do
+           :file.read_file(f)
+         catch
+           _, _Reason ->
+             {:EXIT, _Reason}
+         end}
     end
   end
 
   def dir_info() do
     {:ok, cwd} = :file.get_cwd()
     dir = dir()
-
-    [{:cwd, cwd, :file.read_file_info(cwd)}, {:mnesia_dir, dir, :file.read_file_info(dir)}] ++
-      case :file.list_dir(dir) do
-        {:ok, files} ->
-          for f <- files do
-            {:mnesia_file, f,
-             try do
-               :file.read_file_info(dir(f))
-             catch
-               _, _Reason ->
-                 {:EXIT, _Reason}
-             end}
-          end
-
-        other ->
-          [other]
-      end
+    [{:cwd, cwd, :file.read_file_info(cwd)}, {:mnesia_dir,
+                                                dir,
+                                                :file.read_file_info(dir)}] ++ (case (:file.list_dir(dir)) do
+                                                                                  {:ok,
+                                                                                     files} ->
+                                                                                    for f <- files do
+                                                                                      {:mnesia_file,
+                                                                                         f,
+                                                                                         try do
+                                                                                           :file.read_file_info(dir(f))
+                                                                                         catch
+                                                                                           _,
+                                                                                             _Reason
+                                                                                           ->
+                                                                                             {:EXIT,
+                                                                                                _Reason}
+                                                                                         end}
+                                                                                    end
+                                                                                  other ->
+                                                                                    [other]
+                                                                                end)
   end
 
   defp ets_info([h | t]) do
@@ -1155,84 +1102,61 @@ defmodule :m_mnesia_lib do
 
   defp relatives() do
     info = fn name ->
-      case :erlang.whereis(name) do
-        :undefined ->
-          false
-
-        pid ->
-          {true, {name, pid, proc_dbg_info(pid)}}
-      end
-    end
-
+                case (:erlang.whereis(name)) do
+                  :undefined ->
+                    false
+                  pid ->
+                    {true, {name, pid, proc_dbg_info(pid)}}
+                end
+           end
     :lists.zf(info, :mnesia.ms())
   end
 
   defp workers({:workers, loaders, senders, dumper}) do
-    info = fn
-      {pid, {:send_table, tab, _Receiver, _St}} ->
-        case pid do
-          :undefined ->
-            false
-
-          ^pid ->
-            {true, {pid, tab, proc_dbg_info(pid)}}
-        end
-
-      {pid, what} when is_pid(pid) ->
-        {true, {pid, what, proc_dbg_info(pid)}}
-
-      {name, pid} ->
-        case pid do
-          :undefined ->
-            false
-
-          ^pid ->
-            {true, {name, pid, proc_dbg_info(pid)}}
-        end
-    end
-
+    info = fn {pid, {:send_table, tab, _Receiver, _St}} ->
+                case (pid) do
+                  :undefined ->
+                    false
+                  ^pid ->
+                    {true, {pid, tab, proc_dbg_info(pid)}}
+                end
+              {pid, what} when is_pid(pid) ->
+                {true, {pid, what, proc_dbg_info(pid)}}
+              {name, pid} ->
+                case (pid) do
+                  :undefined ->
+                    false
+                  ^pid ->
+                    {true, {name, pid, proc_dbg_info(pid)}}
+                end
+           end
     sInfo = :lists.zf(info, senders)
     linfo = :lists.zf(info, loaders)
-
-    [
-      {:senders, sInfo},
-      {:loader, linfo}
-      | :lists.zf(
-          info,
-          [{:dumper, dumper}]
-        )
-    ]
+    [{:senders, sInfo}, {:loader, linfo} | :lists.zf(info,
+                                                       [{:dumper, dumper}])]
   end
 
   defp locking_procs(lockList) when is_list(lockList) do
-    tids =
-      for lock <- lockList do
-        :erlang.element(3, lock)
-      end
-
+    tids = (for lock <- lockList do
+              :erlang.element(3, lock)
+            end)
     uT = uniq(tids)
-
     info = fn tid ->
-      pid = r_tid(tid, :pid)
-
-      case node(pid) == node() do
-        true ->
-          {true, {pid, proc_dbg_info(pid)}}
-
-        _ ->
-          false
-      end
-    end
-
+                pid = r_tid(tid, :pid)
+                case (node(pid) == node()) do
+                  true ->
+                    {true, {pid, proc_dbg_info(pid)}}
+                  _ ->
+                    false
+                end
+           end
     :lists.zf(info, uT)
   end
 
   defp proc_dbg_info(pid) do
     try do
-      [
-        :erlang.process_info(pid, :current_stacktrace)
-        | :erlang.process_info(pid)
-      ]
+      [:erlang.process_info(pid, :current_stacktrace) |
+           :erlang.process_info(pid)]
     catch
       _, r ->
         [{:process_info, :crashed, r}]
@@ -1245,20 +1169,17 @@ defmodule :m_mnesia_lib do
   end
 
   def view(file) do
-    case suffix(['.DAT', '.RET', '.DMP', '.TMP'], file) do
+    case (suffix(['.DAT', '.RET', '.DMP', '.TMP'], file)) do
       true ->
         view(file, :dat)
-
       false ->
-        case suffix(['.LOG', '.BUP', '.ETS', '.LOGTMP'], file) do
+        case (suffix(['.LOG', '.BUP', '.ETS', '.LOGTMP'], file)) do
           true ->
             view(file, :log)
-
           false ->
-            case :lists.prefix('MnesiaCore.', file) do
+            case (:lists.prefix('MnesiaCore.', file)) do
               true ->
                 view(file, :core)
-
               false ->
                 {:error, 'Unknown file name'}
             end
@@ -1280,27 +1201,22 @@ defmodule :m_mnesia_lib do
 
   defp suffix(suffixes, file) do
     fun = fn s ->
-      :lists.suffix(s, file)
-    end
-
+               :lists.suffix(s, file)
+          end
     :lists.any(fun, suffixes)
   end
 
   def vcore() do
     prefix = :lists.concat(['MnesiaCore.', node()])
-
     filter = fn f ->
-      :lists.prefix(prefix, f)
-    end
-
+                  :lists.prefix(prefix, f)
+             end
     {:ok, cwd} = :file.get_cwd()
-
-    case :file.list_dir(cwd) do
+    case (:file.list_dir(cwd)) do
       {:ok, files} ->
         coreFiles = :lists.sort(:lists.zf(filter, files))
         show('Mnesia core files: ~tp~n', [coreFiles])
         vcore(:lists.last(coreFiles))
-
       error ->
         error
     end
@@ -1308,36 +1224,30 @@ defmodule :m_mnesia_lib do
 
   def vcore(bin) when is_binary(bin) do
     core = :erlang.binary_to_term(bin)
-
     fun = fn {item, info} ->
-      show('***** ~tp *****~n', [item])
-
-      case (fn ->
-              try do
-                vcore_elem({item, info})
-              catch
-                _, _Reason ->
-                  {:EXIT, _Reason}
-              end
-            end).() do
-        {:EXIT, reason} ->
-          show('{\'EXIT\', ~tp}~n', [reason])
-
-        _ ->
-          :ok
-      end
-    end
-
+               show('***** ~tp *****~n', [item])
+               case ((fn () ->
+                           try do
+                             vcore_elem({item, info})
+                           catch
+                             _, _Reason ->
+                               {:EXIT, _Reason}
+                           end
+                      end).()) do
+                 {:EXIT, reason} ->
+                   show('{\'EXIT\', ~tp}~n', [reason])
+                 _ ->
+                   :ok
+               end
+          end
     :lists.foreach(fun, core)
   end
 
   def vcore(file) do
     show('~n***** Mnesia core: ~tp *****~n', [file])
-
-    case :file.read_file(file) do
+    case (:file.read_file(file)) do
       {:ok, bin} ->
         vcore(bin)
-
       _ ->
         :nocore
     end
@@ -1352,20 +1262,17 @@ defmodule :m_mnesia_lib do
 
   defp vcore_elem({:logfile, {:ok, binList}}) do
     fun = fn {f, info} ->
-      show('----- logfile: ~tp -----~n', [f])
-
-      case info do
-        {:ok, b} ->
-          fname = '/tmp/mnesia_vcore_elem.TMP'
-          :file.write_file(fname, b)
-          :mnesia_log.view(fname)
-          :file.delete(fname)
-
-        _ ->
-          show('~tp~n', [info])
-      end
-    end
-
+               show('----- logfile: ~tp -----~n', [f])
+               case (info) do
+                 {:ok, b} ->
+                   fname = '/tmp/mnesia_vcore_elem.TMP'
+                   :file.write_file(fname, b)
+                   :mnesia_log.view(fname)
+                   :file.delete(fname)
+                 _ ->
+                   show('~tp~n', [info])
+               end
+          end
     :lists.foreach(fun, binList)
   end
 
@@ -1387,28 +1294,21 @@ defmodule :m_mnesia_lib do
 
   def fix_error(x) do
     set(:last_error, x)
-
-    case x do
+    case (x) do
       {:aborted, reason} ->
         reason
-
       {:abort, reason} ->
         reason
-
       y when is_atom(y) ->
         y
-
       {:EXIT, {_Reason, {mod, _, _}}} when is_atom(mod) ->
         save(x)
-
-        case :erlang.atom_to_list(mod) do
+        case (:erlang.atom_to_list(mod)) do
           [?m, ?n, ?e | _] ->
             :badarg
-
           _ ->
             x
         end
-
       _ ->
         x
     end
@@ -1459,7 +1359,7 @@ defmodule :m_mnesia_lib do
   end
 
   def error_desc(:not_a_db_node) do
-    'A node which is non existant in the schema was mentioned'
+    'A node which is non existent in the schema was mentioned'
   end
 
   def error_desc(:bad_type) do
@@ -1494,10 +1394,9 @@ defmodule :m_mnesia_lib do
     error_desc(reason)
   end
 
-  def error_desc(reason)
-      when is_tuple(reason) and
-             :erlang.size(reason) > 0 do
-    :erlang.setelement(1, reason, error_desc(:erlang.element(1, reason)))
+  def error_desc(reason) when tuple_size(reason) > 0 do
+    :erlang.setelement(1, reason,
+                         error_desc(:erlang.element(1, reason)))
   end
 
   def error_desc(reason) do
@@ -1505,13 +1404,11 @@ defmodule :m_mnesia_lib do
   end
 
   def dirty_rpc_error_tag(reason) do
-    case reason do
+    case (reason) do
       {:EXIT, _} ->
         :badarg
-
       :no_variable ->
         :badarg
-
       _ ->
         :no_exists
     end
@@ -1519,18 +1416,17 @@ defmodule :m_mnesia_lib do
 
   def fatal(format, args) do
     try do
-      try do
+      (try do
         set(:mnesia_status, :stopping)
       catch
         :error, e -> {:EXIT, {e, __STACKTRACE__}}
         :exit, e -> {:EXIT, e}
         e -> e
-      end
+      end)
     catch
       :error, _ ->
         :ok
     end
-
     core = mkcore({:crashinfo, {format, args}})
     report_fatal(format, args, core)
     :timer.sleep(10000)
@@ -1544,7 +1440,6 @@ defmodule :m_mnesia_lib do
 
   defp report_fatal(format, args, core) do
     report_system_event({:mnesia_fatal, format, args, core})
-
     try do
       :erlang.exit(:erlang.whereis(:mnesia_monitor), :fatal)
     catch
@@ -1563,7 +1458,6 @@ defmodule :m_mnesia_lib do
   def report_system_event(event0) do
     event = {:mnesia_system_event, event0}
     report_system_event(catch_notify(event), event)
-
     case (try do
             :ets.lookup_element(:mnesia_gvar, :subscribers, 2)
           catch
@@ -1572,24 +1466,19 @@ defmodule :m_mnesia_lib do
           end) do
       {:EXIT, _} ->
         :ignore
-
       pids ->
-        :lists.foreach(
-          fn pid ->
-            send(pid, event)
-          end,
-          pids
-        )
+        :lists.foreach(fn pid ->
+                            send(pid, event)
+                       end,
+                         pids)
     end
-
     :ok
   end
 
   defp catch_notify(event) do
-    case :erlang.whereis(:mnesia_event) do
+    case (:erlang.whereis(:mnesia_event)) do
       :undefined ->
         {:EXIT, {:badarg, {:mnesia_event, event}}}
-
       pid ->
         :gen_event.notify(pid, event)
     end
@@ -1597,30 +1486,22 @@ defmodule :m_mnesia_lib do
 
   defp report_system_event({:EXIT, reason}, event) do
     mod = :mnesia_monitor.get_env(:event_module)
-
-    case :mnesia_sup.start_event() do
+    case (:mnesia_sup.start_event()) do
       {:ok, pid} ->
         :erlang.link(pid)
         :gen_event.call(:mnesia_event, mod, event, :infinity)
         :erlang.unlink(pid)
-
         receive do
           {:EXIT, ^pid, _Reason} ->
             :ok
-        after
-          0 ->
-            :gen_event.stop(:mnesia_event)
+        after 0 ->
+          :gen_event.stop(:mnesia_event)
         end
-
       error ->
         msg = 'Mnesia(~tp): Cannot report event ~tp: ~tp (~tp)~n'
-
-        :error_logger.format(
-          msg,
-          [node(), event, reason, error]
-        )
+        :error_logger.format(msg,
+                               [node(), event, reason, error])
     end
-
     :ok
   end
 
@@ -1644,29 +1525,24 @@ defmodule :m_mnesia_lib do
   end
 
   def verbose(format, args) do
-    case :mnesia_monitor.get_env(:debug) do
+    case (:mnesia_monitor.get_env(:debug)) do
       :none ->
         save({format, args})
-
       :verbose ->
         important(format, args)
-
       :debug ->
         important(format, args)
-
       :trace ->
         important(format, args)
     end
   end
 
   def dbg_out(format, args) do
-    case :mnesia_monitor.get_env(:debug) do
+    case (:mnesia_monitor.get_env(:debug)) do
       :none ->
         :ignore
-
       :verbose ->
         save({format, args})
-
       _ ->
         report_system_event({:mnesia_info, format, args})
     end
@@ -1683,52 +1559,41 @@ defmodule :m_mnesia_lib do
 
   defp save2(dbgInfo) do
     key = {:"$$$_report", :current_pos}
-
-    p =
-      case :ets.lookup_element(:mnesia_gvar, key, 2) do
-        30 ->
-          -1
-
-        i ->
-          i
-      end
-
+    p = (case (:ets.lookup_element(:mnesia_gvar, key, 2)) do
+           100 ->
+             - 1
+           i ->
+             i
+         end)
     set({:"$$$_report", :current_pos}, p + 1)
-
-    set(
-      {:"$$$_report", p + 1},
-      {:erlang.date(), :erlang.time(), dbgInfo}
-    )
+    set({:"$$$_report", p + 1},
+          {:erlang.date(), :erlang.time(), dbgInfo})
   end
 
   def copy_file(from, to) do
-    case :file.open(from, [:raw, :binary, :read]) do
+    case (:file.open(from, [:raw, :binary, :read])) do
       {:ok, f} ->
-        case :file.open(to, [:raw, :binary, :write]) do
+        case (:file.open(to, [:raw, :binary, :write])) do
           {:ok, t} ->
             res = copy_file_loop(f, t, 8000)
             :ok = :file.close(f)
             :ok = :file.close(t)
             res
-
           {:error, reason} ->
             {:error, reason}
         end
-
       {:error, reason} ->
         {:error, reason}
     end
   end
 
   defp copy_file_loop(f, t, chunkSize) do
-    case :file.read(f, chunkSize) do
+    case (:file.read(f, chunkSize)) do
       {:ok, bin} ->
         :ok = :file.write(t, bin)
         copy_file_loop(f, t, chunkSize)
-
       :eof ->
         :ok
-
       {:error, reason} ->
         {:error, reason}
     end
@@ -1814,15 +1679,12 @@ defmodule :m_mnesia_lib do
 
   def db_match_object(storage, tab, pat) do
     db_fixtable(storage, tab, true)
-
     try do
-      case storage do
+      case (storage) do
         :disc_only_copies ->
           :dets.match_object(tab, pat)
-
         {:ext, alias, mod} ->
           mod.select(alias, tab, [{pat, [], [:"$_"]}])
-
         _ ->
           :ets.match_object(tab, pat)
       end
@@ -1837,30 +1699,31 @@ defmodule :m_mnesia_lib do
 
   def db_foldl(storage, fun, acc, tab) do
     limit = :mnesia_monitor.get_env(:fold_chunk_size)
-    db_foldl(storage, fun, acc, tab, [{:_, [], [:"$_"]}], limit)
+    db_foldl(storage, fun, acc, tab, [{:_, [], [:"$_"]}],
+               limit)
   end
 
   def db_foldl(:ram_copies, fun, acc, tab, pat, limit) do
     :mnesia_lib.db_fixtable(:ram_copies, tab, true)
-
     try do
-      select_foldl(db_select_init(:ram_copies, tab, pat, limit), fun, acc, :ram_copies)
+      select_foldl(db_select_init(:ram_copies, tab, pat,
+                                    limit),
+                     fun, acc, :ram_copies)
     after
       :mnesia_lib.db_fixtable(:ram_copies, tab, false)
     end
   end
 
   def db_foldl(storage, fun, acc, tab, pat, limit) do
-    select_foldl(:mnesia_lib.db_select_init(storage, tab, pat, limit), fun, acc, storage)
+    select_foldl(:mnesia_lib.db_select_init(storage, tab,
+                                              pat, limit),
+                   fun, acc, storage)
   end
 
   defp select_foldl({objs, cont}, fun, acc, storage) do
-    select_foldl(
-      :mnesia_lib.db_select_cont(storage, cont, []),
-      fun,
-      :lists.foldl(fun, acc, objs),
-      storage
-    )
+    select_foldl(:mnesia_lib.db_select_cont(storage, cont,
+                                              []),
+                   fun, :lists.foldl(fun, acc, objs), storage)
   end
 
   defp select_foldl(:"$end_of_table", _, acc, _) do
@@ -1873,15 +1736,12 @@ defmodule :m_mnesia_lib do
 
   def db_select(storage, tab, pat) do
     db_fixtable(storage, tab, true)
-
     try do
-      case storage do
+      case (storage) do
         :disc_only_copies ->
           :dets.select(tab, pat)
-
         {:ext, alias, mod} ->
           mod.select(alias, tab, pat)
-
         _ ->
           :ets.select(tab, pat)
       end
@@ -2104,7 +1964,8 @@ defmodule :m_mnesia_lib do
   end
 
   def db_update_counter(tab, c, val) do
-    db_update_counter(val({tab, :storage_type}), tab, c, val)
+    db_update_counter(val({tab, :storage_type}), tab, c,
+                        val)
   end
 
   def db_update_counter(:ram_copies, tab, c, val) do
@@ -2145,16 +2006,15 @@ defmodule :m_mnesia_lib do
 
   def dets_to_ets(tabname, tab, file, type, rep, lock) do
     {open, close} = mkfuns(lock)
-
-    case open.(
-           tabname,
-           [{:file, file}, {:type, disk_type(tab, type)}, {:keypos, 2}, {:repair, rep}]
-         ) do
+    case (open.(tabname,
+                  [{:file, file}, {:type, disk_type(tab, type)}, {:keypos,
+                                                                    2},
+                                                                     {:repair,
+                                                                        rep}])) do
       {:ok, ^tabname} ->
         res = :dets.to_ets(tabname, tab)
         :ok = close.(tabname)
         trav_ret(res, tab)
-
       other ->
         other
     end
@@ -2170,20 +2030,20 @@ defmodule :m_mnesia_lib do
 
   defp mkfuns(:yes) do
     {fn tab, args ->
-       dets_sync_open(tab, args)
+          dets_sync_open(tab, args)
      end,
-     fn tab ->
-       dets_sync_close(tab)
-     end}
+       fn tab ->
+            dets_sync_close(tab)
+       end}
   end
 
   defp mkfuns(:no) do
     {fn tab, args ->
-       :dets.open_file(tab, args)
+          :dets.open_file(tab, args)
      end,
-     fn tab ->
-       :dets.close(tab)
-     end}
+       fn tab ->
+            :dets.close(tab)
+       end}
   end
 
   def disk_type(tab) do
@@ -2199,34 +2059,27 @@ defmodule :m_mnesia_lib do
   end
 
   def dets_sync_open(tab, ref, file) do
-    args = [
-      {:file, file},
-      {:keypos, 2},
-      {:repair, :mnesia_monitor.get_env(:auto_repair)},
-      {:type, disk_type(tab)}
-    ]
-
+    args = [{:file, file}, {:keypos, 2}, {:repair,
+                                            :mnesia_monitor.get_env(:auto_repair)},
+                                             {:type, disk_type(tab)}]
     dets_sync_open(ref, args)
   end
 
   def lock_table(tab) do
-    :global.set_lock({{:mnesia_table_lock, tab}, self()}, [node()], :infinity)
+    :global.set_lock({{:mnesia_table_lock, tab}, self()},
+                       [node()], :infinity)
   end
 
   def unlock_table(tab) do
-    :global.del_lock(
-      {{:mnesia_table_lock, tab}, self()},
-      [node()]
-    )
+    :global.del_lock({{:mnesia_table_lock, tab}, self()},
+                       [node()])
   end
 
   def dets_sync_open(tab, args) do
     lock_table(tab)
-
-    case :dets.open_file(tab, args) do
+    case (:dets.open_file(tab, args)) do
       {:ok, ^tab} ->
         {:ok, tab}
-
       other ->
         dets_sync_close(tab)
         other
@@ -2240,7 +2093,6 @@ defmodule :m_mnesia_lib do
       :error, _ ->
         :ok
     end
-
     unlock_table(tab)
     :ok
   end
@@ -2249,33 +2101,24 @@ defmodule :m_mnesia_lib do
     val({tab, :index})
   end
 
-  Record.defrecord(:r_debug_info, :debug_info,
-    id: :undefined,
-    function: :undefined,
-    context: :undefined,
-    file: :undefined,
-    line: :undefined
-  )
-
+  Record.defrecord(:r_debug_info, :debug_info, id: :undefined,
+                                      function: :undefined, context: :undefined,
+                                      file: :undefined, line: :undefined)
   def scratch_debug_fun() do
     dbg_out('scratch_debug_fun(): ~p~n', [:mnesia_debug])
-
     try do
       :ets.delete(:mnesia_debug)
     catch
       :error, _ ->
         :ok
     end
-
-    _ =
-      :ets.new(
-        :mnesia_debug,
-        [:set, :public, :named_table, {:keypos, 2}]
-      )
+    _ = :ets.new(:mnesia_debug,
+                   [:set, :public, :named_table, {:keypos, 2}])
   end
 
   def activate_debug_fun(funId, fun, initialContext, file, line) do
-    info = r_debug_info(id: funId, function: fun, context: initialContext, file: file, line: line)
+    info = r_debug_info(id: funId, function: fun,
+               context: initialContext, file: file, line: line)
     update_debug_info(info)
   end
 
@@ -2288,7 +2131,6 @@ defmodule :m_mnesia_lib do
         scratch_debug_fun()
         :ets.insert(:mnesia_debug, info)
     end
-
     dbg_out('update_debug_info(~p)~n', [info])
     :ok
   end
@@ -2300,40 +2142,28 @@ defmodule :m_mnesia_lib do
       :error, _ ->
         :ok
     end
-
     :ok
   end
 
   def eval_debug_fun(funId, evalContext, evalFile, evalLine) do
     try do
-      case :ets.lookup(:mnesia_debug, funId) do
+      case (:ets.lookup(:mnesia_debug, funId)) do
         [] ->
           :ok
-
         [info] ->
           oldContext = r_debug_info(info, :context)
-
-          dbg_out(
-            '~s(~p): ~w activated in ~s(~p)~n  eval_debug_fun(~w, ~w)~n',
-            [
-              :filename.basename(evalFile),
-              evalLine,
-              r_debug_info(info, :id),
-              :filename.basename(r_debug_info(info, :file)),
-              r_debug_info(info, :line),
-              oldContext,
-              evalContext
-            ]
-          )
-
+          dbg_out('~s(~p): ~w activated in ~s(~p)~n  eval_debug_fun(~w, ~w)~n',
+                    [:filename.basename(evalFile), evalLine, r_debug_info(info, :id),
+                                                                 :filename.basename(r_debug_info(info, :file)),
+                                                                     r_debug_info(info, :line),
+                                                                         oldContext,
+                                                                             evalContext])
           fun = r_debug_info(info, :function)
           newContext = fun.(oldContext, evalContext)
-
-          case :ets.lookup(:mnesia_debug, funId) do
+          case (:ets.lookup(:mnesia_debug, funId)) do
             [^info] when newContext != oldContext ->
               newInfo = r_debug_info(info, context: newContext)
               update_debug_info(newInfo)
-
             _ ->
               :ok
           end
@@ -2347,4 +2177,5 @@ defmodule :m_mnesia_lib do
   def is_debug_compiled() do
     false
   end
+
 end

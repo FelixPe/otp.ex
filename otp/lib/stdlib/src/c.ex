@@ -1,74 +1,48 @@
 defmodule :m_c do
   use Bitwise
   import :io, only: [format: 1, format: 2]
-
-  import :lists,
-    only: [
-      flatmap: 2,
-      flatten: 1,
-      foldl: 3,
-      foreach: 2,
-      keysort: 2,
-      max: 1,
-      min: 1,
-      reverse: 1,
-      sort: 1,
-      sublist: 3
-    ]
-
+  import :lists, only: [flatmap: 2, flatten: 1, foldl: 3,
+                          foreach: 2, keysort: 2, reverse: 1, sort: 1,
+                          sublist: 3]
   require Record
-
-  Record.defrecord(:r_docs_v1, :docs_v1,
-    anno: :undefined,
-    beam_language: :erlang,
-    format: "application/erlang+html",
-    module_doc: :undefined,
-    metadata: %{otp_doc_vsn: {1, 0, 0}},
-    docs: :undefined
-  )
-
-  Record.defrecord(:r_docs_v1_entry, :docs_v1_entry,
-    kind_name_arity: :undefined,
-    anno: :undefined,
-    signature: :undefined,
-    doc: :undefined,
-    metadata: :undefined
-  )
-
+  Record.defrecord(:r_docs_v1, :docs_v1, anno: :undefined,
+                                   beam_language: :erlang, format: "application/erlang+html",
+                                   module_doc: :undefined,
+                                   metadata: %{otp_doc_vsn: {1, 0, 0}},
+                                   docs: :undefined)
+  Record.defrecord(:r_docs_v1_entry, :docs_v1_entry, kind_name_arity: :undefined,
+                                         anno: :undefined,
+                                         signature: :undefined, doc: :undefined,
+                                         metadata: :undefined)
   def help() do
-    :io.put_chars(
-      "bt(Pid)    -- stack backtrace for a process\nc(Mod)     -- compile and load module or file <Mod>\ncd(Dir)    -- change working directory\nflush()    -- flush any messages sent to the shell\nhelp()     -- help info\nh(M)       -- module documentation\nh(M,F)     -- module function documentation\nh(M,F,A)   -- module function arity documentation\ni()        -- information about the system\nni()       -- information about the networked system\ni(X,Y,Z)   -- information about pid <X,Y,Z>\nl(Module)  -- load or reload module\nlm()       -- load all modified modules\nlc([File]) -- compile a list of Erlang modules\nls()       -- list files in the current directory\nls(Dir)    -- list files in directory <Dir>\nm()        -- which modules are loaded\nm(Mod)     -- information about module <Mod>\nmm()       -- list all modified modules\nmemory()   -- memory allocation information\nmemory(T)  -- memory allocation information of type <T>\nnc(File)   -- compile and load code in <File> on all nodes\nnl(Module) -- load module on all nodes\npid(X,Y,Z) -- convert X,Y,Z to a Pid\npwd()      -- print working directory\nq()        -- quit - shorthand for init:stop()\nregs()     -- information about registered processes\nnregs()    -- information about all registered processes\nuptime()   -- print node uptime\nxm(M)      -- cross reference check a module\ny(File)    -- generate a Yecc parser\n"
-    )
+    :io.put_chars("bt(Pid)    -- stack backtrace for a process\nc(Mod)     -- compile and load module or file <Mod>\ncd(Dir)    -- change working directory\nflush()    -- flush any messages sent to the shell\nhelp()     -- help info\nh(M)       -- module documentation\nh(M,F)     -- module function documentation\nh(M,F,A)   -- module function arity documentation\ni()        -- information about the system\nni()       -- information about the networked system\ni(X,Y,Z)   -- information about pid <X,Y,Z>\nl(Module)  -- load or reload module\nlm()       -- load all modified modules\nlc([File]) -- compile a list of Erlang modules\nls()       -- list files in the current directory\nls(Dir)    -- list files in directory <Dir>\nm()        -- which modules are loaded\nm(Mod)     -- information about module <Mod>\nmm()       -- list all modified modules\nmemory()   -- memory allocation information\nmemory(T)  -- memory allocation information of type <T>\nnc(File)   -- compile and load code in <File> on all nodes\nnl(Module) -- load module on all nodes\npid(X,Y,Z) -- convert X,Y,Z to a Pid\npwd()      -- print working directory\nq()        -- quit - shorthand for init:stop()\nregs()     -- information about registered processes\nnregs()    -- information about all registered processes\nuptime()   -- print node uptime\nxm(M)      -- cross reference check a module\ny(File)    -- generate a Yecc parser\n")
   end
 
   def c(module) do
     c(module, [])
   end
 
-  def c(module, singleOption) when not is_list(singleOption) do
+  def c(module, singleOption) when not
+                                    is_list(singleOption) do
     c(module, [singleOption])
   end
 
   def c(module, opts) when is_atom(module) do
-    suffix =
-      case :filename.extension(module) do
-        '' ->
-          src_suffix(opts)
-
-        s ->
-          s
-      end
-
+    suffix = (case (:filename.extension(module)) do
+                '' ->
+                  src_suffix(opts)
+                s ->
+                  s
+              end)
     srcFile = :filename.rootname(module, suffix) ++ suffix
-
-    case :filelib.is_file(srcFile) do
+    case (:filelib.is_file(srcFile)) do
       true ->
         compile_and_load(srcFile, opts)
-
       false ->
-        c(module, opts, fn _ ->
-          true
-        end)
+        c(module, opts,
+            fn _ ->
+                 true
+            end)
     end
   end
 
@@ -77,26 +51,23 @@ defmodule :m_c do
   end
 
   def c(module, options, filter) when is_atom(module) do
-    case find_beam(module) do
+    case (find_beam(module)) do
       beamFile when is_list(beamFile) ->
         c(module, options, filter, beamFile)
-
       error ->
         {:error, error}
     end
   end
 
   defp c(module, options, filter, beamFile) do
-    case compile_info(module, beamFile) do
+    case (compile_info(module, beamFile)) do
       info when is_list(info) ->
-        case find_source(beamFile, info) do
+        case (find_source(beamFile, info)) do
           srcFile when is_list(srcFile) ->
             c(srcFile, options, filter, beamFile, info)
-
           error ->
             error
         end
-
       error ->
         error
     end
@@ -104,133 +75,131 @@ defmodule :m_c do
 
   defp c(srcFile, newOpts, filter, beamFile, info) do
     f = fn opt ->
-      not is_outdir_opt(opt) and filter.(opt)
-    end
-
-    options =
-      newOpts ++
-        [{:outdir, :filename.dirname(beamFile)}] ++
-        :lists.filter(
-          f,
-          old_options(info)
-        )
-
+             not is_outdir_opt(opt) and filter.(opt)
+        end
+    options = newOpts ++ [{:outdir,
+                             :filename.dirname(beamFile)}] ++ :lists.filter(f,
+                                                                              old_options(info))
     format('Recompiling ~ts\n', [srcFile])
     safe_recompile(srcFile, options, beamFile)
   end
 
   def h(module) do
-    case :code.get_doc(module) do
-      {:ok, r_docs_v1(format: "application/erlang+html") = docs} ->
+    case (:code.get_doc(module)) do
+      {:ok, r_docs_v1(format: format) = docs} when format === "application/erlang+html" or
+                                             binary_part(format, 0, 5) === "text/"
+                                           ->
         format_docs(:shell_docs.render(module, docs))
-
       {:ok, r_docs_v1(format: enc)} ->
         {:error, {:unknown_format, enc}}
-
       error ->
         error
     end
   end
 
   def h(module, function) do
-    case :code.get_doc(module) do
-      {:ok, r_docs_v1(format: "application/erlang+html") = docs} ->
+    case (:code.get_doc(module)) do
+      {:ok, r_docs_v1(format: format) = docs} when format === "application/erlang+html" or
+                                             binary_part(format, 0, 5) === "text/"
+                                           ->
         format_docs(:shell_docs.render(module, function, docs))
-
       {:ok, r_docs_v1(format: enc)} ->
         {:error, {:unknown_format, enc}}
-
       error ->
         error
     end
   end
 
   def h(module, function, arity) do
-    case :code.get_doc(module) do
-      {:ok, r_docs_v1(format: "application/erlang+html") = docs} ->
-        format_docs(:shell_docs.render(module, function, arity, docs))
-
+    case (:code.get_doc(module)) do
+      {:ok, r_docs_v1(format: format) = docs} when format === "application/erlang+html" or
+                                             binary_part(format, 0, 5) === "text/"
+                                           ->
+        format_docs(:shell_docs.render(module, function, arity,
+                                         docs))
       {:ok, r_docs_v1(format: enc)} ->
         {:error, {:unknown_format, enc}}
-
       error ->
         error
     end
   end
 
   def ht(module) do
-    case :code.get_doc(module) do
-      {:ok, r_docs_v1(format: "application/erlang+html") = docs} ->
+    case (:code.get_doc(module)) do
+      {:ok, r_docs_v1(format: format) = docs} when format === "application/erlang+html" or
+                                             binary_part(format, 0, 5) === "text/"
+                                           ->
         format_docs(:shell_docs.render_type(module, docs))
-
       {:ok, r_docs_v1(format: enc)} ->
         {:error, {:unknown_format, enc}}
-
       error ->
         error
     end
   end
 
   def ht(module, type) do
-    case :code.get_doc(module) do
-      {:ok, r_docs_v1(format: "application/erlang+html") = docs} ->
+    case (:code.get_doc(module)) do
+      {:ok, r_docs_v1(format: format) = docs} when format === "application/erlang+html" or
+                                             binary_part(format, 0, 5) === "text/"
+                                           ->
         format_docs(:shell_docs.render_type(module, type, docs))
-
       {:ok, r_docs_v1(format: enc)} ->
         {:error, {:unknown_format, enc}}
-
       error ->
         error
     end
   end
 
   def ht(module, type, arity) do
-    case :code.get_doc(module) do
-      {:ok, r_docs_v1(format: "application/erlang+html") = docs} ->
-        format_docs(:shell_docs.render_type(module, type, arity, docs))
-
+    case (:code.get_doc(module)) do
+      {:ok, r_docs_v1(format: format) = docs} when format === "application/erlang+html" or
+                                             binary_part(format, 0, 5) === "text/"
+                                           ->
+        format_docs(:shell_docs.render_type(module, type, arity,
+                                              docs))
       {:ok, r_docs_v1(format: enc)} ->
         {:error, {:unknown_format, enc}}
-
       error ->
         error
     end
   end
 
   def hcb(module) do
-    case :code.get_doc(module) do
-      {:ok, r_docs_v1(format: "application/erlang+html") = docs} ->
+    case (:code.get_doc(module)) do
+      {:ok, r_docs_v1(format: format) = docs} when format === "application/erlang+html" or
+                                             binary_part(format, 0, 5) === "text/"
+                                           ->
         format_docs(:shell_docs.render_callback(module, docs))
-
       {:ok, r_docs_v1(format: enc)} ->
         {:error, {:unknown_format, enc}}
-
       error ->
         error
     end
   end
 
   def hcb(module, callback) do
-    case :code.get_doc(module) do
-      {:ok, r_docs_v1(format: "application/erlang+html") = docs} ->
-        format_docs(:shell_docs.render_callback(module, callback, docs))
-
+    case (:code.get_doc(module)) do
+      {:ok, r_docs_v1(format: format) = docs} when format === "application/erlang+html" or
+                                             binary_part(format, 0, 5) === "text/"
+                                           ->
+        format_docs(:shell_docs.render_callback(module,
+                                                  callback, docs))
       {:ok, r_docs_v1(format: enc)} ->
         {:error, {:unknown_format, enc}}
-
       error ->
         error
     end
   end
 
   def hcb(module, callback, arity) do
-    case :code.get_doc(module) do
-      {:ok, r_docs_v1(format: "application/erlang+html") = docs} ->
-        format_docs(:shell_docs.render_callback(module, callback, arity, docs))
-
+    case (:code.get_doc(module)) do
+      {:ok, r_docs_v1(format: format) = docs} when format === "application/erlang+html" or
+                                             binary_part(format, 0, 5) === "text/"
+                                           ->
+        format_docs(:shell_docs.render_callback(module,
+                                                  callback, arity, docs))
       {:ok, r_docs_v1(format: enc)} ->
         {:error, {:unknown_format, enc}}
-
       error ->
         error
     end
@@ -241,78 +210,65 @@ defmodule :m_c do
   end
 
   defp format_docs(docs) do
-    {:match, lines} =
-      :re.run(docs, '(.+\n|\n)', [:unicode, :global, {:capture, :all_but_first, :binary}])
-
-    _ =
-      paged_output(
-        fn line, _ ->
-          format('~ts', line)
-          {1, :undefined}
-        end,
-        :undefined,
-        lines
-      )
-
+    {:match, lines} = :re.run(docs, '(.+\n|\n)',
+                                [:unicode, :global, {:capture, :all_but_first,
+                                                       :binary}])
+    _ = paged_output(fn line, _ ->
+                          format('~ts', line)
+                          {1, :undefined}
+                     end,
+                       :undefined, lines)
     :ok
   end
 
   defp old_options(info) do
-    case :lists.keyfind(:options, 1, info) do
+    case (:lists.keyfind(:options, 1, info)) do
       {:options, opts} ->
         opts
-
       false ->
         []
     end
   end
 
   defp find_source(beamFile, info) do
-    case :lists.keyfind(:source, 1, info) do
+    case (:lists.keyfind(:source, 1, info)) do
       {:source, srcFile} ->
-        case :filelib.is_file(srcFile) do
+        case (:filelib.is_file(srcFile)) do
           true ->
             srcFile
-
           false ->
             find_source(beamFile)
         end
-
       _ ->
         find_source(beamFile)
     end
   end
 
   defp find_source(beamFile) do
-    case :filelib.find_source(beamFile) do
+    case (:filelib.find_source(beamFile)) do
       {:ok, srcFile} ->
         srcFile
-
       _ ->
         {:error, :no_source}
     end
   end
 
   defp find_beam(module) when is_atom(module) do
-    case :code.which(module) do
-      beam when is_list(beam) and beam !== '' ->
-        case :erlang.module_loaded(module) do
+    case (:code.which(module)) do
+      beam when (is_list(beam) and beam !== '') ->
+        case (:erlang.module_loaded(module)) do
           false ->
             beam
-
           true ->
-            case :filelib.is_file(beam) do
+            case (:filelib.is_file(beam)) do
               true ->
                 beam
-
               false ->
                 find_beam_1(module)
             end
         end
-
       other when other === '' or other === :cover_compiled ->
         find_beam_1(module)
-
       error ->
         error
     end
@@ -320,18 +276,16 @@ defmodule :m_c do
 
   defp find_beam_1(module) do
     file = :erlang.atom_to_list(module) ++ :code.objfile_extension()
-
-    case :code.where_is_file(file) do
+    case (:code.where_is_file(file)) do
       beam when is_list(beam) ->
         beam
-
       error ->
         error
     end
   end
 
   defp compile_info(module, beam) when is_atom(module) do
-    case :erlang.module_loaded(module) do
+    case (:erlang.module_loaded(module)) do
       true ->
         try do
           :erlang.get_module_info(module, :compile)
@@ -339,12 +293,10 @@ defmodule :m_c do
           _, _ ->
             []
         end
-
       false ->
-        case :beam_lib.chunks(beam, [:compile_info]) do
+        case (:beam_lib.chunks(beam, [:compile_info])) do
           {:ok, {_Module, [{:compile_info, info}]}} ->
             info
-
           error ->
             error
         end
@@ -353,59 +305,42 @@ defmodule :m_c do
 
   defp safe_recompile(file, options, beamFile) do
     backup = beamFile ++ '.bak'
-
-    case :file.rename(beamFile, backup) do
-      status
-      when status === :ok or
-             status === {:error, :enoent} ->
-        case compile_and_load(file, options) do
+    case (:file.rename(beamFile, backup)) do
+      status when status === :ok or
+                    status === {:error, :enoent}
+                  ->
+        case (compile_and_load(file, options)) do
           {:ok, _} = result ->
-            _ =
-              cond do
-                status === :ok ->
-                  :file.delete(backup)
-
-                true ->
-                  :ok
-              end
-
+            _ = (cond do
+                   status === :ok ->
+                     :file.delete(backup)
+                   true ->
+                     :ok
+                 end)
             result
-
           error ->
-            _ =
-              cond do
-                status === :ok ->
-                  :file.rename(backup, beamFile)
-
-                true ->
-                  :ok
-              end
-
+            _ = (cond do
+                   status === :ok ->
+                     :file.rename(backup, beamFile)
+                   true ->
+                     :ok
+                 end)
             error
         end
-
       error ->
         error
     end
   end
 
   defp compile_and_load(file, opts0) when is_list(opts0) do
-    opts = [
-      :report_errors,
-      :report_warnings
-      | ensure_from(
-          :filename.extension(file),
-          ensure_outdir('.', opts0)
-        )
-    ]
-
-    case :compile.file(file, opts) do
+    opts = [:report_errors, :report_warnings |
+                                ensure_from(:filename.extension(file),
+                                              ensure_outdir('.', opts0))]
+    case (:compile.file(file, opts)) do
       {:ok, mod} ->
         purge_and_load(mod, file, opts)
-
       {:ok, mod, _Ws} ->
         purge_and_load(mod, file, opts)
-
       other ->
         other
     end
@@ -416,25 +351,18 @@ defmodule :m_c do
   end
 
   defp ensure_from(suffix, opts0) do
-    case :lists.partition(
-           &is_from_opt/1,
-           opts0 ++ from_opt(suffix)
-         ) do
+    case (:lists.partition(&is_from_opt/1,
+                             opts0 ++ from_opt(suffix))) do
       {[opt | _], opts} ->
         [opt | opts]
-
       {[], opts} ->
         opts
     end
   end
 
   defp ensure_outdir(dir, opts0) do
-    {[opt | _], opts} =
-      :lists.partition(
-        &is_outdir_opt/1,
-        opts0 ++ [{:outdir, dir}]
-      )
-
+    {[opt | _], opts} = :lists.partition(&is_outdir_opt/1,
+                                           opts0 ++ [{:outdir, dir}])
     [opt | opts]
   end
 
@@ -454,10 +382,6 @@ defmodule :m_c do
     true
   end
 
-  defp is_from_opt(:from_beam) do
-    true
-  end
-
   defp is_from_opt(_) do
     false
   end
@@ -470,10 +394,6 @@ defmodule :m_c do
     [:from_asm]
   end
 
-  defp from_opt('.beam') do
-    [:from_beam]
-  end
-
   defp from_opt(_) do
     []
   end
@@ -483,10 +403,9 @@ defmodule :m_c do
   end
 
   defp outdir([opt | rest]) do
-    case opt do
+    case (opt) do
       {:outdir, d} ->
         d
-
       _ ->
         outdir(rest)
     end
@@ -498,10 +417,6 @@ defmodule :m_c do
 
   defp src_suffix([:from_asm | _]) do
     '.S'
-  end
-
-  defp src_suffix([:from_beam | _]) do
-    '.beam'
   end
 
   defp src_suffix([_ | opts]) do
@@ -516,26 +431,21 @@ defmodule :m_c do
     dir = outdir(opts)
     base = :filename.basename(file, src_suffix(opts))
     outFile = :filename.join(dir, base)
-
-    case :compile.output_generated(opts) do
+    case (:compile.output_generated(opts)) do
       true ->
-        case :erlang.atom_to_list(mod) do
+        case (:erlang.atom_to_list(mod)) do
           ^base ->
             :code.purge(mod)
-
-            case :code.load_abs(outFile, mod) do
+            case (:code.load_abs(outFile, mod)) do
               {:error, _R} = error ->
                 error
-
               _ ->
                 {:ok, mod}
             end
-
           _OtherMod ->
             format('** Module name \'~p\' does not match file name \'~tp\' **~n', [mod, file])
             {:error, :badfile}
         end
-
       false ->
         format('** Warning: No object file created - nothing loaded **~n', [])
         :ok
@@ -543,29 +453,22 @@ defmodule :m_c do
   end
 
   def lc(args) do
-    case (try do
+    case ((try do
             split(args, [], [])
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       :error ->
         :error
-
       {opts, files} ->
-        cOpts = [
-          :report_errors,
-          :report_warnings
-          | reverse(opts)
-        ]
-
-        foreach(
-          fn file ->
-            :compile.file(file, cOpts)
-          end,
-          reverse(files)
-        )
+        cOpts = [:report_errors, :report_warnings |
+                                     reverse(opts)]
+        foreach(fn file ->
+                     :compile.file(file, cOpts)
+                end,
+                  reverse(files))
     end
   end
 
@@ -582,21 +485,14 @@ defmodule :m_c do
         :erlang.halt(1)
     else
       {opts, files} ->
-        cOpts = [
-          :report_errors,
-          :report_warnings
-          | reverse(opts)
-        ]
-
-        res =
-          for file <- reverse(files) do
-            :compile.file(file, cOpts)
-          end
-
-        case :lists.member(:error, res) do
+        cOpts = [:report_errors, :report_warnings |
+                                     reverse(opts)]
+        res = (for file <- reverse(files) do
+                 :compile.file(file, cOpts)
+               end)
+        case (:lists.member(:error, res)) do
           true ->
             :erlang.halt(1)
-
           false ->
             :erlang.halt(0)
         end
@@ -604,19 +500,19 @@ defmodule :m_c do
   end
 
   defp split([:"@i", dir | t], opts, files) do
-    split(t, [{:i, :erlang.atom_to_list(dir)} | opts], files)
+    split(t, [{:i, :erlang.atom_to_list(dir)} | opts],
+            files)
   end
 
   defp split([:"@o", dir | t], opts, files) do
-    split(t, [{:outdir, :erlang.atom_to_list(dir)} | opts], files)
+    split(t, [{:outdir, :erlang.atom_to_list(dir)} | opts],
+            files)
   end
 
   defp split([:"@d", def__ | t], opts, files) do
-    split(
-      t,
-      [split_def(:erlang.atom_to_list(def__), []) | opts],
-      files
-    )
+    split(t,
+            [split_def(:erlang.atom_to_list(def__), []) | opts],
+            files)
   end
 
   defp split([file | t], opts, files) do
@@ -640,17 +536,16 @@ defmodule :m_c do
   end
 
   defp make_term(str) do
-    case :erl_scan.string(str) do
+    case (:erl_scan.string(str)) do
       {:ok, tokens, _} ->
-        case :erl_parse.parse_term(tokens ++ [{:dot, :erl_anno.new(1)}]) do
+        case (:erl_parse.parse_term(tokens ++ [{:dot,
+                                                  :erl_anno.new(1)}])) do
           {:ok, term} ->
             term
-
           {:error, {_, _, reason}} ->
             :io.format('~ts: ~ts~n', [reason, str])
             throw(:error)
         end
-
       {:error, {_, _, reason}, _} ->
         :io.format('~ts: ~ts~n', [reason, str])
         throw(:error)
@@ -663,28 +558,20 @@ defmodule :m_c do
 
   def nc(file, opts0) when is_list(opts0) do
     opts = opts0 ++ [:report_errors, :report_warnings]
-
-    case :compile.file(file, opts) do
+    case (:compile.file(file, opts)) do
       {:ok, mod} ->
         dir = outdir(opts)
-
-        obj =
-          :filename.basename(
-            file,
-            '.erl'
-          ) ++ :code.objfile_extension()
-
+        obj = :filename.basename(file,
+                                   '.erl') ++ :code.objfile_extension()
         fname = :filename.join(dir, obj)
-
-        case :file.read_file(fname) do
+        case (:file.read_file(fname)) do
           {:ok, bin} ->
-            :rpc.eval_everywhere(:code, :load_binary, [mod, fname, bin])
+            :rpc.eval_everywhere(:code, :load_binary,
+                                   [mod, fname, bin])
             {:ok, mod}
-
           other ->
             other
         end
-
       other ->
         other
     end
@@ -700,10 +587,10 @@ defmodule :m_c do
   end
 
   def nl(mod) do
-    case :code.get_object_code(mod) do
+    case (:code.get_object_code(mod)) do
       {_Module, bin, fname} ->
-        :rpc.eval_everywhere(:code, :load_binary, [mod, fname, bin])
-
+        :rpc.eval_everywhere(:code, :load_binary,
+                               [mod, fname, bin])
       other ->
         other
     end
@@ -720,20 +607,14 @@ defmodule :m_c do
   def i(ps) do
     iformat('Pid', 'Initial Call', 'Heap', 'Reds', 'Msgs')
     iformat('Registered', 'Current Function', 'Stack', '', '')
-
-    case paged_output(
-           fn pid, {r, m, h, s} ->
-             {a, b, c, d} = display_info(pid)
-             {2, {r + a, m + b, h + c, s + d}}
-           end,
-           2,
-           {0, 0, 0, 0},
-           ps
-         ) do
+    case (paged_output(fn pid, {r, m, h, s} ->
+                            {a, b, c, d} = display_info(pid)
+                            {2, {r + a, m + b, h + c, s + d}}
+                       end,
+                         2, {0, 0, 0, 0}, ps)) do
       {r, m, h, s} ->
         iformat('Total', '', w(h), w(r), w(m))
         iformat('', '', w(s), '', '')
-
       :less ->
         :ok
     end
@@ -744,24 +625,20 @@ defmodule :m_c do
   end
 
   defp paged_output(fun, currLine, acc, items) do
-    limit =
-      case :io.rows() do
-        {:ok, rows} ->
-          rows - 2
-
-        _ ->
-          100
-      end
-
+    limit = (case (:io.rows()) do
+               {:ok, rows} ->
+                 rows - 2
+               _ ->
+                 100
+             end)
     paged_output(fun, currLine, limit, acc, items)
   end
 
   defp paged_output(printFun, currLine, limit, acc, items)
-       when currLine >= limit do
-    case more() do
+      when currLine >= limit do
+    case (more()) do
       :more ->
         paged_output(printFun, 0, limit, acc, items)
-
       :less ->
         :less
     end
@@ -769,7 +646,8 @@ defmodule :m_c do
 
   defp paged_output(printFun, currLine, limit, acc, [h | t]) do
     {lines, newAcc} = printFun.(h, acc)
-    paged_output(printFun, currLine + lines, limit, newAcc, t)
+    paged_output(printFun, currLine + lines, limit, newAcc,
+                   t)
   end
 
   defp paged_output(_, _, _, acc, []) do
@@ -777,29 +655,24 @@ defmodule :m_c do
   end
 
   defp more() do
-    case get_line(:"more (y/n)? (y) ", 'y\n') do
+    case (get_line(:"more (y/n)? (y) ", 'y\n')) do
       'c\n' ->
         :more
-
       'y\n' ->
         :more
-
       'q\n' ->
         :less
-
       'n\n' ->
         :less
-
       _ ->
         more()
     end
   end
 
   defp get_line(p, default) do
-    case line_string(:io.get_line(p)) do
+    case (line_string(:io.get_line(p))) do
       '\n' ->
         default
-
       l ->
         l
     end
@@ -829,51 +702,37 @@ defmodule :m_c do
   end
 
   def display_info(pid) do
-    case pinfo(pid) do
+    case (pinfo(pid)) do
       :undefined ->
         {0, 0, 0, 0}
-
       info ->
         call = initial_call(info)
-
-        curr =
-          case fetch(:current_function, info) do
-            {mod, f, args} when is_list(args) ->
-              {mod, f, length(args)}
-
-            other ->
-              other
-          end
-
+        curr = (case (fetch(:current_function, info)) do
+                  {mod, f, args} when is_list(args) ->
+                    {mod, f, length(args)}
+                  other ->
+                    other
+                end)
         reds = fetch(:reductions, info)
         lM = fetch(:message_queue_len, info)
         hS = fetch(:heap_size, info)
         sS = fetch(:stack_size, info)
         iformat(w(pid), mfa_string(call), w(hS), w(reds), w(lM))
-
-        iformat(
-          case fetch(:registered_name, info) do
-            0 ->
-              ''
-
-            x ->
-              :io_lib.format('~tw', [x])
-          end,
-          mfa_string(curr),
-          w(sS),
-          '',
-          ''
-        )
-
+        iformat(case (fetch(:registered_name, info)) do
+                  0 ->
+                    ''
+                  x ->
+                    :io_lib.format('~tw', [x])
+                end,
+                  mfa_string(curr), w(sS), '', '')
         {reds, lM, hS, sS}
     end
   end
 
   defp initial_call(info) do
-    case fetch(:initial_call, info) do
+    case (fetch(:initial_call, info)) do
       {:proc_lib, :init_p, _} ->
         :proc_lib.translate_initial_call(info)
-
       iCall ->
         iCall
     end
@@ -884,46 +743,37 @@ defmodule :m_c do
   end
 
   defp all_procs() do
-    case :erlang.is_alive() do
+    case (:erlang.is_alive()) do
       true ->
-        flatmap(
-          fn n ->
-            :rpc.call(n, :erlang, :processes, [])
-          end,
-          [node() | :erlang.nodes()]
-        )
-
+        flatmap(fn n ->
+                     :rpc.call(n, :erlang, :processes, [])
+                end,
+                  [node() | :erlang.nodes()])
       false ->
         :erlang.processes()
     end
   end
 
   defp pinfo(pid) do
-    case :erlang.is_alive() do
+    case (:erlang.is_alive()) do
       true ->
         :rpc.call(node(pid), :erlang, :process_info, [pid])
-
       false ->
         :erlang.process_info(pid)
     end
   end
 
   defp fetch(key, info) do
-    case :lists.keyfind(key, 1, info) do
+    case (:lists.keyfind(key, 1, info)) do
       {_, val} ->
         val
-
       false ->
         0
     end
   end
 
   def pid(x, y, z) do
-    :erlang.list_to_pid(
-      '<' ++
-        :erlang.integer_to_list(x) ++
-        '.' ++ :erlang.integer_to_list(y) ++ '.' ++ :erlang.integer_to_list(z) ++ '>'
-    )
+    :erlang.list_to_pid('<' ++ :erlang.integer_to_list(x) ++ '.' ++ :erlang.integer_to_list(y) ++ '.' ++ :erlang.integer_to_list(z) ++ '>')
   end
 
   def i(x, y, z) do
@@ -935,16 +785,15 @@ defmodule :m_c do
   end
 
   def bt(pid) do
-    case (try do
+    case ((try do
             :erlang.process_display(pid, :backtrace)
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       {:EXIT, _} ->
         :undefined
-
       _ ->
         :ok
     end
@@ -952,13 +801,10 @@ defmodule :m_c do
 
   def m() do
     mformat('Module', 'File')
-
-    foreach(
-      fn {mod, file} ->
-        mformat(mod, file)
-      end,
-      sort(:code.all_loaded())
-    )
+    foreach(fn {mod, file} ->
+                 mformat(mod, file)
+            end,
+              sort(:code.all_loaded()))
   end
 
   defp mformat(a1, a2) do
@@ -976,10 +822,10 @@ defmodule :m_c do
   end
 
   def erlangrc() do
-    case :init.get_argument(:home) do
+    case (:init.get_argument(:home)) do
       {:ok, [[home]]} ->
-        erlangrc([home])
-
+        userConfig = :filename.basedir(:user_config, 'erlang')
+        erlangrc([home, userConfig])
       _ ->
         {:error, :enoent}
     end
@@ -994,37 +840,26 @@ defmodule :m_c do
   end
 
   defp f_p_e(p, f) do
-    case :file.path_eval(p, f) do
+    case (:file.path_eval(p, f)) do
       {:error, :enoent} = enoent ->
         enoent
-
       {:error, e = {line, _Mod, _Term}} ->
-        :erlang.error('file:path_eval(~tp,~tp): error on line ~p: ~ts~n', [
-          p,
-          f,
-          line,
-          :file.format_error(e)
-        ])
-
+        :erlang.error('file:path_eval(~tp,~tp): error on line ~p: ~ts~n', [p, f, line, :file.format_error(e)])
         {:error, e}
-
       {:error, e} ->
         :erlang.error('file:path_eval(~tp,~tp): ~ts~n', [p, f, :file.format_error(e)])
         {:error, e}
-
       other ->
         other
     end
   end
 
   def bi(i) do
-    case :erlang.system_info(i) do
+    case (:erlang.system_info(i)) do
       x when is_binary(x) ->
         :io.put_chars(:erlang.binary_to_list(x))
-
       x when is_list(x) ->
         :io.put_chars(x)
-
       x ->
         format('~w', [x])
     end
@@ -1033,12 +868,9 @@ defmodule :m_c do
   def m(m) do
     l = m.module_info()
     {:exports, e} = :lists.keyfind(:exports, 1, l)
-    time = get_compile_time(l)
     cOpts = get_compile_options(l)
     format('Module: ~w~n', [m])
     print_md5(l)
-    format('Compiled: ')
-    print_time(time)
     print_object_file(m)
     format('Compiler options:  ~p~n', [cOpts])
     format('Exports: ~n', [])
@@ -1046,56 +878,41 @@ defmodule :m_c do
   end
 
   defp print_object_file(mod) do
-    case :code.is_loaded(mod) do
+    case (:code.is_loaded(mod)) do
       {:file, file} ->
         format('Object file: ~ts\n', [file])
-
       _ ->
         :ignore
     end
   end
 
   defp print_md5(l) do
-    case :lists.keyfind(:md5, 1, l) do
-      {:md5, <<mD5::size(128)>>} ->
+    case (:lists.keyfind(:md5, 1, l)) do
+      {:md5, <<mD5 :: size(128)>>} ->
         :io.format('MD5: ~.16b~n', [mD5])
-
       _ ->
         :ok
     end
   end
 
-  defp get_compile_time(l) do
-    case get_compile_info(l, :time) do
-      {:ok, val} ->
-        val
-
-      :error ->
-        :notime
-    end
-  end
-
   defp get_compile_options(l) do
-    case get_compile_info(l, :options) do
+    case (get_compile_info(l, :options)) do
       {:ok, val} ->
         val
-
       :error ->
         []
     end
   end
 
   defp get_compile_info(l, tag) do
-    case :lists.keyfind(:compile, 1, l) do
+    case (:lists.keyfind(:compile, 1, l)) do
       {:compile, i} ->
-        case :lists.keyfind(tag, 1, i) do
+        case (:lists.keyfind(tag, 1, i)) do
           {^tag, val} ->
             {:ok, val}
-
           false ->
             :error
         end
-
       false ->
         :error
     end
@@ -1138,88 +955,26 @@ defmodule :m_c do
     :ok
   end
 
-  defp print_time({year, month, day, hour, min, _Secs}) do
-    format('~s ~w ~w, ', [month(month), day, year])
-    format('~.2.0w:~.2.0w~n', [hour, min])
-  end
-
-  defp print_time(:notime) do
-    format('No compile time info available~n', [])
-  end
-
-  defp month(1) do
-    'January'
-  end
-
-  defp month(2) do
-    'February'
-  end
-
-  defp month(3) do
-    'March'
-  end
-
-  defp month(4) do
-    'April'
-  end
-
-  defp month(5) do
-    'May'
-  end
-
-  defp month(6) do
-    'June'
-  end
-
-  defp month(7) do
-    'July'
-  end
-
-  defp month(8) do
-    'August'
-  end
-
-  defp month(9) do
-    'September'
-  end
-
-  defp month(10) do
-    'October'
-  end
-
-  defp month(11) do
-    'November'
-  end
-
-  defp month(12) do
-    'December'
-  end
-
   def flush() do
     receive do
       x ->
-        case :lists.keyfind(:encoding, 1, :io.getopts()) do
+        case (:lists.keyfind(:encoding, 1, :io.getopts())) do
           {:encoding, :unicode} ->
             format('Shell got ~tp~n', [x])
-
           _ ->
             format('Shell got ~p~n', [x])
         end
-
         flush()
-    after
-      0 ->
-        :ok
+    after 0 ->
+      :ok
     end
   end
 
   def nregs() do
-    foreach(
-      fn n ->
-        print_node_regs(n)
-      end,
-      all_regs()
-    )
+    foreach(fn n ->
+                 print_node_regs(n)
+            end,
+              all_regs())
   end
 
   def regs() do
@@ -1227,38 +982,31 @@ defmodule :m_c do
   end
 
   defp all_regs() do
-    case :erlang.is_alive() do
+    case (:erlang.is_alive()) do
       true ->
         for n <- [node() | :erlang.nodes()] do
           {n, :rpc.call(n, :erlang, :registered, [])}
         end
-
       false ->
         [{node(), :erlang.registered()}]
     end
   end
 
   defp print_node_regs({n, list}) when is_list(list) do
-    {pids, ports, _Dead} = pids_and_ports(n, sort(list), [], [], [])
+    {pids, ports, _Dead} = pids_and_ports(n, sort(list), [],
+                                            [], [])
     format('~n** Registered procs on node ~w **~n', [n])
     procformat('Name', 'Pid', 'Initial Call', 'Reds', 'Msgs')
-
-    foreach(
-      fn {name, pI, pid} ->
-        procline(name, pI, pid)
-      end,
-      pids
-    )
-
+    foreach(fn {name, pI, pid} ->
+                 procline(name, pI, pid)
+            end,
+              pids)
     format('~n** Registered ports on node ~w **~n', [n])
     portformat('Name', 'Id', 'Command')
-
-    foreach(
-      fn {name, pI, id} ->
-        portline(name, pI, id)
-      end,
-      ports
-    )
+    foreach(fn {name, pI, id} ->
+                 portline(name, pI, id)
+            end,
+              ports)
   end
 
   defp pids_and_ports(_, [], pids, ports, dead) do
@@ -1266,33 +1014,31 @@ defmodule :m_c do
   end
 
   defp pids_and_ports(node, [name | names], pids, ports, dead) do
-    case pwhereis(node, name) do
+    case (pwhereis(node, name)) do
       pid when is_pid(pid) ->
-        pids_and_ports(node, names, [{name, pinfo(pid), pid} | pids], ports, dead)
-
+        pids_and_ports(node, names,
+                         [{name, pinfo(pid), pid} | pids], ports, dead)
       id when is_port(id) ->
-        pids_and_ports(node, names, pids, [{name, portinfo(id), id} | ports], dead)
-
+        pids_and_ports(node, names, pids,
+                         [{name, portinfo(id), id} | ports], dead)
       :undefined ->
         pids_and_ports(node, names, pids, ports, [name | dead])
     end
   end
 
   defp pwhereis(node, name) do
-    case :erlang.is_alive() do
+    case (:erlang.is_alive()) do
       true ->
         :rpc.call(node, :erlang, :whereis, [name])
-
       false ->
         :erlang.whereis(name)
     end
   end
 
   defp portinfo(id) do
-    case :erlang.is_alive() do
+    case (:erlang.is_alive()) do
       true ->
         [:rpc.call(node(id), :erlang, :port_info, [id, :name])]
-
       false ->
         [:erlang.port_info(id, :name)]
     end
@@ -1302,14 +1048,11 @@ defmodule :m_c do
     call = initial_call(info)
     reds = fetch(:reductions, info)
     lM = fetch(:message_queue_len, info)
-
-    procformat(
-      :io_lib.format('~tw', [name]),
-      :io_lib.format('~w', [pid]),
-      :io_lib.format('~ts', [mfa_string(call)]),
-      :erlang.integer_to_list(reds),
-      :erlang.integer_to_list(lM)
-    )
+    procformat(:io_lib.format('~tw', [name]),
+                 :io_lib.format('~w', [pid]),
+                 :io_lib.format('~ts', [mfa_string(call)]),
+                 :erlang.integer_to_list(reds),
+                 :erlang.integer_to_list(lM))
   end
 
   defp procformat(name, pid, call, reds, lM) do
@@ -1318,7 +1061,8 @@ defmodule :m_c do
 
   defp portline(name, info, id) do
     cmd = fetch(:name, info)
-    portformat(:io_lib.format('~tw', [name]), :erlang.port_to_list(id), cmd)
+    portformat(:io_lib.format('~tw', [name]),
+                 :erlang.port_to_list(id), cmd)
   end
 
   defp portformat(name, id, cmd) do
@@ -1326,10 +1070,9 @@ defmodule :m_c do
   end
 
   def pwd() do
-    case :file.get_cwd() do
+    case (:file.get_cwd()) do
       {:ok, str} ->
         :ok = :io.format('~ts\n', [str])
-
       {:error, _} ->
         :ok = :io.format('Cannot determine current directory\n')
     end
@@ -1344,14 +1087,18 @@ defmodule :m_c do
     ls('.')
   end
 
-  def ls(dir) do
-    case :file.list_dir(dir) do
+  def ls(dir0) do
+    case (:file.list_dir(dir0)) do
       {:ok, entries} ->
         ls_print(sort(entries))
-
       {:error, :enotdir} ->
+        dir = (cond do
+                 is_list(dir0) ->
+                   :lists.flatten(dir0)
+                 true ->
+                   dir0
+               end)
         ls_print([dir])
-
       {:error, error} ->
         format('~ts\n', [:file.format_error(error)])
     end
@@ -1362,7 +1109,7 @@ defmodule :m_c do
   end
 
   defp ls_print(l) do
-    width = min([max(lengths(l, [])), 40]) + 5
+    width = :erlang.min(max_length(l, 0), 40) + 5
     ls_print(l, width, 0)
   end
 
@@ -1380,11 +1127,15 @@ defmodule :m_c do
     :io.nl()
   end
 
-  defp lengths([h | t], l) do
-    lengths(t, [length(h) | l])
+  defp max_length([h | t], l) when is_atom(h) do
+    max_length([:erlang.atom_to_list(h) | t], l)
   end
 
-  defp lengths([], l) do
+  defp max_length([h | t], l) do
+    max_length(t, :erlang.max(length(h), l))
+  end
+
+  defp max_length([], l) do
     l
   end
 
@@ -1405,18 +1156,16 @@ defmodule :m_c do
   end
 
   defp uptime({d, {h, m, s}}) do
-    :lists.flatten([
-      for _ <- [:EFE_DUMMY_GEN], d > 0 do
-        :io_lib.format('~p days, ', [d])
-      end,
-      for _ <- [:EFE_DUMMY_GEN], d + h > 0 do
-        :io_lib.format('~p hours, ', [h])
-      end,
-      for _ <- [:EFE_DUMMY_GEN], d + h + m > 0 do
-        :io_lib.format('~p minutes and ', [m])
-      end,
-      :io_lib.format('~p seconds', [s])
-    ])
+    :lists.flatten([for _ <- [:EFE_DUMMY_GEN], d > 0 do
+                      :io_lib.format('~p days, ', [d])
+                    end,
+                        for _ <- [:EFE_DUMMY_GEN], d + h > 0 do
+                          :io_lib.format('~p hours, ', [h])
+                        end,
+                            for _ <- [:EFE_DUMMY_GEN], d + h + m > 0 do
+                              :io_lib.format('~p minutes and ', [m])
+                            end,
+                                :io_lib.format('~p seconds', [s])])
   end
 
   defp get_uptime() do
@@ -1441,14 +1190,14 @@ defmodule :m_c do
       apply(m, f, args)
     catch
       :error, :undef ->
-        case __STACKTRACE__ do
+        case (__STACKTRACE__) do
           [{^m, ^f, ^args, _} | _] ->
             arity = length(args)
             :io.format('Call to ~w:~w/~w in application ~w failed.\n', [m, f, arity, app])
-
           stk ->
             :erlang.raise(:error, :undef, stk)
         end
     end
   end
+
 end

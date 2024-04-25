@@ -50,14 +50,15 @@ defmodule :m_logger_simple_h do
            :undefined ->
              case (:maps.get(:internal_log_event, m, false)) do
                false ->
-                 do_log(%{level: :error,
-                            msg:
-                            {:report, {:error, :simple_handler_process_dead}},
-                            meta: %{time: :logger.timestamp()}})
+                 do_log(:simple,
+                          %{level: :error,
+                              msg:
+                              {:report, {:error, :simple_handler_process_dead}},
+                              meta: %{time: :logger.timestamp()}})
                true ->
                  :ok
              end
-             do_log(log)
+             do_log(:simple, log)
            _ ->
              send(:logger_simple_h, {:log, log})
          end)
@@ -71,10 +72,10 @@ defmodule :m_logger_simple_h do
   defp init(starter) do
     :erlang.register(:logger_simple_h, self())
     send(starter, {self(), :started})
-    loop(%{buffer_size: 10, dropped: 0, buffer: []})
+    loop(:rich, %{buffer_size: 10, dropped: 0, buffer: []})
   end
 
-  defp loop(buffer) do
+  defp loop(mode, buffer) do
     receive do
       :stop ->
         case (:logger.get_handler_config(:default)) do
@@ -86,10 +87,10 @@ defmodule :m_logger_simple_h do
         :erlang.unlink(:erlang.whereis(:logger))
         :ok
       {:log, %{msg: _, meta: %{time: _}} = log} ->
-        do_log(log)
-        loop(update_buffer(buffer, log))
+        newMode = do_log(mode, log)
+        loop(newMode, update_buffer(buffer, log))
       _ ->
-        loop(buffer)
+        loop(mode, buffer)
     end
   end
 
@@ -123,13 +124,50 @@ defmodule :m_logger_simple_h do
          meta: %{time: :logger.timestamp()}}]
   end
 
-  defp do_log(%{msg: {:report, report},
+  defp do_log(:simple, log) do
+    display_log(log)
+    :simple
+  end
+
+  defp do_log(:rich = mode, log) do
+    {pid, ref} = spawn_monitor(fn () ->
+                                    str = :logger_formatter.format(log,
+                                                                     %{legacy_header:
+                                                                       true,
+                                                                         single_line:
+                                                                         false,
+                                                                         depth:
+                                                                         :unlimited,
+                                                                         time_offset:
+                                                                         ''})
+                                    :erlang.display_string(:stdout,
+                                                             :lists.flatten(:unicode.characters_to_list(str)))
+                               end)
+    receive do
+      {:DOWN, ^ref, _, _, :normal} ->
+        mode
+      {:DOWN, ^ref, _, _, _Else} ->
+        display_log(log)
+        mode
+    after 300 ->
+      :erlang.exit(pid, :kill)
+      receive do
+        {:DOWN, ^ref, _, _, :normal} ->
+          mode
+        {:DOWN, ^ref, _, _, _Else} ->
+          display_log(log)
+          :simple
+      end
+    end
+  end
+
+  defp display_log(%{msg: {:report, report},
               meta: %{time: t, error_logger: %{type: type}}}) do
     display_date(t)
     display_report(type, report)
   end
 
-  defp do_log(%{msg: msg, meta: %{time: t}}) do
+  defp display_log(%{msg: msg, meta: %{time: t}}) do
     display_date(t)
     display(msg)
   end
@@ -140,13 +178,14 @@ defmodule :m_logger_simple_h do
     {{y, mo, d},
        {h, mi,
           s}} = :erlang.universaltime_to_localtime(:erlang.posixtime_to_universaltime(sec))
-    :erlang.display_string(:erlang.integer_to_list(y) ++ '-' ++ pad(mo,
-                                                                    2) ++ '-' ++ pad(d,
-                                                                                     2) ++ ' ' ++ pad(h,
-                                                                                                      2) ++ ':' ++ pad(mi,
-                                                                                                                       2) ++ ':' ++ pad(s,
-                                                                                                                                        2) ++ '.' ++ pad(micro,
-                                                                                                                                                         6) ++ ' ')
+    :erlang.display_string(:stdout,
+                             :erlang.integer_to_list(y) ++ '-' ++ pad(mo,
+                                                                      2) ++ '-' ++ pad(d,
+                                                                                       2) ++ ' ' ++ pad(h,
+                                                                                                        2) ++ ':' ++ pad(mi,
+                                                                                                                         2) ++ ':' ++ pad(s,
+                                                                                                                                          2) ++ '.' ++ pad(micro,
+                                                                                                                                                           6) ++ ' ')
   end
 
   defp pad(int, size) when is_integer(int) do
@@ -169,8 +208,8 @@ defmodule :m_logger_simple_h do
         :erlang.display(chardata)
     else
       string ->
-        :erlang.display_string(string)
-        :erlang.display_string('\n')
+        :erlang.display_string(:stdout, string)
+        :erlang.display_string(:stdout, '\n')
     end
   end
 
@@ -183,10 +222,10 @@ defmodule :m_logger_simple_h do
   end
 
   defp display({f, a}) when (is_list(f) and is_list(a)) do
-    :erlang.display_string(f ++ '\n')
+    :erlang.display_string(:stdout, f ++ '\n')
     for arg <- a do
       (
-        :erlang.display_string('\t')
+        :erlang.display_string(:stdout, '\t')
         :erlang.display(arg)
       )
     end
@@ -199,12 +238,16 @@ defmodule :m_logger_simple_h do
     atomLength = length(atomString)
     padding = :lists.duplicate(columnWidth - atomLength,
                                  ?\s)
-    :erlang.display_string(atomString ++ padding)
+    :erlang.display_string(:stdout, atomString ++ padding)
     display_report(a)
   end
 
   defp display_report(f, a) do
     :erlang.display({f, a})
+  end
+
+  defp display_report(%{report: report}) do
+    display_report(report)
   end
 
   defp display_report([a, []]) do
@@ -219,9 +262,10 @@ defmodule :m_logger_simple_h do
                      end,
                        a)) do
       true ->
-        :erlang.display_string('\n')
+        :erlang.display_string(:stdout, '\n')
         :lists.foreach(fn {key, value} ->
-                            :erlang.display_string('    ' ++ :erlang.atom_to_list(key) ++ ': ')
+                            :erlang.display_string(:stdout,
+                                                     '    ' ++ :erlang.atom_to_list(key) ++ ': ')
                             :erlang.display(value)
                        end,
                          a)

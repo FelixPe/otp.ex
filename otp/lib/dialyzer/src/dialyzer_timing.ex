@@ -1,22 +1,17 @@
 defmodule :m_dialyzer_timing do
   use Bitwise
-
   def init(active) do
-    case active do
+    case (active) do
       true ->
         :io.format('\n')
-
-        spawn_link(fn ->
-          loop(:erlang.monotonic_time(), 0, '')
-        end)
-
+        spawn_link(fn () ->
+                        loop(:erlang.monotonic_time(), 0, '')
+                   end)
       :debug ->
         :io.format('\n')
-
-        spawn_link(fn ->
-          debug_loop('')
-        end)
-
+        spawn_link(fn () ->
+                        debug_loop('')
+                   end)
       false ->
         :none
     end
@@ -27,28 +22,21 @@ defmodule :m_dialyzer_timing do
       {:stamp, msg, now} ->
         :io.format('    ~-10s (+~4.2fs):', [msg, diff(now, lastNow)])
         loop(now, 0, '')
-
       {:stamp, now} ->
-        sizeStr =
-          case size do
-            0 ->
-              ''
-
-            _ ->
-              data = :io_lib.format('~p ~s', [size, unit])
-              :io_lib.format(' (~12s)', [data])
-          end
-
+        sizeStr = (case (size) do
+                     0 ->
+                       ''
+                     _ ->
+                       data = :io_lib.format('~p ~s', [size, unit])
+                       :io_lib.format(' (~12s)', [data])
+                   end)
         :io.format('~7.2fs~s\n', [diff(now, lastNow), sizeStr])
         loop(now, 0, '')
-
       {:size, newSize, newUnit} ->
         loop(lastNow, newSize, newUnit)
-
       {pid, :stop, now} ->
         :io.format('    ~-9s (+~5.2fs)\n', ['', diff(now, lastNow)])
         send(pid, :ok)
-
       {pid, :stop} ->
         send(pid, :ok)
     end
@@ -61,33 +49,27 @@ defmodule :m_dialyzer_timing do
         procs = :erlang.system_info(:process_count)
         procMem = :erlang.memory(:total)
         status = :io_lib.format('~12w ~6w ~20w', [runtime, procs, procMem])
-
-        case message do
+        case (message) do
           {:stamp, msg, _Now} ->
             :io.format('~s ~s_start\n', [status, msg])
             debug_loop(msg)
-
           {:stamp, _Now} ->
             :io.format('~s ~s_stop\n', [status, phase])
             debug_loop('')
-
           {pid, :stop, _Now} ->
             send(pid, :ok)
-
           {pid, :stop} ->
             send(pid, :ok)
-
           _ ->
             debug_loop(phase)
         end
-    after
-      50 ->
-        {runtime, _} = :erlang.statistics(:wall_clock)
-        procs = :erlang.system_info(:process_count)
-        procMem = :erlang.memory(:total)
-        status = :io_lib.format('~12w ~6w ~20w', [runtime, procs, procMem])
-        :io.format('~s\n', [status])
-        debug_loop(phase)
+    after 50 ->
+      {runtime, _} = :erlang.statistics(:wall_clock)
+      procs = :erlang.system_info(:process_count)
+      procMem = :erlang.memory(:total)
+      status = :io_lib.format('~12w ~6w ~20w', [runtime, procs, procMem])
+      :io.format('~s\n', [status])
+      debug_loop(phase)
     end
   end
 
@@ -124,7 +106,6 @@ defmodule :m_dialyzer_timing do
 
   def stop(pid) do
     send(pid, {self(), :stop, :erlang.monotonic_time()})
-
     receive do
       :ok ->
         :ok
@@ -132,6 +113,8 @@ defmodule :m_dialyzer_timing do
   end
 
   defp diff(t2, t1) do
-    (t2 - t1) / :erlang.convert_time_unit(1, :seconds, :native)
+    (t2 - t1) / :erlang.convert_time_unit(1, :seconds,
+                                            :native)
   end
+
 end

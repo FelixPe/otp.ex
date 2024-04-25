@@ -2,11 +2,13 @@ defmodule :m_ssl_listen_tracker_sup do
   use Bitwise
   @behaviour :supervisor
   def start_link() do
-    :supervisor.start_link({:local, tracker_name(:normal)}, :ssl_listen_tracker_sup, [])
+    :supervisor.start_link({:local, tracker_name(:normal)},
+                             :ssl_listen_tracker_sup, [])
   end
 
   def start_link_dist() do
-    :supervisor.start_link({:local, tracker_name(:dist)}, :ssl_listen_tracker_sup, [])
+    :supervisor.start_link({:local, tracker_name(:dist)},
+                             :ssl_listen_tracker_sup, [])
   end
 
   def start_child(args) do
@@ -17,18 +19,14 @@ defmodule :m_ssl_listen_tracker_sup do
     :supervisor.start_child(tracker_name(:dist), args)
   end
 
-  def init(_O) do
-    restartStrategy = :simple_one_for_one
-    maxR = 0
-    maxT = 3600
-    name = :undefined
-    startFunc = {:tls_socket, :start_link, []}
-    restart = :temporary
-    shutdown = 4000
-    modules = [:tls_socket]
-    type = :worker
-    childSpec = {name, startFunc, restart, shutdown, type, modules}
-    {:ok, {{restartStrategy, maxR, maxT}, [childSpec]}}
+  def init(_) do
+    supFlags = %{strategy: :simple_one_for_one,
+                   intensity: 0, period: 3600}
+    childSpecs = [%{id: :undefined,
+                      start: {:tls_socket, :start_link, []},
+                      restart: :temporary, shutdown: 4000,
+                      modules: [:tls_socket], type: :worker}]
+    {:ok, {supFlags, childSpecs}}
   end
 
   defp tracker_name(:normal) do
@@ -36,6 +34,7 @@ defmodule :m_ssl_listen_tracker_sup do
   end
 
   defp tracker_name(:dist) do
-    :erlang.list_to_atom(:erlang.atom_to_list(:ssl_listen_tracker_sup) ++ 'dist')
+    :erlang.list_to_atom(:erlang.atom_to_list(:ssl_listen_tracker_sup) ++ '_dist')
   end
+
 end

@@ -1,192 +1,100 @@
 defmodule :m_edoc_wiki do
   use Bitwise
   require Record
-  Record.defrecord(:r_context, :context, dir: '', env: :undefined, opts: [])
-  Record.defrecord(:r_doclet_gen, :doclet_gen, sources: [], app: [], modules: [])
-
-  Record.defrecord(:r_doclet_toc, :doclet_toc,
-    paths: :undefined,
-    indir: :undefined
-  )
-
-  Record.defrecord(:r_module, :module,
-    name: [],
-    parameters: :none,
-    functions: [],
-    exports: [],
-    attributes: [],
-    records: [],
-    encoding: :latin1
-  )
-
-  Record.defrecord(:r_env, :env,
-    module: [],
-    root: '',
-    file_suffix: :undefined,
-    apps: :undefined,
-    modules: :undefined,
-    app_default: :undefined,
-    macros: [],
-    includes: []
-  )
-
-  Record.defrecord(:r_comment, :comment,
-    line: 0,
-    text: :undefined
-  )
-
-  Record.defrecord(:r_entry, :entry,
-    name: :undefined,
-    args: [],
-    line: 0,
-    export: :undefined,
-    data: :undefined
-  )
-
-  Record.defrecord(:r_tag, :tag, name: :undefined, line: 0, origin: :comment, data: :undefined)
-
-  Record.defrecord(:r_xmlDecl, :xmlDecl,
-    vsn: :undefined,
-    encoding: :undefined,
-    standalone: :undefined,
-    attributes: :undefined
-  )
-
-  Record.defrecord(:r_xmlAttribute, :xmlAttribute,
-    name: :undefined,
-    expanded_name: [],
-    nsinfo: [],
-    namespace: [],
-    parents: [],
-    pos: :undefined,
-    language: [],
-    value: :undefined,
-    normalized: :undefined
-  )
-
-  Record.defrecord(:r_xmlNamespace, :xmlNamespace,
-    default: [],
-    nodes: []
-  )
-
-  Record.defrecord(:r_xmlNsNode, :xmlNsNode,
-    parents: [],
-    pos: :undefined,
-    prefix: :undefined,
-    uri: []
-  )
-
-  Record.defrecord(:r_xmlElement, :xmlElement,
-    name: :undefined,
-    expanded_name: [],
-    nsinfo: [],
-    namespace: :EFE_TODO_NESTED_RECORD,
-    parents: [],
-    pos: :undefined,
-    attributes: [],
-    content: [],
-    language: '',
-    xmlbase: '',
-    elementdef: :undeclared
-  )
-
-  Record.defrecord(:r_xmlText, :xmlText,
-    parents: [],
-    pos: :undefined,
-    language: [],
-    value: :undefined,
-    type: :text
-  )
-
-  Record.defrecord(:r_xmlComment, :xmlComment,
-    parents: [],
-    pos: :undefined,
-    language: [],
-    value: :undefined
-  )
-
-  Record.defrecord(:r_xmlPI, :xmlPI,
-    name: :undefined,
-    parents: [],
-    pos: :undefined,
-    value: :undefined
-  )
-
+  Record.defrecord(:r_doclet_context, :doclet_context, dir: '',
+                                          env: :undefined, opts: [])
+  Record.defrecord(:r_doclet_gen, :doclet_gen, sources: [],
+                                      app: :no_app, modules: [])
+  Record.defrecord(:r_doclet_toc, :doclet_toc, paths: :undefined,
+                                      indir: :undefined)
+  Record.defrecord(:r_module, :module, name: [],
+                                  parameters: :none, functions: [], exports: [],
+                                  attributes: [], records: [],
+                                  encoding: :latin1, file: :undefined)
+  Record.defrecord(:r_env, :env, module: [], root: '',
+                               file_suffix: :undefined, apps: :undefined,
+                               modules: :undefined, app_default: :undefined,
+                               macros: [], includes: [])
+  Record.defrecord(:r_comment, :comment, line: 0,
+                                   text: :undefined)
+  Record.defrecord(:r_entry, :entry, name: :undefined, args: [],
+                                 line: 0, export: :undefined, data: :undefined)
+  Record.defrecord(:r_tag, :tag, name: :undefined, line: 0,
+                               origin: :comment, data: :undefined,
+                               form: :undefined)
+  Record.defrecord(:r_xmlDecl, :xmlDecl, vsn: :undefined,
+                                   encoding: :undefined, standalone: :undefined,
+                                   attributes: :undefined)
+  Record.defrecord(:r_xmlAttribute, :xmlAttribute, name: :undefined,
+                                        expanded_name: [], nsinfo: [],
+                                        namespace: [], parents: [],
+                                        pos: :undefined, language: [],
+                                        value: :undefined,
+                                        normalized: :undefined)
+  Record.defrecord(:r_xmlNamespace, :xmlNamespace, default: [],
+                                        nodes: [])
+  Record.defrecord(:r_xmlNsNode, :xmlNsNode, parents: [],
+                                     pos: :undefined, prefix: :undefined,
+                                     uri: [])
+  Record.defrecord(:r_xmlElement, :xmlElement, name: :undefined,
+                                      expanded_name: [], nsinfo: [],
+                                      namespace: :EFE_TODO_NESTED_RECORD,
+                                      parents: [], pos: :undefined,
+                                      attributes: [], content: [], language: '',
+                                      xmlbase: '', elementdef: :undeclared)
+  Record.defrecord(:r_xmlText, :xmlText, parents: [],
+                                   pos: :undefined, language: [],
+                                   value: :undefined, type: :text)
+  Record.defrecord(:r_xmlComment, :xmlComment, parents: [],
+                                      pos: :undefined, language: [],
+                                      value: :undefined)
+  Record.defrecord(:r_xmlPI, :xmlPI, name: :undefined,
+                                 parents: [], pos: :undefined,
+                                 value: :undefined)
   Record.defrecord(:r_xmlDocument, :xmlDocument, content: :undefined)
-
-  Record.defrecord(:r_xmlContext, :xmlContext,
-    axis_type: :forward,
-    context_node: :undefined,
-    context_position: 1,
-    nodeset: [],
-    bindings: [],
-    functions: [],
-    namespace: [],
-    whole_document: :undefined
-  )
-
-  Record.defrecord(:r_xmlNode, :xmlNode, type: :element, node: :undefined, parents: [], pos: 1)
-
-  Record.defrecord(:r_xmlObj, :xmlObj,
-    type: :undefined,
-    value: :undefined
-  )
-
-  Record.defrecord(:r_xmerl_fun_states, :xmerl_fun_states,
-    event: :undefined,
-    hook: :undefined,
-    rules: :undefined,
-    fetch: :undefined,
-    cont: :undefined
-  )
-
-  Record.defrecord(:r_xmerl_scanner, :xmerl_scanner,
-    encoding: :undefined,
-    standalone: :no,
-    environment: :prolog,
-    declarations: [],
-    doctype_name: :undefined,
-    doctype_DTD: :internal,
-    comments: true,
-    document: false,
-    default_attrs: false,
-    rules: :undefined,
-    keep_rules: false,
-    namespace_conformant: false,
-    xmlbase: :undefined,
-    xmlbase_cache: :undefined,
-    fetch_path: [],
-    filename: :file_name_unknown,
-    validation: :off,
-    schemaLocation: [],
-    space: :preserve,
-    event_fun: :undefined,
-    hook_fun: :undefined,
-    acc_fun: :undefined,
-    fetch_fun: :undefined,
-    close_fun: :undefined,
-    continuation_fun: :undefined,
-    rules_read_fun: :undefined,
-    rules_write_fun: :undefined,
-    rules_delete_fun: :undefined,
-    user_state: :undefined,
-    fun_states: :EFE_TODO_NESTED_RECORD,
-    entity_references: [],
-    text_decl: false,
-    quiet: false,
-    col: 1,
-    line: 1,
-    common_data: []
-  )
-
-  Record.defrecord(:r_xmerl_event, :xmerl_event,
-    event: :undefined,
-    line: :undefined,
-    col: :undefined,
-    pos: :undefined,
-    data: :undefined
-  )
-
+  Record.defrecord(:r_xmlContext, :xmlContext, axis_type: :forward,
+                                      context_node: :undefined,
+                                      context_position: 1, nodeset: [],
+                                      bindings: [], functions: [],
+                                      namespace: [], whole_document: :undefined)
+  Record.defrecord(:r_xmlNode, :xmlNode, type: :element,
+                                   node: :undefined, parents: [], pos: 1)
+  Record.defrecord(:r_xmlObj, :xmlObj, type: :undefined,
+                                  value: :undefined)
+  Record.defrecord(:r_xmerl_fun_states, :xmerl_fun_states, event: :undefined,
+                                            hook: :undefined, rules: :undefined,
+                                            fetch: :undefined, cont: :undefined)
+  Record.defrecord(:r_xmerl_scanner, :xmerl_scanner, encoding: :undefined,
+                                         standalone: :no, environment: :prolog,
+                                         declarations: [],
+                                         doctype_name: :undefined,
+                                         doctype_DTD: :internal, comments: true,
+                                         document: false, default_attrs: false,
+                                         rules: :undefined, keep_rules: false,
+                                         namespace_conformant: false,
+                                         xmlbase: :undefined,
+                                         xmlbase_cache: :undefined,
+                                         fetch_path: [],
+                                         filename: :file_name_unknown,
+                                         validation: :off, schemaLocation: [],
+                                         space: :preserve,
+                                         event_fun: :undefined,
+                                         hook_fun: :undefined,
+                                         acc_fun: :undefined,
+                                         fetch_fun: :undefined,
+                                         close_fun: :undefined,
+                                         continuation_fun: :undefined,
+                                         rules_read_fun: :undefined,
+                                         rules_write_fun: :undefined,
+                                         rules_delete_fun: :undefined,
+                                         user_state: :undefined,
+                                         fun_states: :EFE_TODO_NESTED_RECORD,
+                                         entity_references: [],
+                                         text_decl: false, quiet: false, col: 1,
+                                         line: 1, common_data: [])
+  Record.defrecord(:r_xmerl_event, :xmerl_event, event: :undefined,
+                                       line: :undefined, col: :undefined,
+                                       pos: :undefined, data: :undefined)
   def parse_xml(data, line) do
     par(parse_xml_1(expand_text(data, line), line))
   end
@@ -194,23 +102,19 @@ defmodule :m_edoc_wiki do
   defp parse_xml_1(text, line) do
     text1 = '<doc>' ++ text ++ '</doc>'
     opts = [{:line, line}, {:encoding, :"iso-8859-1"}]
-
-    case (try do
+    case ((try do
             {:ok, :xmerl_scan.string(text1, opts)}
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       {:ok, {e, _}} ->
         r_xmlElement(e, :content)
-
       {:EXIT, {:fatal, {reason, l, _C}}} ->
         throw_error(l, {'XML parse error: ~p.', [reason]})
-
       {:EXIT, reason} ->
         throw_error(line, {'error in XML parser: ~P.', [reason, 10]})
-
       other ->
         throw_error(line, {'nocatch in XML parser: ~P.', [other, 10]})
     end
@@ -254,24 +158,18 @@ defmodule :m_edoc_wiki do
 
   defp expand([?`, ?`, ?` | cs], l, as) do
     {cs1, skipped} = strip_empty_lines(cs)
-
-    n =
-      cond do
-        skipped > 0 ->
-          0
-
-        true ->
-          {as1, _} = :edoc_lib.split_at(as, ?\n)
-
-          case :edoc_lib.is_space(as1) do
-            true ->
-              3 + length(as1)
-
-            false ->
-              2
-          end
-      end
-
+    n = (cond do
+           skipped > 0 ->
+             0
+           true ->
+             {as1, _} = :edoc_lib.split_at(as, ?\n)
+             case (:edoc_lib.is_space(as1)) do
+               true ->
+                 3 + length(as1)
+               false ->
+                 2
+             end
+         end)
     ss = :lists.duplicate(n, ?\s)
     expand_triple(cs1, l + skipped, ss ++ '[ATADC[!<>erp<' ++ as)
   end
@@ -306,28 +204,21 @@ defmodule :m_edoc_wiki do
 
   defp expand_heading(cs, n, l, as) do
     {cs1, cs2} = :edoc_lib.split_at(cs, ?\n)
-
-    case :edoc_lib.strip_space(:lists.reverse(cs1)) do
+    case (:edoc_lib.strip_space(:lists.reverse(cs1))) do
       [?=, ?= | cs3] ->
-        {es, ts} =
-          :lists.splitwith(
-            fn x ->
-              x === ?=
-            end,
-            cs3
-          )
-
+        {es, ts} = :lists.splitwith(fn x ->
+                                         x === ?=
+                                    end,
+                                      cs3)
         cond do
           length(es) === n ->
             ts1 = :edoc_lib.strip_space(:lists.reverse(:edoc_lib.strip_space(ts)))
             expand_heading_2(ts1, cs2, n, l, as)
-
           true ->
             h1 = :lists.duplicate(n + 2, ?=)
             h2 = '==' ++ es
             throw_error(l, {'heading end marker mismatch: ~s...~s', [h1, h2]})
         end
-
       _ ->
         expand_heading_1(cs, n, l, as)
     end
@@ -340,7 +231,8 @@ defmodule :m_edoc_wiki do
   defp expand_heading_2(ts, cs, n, l, as) do
     h = 3 + n
     ts1 = :io_lib.format('<h~w><a name="~ts">~ts</a></h~w>\n', [h, make_label(ts), ts, h])
-    expand_new_line(cs, l + 1, :lists.reverse(:lists.flatten(ts1), as))
+    expand_new_line(cs, l + 1,
+                      :lists.reverse(:lists.flatten(ts1), as))
   end
 
   defp make_label([?\s | cs]) do
@@ -488,7 +380,7 @@ defmodule :m_edoc_wiki do
   end
 
   defp expand_uri([?] | cs], l, us, as) do
-    expand(cs, l, push_uri(us, '>tt/<' ++ us ++ '>tt<', as))
+    expand(cs, l, push_uri(us, '>edoc/<' ++ us ++ '>edoc<', as))
   end
 
   defp expand_uri([?\s = c | cs], l, us, as) do
@@ -547,11 +439,9 @@ defmodule :m_edoc_wiki do
 
   defp strip_empty_lines(cs, n) do
     {cs1, cs2} = :edoc_lib.split_at(cs, ?\n)
-
-    case :edoc_lib.is_space(cs1) do
+    case (:edoc_lib.is_space(cs1)) do
       true ->
         strip_empty_lines(cs2, n + 1)
-
       false ->
         {cs, n}
     end
@@ -566,64 +456,45 @@ defmodule :m_edoc_wiki do
   end
 
   defp par([e = r_xmlElement(name: name) | es], as, bs) do
-    case name do
+    case (name) do
       :p ->
         par_flush(es, [e | as], bs)
-
       :hr ->
         par_flush(es, [e | as], bs)
-
       :h1 ->
         par_flush(es, [e | as], bs)
-
       :h2 ->
         par_flush(es, [e | as], bs)
-
       :h3 ->
         par_flush(es, [e | as], bs)
-
       :h4 ->
         par_flush(es, [e | as], bs)
-
       :h5 ->
         par_flush(es, [e | as], bs)
-
       :h6 ->
         par_flush(es, [e | as], bs)
-
       :pre ->
         par_flush(es, [e | as], bs)
-
       :address ->
         par_flush(es, [e | as], bs)
-
       :div ->
         par_flush(es, [par_elem(e) | as], bs)
-
       :blockquote ->
         par_flush(es, [par_elem(e) | as], bs)
-
       :form ->
         par_flush(es, [par_elem(e) | as], bs)
-
       :fieldset ->
         par_flush(es, [par_elem(e) | as], bs)
-
       :noscript ->
         par_flush(es, [par_elem(e) | as], bs)
-
       :ul ->
         par_flush(es, [par_subelem(e) | as], bs)
-
       :ol ->
         par_flush(es, [par_subelem(e) | as], bs)
-
       :dl ->
         par_flush(es, [par_subelem(e) | as], bs)
-
       :table ->
         par_flush(es, [par_subelem(e) | as], bs)
-
       _ ->
         par(es, [e | as], bs)
     end
@@ -638,35 +509,26 @@ defmodule :m_edoc_wiki do
   end
 
   defp par_text(cs, as, bs, e, es) do
-    case ptxt(cs) do
+    case (ptxt(cs)) do
       :none ->
         par(es, [e | as], bs)
-
       {cs1, ss, cs2} ->
-        es1 =
-          case cs1 do
-            [] ->
-              :lists.reverse(as)
-
-            _ ->
-              :lists.reverse(as, [r_xmlText(e, value: cs1)])
-          end
-
-        bs0 =
-          case es1 do
-            [] ->
-              bs
-
-            _ ->
-              [r_xmlElement(name: :p, content: es1) | bs]
-          end
-
+        es1 = (case (cs1) do
+                 [] ->
+                   :lists.reverse(as)
+                 _ ->
+                   :lists.reverse(as, [r_xmlText(e, value: cs1)])
+               end)
+        bs0 = (case (es1) do
+                 [] ->
+                   bs
+                 _ ->
+                   [r_xmlElement(name: :p, content: es1) | bs]
+               end)
         bs1 = [r_xmlText(value: ss) | bs0]
-
-        case cs2 do
+        case (cs2) do
           [] ->
             par(es, [], bs1)
-
           _ ->
             par_text(cs2, [], bs1, r_xmlText(value: cs2), es)
         end
@@ -686,21 +548,17 @@ defmodule :m_edoc_wiki do
   end
 
   defp par_subelem_1([e = r_xmlElement(name: name) | es]) do
-    e1 =
-      case par_skip(name) do
-        true ->
-          e
-
-        false ->
-          case par_sub(name) do
+    e1 = (case (par_skip(name)) do
             true ->
-              par_subelem(e)
-
+              e
             false ->
-              par_elem(e)
-          end
-      end
-
+              case (par_sub(name)) do
+                true ->
+                  par_subelem(e)
+                false ->
+                  par_elem(e)
+              end
+          end)
     [e1 | par_subelem_1(es)]
   end
 
@@ -793,10 +651,9 @@ defmodule :m_edoc_wiki do
   end
 
   defp ptxt_2(cs, as, ss) do
-    case :edoc_lib.is_space(as) do
+    case (:edoc_lib.is_space(as)) do
       true ->
         {[], :lists.reverse(ss ++ as), cs}
-
       false ->
         {:lists.reverse(as), :lists.reverse(ss), cs}
     end
@@ -805,4 +662,5 @@ defmodule :m_edoc_wiki do
   defp throw_error(l, d) do
     throw({:error, l, d})
   end
+
 end

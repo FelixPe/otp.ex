@@ -1,102 +1,55 @@
 defmodule :m_mnesia_tm do
   use Bitwise
-  import :mnesia_lib, only: [dbg_out: 2, fatal: 2, set: 2, verbose: 2]
+  import :mnesia_lib, only: [dbg_out: 2, fatal: 2, set: 2,
+                               verbose: 2]
   require Record
-
-  Record.defrecord(:r_tid, :tid,
-    counter: :undefined,
-    pid: :undefined
-  )
-
-  Record.defrecord(:r_tidstore, :tidstore, store: :undefined, up_stores: [], level: 1)
-
-  Record.defrecord(:r_cstruct, :cstruct,
-    name: :undefined,
-    type: :set,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    external_copies: [],
-    load_order: 0,
-    access_mode: :read_write,
-    majority: false,
-    index: [],
-    snmp: [],
-    local_content: false,
-    record_name: {:bad_record_name},
-    attributes: [:key, :val],
-    user_properties: [],
-    frag_properties: [],
-    storage_properties: [],
-    cookie:
-      {{:erlang.monotonic_time() + :erlang.time_offset(), :erlang.unique_integer(), 1}, node()},
-    version: {{2, 0}, []}
-  )
-
-  Record.defrecord(:r_log_header, :log_header,
-    log_kind: :undefined,
-    log_version: :undefined,
-    mnesia_version: :undefined,
-    node: :undefined,
-    now: :undefined
-  )
-
-  Record.defrecord(:r_commit, :commit,
-    node: :undefined,
-    decision: :undefined,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    ext: [],
-    schema_ops: []
-  )
-
-  Record.defrecord(:r_decision, :decision,
-    tid: :undefined,
-    outcome: :undefined,
-    disc_nodes: :undefined,
-    ram_nodes: :undefined
-  )
-
-  Record.defrecord(:r_cyclic, :cyclic,
-    node: node(),
-    oid: :undefined,
-    op: :undefined,
-    lock: :undefined,
-    lucky: :undefined
-  )
-
-  Record.defrecord(:r_state, :state,
-    coordinators: :gb_trees.empty(),
-    participants: :gb_trees.empty(),
-    supervisor: :undefined,
-    blocked_tabs: [],
-    dirty_queue: [],
-    fixed_tabs: []
-  )
-
-  Record.defrecord(:r_prep, :prep,
-    protocol: :sym_trans,
-    records: [],
-    prev_tab: [],
-    prev_types: :undefined,
-    prev_snmp: :undefined,
-    types: :undefined,
-    majority: [],
-    sync: false
-  )
-
-  Record.defrecord(:r_participant, :participant,
-    tid: :undefined,
-    pid: :undefined,
-    commit: :undefined,
-    disc_nodes: [],
-    ram_nodes: [],
-    protocol: :sym_trans
-  )
-
+  Record.defrecord(:r_tid, :tid, counter: :undefined,
+                               pid: :undefined)
+  Record.defrecord(:r_tidstore, :tidstore, store: :undefined,
+                                    up_stores: [], level: 1)
+  Record.defrecord(:r_cstruct, :cstruct, name: :undefined,
+                                   type: :set, ram_copies: [], disc_copies: [],
+                                   disc_only_copies: [], external_copies: [],
+                                   load_order: 0, access_mode: :read_write,
+                                   majority: false, index: [], snmp: [],
+                                   local_content: false,
+                                   record_name: {:bad_record_name},
+                                   attributes: [:key, :val],
+                                   user_properties: [], frag_properties: [],
+                                   storage_properties: [],
+                                   cookie: {{:erlang.monotonic_time() + :erlang.time_offset(),
+                                               :erlang.unique_integer(), 1},
+                                              node()},
+                                   version: {{2, 0}, []})
+  Record.defrecord(:r_log_header, :log_header, log_kind: :undefined,
+                                      log_version: :undefined,
+                                      mnesia_version: :undefined,
+                                      node: :undefined, now: :undefined)
+  Record.defrecord(:r_commit, :commit, node: :undefined,
+                                  decision: :undefined, ram_copies: [],
+                                  disc_copies: [], disc_only_copies: [],
+                                  ext: [], schema_ops: [])
+  Record.defrecord(:r_decision, :decision, tid: :undefined,
+                                    outcome: :undefined, disc_nodes: :undefined,
+                                    ram_nodes: :undefined)
+  Record.defrecord(:r_cyclic, :cyclic, node: node(),
+                                  oid: :undefined, op: :undefined,
+                                  lock: :undefined, lucky: :undefined)
+  Record.defrecord(:r_state, :state, coordinators: :gb_trees.empty(),
+                                 participants: :gb_trees.empty(),
+                                 supervisor: :undefined, blocked_tabs: [],
+                                 dirty_queue: [], fixed_tabs: [])
+  Record.defrecord(:r_prep, :prep, protocol: :sym_trans,
+                                records: [], prev_tab: [],
+                                prev_types: :undefined, prev_snmp: :undefined,
+                                types: :undefined, majority: [], sync: false)
+  Record.defrecord(:r_participant, :participant, tid: :undefined,
+                                       pid: :undefined, commit: :undefined,
+                                       disc_nodes: [], ram_nodes: [],
+                                       protocol: :sym_trans)
   def start() do
-    :mnesia_monitor.start_proc(:mnesia_tm, :mnesia_tm, :init, [self()])
+    :mnesia_monitor.start_proc(:mnesia_tm, :mnesia_tm,
+                                 :init, [self()])
   end
 
   def init(parent) do
@@ -108,38 +61,30 @@ defmodule :m_mnesia_tm do
     :mnesia_schema.init(ignoreFallback)
     :mnesia_recover.init()
     early = :mnesia_monitor.init()
-    allOthers = :mnesia_lib.uniq(early ++ :mnesia_lib.all_nodes()) -- [node()]
+    allOthers = :mnesia_lib.uniq((early ++ :mnesia_lib.all_nodes())) -- [node()]
     set(:original_nodes, allOthers)
     :mnesia_recover.connect_nodes(allOthers)
-
-    case :mnesia_monitor.use_dir() do
+    case (:mnesia_monitor.use_dir()) do
       true ->
         p = :mnesia_dumper.opt_dump_log(:startup)
         l = :mnesia_dumper.opt_dump_log(:startup)
         msg = 'Initial dump of log during startup: ~p~n'
         :mnesia_lib.verbose(msg, [[p, l]])
         :mnesia_log.init()
-
       false ->
         :ignore
     end
-
     :mnesia_schema.purge_tmp_files()
     :mnesia_recover.next_garb()
     :mnesia_recover.next_check_overload()
     :ok
-
-    case val(:debug) do
-      debug when debug != :debug and debug != :trace ->
+    case (val(:debug)) do
+      debug when (debug != :debug and debug != :trace) ->
         :ignore
-
       _ ->
-        :mnesia_subscr.subscribe(
-          :erlang.whereis(:mnesia_event),
-          {:table, :schema}
-        )
+        :mnesia_subscr.subscribe(:erlang.whereis(:mnesia_event),
+                                   {:table, :schema})
     end
-
     :proc_lib.init_ack(parent, {:ok, self()})
     doit_loop(r_state(supervisor: parent))
   end
@@ -153,7 +98,6 @@ defmodule :m_mnesia_tm do
           end) do
       {:EXIT, stacktrace} ->
         :mnesia_lib.other_val(var, stacktrace)
-
       value ->
         value
     end
@@ -173,10 +117,9 @@ defmodule :m_mnesia_tm do
   end
 
   defp req(r) do
-    case :erlang.whereis(:mnesia_tm) do
+    case (:erlang.whereis(:mnesia_tm)) do
       :undefined ->
         {:error, {:node_not_running, node()}}
-
       pid ->
         ref = make_ref()
         send(pid, {{self(), ref}, r})
@@ -192,7 +135,6 @@ defmodule :m_mnesia_tm do
     receive do
       {:mnesia_tm, _, reply} ->
         reply
-
       {:EXIT, ^pid, _} ->
         {:error, {:node_not_running, node()}}
     end
@@ -206,7 +148,6 @@ defmodule :m_mnesia_tm do
     receive do
       {:mnesia_tm, ^ref, reply} ->
         reply
-
       {:EXIT, ^pid, _} ->
         {:error, {:node_not_running, node()}}
     end
@@ -229,10 +170,9 @@ defmodule :m_mnesia_tm do
   end
 
   def mnesia_down(node) do
-    case :erlang.whereis(:mnesia_tm) do
+    case (:erlang.whereis(:mnesia_tm)) do
       :undefined ->
         :mnesia_monitor.mnesia_down(:mnesia_tm, node)
-
       pid ->
         send(pid, {:mnesia_down, node})
         :ok
@@ -240,7 +180,8 @@ defmodule :m_mnesia_tm do
   end
 
   def prepare_checkpoint(nodes, cp) do
-    :rpc.multicall(nodes, :mnesia_tm, :prepare_checkpoint, [cp])
+    :rpc.multicall(nodes, :mnesia_tm, :prepare_checkpoint,
+                     [cp])
   end
 
   def prepare_checkpoint(cp) do
@@ -255,57 +196,53 @@ defmodule :m_mnesia_tm do
     req({:unblock_tab, tab})
   end
 
-  defp doit_loop(
-         r_state(coordinators: coordinators, participants: participants, supervisor: sup) = state
-       ) do
+  def fixtable(tab, lock, me) do
+    case (req({:fixtable, [tab, lock, me]})) do
+      :error ->
+        exit({:no_exists, tab})
+      else__ ->
+        else__
+    end
+  end
+
+  def sync() do
+    req(:sync)
+  end
+
+  defp doit_loop(r_state(coordinators: coordinators,
+              participants: participants, supervisor: sup) = state) do
     receive do
       {_From, {:async_dirty, tid, commit, tab}} ->
-        case :lists.member(tab, r_state(state, :blocked_tabs)) do
+        case (:lists.member(tab, r_state(state, :blocked_tabs))) do
           false ->
             do_async_dirty(tid, new_cr_format(commit), tab)
             doit_loop(state)
-
           true ->
             item = {:async_dirty, tid, new_cr_format(commit), tab}
-
-            state2 =
-              r_state(state,
-                dirty_queue: [
-                  item
-                  | r_state(state, :dirty_queue)
-                ]
-              )
-
+            state2 = r_state(state, dirty_queue: [item |
+                                                r_state(state, :dirty_queue)])
             doit_loop(state2)
         end
-
       {from, {:sync_dirty, tid, commit, tab}} ->
-        case :lists.member(tab, r_state(state, :blocked_tabs)) do
+        case (:lists.member(tab, r_state(state, :blocked_tabs))) do
           false ->
             do_sync_dirty(from, tid, new_cr_format(commit), tab)
             doit_loop(state)
-
           true ->
-            item = {:sync_dirty, from, tid, new_cr_format(commit), tab}
-
-            state2 =
-              r_state(state,
-                dirty_queue: [
-                  item
-                  | r_state(state, :dirty_queue)
-                ]
-              )
-
+            item = {:sync_dirty, from, tid, new_cr_format(commit),
+                      tab}
+            state2 = r_state(state, dirty_queue: [item |
+                                                r_state(state, :dirty_queue)])
             doit_loop(state2)
         end
-
       {from, :start_outer} ->
         try do
           _ = :ets.new(:mnesia_trans_store, [:bag, :public])
         catch
           :error, reason ->
             msg = 'Cannot create an ets table for the local transaction store'
-            reply(from, {:error, {:system_limit, msg, reason}}, state)
+            reply(from, {:error, {:system_limit, msg, reason}},
+                    state)
         else
           etab ->
             tmlink(from)
@@ -316,342 +253,289 @@ defmodule :m_mnesia_tm do
             s2 = r_state(state, coordinators: a2)
             reply(from, {:new_tid, tid, etab}, s2)
         end
-
-      {from, {:ask_commit, protocol, tid, commit0, discNs, ramNs}} ->
+      {from,
+         {:ask_commit, protocol, tid, commit0, discNs, ramNs}} ->
         :ok
         :mnesia_checkpoint.tm_enter_pending(tid, discNs, ramNs)
         commit = new_cr_format(commit0)
-
-        pid =
-          cond do
-            node(r_tid(tid, :pid)) === node() ->
-              :erlang.error({:internal_error, :local_node})
-
-            protocol === :asym_trans or protocol === :sync_asym_trans ->
-              args = [protocol, tmpid(from), tid, commit, discNs, ramNs]
-              spawn_link(:mnesia_tm, :commit_participant, args)
-
-            true ->
-              reply(from, {:vote_yes, tid})
-              :nopid
-          end
-
-        p =
-          r_participant(
-            tid: tid,
-            pid: pid,
-            commit: commit,
-            disc_nodes: discNs,
-            ram_nodes: ramNs,
-            protocol: protocol
-          )
-
-        state2 = r_state(state, participants: :gb_trees.insert(tid, p, participants))
-        doit_loop(state2)
-
+        case (is_blocked(r_state(state, :blocked_tabs), commit)) do
+          false ->
+            pid = (cond do
+                     node(r_tid(tid, :pid)) === node() ->
+                       :erlang.error({:internal_error, :local_node})
+                     protocol === :asym_trans or protocol === :sync_asym_trans ->
+                       args = [protocol, tmpid(from), tid, commit, discNs,
+                                                                       ramNs]
+                       spawn_link(:mnesia_tm, :commit_participant, args)
+                     true ->
+                       reply(from, {:vote_yes, tid})
+                       :nopid
+                   end)
+            p = r_participant(tid: tid, pid: pid, commit: commit,
+                    disc_nodes: discNs, ram_nodes: ramNs,
+                    protocol: protocol)
+            state2 = r_state(state, participants: :gb_trees.insert(tid, p,
+                                                               participants))
+            doit_loop(state2)
+          true ->
+            reply(from, {:vote_no, tid, {:bad_commit, node()}},
+                    state)
+        end
       {tid, :do_commit} ->
-        case :gb_trees.lookup(tid, participants) do
+        case (:gb_trees.lookup(tid, participants)) do
           :none ->
             verbose('Tried to commit a non participant transaction ~p~n', [tid])
             doit_loop(state)
-
           {:value, p} ->
             :ok
-
-            case r_participant(p, :pid) do
+            case (r_participant(p, :pid)) do
               :nopid ->
                 commit = r_participant(p, :commit)
                 member = :lists.member(node(), r_participant(p, :disc_nodes))
-
                 cond do
                   member == false ->
                     :ignore
-
                   r_participant(p, :protocol) == :sym_trans ->
                     :mnesia_log.log(commit)
-
                   r_participant(p, :protocol) == :sync_sym_trans ->
                     :mnesia_log.slog(commit)
                 end
-
                 :mnesia_recover.note_decision(tid, :committed)
                 do_commit(tid, commit)
-
                 cond do
                   r_participant(p, :protocol) == :sync_sym_trans ->
-                    send(r_tid(tid, :pid), {:mnesia_tm, node(), {:committed, tid}})
-
+                    send(r_tid(tid, :pid), {:mnesia_tm, node(),
+                                          {:committed, tid}})
                   true ->
                     :ignore
                 end
-
                 :mnesia_locker.release_tid(tid)
                 transaction_terminated(tid)
                 :ok
-
-                doit_loop(
-                  r_state(state,
-                    participants:
-                      :gb_trees.delete(
-                        tid,
-                        participants
-                      )
-                  )
-                )
-
+                doit_loop(r_state(state, participants: :gb_trees.delete(tid,
+                                                                    participants)))
               pid when is_pid(pid) ->
                 send(pid, {tid, :committed})
                 :ok
                 doit_loop(state)
             end
         end
-
       {tid, :simple_commit} ->
         :mnesia_recover.note_decision(tid, :committed)
         :mnesia_locker.release_tid(tid)
         transaction_terminated(tid)
         doit_loop(state)
-
       {tid, {:do_abort, reason}} ->
         :ok
-
-        case :gb_trees.lookup(tid, participants) do
+        case (:gb_trees.lookup(tid, participants)) do
           :none ->
             verbose('Tried to abort a non participant transaction ~p: ~tp~n', [tid, reason])
             :mnesia_locker.release_tid(tid)
             doit_loop(state)
-
           {:value, p} ->
-            case r_participant(p, :pid) do
+            case (r_participant(p, :pid)) do
               :nopid ->
                 commit = r_participant(p, :commit)
                 :mnesia_recover.note_decision(tid, :aborted)
                 do_abort(tid, commit)
-
                 cond do
                   r_participant(p, :protocol) == :sync_sym_trans ->
-                    send(r_tid(tid, :pid), {:mnesia_tm, node(), {:aborted, tid}})
-
+                    send(r_tid(tid, :pid), {:mnesia_tm, node(),
+                                          {:aborted, tid}})
                   true ->
                     :ignore
                 end
-
                 transaction_terminated(tid)
                 :mnesia_locker.release_tid(tid)
                 :ok
-
-                doit_loop(
-                  r_state(state,
-                    participants:
-                      :gb_trees.delete(
-                        tid,
-                        participants
-                      )
-                  )
-                )
-
+                doit_loop(r_state(state, participants: :gb_trees.delete(tid,
+                                                                    participants)))
               pid when is_pid(pid) ->
                 send(pid, {tid, {:do_abort, reason}})
                 :ok
                 doit_loop(state)
             end
         end
-
       {from, {:add_store, tid}} ->
         try do
           _ = :ets.new(:mnesia_trans_store, [:bag, :public])
         catch
           :error, reason ->
             msg = 'Cannot create an ets table for a nested local transaction store'
-            reply(from, {:error, {:system_limit, msg, reason}}, state)
+            reply(from, {:error, {:system_limit, msg, reason}},
+                    state)
         else
           etab ->
             a2 = add_coord_store(coordinators, tid, etab)
-            reply(from, {:new_store, etab}, r_state(state, coordinators: a2))
+            reply(from, {:new_store, etab},
+                    r_state(state, coordinators: a2))
         end
-
-      {from, {:del_store, tid, current, obsolete, propagateStore}} ->
+      {from,
+         {:del_store, tid, current, obsolete, propagateStore}} ->
         opt_propagate_store(current, obsolete, propagateStore)
-        a2 = del_coord_store(coordinators, tid, current, obsolete)
+        a2 = del_coord_store(coordinators, tid, current,
+                               obsolete)
         reply(from, :store_erased, r_state(state, coordinators: a2))
-
       {:EXIT, pid, reason} ->
         handle_exit(pid, reason, state)
-
       {from, {:restart, tid, store}} ->
         a2 = restore_stores(coordinators, tid, store)
         clear_fixtable([store])
         :ets.match_delete(store, :_)
         :ets.insert(store, {:nodes, node()})
-        reply(from, {:restarted, tid}, r_state(state, coordinators: a2))
-
+        reply(from, {:restarted, tid},
+                r_state(state, coordinators: a2))
       {:delete_transaction, tid} ->
-        case :gb_trees.is_defined(tid, participants) do
+        case (:gb_trees.is_defined(tid, participants)) do
           false ->
-            case :gb_trees.lookup(tid, coordinators) do
+            case (:gb_trees.lookup(tid, coordinators)) do
               :none ->
                 verbose('** ERROR ** Tried to delete a non transaction ~p~n', [tid])
                 doit_loop(state)
-
               {:value, etabs} ->
                 clear_fixtable(etabs)
                 erase_ets_tabs(etabs)
                 transaction_terminated(tid)
-
-                doit_loop(
-                  r_state(state,
-                    coordinators:
-                      :gb_trees.delete(
-                        tid,
-                        coordinators
-                      )
-                  )
-                )
+                doit_loop(r_state(state, coordinators: :gb_trees.delete(tid,
+                                                                    coordinators)))
             end
-
           true ->
             transaction_terminated(tid)
-
-            state2 =
-              r_state(state,
-                participants:
-                  :gb_trees.delete(
-                    tid,
-                    participants
-                  )
-              )
-
+            state2 = r_state(state, participants: :gb_trees.delete(tid,
+                                                               participants))
             doit_loop(state2)
         end
-
       {:sync_trans_serial, tid} ->
         :mnesia_recover.sync_trans_tid_serial(tid)
         doit_loop(state)
-
       {from, :info} ->
-        reply(
-          from,
-          {:info, :gb_trees.values(participants), :gb_trees.to_list(coordinators)},
-          state
-        )
-
+        reply(from,
+                {:info, :gb_trees.values(participants),
+                   :gb_trees.to_list(coordinators)},
+                state)
+      {from, :transactions_count} ->
+        reply(from,
+                {:transactions_count, :gb_trees.size(participants),
+                   :gb_trees.size(coordinators)},
+                state)
       {:mnesia_down, n} ->
         verbose('Got mnesia_down from ~p, reconfiguring...~n', [n])
-
-        reconfigure_coordinators(
-          n,
-          :gb_trees.to_list(coordinators)
-        )
-
+        reconfigure_coordinators(n,
+                                   :gb_trees.to_list(coordinators))
         tids = :gb_trees.keys(participants)
-
-        reconfigure_participants(
-          n,
-          :gb_trees.values(participants)
-        )
-
+        reconfigure_participants(n,
+                                   :gb_trees.values(participants))
         newState = clear_fixtable(n, state)
         :mnesia_locker.mnesia_down(n, tids)
         :mnesia_monitor.mnesia_down(:mnesia_tm, n)
         doit_loop(newState)
-
       {from, {:unblock_me, tab}} ->
-        case :lists.member(tab, r_state(state, :blocked_tabs)) do
+        case (:lists.member(tab, r_state(state, :blocked_tabs))) do
           false ->
             verbose('Wrong dirty Op blocked on ~p ~tp ~p', [node(), tab, from])
             reply(from, :unblocked)
             doit_loop(state)
-
           true ->
             item = {tab, :unblock_me, from}
-
-            state2 =
-              r_state(state,
-                dirty_queue: [
-                  item
-                  | r_state(state, :dirty_queue)
-                ]
-              )
-
+            state2 = r_state(state, dirty_queue: [item |
+                                                r_state(state, :dirty_queue)])
             doit_loop(state2)
         end
-
       {from, {:block_tab, tab}} ->
-        state2 =
-          r_state(state,
-            blocked_tabs: [
-              tab
-              | r_state(state, :blocked_tabs)
-            ]
-          )
-
+        state2 = r_state(state, blocked_tabs: [tab |
+                                             r_state(state, :blocked_tabs)])
         reply(from, :ok, state2)
-
       {from, {:unblock_tab, tab}} ->
         blockedTabs2 = r_state(state, :blocked_tabs) -- [tab]
-
-        case :lists.member(tab, blockedTabs2) do
+        case (:lists.member(tab, blockedTabs2)) do
           false ->
             :mnesia_controller.unblock_table(tab)
             queue = process_dirty_queue(tab, r_state(state, :dirty_queue))
-
-            state2 =
-              r_state(state,
-                blocked_tabs: blockedTabs2,
-                dirty_queue: queue
-              )
-
+            state2 = r_state(state, blocked_tabs: blockedTabs2, 
+                                dirty_queue: queue)
             reply(from, :ok, state2)
-
           true ->
             state2 = r_state(state, blocked_tabs: blockedTabs2)
             reply(from, :ok, state2)
         end
-
+      {from, :sync} ->
+        reply(from, :ok, state)
       {from, {:prepare_checkpoint, cp}} ->
         res = :mnesia_checkpoint.tm_prepare(cp)
-
-        case res do
+        case (res) do
           {:ok, _Name, ignoreNew, _Node} ->
-            prepare_pending_coordinators(
-              :gb_trees.to_list(coordinators),
-              ignoreNew
-            )
-
-            prepare_pending_participants(
-              :gb_trees.values(participants),
-              ignoreNew
-            )
-
+            prepare_pending_coordinators(:gb_trees.to_list(coordinators),
+                                           ignoreNew)
+            prepare_pending_participants(:gb_trees.values(participants),
+                                           ignoreNew)
           {:error, _Reason} ->
             :ignore
         end
-
         reply(from, res, state)
-
       {from, {:fixtable, [tab, lock, requester]}} ->
         case (try do
-                :ets.lookup_element(:mnesia_gvar, {tab, :storage_type}, 2)
+                :ets.lookup_element(:mnesia_gvar, {tab, :storage_type},
+                                      2)
               catch
                 :error, _ ->
                   {:EXIT, {:badarg, []}}
               end) do
           {:EXIT, _} ->
             reply(from, :error, state)
-
           storage ->
             :mnesia_lib.db_fixtable(storage, tab, lock)
             newState = manage_fixtable(tab, lock, requester, state)
             reply(from, node(), newState)
         end
-
       {:system, from, msg} ->
         dbg_out('~p got {system, ~p, ~tp}~n', [:mnesia_tm, from, msg])
-        :sys.handle_system_msg(msg, from, sup, :mnesia_tm, [], state)
-
+        :sys.handle_system_msg(msg, from, sup, :mnesia_tm, [],
+                                 state)
       msg ->
         verbose('** ERROR ** ~p got unexpected message: ~tp~n', [:mnesia_tm, msg])
         doit_loop(state)
+    end
+  end
+
+  defp is_blocked([], _Commit) do
+    false
+  end
+
+  defp is_blocked([tab | tabs],
+            r_commit(ram_copies: rCs, disc_copies: dCs,
+                disc_only_copies: dOs, ext: exts) = commit) do
+    is_blocked_tab(rCs, tab) or is_blocked_tab(dCs,
+                                                 tab) or is_blocked_tab(dOs,
+                                                                          tab) or is_blocked_ext_tab(exts,
+                                                                                                       tab) or is_blocked(tabs,
+                                                                                                                            commit)
+  end
+
+  defp is_blocked_tab([{{tab, _}, _, _} | _Ops], tab) do
+    true
+  end
+
+  defp is_blocked_tab([_ | ops], tab) do
+    is_blocked_tab(ops, tab)
+  end
+
+  defp is_blocked_tab([], _) do
+    false
+  end
+
+  defp is_blocked_ext_tab([], _Tab) do
+    false
+  end
+
+  defp is_blocked_ext_tab(exts, tab) do
+    case (:lists.keyfind(:ext_copies, 1, exts)) do
+      false ->
+        false
+      {_, extOps} ->
+        is_blocked_tab(for {_, op} <- extOps do
+                         op
+                       end,
+                         tab)
     end
   end
 
@@ -670,20 +554,16 @@ defmodule :m_mnesia_tm do
 
   defp process_dirty_queue(tab, [item | queue]) do
     queue2 = process_dirty_queue(tab, queue)
-
-    case item do
+    case (item) do
       {:async_dirty, tid, commit, ^tab} ->
         do_async_dirty(tid, commit, tab)
         queue2
-
       {:sync_dirty, from, tid, commit, ^tab} ->
         do_sync_dirty(from, tid, commit, tab)
         queue2
-
       {^tab, :unblock_me, from} ->
         reply(from, :unblocked)
         queue2
-
       _ ->
         [item | queue2]
     end
@@ -693,10 +573,8 @@ defmodule :m_mnesia_tm do
     []
   end
 
-  defp prepare_pending_coordinators(
-         [{tid, [store | _Etabs]} | coords],
-         ignoreNew
-       ) do
+  defp prepare_pending_coordinators([{tid, [store | _Etabs]} | coords],
+            ignoreNew) do
     try do
       :ets.lookup(store, :pending)
     catch
@@ -705,16 +583,13 @@ defmodule :m_mnesia_tm do
     else
       [] ->
         prepare_pending_coordinators(coords, ignoreNew)
-
       [pending] ->
-        case :lists.member(tid, ignoreNew) do
+        case (:lists.member(tid, ignoreNew)) do
           false ->
             :mnesia_checkpoint.tm_enter_pending(pending)
-
           true ->
             :ignore
         end
-
         prepare_pending_coordinators(coords, ignoreNew)
     end
   end
@@ -727,15 +602,12 @@ defmodule :m_mnesia_tm do
     tid = r_participant(part, :tid)
     d = r_participant(part, :disc_nodes)
     r = r_participant(part, :ram_nodes)
-
-    case :lists.member(tid, ignoreNew) do
+    case (:lists.member(tid, ignoreNew)) do
       false ->
         :mnesia_checkpoint.tm_enter_pending(tid, d, r)
-
       true ->
         :ignore
     end
-
     prepare_pending_participants(parts, ignoreNew)
   end
 
@@ -748,38 +620,25 @@ defmodule :m_mnesia_tm do
   end
 
   defp handle_exit(pid, _Reason, state)
-       when pid == r_state(state, :supervisor) do
+      when pid == r_state(state, :supervisor) do
     do_stop(state)
   end
 
   defp handle_exit(pid, reason, state) do
-    case pid_search_delete(
-           pid,
-           :gb_trees.to_list(r_state(state, :coordinators))
-         ) do
+    case (pid_search_delete(pid,
+                              :gb_trees.to_list(r_state(state, :coordinators)))) do
       {:none, _} ->
         ps = :gb_trees.values(r_state(state, :participants))
-
-        case :mnesia_lib.key_search_delete(pid, r_participant(:pid), ps) do
+        case (:mnesia_lib.key_search_delete(pid, r_participant(:pid),
+                                              ps)) do
           {:none, _} ->
             doit_loop(state)
-
           {p = r_participant(), _RestP} ->
-            fatal('Participant ~p in transaction ~p died ~tp~n', [
-              r_participant(p, :pid),
-              r_participant(p, :tid),
-              reason
-            ])
-
-            newPs =
-              :gb_trees.delete(
-                r_participant(p, :tid),
-                r_state(state, :participants)
-              )
-
+            fatal('Participant ~p in transaction ~p died ~tp~n', [r_participant(p, :pid), r_participant(p, :tid), reason])
+            newPs = :gb_trees.delete(r_participant(p, :tid),
+                                       r_state(state, :participants))
             doit_loop(r_state(state, participants: newPs))
         end
-
       {{tid, etabs}, restC} ->
         recover_coordinator(tid, etabs)
         doit_loop(r_state(state, coordinators: restC))
@@ -791,32 +650,31 @@ defmodule :m_mnesia_tm do
     store = hd(etabs)
     checkNodes = get_elements(:nodes, store)
     tellNodes = checkNodes -- [node()]
-
     try do
       arrange(tid, store, :async)
     catch
       _, reason ->
         dbg_out('Recovery of coordinator ~p failed: ~tp~n', [tid, {reason, __STACKTRACE__}])
         protocol = :asym_trans
-        tell_outcome(tid, protocol, node(), checkNodes, tellNodes)
+        tell_outcome(tid, protocol, node(), checkNodes,
+                       tellNodes)
     else
       {_N, prep} ->
         protocol = r_prep(prep, :protocol)
-        outcome = tell_outcome(tid, protocol, node(), checkNodes, tellNodes)
+        outcome = tell_outcome(tid, protocol, node(),
+                                 checkNodes, tellNodes)
         cR = r_prep(prep, :records)
         {discNs, ramNs} = commit_nodes(cR, [], [])
-
-        case :lists.keysearch(node(), r_commit(:node), cR) do
+        case (:lists.keysearch(node(), r_commit(:node), cR)) do
           {:value, local} ->
             :ok
-            recover_coordinator(tid, protocol, outcome, local, discNs, ramNs)
+            recover_coordinator(tid, protocol, outcome, local,
+                                  discNs, ramNs)
             :ok
-
           false ->
             :ok
         end
     end
-
     erase_ets_tabs(etabs)
     transaction_terminated(tid)
     :mnesia_locker.release_tid(tid)
@@ -831,7 +689,8 @@ defmodule :m_mnesia_tm do
     :mnesia_recover.note_decision(tid, :aborted)
   end
 
-  defp recover_coordinator(tid, :sync_sym_trans, :committed, local, _, _) do
+  defp recover_coordinator(tid, :sync_sym_trans, :committed, local, _,
+            _) do
     :mnesia_recover.note_decision(tid, :committed)
     do_dirty(tid, local)
   end
@@ -841,17 +700,19 @@ defmodule :m_mnesia_tm do
   end
 
   defp recover_coordinator(tid, protocol, :committed, local, discNs, ramNs)
-       when protocol === :asym_trans or
-              protocol === :sync_asym_trans do
-    d = r_decision(tid: tid, outcome: :committed, disc_nodes: discNs, ram_nodes: ramNs)
+      when protocol === :asym_trans or
+             protocol === :sync_asym_trans do
+    d = r_decision(tid: tid, outcome: :committed, disc_nodes: discNs,
+            ram_nodes: ramNs)
     :mnesia_recover.log_decision(d)
     do_commit(tid, local)
   end
 
   defp recover_coordinator(tid, protocol, :aborted, local, discNs, ramNs)
-       when protocol === :asym_trans or
-              protocol === :sync_asym_trans do
-    d = r_decision(tid: tid, outcome: :aborted, disc_nodes: discNs, ram_nodes: ramNs)
+      when protocol === :asym_trans or
+             protocol === :sync_asym_trans do
+    d = r_decision(tid: tid, outcome: :aborted, disc_nodes: discNs,
+            ram_nodes: ramNs)
     :mnesia_recover.log_decision(d)
     do_abort(tid, local)
   end
@@ -870,16 +731,12 @@ defmodule :m_mnesia_tm do
 
   defp del_coord_store(coords, tid, current, obsolete) do
     stores = :gb_trees.get(tid, coords)
-
-    rest =
-      case stores do
-        [^obsolete, ^current | tail] ->
-          tail
-
-        [^current, ^obsolete | tail] ->
-          tail
-      end
-
+    rest = (case (stores) do
+              [^obsolete, ^current | tail] ->
+                tail
+              [^current, ^obsolete | tail] ->
+                tail
+            end)
     :ets.delete(obsolete)
     :gb_trees.update(tid, [current | rest], coords)
   end
@@ -895,71 +752,59 @@ defmodule :m_mnesia_tm do
 
   defp clear_fixtable([store | _]) do
     fixed = get_elements(:fixtable, store)
-
-    :lists.foreach(
-      fn {tab, node} ->
-        :rpc.cast(node, :mnesia_tm, :fixtable, [tab, false, self()])
-      end,
-      fixed
-    )
+    :lists.foreach(fn {tab, node} ->
+                        :rpc.cast(node, :mnesia_tm, :fixtable,
+                                    [tab, false, self()])
+                   end,
+                     fixed)
   end
 
   defp clear_fixtable(node, state = r_state(fixed_tabs: fT0)) do
-    case :mnesia_lib.key_search_delete(node, 1, fT0) do
+    case (:mnesia_lib.key_search_delete(node, 1, fT0)) do
       {:none, _Ft} ->
         state
-
       {{^node, tabs}, fT} ->
-        :lists.foreach(
-          fn tab ->
-            case (try do
-                    :ets.lookup_element(
-                      :mnesia_gvar,
-                      {tab, :storage_type},
-                      2
-                    )
-                  catch
-                    :error, _ ->
-                      {:EXIT, {:badarg, []}}
-                  end) do
-              {:EXIT, _} ->
-                :ignore
-
-              storage ->
-                :mnesia_lib.db_fixtable(storage, tab, false)
-            end
-          end,
-          tabs
-        )
-
+        :lists.foreach(fn tab ->
+                            case (try do
+                                    :ets.lookup_element(:mnesia_gvar,
+                                                          {tab, :storage_type},
+                                                          2)
+                                  catch
+                                    :error, _ ->
+                                      {:EXIT, {:badarg, []}}
+                                  end) do
+                              {:EXIT, _} ->
+                                :ignore
+                              storage ->
+                                :mnesia_lib.db_fixtable(storage, tab, false)
+                            end
+                       end,
+                         tabs)
         r_state(state, fixed_tabs: fT)
     end
   end
 
-  defp manage_fixtable(tab, true, requester, state = r_state(fixed_tabs: fT0)) do
+  defp manage_fixtable(tab, true, requester,
+            state = r_state(fixed_tabs: fT0)) do
     node = node(requester)
-
-    case :mnesia_lib.key_search_delete(node, 1, fT0) do
+    case (:mnesia_lib.key_search_delete(node, 1, fT0)) do
       {:none, fT} ->
         r_state(state, fixed_tabs: [{node, [tab]} | fT])
-
       {{^node, tabs}, fT} ->
         r_state(state, fixed_tabs: [{node, [tab | tabs]} | fT])
     end
   end
 
-  defp manage_fixtable(tab, false, requester, state = r_state(fixed_tabs: fT0)) do
+  defp manage_fixtable(tab, false, requester,
+            state = r_state(fixed_tabs: fT0)) do
     node = node(requester)
-
-    case :mnesia_lib.key_search_delete(node, 1, fT0) do
+    case (:mnesia_lib.key_search_delete(node, 1, fT0)) do
       {:none, _FT} ->
         state
-
       {{^node, tabs0}, fT} ->
-        case :lists.delete(tab, tabs0) do
+        case (:lists.delete(tab, tabs0)) do
           [] ->
             r_state(state, fixed_tabs: fT)
-
           tabs ->
             r_state(state, fixed_tabs: [{node, tabs} | fT])
         end
@@ -971,7 +816,7 @@ defmodule :m_mnesia_tm do
   end
 
   defp pid_search_delete(pid, [tr = {tid, _Ts} | trs], _Val, ack)
-       when r_tid(tid, :pid) == pid do
+      when r_tid(tid, :pid) == pid do
     pid_search_delete(pid, trs, tr, ack)
   end
 
@@ -986,31 +831,27 @@ defmodule :m_mnesia_tm do
   defp transaction_terminated(tid) do
     :mnesia_checkpoint.tm_exit_pending(tid)
     pid = r_tid(tid, :pid)
-
     cond do
       node(pid) == node() ->
         :erlang.unlink(pid)
-
       true ->
         :mnesia_recover.sync_trans_tid_serial(tid)
     end
   end
 
-  def non_transaction(oldState = {_, _, trans}, fun, args, activityKind, mod)
+  def non_transaction(oldState = {_, _, trans}, fun, args,
+           activityKind, mod)
       when trans != :non_transaction do
-    kind =
-      case activityKind do
-        :sync_dirty ->
-          :sync
-
-        _ ->
-          :async
-      end
-
-    case transaction(oldState, fun, args, :infinity, mod, kind) do
+    kind = (case (activityKind) do
+              :sync_dirty ->
+                :sync
+              _ ->
+                :async
+            end)
+    case (transaction(oldState, fun, args, :infinity, mod,
+                        kind)) do
       {:atomic, res} ->
         res
-
       {:aborted, res} ->
         exit(res)
     end
@@ -1020,32 +861,26 @@ defmodule :m_mnesia_tm do
     id = {activityKind, self()}
     newState = {mod, id, :non_transaction}
     :erlang.put(:mnesia_activity_state, newState)
-
     try do
       apply(fun, args)
     catch
       throw ->
         throw(throw)
-
       :error, reason ->
         exit({reason, __STACKTRACE__})
-
       :exit, reason ->
         exit(reason)
     else
       {:EXIT, reason} ->
         exit(reason)
-
       {:aborted, reason} ->
         :mnesia.abort(reason)
-
       res ->
         res
     after
-      case oldState do
+      case (oldState) do
         :undefined ->
           :erlang.erase(:mnesia_activity_state)
-
         _ ->
           :erlang.put(:mnesia_activity_state, oldState)
       end
@@ -1054,29 +889,26 @@ defmodule :m_mnesia_tm do
 
   def transaction(oldTidTs, fun, args, retries, mod, type) do
     factor = 1
-
-    case oldTidTs do
+    case (oldTidTs) do
       :undefined ->
         execute_outer(mod, fun, args, factor, retries, type)
-
       {_, _, :non_transaction} ->
-        res = execute_outer(mod, fun, args, factor, retries, type)
+        res = execute_outer(mod, fun, args, factor, retries,
+                              type)
         :erlang.put(:mnesia_activity_state, oldTidTs)
         res
-
       {oldMod, tid, ts} ->
-        execute_inner(mod, tid, oldMod, ts, fun, args, factor, retries, type)
-
+        execute_inner(mod, tid, oldMod, ts, fun, args, factor,
+                        retries, type)
       _ ->
         {:aborted, :nested_transaction}
     end
   end
 
   defp execute_outer(mod, fun, args, factor, retries, type) do
-    case req(:start_outer) do
+    case (req(:start_outer)) do
       {:error, reason} ->
         {:aborted, reason}
-
       {:new_tid, tid, store} ->
         ts = r_tidstore(store: store)
         newTidTs = {mod, tid, ts}
@@ -1085,15 +917,16 @@ defmodule :m_mnesia_tm do
     end
   end
 
-  defp execute_inner(mod, tid, oldMod, ts, fun, args, factor, retries, type) do
-    case req({:add_store, tid}) do
+  defp execute_inner(mod, tid, oldMod, ts, fun, args, factor,
+            retries, type) do
+    case (req({:add_store, tid})) do
       {:error, reason} ->
         {:aborted, reason}
-
       {:new_store, ets} ->
         copy_ets(r_tidstore(ts, :store), ets)
         up = [{oldMod, r_tidstore(ts, :store)} | r_tidstore(ts, :up_stores)]
-        newTs = r_tidstore(ts, level: 1 + r_tidstore(ts, :level), store: ets, up_stores: up)
+        newTs = r_tidstore(ts, level: 1 + r_tidstore(ts, :level),  store: ets, 
+                        up_stores: up)
         newTidTs = {mod, tid, newTs}
         :erlang.put(:mnesia_activity_state, newTidTs)
         execute_transaction(fun, args, factor, retries, type)
@@ -1130,10 +963,9 @@ defmodule :m_mnesia_tm do
       value ->
         reason = {:aborted, {:throw, value}}
         return_abort(fun, args, reason)
-
       :error, reason ->
-        check_exit(fun, args, factor, retries, {reason, __STACKTRACE__}, type)
-
+        check_exit(fun, args, factor, retries,
+                     {reason, __STACKTRACE__}, type)
       _, reason ->
         check_exit(fun, args, factor, retries, reason, type)
     else
@@ -1141,19 +973,16 @@ defmodule :m_mnesia_tm do
         :mnesia_lib.incr_counter(:trans_commits)
         :erlang.erase(:mnesia_activity_state)
         flush_downs()
-
         try do
           :erlang.unlink(:erlang.whereis(:mnesia_tm))
         catch
           :error, _ ->
             :ok
         end
-
         {:atomic, value}
-
       {:do_abort, reason} ->
-        check_exit(fun, args, factor, retries, {:aborted, reason}, type)
-
+        check_exit(fun, args, factor, retries,
+                     {:aborted, reason}, type)
       {:nested_atomic, value} ->
         :mnesia_lib.incr_counter(:trans_commits)
         {:atomic, value}
@@ -1162,33 +991,28 @@ defmodule :m_mnesia_tm do
 
   defp apply_fun(fun, args, type) do
     result = apply(fun, args)
-
-    case t_commit(type) do
+    case (t_commit(type)) do
       :do_commit ->
         {:atomic, result}
-
       :do_commit_nested ->
         {:nested_atomic, result}
-
       {:do_abort, {:aborted, reason}} ->
         {:do_abort, reason}
-
       {:do_abort, _} = abort ->
         abort
     end
   end
 
   defp check_exit(fun, args, factor, retries, reason, type) do
-    case reason do
+    case (reason) do
       {:aborted, c = r_cyclic()} ->
         maybe_restart(fun, args, factor, retries, type, c)
-
       {:aborted, {:node_not_running, n}} ->
-        maybe_restart(fun, args, factor, retries, type, {:node_not_running, n})
-
+        maybe_restart(fun, args, factor, retries, type,
+                        {:node_not_running, n})
       {:aborted, {:bad_commit, n}} ->
-        maybe_restart(fun, args, factor, retries, type, {:bad_commit, n})
-
+        maybe_restart(fun, args, factor, retries, type,
+                        {:bad_commit, n})
       _ ->
         return_abort(fun, args, reason)
     end
@@ -1196,14 +1020,12 @@ defmodule :m_mnesia_tm do
 
   defp maybe_restart(fun, args, factor, retries, type, why) do
     {mod, tid, ts} = :erlang.get(:mnesia_activity_state)
-
-    case try_again(retries) do
+    case (try_again(retries)) do
       :yes when r_tidstore(ts, :level) == 1 ->
-        restart(mod, tid, ts, fun, args, factor, retries, type, why)
-
+        restart(mod, tid, ts, fun, args, factor, retries, type,
+                  why)
       :yes ->
         return_abort(fun, args, why)
-
       :no ->
         return_abort(fun, args, {:aborted, :nomore})
     end
@@ -1213,7 +1035,7 @@ defmodule :m_mnesia_tm do
     :yes
   end
 
-  defp try_again(x) when is_number(x) and x > 1 do
+  defp try_again(x) when (is_number(x) and x > 1) do
     :yes
   end
 
@@ -1221,58 +1043,39 @@ defmodule :m_mnesia_tm do
     :no
   end
 
-  defp restart(mod, tid, ts, fun, args, factor0, retries0, type, why) do
+  defp restart(mod, tid, ts, fun, args, factor0, retries0,
+            type, why) do
     :mnesia_lib.incr_counter(:trans_restarts)
     retries = decr(retries0)
-
-    case why do
+    case (why) do
       {:bad_commit, _N} ->
         return_abort(fun, args, why)
         factor = 1
-
-        sleepTime =
-          :mnesia_lib.random_time(
-            factor,
-            r_tid(tid, :counter)
-          )
-
-        dbg_out('Restarting transaction ~w: in ~wms ~w~n', [tid, sleepTime, why])
+        sleepTime = :mnesia_lib.random_time(factor,
+                                              r_tid(tid, :counter))
+        log_restart('Restarting transaction ~w: in ~wms ~w~n', [tid, sleepTime, why])
         :timer.sleep(sleepTime)
         execute_outer(mod, fun, args, factor, retries, type)
-
       {:node_not_running, _N} ->
         return_abort(fun, args, why)
         factor = 1
-
-        sleepTime =
-          :mnesia_lib.random_time(
-            factor,
-            r_tid(tid, :counter)
-          )
-
-        dbg_out('Restarting transaction ~w: in ~wms ~w~n', [tid, sleepTime, why])
+        sleepTime = :mnesia_lib.random_time(factor,
+                                              r_tid(tid, :counter))
+        log_restart('Restarting transaction ~w: in ~wms ~w~n', [tid, sleepTime, why])
         :timer.sleep(sleepTime)
         execute_outer(mod, fun, args, factor, retries, type)
-
       _ ->
-        sleepTime =
-          :mnesia_lib.random_time(
-            factor0,
-            r_tid(tid, :counter)
-          )
-
+        sleepTime = :mnesia_lib.random_time(factor0,
+                                              r_tid(tid, :counter))
         dbg_out('Restarting transaction ~w: in ~wms ~w~n', [tid, sleepTime, why])
-
         cond do
           factor0 != 10 ->
             :ignore
-
           true ->
             allNodes = val({:current, :db_nodes})
-            verbose('Sync serial ~p~n', [tid])
-            :rpc.abcast(allNodes, :mnesia_tm, {:sync_trans_serial, tid})
+            :rpc.abcast(allNodes, :mnesia_tm,
+                          {:sync_trans_serial, tid})
         end
-
         intercept_friends(tid, ts)
         store = r_tidstore(ts, :store)
         nodes = get_elements(:nodes, store)
@@ -1280,25 +1083,41 @@ defmodule :m_mnesia_tm do
         :mnesia_locker.send_release_tid(nodes, tid)
         :timer.sleep(sleepTime)
         :mnesia_locker.receive_release_tid_acc(nodes, tid)
-
-        case get_restarted(tid) do
+        case (get_restarted(tid)) do
           {:restarted, ^tid} ->
-            execute_transaction(fun, args, factor0 + 1, retries, type)
-
+            execute_transaction(fun, args, factor0 + 1, retries,
+                                  type)
           {:error, reason} ->
             :mnesia.abort(reason)
         end
     end
   end
 
+  defp log_restart(f, a) do
+    case (:erlang.get(:transaction_client)) do
+      :undefined ->
+        dbg_out(f, a)
+      _ ->
+        case (:erlang.get(:transaction_count)) do
+          :undefined ->
+            :erlang.put(:transaction_count, 1)
+            verbose(f, a)
+          n when rem(n, 10) == 0 ->
+            :erlang.put(:transaction_count, n + 1)
+            verbose(f, a)
+          n ->
+            :erlang.put(:transaction_count, n + 1)
+            dbg_out(f, a)
+        end
+    end
+  end
+
   defp get_restarted(tid) do
-    case res = rec() do
+    case (res = rec()) do
       {:restarted, ^tid} ->
         res
-
       {:error, _} ->
         res
-
       _ ->
         get_restarted(tid)
     end
@@ -1308,7 +1127,7 @@ defmodule :m_mnesia_tm do
     :infinity
   end
 
-  defp decr(x) when is_integer(x) and x > 1 do
+  defp decr(x) when (is_integer(x) and x > 1) do
     x - 1
   end
 
@@ -1322,56 +1141,45 @@ defmodule :m_mnesia_tm do
     oldStore = r_tidstore(ts, :store)
     nodes = get_elements(:nodes, oldStore)
     intercept_friends(tid, ts)
-
     try do
       :mnesia_lib.incr_counter(:trans_failures)
     catch
       :error, _ ->
         :ok
     end
-
     level = r_tidstore(ts, :level)
-
     cond do
       level == 1 ->
         :mnesia_locker.async_release_tid(nodes, tid)
-
         try do
           send(:mnesia_tm, {:delete_transaction, tid})
         catch
           :error, _ ->
             :ok
         end
-
         :erlang.erase(:mnesia_activity_state)
         flush_downs()
-
         try do
           :erlang.unlink(:erlang.whereis(:mnesia_tm))
         catch
           :error, _ ->
             :ok
         end
-
         {:aborted, :mnesia_lib.fix_error(reason)}
-
       true ->
         [{oldMod, newStore} | tail] = r_tidstore(ts, :up_stores)
         req({:del_store, tid, newStore, oldStore, true})
-        ts2 = r_tidstore(ts, store: newStore, up_stores: tail, level: level - 1)
+        ts2 = r_tidstore(ts, store: newStore,  up_stores: tail, 
+                      level: level - 1)
         newTidTs = {oldMod, tid, ts2}
         :erlang.put(:mnesia_activity_state, newTidTs)
-
-        case reason do
+        case (reason) do
           r_cyclic() ->
             exit({:aborted, reason})
-
           {:node_not_running, _N} ->
             exit({:aborted, reason})
-
           {:bad_commit, _N} ->
             exit({:aborted, reason})
-
           _ ->
             {:aborted, :mnesia_lib.fix_error(reason)}
         end
@@ -1382,12 +1190,10 @@ defmodule :m_mnesia_tm do
     receive do
       {:mnesia_tm, _, _} ->
         flush_downs()
-
       {:mnesia_down, _} ->
         flush_downs()
-    after
-      0 ->
-        :flushed
+    after 0 ->
+      :flushed
     end
   end
 
@@ -1402,15 +1208,12 @@ defmodule :m_mnesia_tm do
   def put_activity_id({mod, tid = r_tid(), ts = r_tidstore()}, fun) do
     flush_downs()
     store = r_tidstore(ts, :store)
-
     cond do
       is_function(fun) ->
         :ets.insert(store, {:friends, {:stop, fun}})
-
       true ->
         :ets.insert(store, {:friends, self()})
     end
-
     newTidTs = {mod, tid, ts}
     :erlang.put(:mnesia_activity_state, newTidTs)
   end
@@ -1433,10 +1236,8 @@ defmodule :m_mnesia_tm do
     else
       [] ->
         []
-
       [{_, val}] ->
         [val]
-
       vals ->
         for {_, val} <- vals do
           val
@@ -1449,9 +1250,12 @@ defmodule :m_mnesia_tm do
   end
 
   defp opt_propagate_store(current, obsolete, true) do
-    propagate_store(current, :nodes, get_elements(:nodes, obsolete))
-    propagate_store(current, :fixtable, get_elements(:fixtable, obsolete))
-    propagate_store(current, :friends, get_elements(:friends, obsolete))
+    propagate_store(current, :nodes,
+                      get_elements(:nodes, obsolete))
+    propagate_store(current, :fixtable,
+                      get_elements(:fixtable, obsolete))
+    propagate_store(current, :friends,
+                      get_elements(:friends, obsolete))
   end
 
   defp propagate_store(store, var, [val | vals]) do
@@ -1479,7 +1283,6 @@ defmodule :m_mnesia_tm do
       _, _Reason ->
         {:EXIT, _Reason}
     end
-
     intercept_best_friend(r, ignore)
   end
 
@@ -1497,37 +1300,33 @@ defmodule :m_mnesia_tm do
     receive do
       {:EXIT, ^pid, _} ->
         :ok
-
       {:activity_ended, _, ^pid} ->
         :ok
-    after
-      timeout ->
-        case :erlang.is_process_alive(pid) do
-          true ->
-            wait_for_best_friend(pid, 1000)
-
-          false ->
-            :ok
-        end
+    after timeout ->
+      case (:erlang.is_process_alive(pid)) do
+        true ->
+          wait_for_best_friend(pid, 1000)
+        false ->
+          :ok
+      end
     end
   end
 
   def dirty(protocol, item) do
     {{tab, key}, _Val, _Op} = item
     tid = {:dirty, self()}
-    prep = prepare_items(tid, tab, key, [item], r_prep(protocol: protocol))
+    prep = prepare_items(tid, tab, key, [item],
+                           r_prep(protocol: protocol))
     cR = r_prep(prep, :records)
-
-    case protocol do
+    case (protocol) do
       :async_dirty ->
         readNode = val({tab, :where_to_read})
-        {waitFor, firstRes} = async_send_dirty(tid, cR, tab, readNode)
+        {waitFor, firstRes} = async_send_dirty(tid, cR, tab,
+                                                 readNode)
         rec_dirty(waitFor, firstRes)
-
       :sync_dirty ->
         {waitFor, firstRes} = sync_send_dirty(tid, cR, tab, [])
         rec_dirty(waitFor, firstRes)
-
       _ ->
         :mnesia.abort({:bad_activity, protocol})
     end
@@ -1536,30 +1335,23 @@ defmodule :m_mnesia_tm do
   defp t_commit(type) do
     {_Mod, tid, ts} = :erlang.get(:mnesia_activity_state)
     store = r_tidstore(ts, :store)
-
     cond do
       r_tidstore(ts, :level) == 1 ->
         intercept_friends(tid, ts)
-
-        case arrange(tid, store, type) do
+        case (arrange(tid, store, type)) do
           {n, prep} when n > 0 ->
-            multi_commit(
-              r_prep(prep, :protocol),
-              majority_attr(prep),
-              tid,
-              r_prep(prep, :records),
-              store
-            )
-
+            multi_commit(r_prep(prep, :protocol), majority_attr(prep),
+                           tid, r_prep(prep, :records), store)
           {0, prep} ->
-            multi_commit(:read_only, majority_attr(prep), tid, r_prep(prep, :records), store)
+            multi_commit(:read_only, majority_attr(prep), tid,
+                           r_prep(prep, :records), store)
         end
-
       true ->
         level = r_tidstore(ts, :level)
         [{oldMod, obsolete} | tail] = r_tidstore(ts, :up_stores)
         req({:del_store, tid, store, obsolete, false})
-        newTs = r_tidstore(ts, store: store, up_stores: tail, level: level - 1)
+        newTs = r_tidstore(ts, store: store,  up_stores: tail, 
+                        level: level - 1)
         newTidTs = {oldMod, tid, newTs}
         :erlang.put(:mnesia_activity_state, newTidTs)
         :do_commit_nested
@@ -1575,47 +1367,36 @@ defmodule :m_mnesia_tm do
     recs = prep_recs(nodes, [])
     key = :ets.first(store)
     n = 0
-
-    prep =
-      case type do
-        :async ->
-          r_prep(protocol: :sym_trans, records: recs)
-
-        :sync ->
-          r_prep(protocol: :sync_sym_trans, records: recs)
-      end
-
+    prep = (case (type) do
+              :async ->
+                r_prep(protocol: :sym_trans, records: recs)
+              :sync ->
+                r_prep(protocol: :sync_sym_trans, records: recs)
+            end)
     {new, prepared} = do_arrange(tid, store, key, prep, n)
-    {new, r_prep(prepared, records: reverse(r_prep(prepared, :records)))}
+    {new,
+       r_prep(prepared, records: reverse(r_prep(prepared, :records)))}
   end
 
   defp reverse([]) do
     []
   end
 
-  defp reverse([
-         h = r_commit(ram_copies: ram, disc_copies: dC, disc_only_copies: dOC, ext: ext)
-         | r
-       ]) do
-    [
-      r_commit(h,
-        ram_copies: :lists.reverse(ram),
-        disc_copies: :lists.reverse(dC),
-        disc_only_copies: :lists.reverse(dOC),
-        ext:
-          for {type, e} <- ext do
-            {type, :lists.reverse(e)}
-          end
-      )
-      | reverse(r)
-    ]
+  defp reverse([h = r_commit(ram_copies: ram, disc_copies: dC,
+                   disc_only_copies: dOC, ext: ext) |
+               r]) do
+    [r_commit(h, ram_copies: :lists.reverse(ram), 
+            disc_copies: :lists.reverse(dC), 
+            disc_only_copies: :lists.reverse(dOC), 
+            ext: for {type, e} <- ext do
+                   {type, :lists.reverse(e)}
+                 end) |
+         reverse(r)]
   end
 
   defp prep_recs([n | nodes], recs) do
-    prep_recs(
-      nodes,
-      [r_commit(decision: :presume_commit, node: n) | recs]
-    )
+    prep_recs(nodes,
+                [r_commit(decision: :presume_commit, node: n) | recs])
   end
 
   defp prep_recs([], recs) do
@@ -1630,48 +1411,45 @@ defmodule :m_mnesia_tm do
   end
 
   defp do_arrange(tid, store, schemaKey, prep, n)
-       when schemaKey == :op do
+      when schemaKey == :op do
     items = :ets.lookup(store, schemaKey)
     p2 = prepare_schema_items(tid, items, prep)
-    do_arrange(tid, store, :ets.next(store, schemaKey), p2, n + 1)
+    do_arrange(tid, store, :ets.next(store, schemaKey), p2,
+                 n + 1)
   end
 
   defp do_arrange(tid, store, restoreKey, prep, n)
-       when restoreKey == :restore_op do
+      when restoreKey == :restore_op do
     [{:restore_op, r}] = :ets.lookup(store, restoreKey)
-
-    fun = fn
-      {tab, key}, commitRecs, _RecName, where, snmp ->
-        item = [{{tab, key}, {tab, key}, :delete}]
-        do_prepare_items(tid, tab, key, where, snmp, item, commitRecs)
-
-      bupRec, commitRecs, recName, where, snmp ->
-        tab = :erlang.element(1, bupRec)
-        key = :erlang.element(2, bupRec)
-
-        item =
-          cond do
-            tab == recName ->
-              [{{tab, key}, bupRec, :write}]
-
-            true ->
-              bupRec2 = :erlang.setelement(1, bupRec, recName)
-              [{{tab, key}, bupRec2, :write}]
+    fun = fn {tab, key}, commitRecs, _RecName, where,
+               snmp ->
+               item = [{{tab, key}, {tab, key}, :delete}]
+               do_prepare_items(tid, tab, key, where, snmp, item,
+                                  commitRecs)
+             bupRec, commitRecs, recName, where, snmp ->
+               tab = :erlang.element(1, bupRec)
+               key = :erlang.element(2, bupRec)
+               item = (cond do
+                         tab == recName ->
+                           [{{tab, key}, bupRec, :write}]
+                         true ->
+                           bupRec2 = :erlang.setelement(1, bupRec, recName)
+                           [{{tab, key}, bupRec2, :write}]
+                       end)
+               do_prepare_items(tid, tab, key, where, snmp, item,
+                                  commitRecs)
           end
-
-        do_prepare_items(tid, tab, key, where, snmp, item, commitRecs)
-    end
-
-    recs2 = :mnesia_schema.arrange_restore(r, fun, r_prep(prep, :records))
-    p2 = r_prep(prep, protocol: :asym_trans, records: recs2)
-    do_arrange(tid, store, :ets.next(store, restoreKey), p2, n + 1)
+    recs2 = :mnesia_schema.arrange_restore(r, fun,
+                                             r_prep(prep, :records))
+    p2 = r_prep(prep, protocol: :asym_trans,  records: recs2)
+    do_arrange(tid, store, :ets.next(store, restoreKey), p2,
+                 n + 1)
   end
 
   defp do_arrange(_Tid, _Store, :"$end_of_table", prep, n) do
-    case prep do
+    case (prep) do
       r_prep(sync: true, protocol: :asym_trans) ->
         {n, r_prep(prep, protocol: :sync_asym_trans)}
-
       _ ->
         {n, prep}
     end
@@ -1683,67 +1461,59 @@ defmodule :m_mnesia_tm do
   end
 
   defp do_arrange(tid, store, ignoredKey, prep, n) do
-    do_arrange(tid, store, :ets.next(store, ignoredKey), prep, n)
+    do_arrange(tid, store, :ets.next(store, ignoredKey),
+                 prep, n)
   end
 
   defp prepare_schema_items(tid, items, prep) do
-    types =
-      for n <- val({:current, :db_nodes}) do
-        {n, :schema_ops}
-      end
-
-    recs = prepare_nodes(tid, types, items, r_prep(prep, :records), :schema)
-    r_prep(prep, protocol: :asym_trans, records: recs)
+    types = (for n <- val({:current, :db_nodes}) do
+               {n, :schema_ops}
+             end)
+    recs = prepare_nodes(tid, types, items,
+                           r_prep(prep, :records), :schema)
+    r_prep(prep, protocol: :asym_trans,  records: recs)
   end
 
   defp prepare_items(tid, tab, key, items, prep)
-       when r_prep(prep, :prev_tab) == tab do
+      when r_prep(prep, :prev_tab) == tab do
     types = r_prep(prep, :prev_types)
     snmp = r_prep(prep, :prev_snmp)
     recs = r_prep(prep, :records)
-    recs2 = do_prepare_items(tid, tab, key, types, snmp, items, recs)
+    recs2 = do_prepare_items(tid, tab, key, types, snmp,
+                               items, recs)
     r_prep(prep, records: recs2)
   end
 
   defp prepare_items(tid, tab, key, items, prep) do
     types = val({tab, :where_to_commit})
-
-    case types do
+    case (types) do
       [] ->
         :mnesia.abort({:no_exists, tab})
-
       {:blocked, _} ->
         :unblocked = req({:unblock_me, tab})
         prepare_items(tid, tab, key, items, prep)
-
       _ ->
         majority = needs_majority(tab, prep)
         snmp = val({tab, :snmp})
-        recs2 = do_prepare_items(tid, tab, key, types, snmp, items, r_prep(prep, :records))
-
-        prep2 =
-          r_prep(prep,
-            records: recs2,
-            prev_tab: tab,
-            majority: majority,
-            prev_types: types,
-            prev_snmp: snmp
-          )
-
+        recs2 = do_prepare_items(tid, tab, key, types, snmp,
+                                   items, r_prep(prep, :records))
+        prep2 = r_prep(prep, records: recs2,  prev_tab: tab, 
+                          majority: majority,  prev_types: types, 
+                          prev_snmp: snmp)
         check_prep(prep2, types)
     end
   end
 
   defp do_prepare_items(tid, tab, key, types, snmp, items, recs) do
-    recs2 = prepare_snmp(tid, tab, key, types, snmp, items, recs)
+    recs2 = prepare_snmp(tid, tab, key, types, snmp, items,
+                           recs)
     prepare_nodes(tid, types, items, recs2, :normal)
   end
 
   defp needs_majority(tab, r_prep(majority: m)) do
-    case :lists.keymember(tab, 1, m) do
+    case (:lists.keymember(tab, 1, m)) do
       true ->
         m
-
       false ->
         case (try do
                 :ets.lookup_element(:mnesia_gvar, {tab, :majority}, 2)
@@ -1753,10 +1523,8 @@ defmodule :m_mnesia_tm do
               end) do
           {:EXIT, _} ->
             m
-
           false ->
             m
-
           true ->
             copyHolders = val({tab, :all_nodes})
             [{tab, copyHolders} | m]
@@ -1769,25 +1537,24 @@ defmodule :m_mnesia_tm do
   end
 
   defp have_majority([{tab, allNodes} | rest], nodes) do
-    case :mnesia_lib.have_majority(tab, allNodes, nodes) do
+    case (:mnesia_lib.have_majority(tab, allNodes,
+                                      nodes)) do
       true ->
         have_majority(rest, nodes)
-
       false ->
         {:error, tab}
     end
   end
 
   def prepare_snmp(tab, key, items) do
-    case val({tab, :snmp}) do
+    case (val({tab, :snmp})) do
       [] ->
         []
-
       ustruct when key != :_ ->
         {_Oid, _Val, op} = hd(items)
-        snmpOid = :mnesia_snmp_hook.key_to_oid(tab, key, ustruct)
+        snmpOid = :mnesia_snmp_hook.key_to_oid(tab, key,
+                                                 ustruct)
         [{op, tab, key, snmpOid}]
-
       _ ->
         [{:clear_table, tab}]
     end
@@ -1802,10 +1569,11 @@ defmodule :m_mnesia_tm do
       key != :_ ->
         {_Oid, _Val, op} = hd(items)
         snmpOid = :mnesia_snmp_hook.key_to_oid(tab, key, us)
-        prepare_nodes(tid, types, [{op, tab, key, snmpOid}], recs, :snmp)
-
+        prepare_nodes(tid, types, [{op, tab, key, snmpOid}],
+                        recs, :snmp)
       key == :_ ->
-        prepare_nodes(tid, types, [{:clear_table, tab}], recs, :snmp)
+        prepare_nodes(tid, types, [{:clear_table, tab}], recs,
+                        :snmp)
     end
   end
 
@@ -1813,27 +1581,23 @@ defmodule :m_mnesia_tm do
     prep
   end
 
-  defp check_prep(
-         r_prep(majority: m, types: :undefined) = prep,
-         types
-       ) do
-    protocol =
-      cond do
-        m == [] ->
-          r_prep(prep, :protocol)
-
-        true ->
-          :asym_trans
-      end
-
-    r_prep(prep, protocol: protocol, types: types)
+  defp check_prep(r_prep(majority: m, types: :undefined) = prep,
+            types) do
+    protocol = (cond do
+                  m == [] ->
+                    r_prep(prep, :protocol)
+                  true ->
+                    :asym_trans
+                end)
+    r_prep(prep, protocol: protocol,  types: types)
   end
 
   defp check_prep(prep, _Types) do
     r_prep(prep, protocol: :asym_trans)
   end
 
-  defp prepare_nodes(tid, [{node, storage} | rest], items, c, kind) do
+  defp prepare_nodes(tid, [{node, storage} | rest], items, c,
+            kind) do
     {rec, c2} = pick_node(tid, node, c, [])
     rec2 = prepare_node(node, storage, items, rec, kind)
     [rec2 | prepare_nodes(tid, rest, items, c2, kind)]
@@ -1847,7 +1611,6 @@ defmodule :m_mnesia_tm do
     cond do
       r_commit(rec, :node) == node ->
         {rec, done ++ rest}
-
       true ->
         pick_node(tid, node, rest, [rec | done])
     end
@@ -1861,65 +1624,46 @@ defmodule :m_mnesia_tm do
     :mnesia.abort({:bad_commit, {:missing_lock, node}})
   end
 
-  defp prepare_node(node, storage, [item | items], r_commit(ext: ext0) = rec, kind)
-       when kind == :snmp do
-    rec2 =
-      case :lists.keytake(:snmp, 1, ext0) do
-        false ->
-          r_commit(rec, ext: [{:snmp, [item]} | ext0])
-
-        {_, {:snmp, snmp}, ext} ->
-          r_commit(rec, ext: [{:snmp, [item | snmp]} | ext])
-      end
-
+  defp prepare_node(node, storage, [item | items],
+            r_commit(ext: ext0) = rec, kind)
+      when kind == :snmp do
+    rec2 = (case (:lists.keytake(:snmp, 1, ext0)) do
+              false ->
+                r_commit(rec, ext: [{:snmp, [item]} | ext0])
+              {_, {:snmp, snmp}, ext} ->
+                r_commit(rec, ext: [{:snmp, [item | snmp]} | ext])
+            end)
     prepare_node(node, storage, items, rec2, kind)
   end
 
   defp prepare_node(node, storage, [item | items], rec, kind)
-       when kind != :schema do
-    rec2 =
-      case storage do
-        :ram_copies ->
-          r_commit(rec, ram_copies: [item | r_commit(rec, :ram_copies)])
-
-        :disc_copies ->
-          r_commit(rec, disc_copies: [item | r_commit(rec, :disc_copies)])
-
-        :disc_only_copies ->
-          r_commit(rec,
-            disc_only_copies: [
-              item
-              | r_commit(rec, :disc_only_copies)
-            ]
-          )
-
-        {:ext, alias, mod} ->
-          ext0 = r_commit(rec, :ext)
-
-          case :lists.keytake(:ext_copies, 1, ext0) do
-            false ->
-              r_commit(rec,
-                ext: [
-                  {:ext_copies, [{{:ext, alias, mod}, item}]}
-                  | ext0
-                ]
-              )
-
-            {_, {_, eC}, ext} ->
-              r_commit(rec,
-                ext: [
-                  {:ext_copies, [{{:ext, alias, mod}, item} | eC]}
-                  | ext
-                ]
-              )
-          end
-      end
-
+      when kind != :schema do
+    rec2 = (case (storage) do
+              :ram_copies ->
+                r_commit(rec, ram_copies: [item | r_commit(rec, :ram_copies)])
+              :disc_copies ->
+                r_commit(rec, disc_copies: [item | r_commit(rec, :disc_copies)])
+              :disc_only_copies ->
+                r_commit(rec, disc_only_copies: [item |
+                                              r_commit(rec, :disc_only_copies)])
+              {:ext, alias, mod} ->
+                ext0 = r_commit(rec, :ext)
+                case (:lists.keytake(:ext_copies, 1, ext0)) do
+                  false ->
+                    r_commit(rec, ext: [{:ext_copies,
+                                    [{{:ext, alias, mod}, item}]} |
+                                     ext0])
+                  {_, {_, eC}, ext} ->
+                    r_commit(rec, ext: [{:ext_copies,
+                                    [{{:ext, alias, mod}, item} | eC]} |
+                                     ext])
+                end
+            end)
     prepare_node(node, storage, items, rec2, kind)
   end
 
   defp prepare_node(_Node, _Storage, items, rec, kind)
-       when kind == :schema and r_commit(rec, :schema_ops) == [] do
+      when (kind == :schema and r_commit(rec, :schema_ops) == []) do
     r_commit(rec, schema_ops: items)
   end
 
@@ -1940,45 +1684,47 @@ defmodule :m_mnesia_tm do
 
   defp multi_commit(:sym_trans, _Maj = [], tid, cR, store) do
     {discNs, ramNs} = commit_nodes(cR, [], [])
-    pending = :mnesia_checkpoint.tm_enter_pending(tid, discNs, ramNs)
+    pending = :mnesia_checkpoint.tm_enter_pending(tid,
+                                                    discNs, ramNs)
     :ets.insert(store, pending)
-    {waitFor, local} = ask_commit(:sym_trans, tid, cR, discNs, ramNs)
+    {waitFor, local} = ask_commit(:sym_trans, tid, cR,
+                                    discNs, ramNs)
     {outcome, []} = rec_all(waitFor, tid, :do_commit, [])
     :ok
-    :rpc.abcast(discNs -- [node()], :mnesia_tm, {tid, outcome})
-    :rpc.abcast(ramNs -- [node()], :mnesia_tm, {tid, outcome})
-
-    case outcome do
+    :rpc.abcast(discNs -- [node()], :mnesia_tm,
+                  {tid, outcome})
+    :rpc.abcast(ramNs -- [node()], :mnesia_tm,
+                  {tid, outcome})
+    case (outcome) do
       :do_commit ->
         :mnesia_recover.note_decision(tid, :committed)
         do_dirty(tid, local)
         :mnesia_locker.release_tid(tid)
         send(:mnesia_tm, {:delete_transaction, tid})
-
       {:do_abort, _Reason} ->
         :mnesia_recover.note_decision(tid, :aborted)
     end
-
     :ok
     outcome
   end
 
   defp multi_commit(:sync_sym_trans, _Maj = [], tid, cR, store) do
     {discNs, ramNs} = commit_nodes(cR, [], [])
-    pending = :mnesia_checkpoint.tm_enter_pending(tid, discNs, ramNs)
+    pending = :mnesia_checkpoint.tm_enter_pending(tid,
+                                                    discNs, ramNs)
     :ets.insert(store, pending)
-    {waitFor, local} = ask_commit(:sync_sym_trans, tid, cR, discNs, ramNs)
+    {waitFor, local} = ask_commit(:sync_sym_trans, tid, cR,
+                                    discNs, ramNs)
     {outcome, []} = rec_all(waitFor, tid, :do_commit, [])
     :ok
-
     for node <- waitFor do
       :ets.insert(store, {:waiting_for_commit_ack, node})
     end
-
-    :rpc.abcast(discNs -- [node()], :mnesia_tm, {tid, outcome})
-    :rpc.abcast(ramNs -- [node()], :mnesia_tm, {tid, outcome})
-
-    case outcome do
+    :rpc.abcast(discNs -- [node()], :mnesia_tm,
+                  {tid, outcome})
+    :rpc.abcast(ramNs -- [node()], :mnesia_tm,
+                  {tid, outcome})
+    case (outcome) do
       :do_commit ->
         :mnesia_recover.note_decision(tid, :committed)
         :mnesia_log.slog(local)
@@ -1986,49 +1732,43 @@ defmodule :m_mnesia_tm do
         rec_all(waitFor, tid, :ignore, [])
         :mnesia_locker.release_tid(tid)
         send(:mnesia_tm, {:delete_transaction, tid})
-
       {:do_abort, _Reason} ->
         :mnesia_recover.note_decision(tid, :aborted)
     end
-
     :ok
     outcome
   end
 
   defp multi_commit(protocol, majority, tid, cR, store)
-       when protocol === :asym_trans or
-              protocol === :sync_asym_trans do
+      when protocol === :asym_trans or
+             protocol === :sync_asym_trans do
     d = r_decision(tid: tid, outcome: :presume_abort)
     {d2, cR2} = commit_decision(d, cR, [], [])
     discNs = r_decision(d2, :disc_nodes)
     ramNs = r_decision(d2, :ram_nodes)
-
-    case have_majority(majority, discNs ++ ramNs) do
+    case (have_majority(majority, discNs ++ ramNs)) do
       :ok ->
         :ok
-
       {:error, tab} ->
         :mnesia.abort({:no_majority, tab})
     end
-
-    pending = :mnesia_checkpoint.tm_enter_pending(tid, discNs, ramNs)
+    pending = :mnesia_checkpoint.tm_enter_pending(tid,
+                                                    discNs, ramNs)
     :ets.insert(store, pending)
-    {waitFor, local} = ask_commit(protocol, tid, cR2, discNs, ramNs)
-
-    schemaPrep =
-      try do
-        :mnesia_schema.prepare_commit(tid, local, {:coord, waitFor})
-      catch
-        _, _Reason ->
-          {:EXIT, _Reason}
-      end
-
+    {waitFor, local} = ask_commit(protocol, tid, cR2,
+                                    discNs, ramNs)
+    schemaPrep = (try do
+                    :mnesia_schema.prepare_commit(tid, local,
+                                                    {:coord, waitFor})
+                  catch
+                    _, _Reason ->
+                      {:EXIT, _Reason}
+                  end)
     {votes, pids} = rec_all(waitFor, tid, :do_commit, [])
     :ok
-
-    case votes do
+    case (votes) do
       :do_commit ->
-        case schemaPrep do
+        case (schemaPrep) do
           {_Modified, c = r_commit(), dumperMode} ->
             :mnesia_log.log(c)
             :ok
@@ -2037,8 +1777,8 @@ defmodule :m_mnesia_tm do
             :mnesia_recover.log_decision(d4)
             :ok
             tell_participants(pids, {tid, :pre_commit})
-            rec_acc_pre_commit(pids, tid, store, {c, local}, :do_commit, dumperMode, [], [])
-
+            rec_acc_pre_commit(pids, tid, store, {c, local},
+                                 :do_commit, dumperMode, [], [])
           {:EXIT, reason} ->
             :mnesia_recover.note_decision(tid, :aborted)
             :ok
@@ -2046,7 +1786,6 @@ defmodule :m_mnesia_tm do
             do_abort(tid, local)
             {:do_abort, reason}
         end
-
       {:do_abort, reason} ->
         :mnesia_recover.note_decision(tid, :aborted)
         :ok
@@ -2056,43 +1795,39 @@ defmodule :m_mnesia_tm do
     end
   end
 
-  defp rec_acc_pre_commit([pid | tail], tid, store, commit, res, dumperMode, goodPids, ackPids) do
+  defp rec_acc_pre_commit([pid | tail], tid, store, commit, res,
+            dumperMode, goodPids, ackPids) do
     receive do
       {:mnesia_tm, _, {:acc_pre_commit, ^tid, ^pid, true}} ->
-        rec_acc_pre_commit(tail, tid, store, commit, res, dumperMode, [pid | goodPids], [
-          pid | ackPids
-        ])
-
+        rec_acc_pre_commit(tail, tid, store, commit, res,
+                             dumperMode, [pid | goodPids], [pid | ackPids])
       {:mnesia_tm, _, {:acc_pre_commit, ^tid, ^pid, false}} ->
-        rec_acc_pre_commit(tail, tid, store, commit, res, dumperMode, [pid | goodPids], ackPids)
-
+        rec_acc_pre_commit(tail, tid, store, commit, res,
+                             dumperMode, [pid | goodPids], ackPids)
       {:mnesia_tm, _, {:acc_pre_commit, ^tid, ^pid}} ->
-        rec_acc_pre_commit(tail, tid, store, commit, res, dumperMode, [pid | goodPids], [
-          pid | ackPids
-        ])
-
+        rec_acc_pre_commit(tail, tid, store, commit, res,
+                             dumperMode, [pid | goodPids], [pid | ackPids])
       {:mnesia_tm, _, {:do_abort, ^tid, ^pid, _Reason}} ->
         abortRes = {:do_abort, {:bad_commit, node(pid)}}
-        rec_acc_pre_commit(tail, tid, store, commit, abortRes, dumperMode, goodPids, ackPids)
-
+        rec_acc_pre_commit(tail, tid, store, commit, abortRes,
+                             dumperMode, goodPids, ackPids)
       {:mnesia_down, node} when node == node(pid) ->
         abortRes = {:do_abort, {:bad_commit, node}}
-
         try do
           send(pid, {tid, abortRes})
         catch
           :error, _ ->
             :ok
         end
-
-        rec_acc_pre_commit(tail, tid, store, commit, abortRes, dumperMode, goodPids, ackPids)
+        rec_acc_pre_commit(tail, tid, store, commit, abortRes,
+                             dumperMode, goodPids, ackPids)
     end
   end
 
-  defp rec_acc_pre_commit([], tid, store, {commit, origC}, res, dumperMode, goodPids, ackPids) do
+  defp rec_acc_pre_commit([], tid, store, {commit, origC}, res,
+            dumperMode, goodPids, ackPids) do
     d = r_commit(commit, :decision)
-
-    case res do
+    case (res) do
       :do_commit ->
         prepare_sync_schema_commit(store, ackPids)
         tell_participants(goodPids, {tid, :committed})
@@ -2104,7 +1839,6 @@ defmodule :m_mnesia_tm do
         sync_schema_commit(tid, store, ackPids)
         :mnesia_locker.release_tid(tid)
         send(:mnesia_tm, {:delete_transaction, tid})
-
       {:do_abort, reason} ->
         tell_participants(goodPids, {tid, {:do_abort, reason}})
         d2 = r_decision(d, outcome: :aborted)
@@ -2113,7 +1847,6 @@ defmodule :m_mnesia_tm do
         do_abort(tid, origC)
         :ok
     end
-
     res
   end
 
@@ -2133,19 +1866,12 @@ defmodule :m_mnesia_tm do
   defp sync_schema_commit(tid, store, [pid | tail]) do
     receive do
       {:mnesia_tm, _, {:schema_commit, ^tid, ^pid}} ->
-        :ets.match_delete(
-          store,
-          {:waiting_for_commit_ack, node(pid)}
-        )
-
+        :ets.match_delete(store,
+                            {:waiting_for_commit_ack, node(pid)})
         sync_schema_commit(tid, store, tail)
-
       {:mnesia_down, node} when node == node(pid) ->
-        :ets.match_delete(
-          store,
-          {:waiting_for_commit_ack, node}
-        )
-
+        :ets.match_delete(store,
+                            {:waiting_for_commit_ack, node})
         sync_schema_commit(tid, store, tail)
     end
   end
@@ -2163,17 +1889,19 @@ defmodule :m_mnesia_tm do
       when is_binary(bin) do
     :erlang.process_flag(:trap_exit, true)
     commit = :erlang.binary_to_term(bin)
-    commit_participant(protocol, coord, tid, bin, commit, discNs, ramNs)
+    commit_participant(protocol, coord, tid, bin, commit,
+                         discNs, ramNs)
   end
 
   def commit_participant(protocol, coord, tid, c = r_commit(), discNs, ramNs) do
     :erlang.process_flag(:trap_exit, true)
-    commit_participant(protocol, coord, tid, c, c, discNs, ramNs)
+    commit_participant(protocol, coord, tid, c, c, discNs,
+                         ramNs)
   end
 
-  defp commit_participant(protocol, coord, tid, bin, c0, discNs, _RamNs) do
+  defp commit_participant(protocol, coord, tid, bin, c0, discNs,
+            _RamNs) do
     :ok
-
     try do
       :mnesia_schema.prepare_commit(tid, c0, {:part, coord})
     catch
@@ -2183,23 +1911,19 @@ defmodule :m_mnesia_tm do
         :mnesia_schema.undo_prepare_commit(tid, c0)
     else
       {modified, c = r_commit(), dumperMode} ->
-        case :lists.member(node(), discNs) do
+        case (:lists.member(node(), discNs)) do
           false ->
             :ignore
-
           true ->
-            case modified do
+            case (modified) do
               false ->
                 :mnesia_log.log(bin)
-
               true ->
                 :mnesia_log.log(c)
             end
         end
-
         :ok
         reply(coord, {:vote_yes, tid, self()})
-
         receive do
           {^tid, :pre_commit} ->
             d = r_commit(c, :decision)
@@ -2207,66 +1931,40 @@ defmodule :m_mnesia_tm do
             :ok
             expectAck = r_commit(c, :schema_ops) != [] or protocol === :sync_asym_trans
             reply(coord, {:acc_pre_commit, tid, self(), expectAck})
-
             receive do
               {^tid, :committed} ->
                 :mnesia_recover.log_decision(r_decision(d, outcome: :committed))
                 :ok
                 do_commit(tid, c, dumperMode)
-
-                case expectAck do
+                case (expectAck) do
                   false ->
                     :ignore
-
                   true ->
                     reply(coord, {:schema_commit, tid, self()})
                 end
-
                 :ok
-
               {^tid, {:do_abort, _Reason}} ->
                 :mnesia_recover.log_decision(r_decision(d, outcome: :aborted))
                 :ok
                 :mnesia_schema.undo_prepare_commit(tid, c0)
                 :ok
-
               {:EXIT, _MnesiaTM, reason} ->
-                reply(
-                  coord,
-                  {:do_abort, tid, self(), {:bad_commit, reason}}
-                )
-
+                reply(coord,
+                        {:do_abort, tid, self(), {:bad_commit, reason}})
                 :mnesia_recover.log_decision(r_decision(d, outcome: :aborted))
                 :mnesia_schema.undo_prepare_commit(tid, c0)
-
-              msg ->
-                verbose('** ERROR ** commit_participant ~p, got unexpected msg: ~tp~n', [tid, msg])
             end
-
           {^tid, {:do_abort, reason}} ->
             reply(coord, {:do_abort, tid, self(), reason})
             :mnesia_schema.undo_prepare_commit(tid, c0)
             :ok
-
           {:EXIT, _, reason} ->
-            reply(
-              coord,
-              {:do_abort, tid, self(), {:bad_commit, reason}}
-            )
-
+            reply(coord,
+                    {:do_abort, tid, self(), {:bad_commit, reason}})
             :mnesia_schema.undo_prepare_commit(tid, c0)
             :ok
-
-          msg ->
-            reply(
-              coord,
-              {:do_abort, tid, self(), {:bad_commit, :internal}}
-            )
-
-            verbose('** ERROR ** commit_participant ~p, got unexpected msg: ~tp~n', [tid, msg])
         end
     end
-
     :mnesia_locker.release_tid(tid)
     send(:mnesia_tm, {:delete_transaction, tid})
     :erlang.unlink(:erlang.whereis(:mnesia_tm))
@@ -2283,7 +1981,7 @@ defmodule :m_mnesia_tm do
   end
 
   defp do_dirty(tid, commit)
-       when r_commit(commit, :schema_ops) == [] do
+      when r_commit(commit, :schema_ops) == [] do
     :mnesia_log.log(commit)
     do_commit(tid, commit)
   end
@@ -2301,17 +1999,15 @@ defmodule :m_mnesia_tm do
   end
 
   defp do_commit(tid, c, dumperMode) do
-    :mnesia_dumper.update(tid, r_commit(c, :schema_ops), dumperMode)
-
-    r =
-      do_snmp(
-        tid,
-        :proplists.get_value(:snmp, r_commit(c, :ext), [])
-      )
-
+    :mnesia_dumper.update(tid, r_commit(c, :schema_ops),
+                            dumperMode)
+    r = do_snmp(tid,
+                  :proplists.get_value(:snmp, r_commit(c, :ext), []))
     r2 = do_update(tid, :ram_copies, r_commit(c, :ram_copies), r)
-    r3 = do_update(tid, :disc_copies, r_commit(c, :disc_copies), r2)
-    r4 = do_update(tid, :disc_only_copies, r_commit(c, :disc_only_copies), r3)
+    r3 = do_update(tid, :disc_copies, r_commit(c, :disc_copies),
+                     r2)
+    r4 = do_update(tid, :disc_only_copies,
+                     r_commit(c, :disc_only_copies), r3)
     r5 = do_update_ext(tid, r_commit(c, :ext), r4)
     :mnesia_subscr.report_activity(tid)
     r5
@@ -2322,15 +2018,13 @@ defmodule :m_mnesia_tm do
   end
 
   defp do_update_ext(tid, ext, oldRes) do
-    case :lists.keyfind(:ext_copies, 1, ext) do
+    case (:lists.keyfind(:ext_copies, 1, ext)) do
       false ->
         oldRes
-
       {_, ops} ->
         do__ = fn {{:ext, _, _} = storage, op}, r ->
-          do_update(tid, storage, [op], r)
-        end
-
+                    do_update(tid, storage, [op], r)
+               end
         :lists.foldl(do__, oldRes, ops)
     end
   end
@@ -2340,17 +2034,11 @@ defmodule :m_mnesia_tm do
       do_update_op(tid, storage, op)
     catch
       _, reason ->
-        verbose('do_update in ~w failed: ~tp -> {\'EXIT\', ~tp}~n', [
-          tid,
-          op,
-          {reason, __STACKTRACE__}
-        ])
-
+        verbose('do_update in ~w failed: ~tp -> {\'EXIT\', ~tp}~n', [tid, op, {reason, __STACKTRACE__}])
         do_update(tid, storage, ops, oldRes)
     else
       :ok ->
         do_update(tid, storage, ops, oldRes)
-
       newRes ->
         do_update(tid, storage, ops, newRes)
     end
@@ -2361,112 +2049,79 @@ defmodule :m_mnesia_tm do
   end
 
   def do_update_op(tid, storage, {{tab, k}, obj, :write}) do
-    commit_write(
-      try do
-        :ets.lookup_element(:mnesia_gvar, {tab, :commit_work}, 2)
-      catch
-        :error, _ ->
-          {:EXIT, {:badarg, []}}
-      end,
-      tid,
-      storage,
-      tab,
-      k,
-      obj,
-      :undefined
-    )
-
+    commit_write(try do
+                   :ets.lookup_element(:mnesia_gvar, {tab, :commit_work},
+                                         2)
+                 catch
+                   :error, _ ->
+                     {:EXIT, {:badarg, []}}
+                 end,
+                   tid, storage, tab, k, obj, :undefined)
     :mnesia_lib.db_put(storage, tab, obj)
   end
 
   def do_update_op(tid, storage, {{tab, k}, val, :delete}) do
-    commit_delete(
-      try do
-        :ets.lookup_element(:mnesia_gvar, {tab, :commit_work}, 2)
-      catch
-        :error, _ ->
-          {:EXIT, {:badarg, []}}
-      end,
-      tid,
-      storage,
-      tab,
-      k,
-      val,
-      :undefined
-    )
-
+    commit_delete(try do
+                    :ets.lookup_element(:mnesia_gvar, {tab, :commit_work},
+                                          2)
+                  catch
+                    :error, _ ->
+                      {:EXIT, {:badarg, []}}
+                  end,
+                    tid, storage, tab, k, val, :undefined)
     :mnesia_lib.db_erase(storage, tab, k)
   end
 
-  def do_update_op(tid, storage, {{tab, k}, {recName, incr}, :update_counter}) do
-    {newObj, oldObjs} =
-      try do
-        newVal = :mnesia_lib.db_update_counter(storage, tab, k, incr)
-        true = is_integer(newVal) and newVal >= 0
-        {{recName, k, newVal}, [{recName, k, newVal - incr}]}
-      catch
-        :error, _ when incr > 0 ->
-          new = {recName, k, incr}
-          :mnesia_lib.db_put(storage, tab, new)
-          {new, []}
-
-        :error, _ ->
-          zero = {recName, k, 0}
-          :mnesia_lib.db_put(storage, tab, zero)
-          {zero, []}
-      end
-
-    commit_update(
-      try do
-        :ets.lookup_element(:mnesia_gvar, {tab, :commit_work}, 2)
-      catch
-        :error, _ ->
-          {:EXIT, {:badarg, []}}
-      end,
-      tid,
-      storage,
-      tab,
-      k,
-      newObj,
-      oldObjs
-    )
-
+  def do_update_op(tid, storage,
+           {{tab, k}, {recName, incr}, :update_counter}) do
+    {newObj, oldObjs} = (try do
+                           newVal = :mnesia_lib.db_update_counter(storage, tab,
+                                                                    k, incr)
+                           true = is_integer(newVal) and newVal >= 0
+                           {{recName, k, newVal}, [{recName, k, newVal - incr}]}
+                         catch
+                           :error, _ when incr > 0 ->
+                             new = {recName, k, incr}
+                             :mnesia_lib.db_put(storage, tab, new)
+                             {new, []}
+                           :error, _ ->
+                             zero = {recName, k, 0}
+                             :mnesia_lib.db_put(storage, tab, zero)
+                             {zero, []}
+                         end)
+    commit_update(try do
+                    :ets.lookup_element(:mnesia_gvar, {tab, :commit_work},
+                                          2)
+                  catch
+                    :error, _ ->
+                      {:EXIT, {:badarg, []}}
+                  end,
+                    tid, storage, tab, k, newObj, oldObjs)
     :erlang.element(3, newObj)
   end
 
-  def do_update_op(tid, storage, {{tab, key}, obj, :delete_object}) do
-    commit_del_object(
-      try do
-        :ets.lookup_element(:mnesia_gvar, {tab, :commit_work}, 2)
-      catch
-        :error, _ ->
-          {:EXIT, {:badarg, []}}
-      end,
-      tid,
-      storage,
-      tab,
-      key,
-      obj
-    )
-
+  def do_update_op(tid, storage,
+           {{tab, key}, obj, :delete_object}) do
+    commit_del_object(try do
+                        :ets.lookup_element(:mnesia_gvar, {tab, :commit_work},
+                                              2)
+                      catch
+                        :error, _ ->
+                          {:EXIT, {:badarg, []}}
+                      end,
+                        tid, storage, tab, key, obj)
     :mnesia_lib.db_match_erase(storage, tab, obj)
   end
 
   def do_update_op(tid, storage, {{tab, key}, obj, :clear_table}) do
-    commit_clear(
-      try do
-        :ets.lookup_element(:mnesia_gvar, {tab, :commit_work}, 2)
-      catch
-        :error, _ ->
-          {:EXIT, {:badarg, []}}
-      end,
-      tid,
-      storage,
-      tab,
-      key,
-      obj
-    )
-
+    commit_clear(try do
+                   :ets.lookup_element(:mnesia_gvar, {tab, :commit_work},
+                                         2)
+                 catch
+                   :error, _ ->
+                     {:EXIT, {:badarg, []}}
+                 end,
+                   tid, storage, tab, key, obj)
     :mnesia_lib.db_match_erase(storage, tab, obj)
   end
 
@@ -2474,19 +2129,22 @@ defmodule :m_mnesia_tm do
     :ok
   end
 
-  defp commit_write([{:checkpoints, cpList} | r], tid, storage, tab, k, obj, old) do
-    :mnesia_checkpoint.tm_retain(tid, tab, k, :write, cpList)
+  defp commit_write([{:checkpoints, cpList} | r], tid, storage, tab,
+            k, obj, old) do
+    :mnesia_checkpoint.tm_retain(tid, tab, k, :write,
+                                   cpList)
     commit_write(r, tid, storage, tab, k, obj, old)
   end
 
   defp commit_write([h | r], tid, storage, tab, k, obj, old)
-       when :erlang.element(1, h) == :subscribers do
-    :mnesia_subscr.report_table_event(h, tab, tid, obj, :write, old)
+      when :erlang.element(1, h) == :subscribers do
+    :mnesia_subscr.report_table_event(h, tab, tid, obj,
+                                        :write, old)
     commit_write(r, tid, storage, tab, k, obj, old)
   end
 
   defp commit_write([h | r], tid, storage, tab, k, obj, old)
-       when :erlang.element(1, h) == :index do
+      when :erlang.element(1, h) == :index do
     :mnesia_index.add_index(h, storage, tab, k, obj, old)
     commit_write(r, tid, storage, tab, k, obj, old)
   end
@@ -2495,19 +2153,22 @@ defmodule :m_mnesia_tm do
     :ok
   end
 
-  defp commit_update([{:checkpoints, cpList} | r], tid, storage, tab, k, obj, _) do
-    old = :mnesia_checkpoint.tm_retain(tid, tab, k, :write, cpList)
+  defp commit_update([{:checkpoints, cpList} | r], tid, storage, tab,
+            k, obj, _) do
+    old = :mnesia_checkpoint.tm_retain(tid, tab, k, :write,
+                                         cpList)
     commit_update(r, tid, storage, tab, k, obj, old)
   end
 
   defp commit_update([h | r], tid, storage, tab, k, obj, old)
-       when :erlang.element(1, h) == :subscribers do
-    :mnesia_subscr.report_table_event(h, tab, tid, obj, :write, old)
+      when :erlang.element(1, h) == :subscribers do
+    :mnesia_subscr.report_table_event(h, tab, tid, obj,
+                                        :write, old)
     commit_update(r, tid, storage, tab, k, obj, old)
   end
 
   defp commit_update([h | r], tid, storage, tab, k, obj, old)
-       when :erlang.element(1, h) == :index do
+      when :erlang.element(1, h) == :index do
     :mnesia_index.add_index(h, storage, tab, k, obj, old)
     commit_update(r, tid, storage, tab, k, obj, old)
   end
@@ -2516,19 +2177,22 @@ defmodule :m_mnesia_tm do
     :ok
   end
 
-  defp commit_delete([{:checkpoints, cpList} | r], tid, storage, tab, k, obj, _) do
-    old = :mnesia_checkpoint.tm_retain(tid, tab, k, :delete, cpList)
+  defp commit_delete([{:checkpoints, cpList} | r], tid, storage, tab,
+            k, obj, _) do
+    old = :mnesia_checkpoint.tm_retain(tid, tab, k, :delete,
+                                         cpList)
     commit_delete(r, tid, storage, tab, k, obj, old)
   end
 
   defp commit_delete([h | r], tid, storage, tab, k, obj, old)
-       when :erlang.element(1, h) == :subscribers do
-    :mnesia_subscr.report_table_event(h, tab, tid, obj, :delete, old)
+      when :erlang.element(1, h) == :subscribers do
+    :mnesia_subscr.report_table_event(h, tab, tid, obj,
+                                        :delete, old)
     commit_delete(r, tid, storage, tab, k, obj, old)
   end
 
   defp commit_delete([h | r], tid, storage, tab, k, obj, old)
-       when :erlang.element(1, h) == :index do
+      when :erlang.element(1, h) == :index do
     :mnesia_index.delete_index(h, storage, tab, k)
     commit_delete(r, tid, storage, tab, k, obj, old)
   end
@@ -2537,19 +2201,22 @@ defmodule :m_mnesia_tm do
     :ok
   end
 
-  defp commit_del_object([{:checkpoints, cpList} | r], tid, storage, tab, k, obj) do
-    :mnesia_checkpoint.tm_retain(tid, tab, k, :delete_object, cpList)
+  defp commit_del_object([{:checkpoints, cpList} | r], tid, storage, tab,
+            k, obj) do
+    :mnesia_checkpoint.tm_retain(tid, tab, k,
+                                   :delete_object, cpList)
     commit_del_object(r, tid, storage, tab, k, obj)
   end
 
   defp commit_del_object([h | r], tid, storage, tab, k, obj)
-       when :erlang.element(1, h) == :subscribers do
-    :mnesia_subscr.report_table_event(h, tab, tid, obj, :delete_object)
+      when :erlang.element(1, h) == :subscribers do
+    :mnesia_subscr.report_table_event(h, tab, tid, obj,
+                                        :delete_object)
     commit_del_object(r, tid, storage, tab, k, obj)
   end
 
   defp commit_del_object([h | r], tid, storage, tab, k, obj)
-       when :erlang.element(1, h) == :index do
+      when :erlang.element(1, h) == :index do
     :mnesia_index.del_object_index(h, storage, tab, k, obj)
     commit_del_object(r, tid, storage, tab, k, obj)
   end
@@ -2558,19 +2225,22 @@ defmodule :m_mnesia_tm do
     :ok
   end
 
-  defp commit_clear([{:checkpoints, cpList} | r], tid, storage, tab, k, obj) do
-    :mnesia_checkpoint.tm_retain(tid, tab, k, :clear_table, cpList)
+  defp commit_clear([{:checkpoints, cpList} | r], tid, storage, tab,
+            k, obj) do
+    :mnesia_checkpoint.tm_retain(tid, tab, k, :clear_table,
+                                   cpList)
     commit_clear(r, tid, storage, tab, k, obj)
   end
 
   defp commit_clear([h | r], tid, storage, tab, k, obj)
-       when :erlang.element(1, h) == :subscribers do
-    :mnesia_subscr.report_table_event(h, tab, tid, obj, :clear_table, :undefined)
+      when :erlang.element(1, h) == :subscribers do
+    :mnesia_subscr.report_table_event(h, tab, tid, obj,
+                                        :clear_table, :undefined)
     commit_clear(r, tid, storage, tab, k, obj)
   end
 
   defp commit_clear([h | r], tid, storage, tab, k, obj)
-       when :erlang.element(1, h) == :index do
+      when :erlang.element(1, h) == :index do
     :mnesia_index.clear_index(h, tab, k, obj)
     commit_clear(r, tid, storage, tab, k, obj)
   end
@@ -2584,27 +2254,21 @@ defmodule :m_mnesia_tm do
       :mnesia_snmp_hook.update(head)
     catch
       _, reason ->
-        verbose('do_snmp in ~w failed: ~tp -> {\'EXIT\', ~tp}~n', [
-          tid,
-          head,
-          {reason, __STACKTRACE__}
-        ])
+        verbose('do_snmp in ~w failed: ~tp -> {\'EXIT\', ~tp}~n', [tid, head, {reason, __STACKTRACE__}])
     end
-
     do_snmp(tid, tail)
   end
 
   defp commit_nodes([c | tail], accD, accR) do
-    case c do
-      r_commit(disc_copies: [], disc_only_copies: [], schema_ops: [], ext: ext) ->
-        case :lists.keyfind(:ext_copies, 1, ext) do
+    case (c) do
+      r_commit(disc_copies: [], disc_only_copies: [], schema_ops: [],
+          ext: ext) ->
+        case (:lists.keyfind(:ext_copies, 1, ext)) do
           false ->
             commit_nodes(tail, accD, [r_commit(c, :node) | accR])
-
           _ ->
             commit_nodes(tail, [r_commit(c, :node) | accD], accR)
         end
-
       _ ->
         commit_nodes(tail, [r_commit(c, :node) | accD], accR)
     end
@@ -2616,49 +2280,38 @@ defmodule :m_mnesia_tm do
 
   defp commit_decision(d, [c | tail], accD, accR) do
     n = r_commit(c, :node)
-
-    {d2, tail2} =
-      case c do
-        r_commit(disc_copies: [], disc_only_copies: [], schema_ops: [], ext: ext) ->
-          case :lists.keyfind(:ext_copies, 1, ext) do
-            false ->
-              commit_decision(d, tail, accD, [n | accR])
-
-            _ ->
-              commit_decision(d, tail, [n | accD], accR)
-          end
-
-        r_commit(schema_ops: []) ->
-          commit_decision(d, tail, [n | accD], accR)
-
-        r_commit(schema_ops: ops) ->
-          case ram_only_ops(n, ops) do
-            true ->
-              commit_decision(d, tail, accD, [n | accR])
-
-            false ->
-              commit_decision(d, tail, [n | accD], accR)
-          end
-      end
-
+    {d2, tail2} = (case (c) do
+                     r_commit(disc_copies: [], disc_only_copies: [], schema_ops: [],
+                         ext: ext) ->
+                       case (:lists.keyfind(:ext_copies, 1, ext)) do
+                         false ->
+                           commit_decision(d, tail, accD, [n | accR])
+                         _ ->
+                           commit_decision(d, tail, [n | accD], accR)
+                       end
+                     r_commit(schema_ops: []) ->
+                       commit_decision(d, tail, [n | accD], accR)
+                     r_commit(schema_ops: ops) ->
+                       case (ram_only_ops(n, ops)) do
+                         true ->
+                           commit_decision(d, tail, accD, [n | accR])
+                         false ->
+                           commit_decision(d, tail, [n | accD], accR)
+                       end
+                   end)
     {d2, [r_commit(c, decision: d2) | tail2]}
   end
 
   defp commit_decision(d, [], accD, accR) do
-    {r_decision(d, disc_nodes: accD, ram_nodes: accR), []}
+    {r_decision(d, disc_nodes: accD,  ram_nodes: accR), []}
   end
 
-  defp ram_only_ops(
-         n,
-         [
-           {:op, :change_table_copy_type, n, _FromS, _ToS, cs}
-           | _Ops
-         ]
-       ) do
-    case :lists.member({:name, :schema}, cs) do
+  defp ram_only_ops(n,
+            [{:op, :change_table_copy_type, n, _FromS, _ToS, cs} |
+                 _Ops]) do
+    case (:lists.member({:name, :schema}, cs)) do
       true ->
         false
-
       false ->
         not :lists.member(n, val({:schema, :disc_copies}))
     end
@@ -2670,21 +2323,21 @@ defmodule :m_mnesia_tm do
 
   defp sync_send_dirty(tid, [head | tail], tab, waitFor) do
     node = r_commit(head, :node)
-
     cond do
       node == node() ->
         {wF, _} = sync_send_dirty(tid, tail, tab, waitFor)
         res = do_dirty(tid, head)
         {wF, res}
-
       true ->
-        send({:mnesia_tm, node}, {self(), {:sync_dirty, tid, head, tab}})
+        send({:mnesia_tm, node}, {self(),
+                                    {:sync_dirty, tid, head, tab}})
         sync_send_dirty(tid, tail, tab, [node | waitFor])
     end
   end
 
   defp sync_send_dirty(_Tid, [], _Tab, waitFor) do
-    {waitFor, {:EXIT, {:aborted, {:node_not_running, waitFor}}}}
+    {waitFor,
+       {:EXIT, {:aborted, {:node_not_running, waitFor}}}}
   end
 
   defp async_send_dirty(_Tid, _Nodes, tab, :nowhere) do
@@ -2695,21 +2348,23 @@ defmodule :m_mnesia_tm do
     async_send_dirty(tid, nodes, tab, readNode, [], :ok)
   end
 
-  defp async_send_dirty(tid, [head | tail], tab, readNode, waitFor, res) do
+  defp async_send_dirty(tid, [head | tail], tab, readNode, waitFor,
+            res) do
     node = r_commit(head, :node)
-
     cond do
-      readNode == node and node == node() ->
+      (readNode == node and node == node()) ->
         newRes = do_dirty(tid, head)
-        async_send_dirty(tid, tail, tab, readNode, waitFor, newRes)
-
+        async_send_dirty(tid, tail, tab, readNode, waitFor,
+                           newRes)
       readNode == node ->
-        send({:mnesia_tm, node}, {self(), {:sync_dirty, tid, head, tab}})
+        send({:mnesia_tm, node}, {self(),
+                                    {:sync_dirty, tid, head, tab}})
         newRes = {:EXIT, {:aborted, {:node_not_running, node}}}
-        async_send_dirty(tid, tail, tab, readNode, [node | waitFor], newRes)
-
+        async_send_dirty(tid, tail, tab, readNode,
+                           [node | waitFor], newRes)
       true ->
-        send({:mnesia_tm, node}, {self(), {:async_dirty, tid, head, tab}})
+        send({:mnesia_tm, node}, {self(),
+                                    {:async_dirty, tid, head, tab}})
         async_send_dirty(tid, tail, tab, readNode, waitFor, res)
     end
   end
@@ -2731,61 +2386,56 @@ defmodule :m_mnesia_tm do
     receive do
       {:mnesia_tm, ^node, {:EXIT, reason}} ->
         {:EXIT, {:aborted, {:badarg, reason}}}
-
       {:mnesia_tm, ^node, {:dirty_res, :ok}} ->
-        case res do
+        case (res) do
           {:EXIT, {:aborted, {:node_not_running, _Node}}} ->
             :ok
-
           _ ->
             res
         end
-
       {:mnesia_tm, ^node, {:dirty_res, reply}} ->
         reply
-
       {:mnesia_down, ^node} ->
-        case :erlang.get(:mnesia_activity_state) do
+        case (:erlang.get(:mnesia_activity_state)) do
           {_, tid, _Ts} when :erlang.element(1, tid) == :tid ->
             :mnesia.abort({:node_not_running, node})
-
           _ ->
             res
         end
-    after
-      1000 ->
-        case :lists.member(
-               node,
-               val({:current, :db_nodes})
-             ) do
-          true ->
-            get_dirty_reply(node, res)
-
-          false ->
-            res
-        end
+    after 1000 ->
+      case (:lists.member(node,
+                            val({:current, :db_nodes}))) do
+        true ->
+          get_dirty_reply(node, res)
+        false ->
+          res
+      end
     end
   end
 
   defp ask_commit(protocol, tid, cR, discNs, ramNs) do
-    ask_commit(protocol, tid, cR, discNs, ramNs, [], :no_local)
+    ask_commit(protocol, tid, cR, discNs, ramNs, [],
+                 :no_local)
   end
 
-  defp ask_commit(protocol, tid, [head | tail], discNs, ramNs, waitFor, local) do
+  defp ask_commit(protocol, tid, [head | tail], discNs, ramNs,
+            waitFor, local) do
     node = r_commit(head, :node)
-
     cond do
       node == node() ->
-        ask_commit(protocol, tid, tail, discNs, ramNs, waitFor, head)
-
+        ask_commit(protocol, tid, tail, discNs, ramNs, waitFor,
+                     head)
       true ->
-        msg = {:ask_commit, convert_old(protocol, node), tid, head, discNs, ramNs}
+        msg = {:ask_commit, convert_old(protocol, node), tid,
+                 head, discNs, ramNs}
         send({:mnesia_tm, node}, {self(), msg})
-        ask_commit(protocol, tid, tail, discNs, ramNs, [node | waitFor], local)
+        ask_commit(protocol, tid, tail, discNs, ramNs,
+                     [node | waitFor], local)
     end
   end
 
-  defp ask_commit(_Protocol, _Tid, [], _DiscNs, _RamNs, waitFor, local) do
+  defp ask_commit(_Protocol, _Tid, [], _DiscNs, _RamNs, waitFor,
+            local) do
     {waitFor, local}
   end
 
@@ -2798,7 +2448,6 @@ defmodule :m_mnesia_tm do
           end) do
       {{8, 3}, _} ->
         :asym_trans
-
       _ ->
         :sync_asym_trans
     end
@@ -2821,120 +2470,106 @@ defmodule :m_mnesia_tm do
   end
 
   defp rec_all([node | tail], tid, res, pids) do
+    :erlang.put({:mnesia_tm, :rec_all}, {node, tail})
     receive do
       {:mnesia_tm, ^node, {:vote_yes, ^tid}} ->
         rec_all(tail, tid, res, pids)
-
       {:mnesia_tm, ^node, {:vote_yes, ^tid, pid}} ->
         rec_all(tail, tid, res, [pid | pids])
-
       {:mnesia_tm, ^node, {:vote_no, ^tid, reason}} ->
         rec_all(tail, tid, {:do_abort, reason}, pids)
-
       {:mnesia_tm, ^node, {:committed, ^tid}} ->
         rec_all(tail, tid, res, pids)
-
       {:mnesia_tm, ^node, {:aborted, ^tid}} ->
         rec_all(tail, tid, res, pids)
-
       {:mnesia_down, ^node} ->
         abort = {:do_abort, {:bad_commit, node}}
-
         try do
           send({:mnesia_tm, node}, {tid, abort})
         catch
           :error, _ ->
             :ok
         end
-
         rec_all(tail, tid, abort, pids)
+    after 15000 ->
+      :mnesia_lib.verbose('~p: trans ~p waiting ~p~n', [self(), tid, node])
+      rec_all([node | tail], tid, res, pids)
     end
   end
 
   defp rec_all([], _Tid, res, pids) do
+    :erlang.erase({:mnesia_tm, :rec_all})
     {res, pids}
   end
 
   def get_transactions() do
     {:info, participant, coordinator} = req(:info)
-
-    :lists.map(
-      fn {tid, _Tabs} ->
-        status = tr_status(tid, participant)
-        {r_tid(tid, :counter), r_tid(tid, :pid), status}
-      end,
-      coordinator
-    )
+    :lists.map(fn {tid, _Tabs} ->
+                    status = tr_status(tid, participant)
+                    {r_tid(tid, :counter), r_tid(tid, :pid), status}
+               end,
+                 coordinator)
   end
 
   defp tr_status(tid, participant) do
-    case :lists.keymember(tid, 1, participant) do
+    case (:lists.keymember(tid, 1, participant)) do
       true ->
         :participant
-
       false ->
         :coordinator
     end
   end
 
+  def get_transactions_count() do
+    case (req(:transactions_count)) do
+      {:transactions_count, participantsCount,
+         coordinatorsCount} ->
+        {participantsCount, coordinatorsCount}
+      error ->
+        error
+    end
+  end
+
   def get_info(timeout) do
-    case :erlang.whereis(:mnesia_tm) do
+    case (:erlang.whereis(:mnesia_tm)) do
       :undefined ->
         {:timeout, timeout}
-
       pid ->
         send(pid, {self(), :info})
-
         receive do
           {:mnesia_tm, _, {:info, part, coord}} ->
             {:info, part, coord}
-        after
-          timeout ->
-            {:timeout, timeout}
+        after timeout ->
+          {:timeout, timeout}
         end
     end
   end
 
   def display_info(stream, {:timeout, t}) do
-    :io.format(
-      stream,
-      '---> No info about coordinator and participant transactions, timeout ~p <--- ~n',
-      [t]
-    )
+    :io.format(stream, '---> No info about coordinator and participant transactions, timeout ~p <--- ~n', [t])
   end
 
   def display_info(stream, {:info, part, coord}) do
     :io.format(stream, '---> Participant transactions <--- ~n', [])
-
-    :lists.foreach(
-      fn p ->
-        pr_participant(stream, p)
-      end,
-      part
-    )
-
+    :lists.foreach(fn p ->
+                        pr_participant(stream, p)
+                   end,
+                     part)
     :io.format(stream, '---> Coordinator transactions <---~n', [])
-
-    :lists.foreach(
-      fn {tid, _Tabs} ->
-        pr_tid(stream, tid)
-      end,
-      coord
-    )
+    :lists.foreach(fn {tid, _Tabs} ->
+                        pr_tid(stream, tid)
+                   end,
+                     coord)
   end
 
   defp pr_participant(stream, p) do
     commit0 = r_participant(p, :commit)
-
-    commit =
-      cond do
-        is_binary(commit0) ->
-          :erlang.binary_to_term(commit0)
-
-        true ->
-          commit0
-      end
-
+    commit = (cond do
+                is_binary(commit0) ->
+                  :erlang.binary_to_term(commit0)
+                true ->
+                  commit0
+              end)
     pr_tid(stream, r_participant(p, :tid))
     :io.format(stream, 'with participant objects ~tp~n', [commit])
   end
@@ -2955,12 +2590,11 @@ defmodule :m_mnesia_tm do
   end
 
   defp search_pr_coordinator(s, [{tid, _Ts} | tail]) do
-    case r_tid(tid, :counter) do
+    case (r_tid(tid, :counter)) do
       ^s ->
         :io.format('Tid is coordinator, owner == \n', [])
         display_pid_info(r_tid(tid, :pid))
         search_pr_coordinator(s, tail)
-
       _ ->
         search_pr_coordinator(s, tail)
     end
@@ -2973,58 +2607,42 @@ defmodule :m_mnesia_tm do
   defp search_pr_participant(s, [p | tail]) do
     tid = r_participant(p, :tid)
     commit0 = r_participant(p, :commit)
-
     cond do
       r_tid(tid, :counter) == s ->
         :io.format('Tid is participant to commit, owner == \n', [])
         pid = r_tid(tid, :pid)
         display_pid_info(pid)
         :io.format('Tid wants to write objects \n', [])
-
-        commit =
-          cond do
-            is_binary(commit0) ->
-              :erlang.binary_to_term(commit0)
-
-            true ->
-              commit0
-          end
-
+        commit = (cond do
+                    is_binary(commit0) ->
+                      :erlang.binary_to_term(commit0)
+                    true ->
+                      commit0
+                  end)
         :io.format('~tp~n', [commit])
         search_pr_participant(s, tail)
-
       true ->
         search_pr_participant(s, tail)
     end
   end
 
   defp display_pid_info(pid) do
-    case :rpc.pinfo(pid) do
+    case (:rpc.pinfo(pid)) do
       :undefined ->
         :io.format('Dead process \n')
-
       info ->
         call = fetch(:initial_call, info)
-
-        curr =
-          case fetch(:current_function, info) do
-            {mod, f, args} when is_list(args) ->
-              {mod, f, length(args)}
-
-            other ->
-              other
-          end
-
+        curr = (case (fetch(:current_function, info)) do
+                  {mod, f, args} when is_list(args) ->
+                    {mod, f, length(args)}
+                  other ->
+                    other
+                end)
         reds = fetch(:reductions, info)
         lM = fetch(:message_queue_len, info)
-
-        pformat(
-          :io_lib.format('~p', [pid]),
-          :io_lib.format('~tp', [call]),
-          :io_lib.format('~tp', [curr]),
-          reds,
-          lM
-        )
+        pformat(:io_lib.format('~p', [pid]),
+                  :io_lib.format('~tp', [call]), :io_lib.format('~tp', [curr]),
+                  reds, lM)
     end
   end
 
@@ -3033,36 +2651,28 @@ defmodule :m_mnesia_tm do
   end
 
   defp fetch(key, info) do
-    case :lists.keysearch(key, 1, info) do
+    case (:lists.keysearch(key, 1, info)) do
       {:value, {_, val}} ->
         val
-
       _ ->
         0
     end
   end
 
   defp reconfigure_coordinators(n, [{tid, [store | _]} | coordinators]) do
-    case :mnesia_recover.outcome(tid, :unknown) do
+    case (:mnesia_recover.outcome(tid, :unknown)) do
       :committed ->
-        waitingNodes =
-          :ets.lookup(
-            store,
-            :waiting_for_commit_ack
-          )
-
-        case :lists.keymember(n, 2, waitingNodes) do
+        waitingNodes = :ets.lookup(store,
+                                     :waiting_for_commit_ack)
+        case (:lists.keymember(n, 2, waitingNodes)) do
           false ->
             :ignore
-
           true ->
             send_mnesia_down(tid, store, n)
         end
-
       _ ->
         send_mnesia_down(tid, store, n)
     end
-
     reconfigure_coordinators(n, coordinators)
   end
 
@@ -3072,17 +2682,9 @@ defmodule :m_mnesia_tm do
 
   defp send_mnesia_down(tid, store, node) do
     msg = {:mnesia_down, node}
-
-    send_to_pids(
-      [
-        r_tid(tid, :pid)
-        | get_elements(
-            :friends,
-            store
-          )
-      ],
-      msg
-    )
+    send_to_pids([r_tid(tid, :pid) | get_elements(:friends,
+                                                store)],
+                   msg)
   end
 
   defp send_to_pids([pid | pids], msg) when is_pid(pid) do
@@ -3099,20 +2701,15 @@ defmodule :m_mnesia_tm do
   end
 
   defp reconfigure_participants(n, [p | tail]) do
-    case :erlang.or(
-           :lists.member(n, r_participant(p, :disc_nodes)),
-           :lists.member(n, r_participant(p, :ram_nodes))
-         ) do
+    case (:erlang.or(:lists.member(n, r_participant(p, :disc_nodes)),
+                       :lists.member(n, r_participant(p, :ram_nodes)))) do
       false ->
         reconfigure_participants(n, tail)
-
       true ->
         tid = r_participant(p, :tid)
-
         cond do
           node(r_tid(tid, :pid)) != n ->
             reconfigure_participants(n, tail)
-
           true ->
             verbose('Coordinator ~p in transaction ~p died~n', [r_tid(tid, :pid), tid])
             nodes = r_participant(p, :disc_nodes) ++ r_participant(p, :ram_nodes)
@@ -3129,16 +2726,15 @@ defmodule :m_mnesia_tm do
   end
 
   defp tell_outcome(tid, protocol, node, checkNodes, tellNodes) do
-    outcome = :mnesia_recover.what_happened(tid, proto(protocol), checkNodes)
-
-    case outcome do
+    outcome = :mnesia_recover.what_happened(tid,
+                                              proto(protocol), checkNodes)
+    case (outcome) do
       :aborted ->
-        :rpc.abcast(tellNodes, :mnesia_tm, {tid, {:do_abort, {:mnesia_down, node}}})
-
+        :rpc.abcast(tellNodes, :mnesia_tm,
+                      {tid, {:do_abort, {:mnesia_down, node}}})
       :committed ->
         :rpc.abcast(tellNodes, :mnesia_tm, {tid, :do_commit})
     end
-
     outcome
   end
 
@@ -3152,27 +2748,13 @@ defmodule :m_mnesia_tm do
 
   defp do_stop(r_state(coordinators: coordinators)) do
     msg = {:mnesia_down, node()}
-
-    :lists.foreach(
-      fn {tid, _} ->
-        send(r_tid(tid, :pid), msg)
-      end,
-      :gb_trees.to_list(coordinators)
-    )
-
+    :lists.foreach(fn {tid, _} ->
+                        send(r_tid(tid, :pid), msg)
+                   end,
+                     :gb_trees.to_list(coordinators))
     :mnesia_checkpoint.stop()
     :mnesia_log.stop()
     exit(:shutdown)
-  end
-
-  def fixtable(tab, lock, me) do
-    case req({:fixtable, [tab, lock, me]}) do
-      :error ->
-        exit({:no_exists, tab})
-
-      else__ ->
-        else__
-    end
   end
 
   def system_continue(_Parent, _Debug, state) do
@@ -3183,43 +2765,31 @@ defmodule :m_mnesia_tm do
     do_stop(state)
   end
 
-  def system_code_change(
-        state = r_state(coordinators: cs0, participants: ps0),
-        _Module,
-        _OldVsn,
-        :downgrade
-      ) do
-    case is_tuple(cs0) do
+  def system_code_change(state = r_state(coordinators: cs0, participants: ps0),
+           _Module, _OldVsn, :downgrade) do
+    case (is_tuple(cs0)) do
       true ->
         cs = :gb_trees.to_list(cs0)
         ps = :gb_trees.values(ps0)
-        {:ok, r_state(state, coordinators: cs, participants: ps)}
-
+        {:ok, r_state(state, coordinators: cs,  participants: ps)}
       false ->
         {:ok, state}
     end
   end
 
-  def system_code_change(
-        state = r_state(coordinators: cs0, participants: ps0),
-        _Module,
-        _OldVsn,
-        _Extra
-      ) do
-    case is_list(cs0) do
+  def system_code_change(state = r_state(coordinators: cs0, participants: ps0),
+           _Module, _OldVsn, _Extra) do
+    case (is_list(cs0)) do
       true ->
         cs = :gb_trees.from_orddict(:lists.sort(cs0))
-
-        ps1 =
-          for p <- ps0 do
-            {r_participant(p, :tid), p}
-          end
-
+        ps1 = (for p <- ps0 do
+                 {r_participant(p, :tid), p}
+               end)
         ps = :gb_trees.from_orddict(:lists.sort(ps1))
-        {:ok, r_state(state, coordinators: cs, participants: ps)}
-
+        {:ok, r_state(state, coordinators: cs,  participants: ps)}
       false ->
         {:ok, state}
     end
   end
+
 end

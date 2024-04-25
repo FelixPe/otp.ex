@@ -1,28 +1,17 @@
 defmodule :m_filelib do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_file_info, :file_info,
-    size: :undefined,
-    type: :undefined,
-    access: :undefined,
-    atime: :undefined,
-    mtime: :undefined,
-    ctime: :undefined,
-    mode: :undefined,
-    links: :undefined,
-    major_device: :undefined,
-    minor_device: :undefined,
-    inode: :undefined,
-    uid: :undefined,
-    gid: :undefined
-  )
-
-  Record.defrecord(:r_file_descriptor, :file_descriptor,
-    module: :undefined,
-    data: :undefined
-  )
-
+  Record.defrecord(:r_file_info, :file_info, size: :undefined,
+                                     type: :undefined, access: :undefined,
+                                     atime: :undefined, mtime: :undefined,
+                                     ctime: :undefined, mode: :undefined,
+                                     links: :undefined,
+                                     major_device: :undefined,
+                                     minor_device: :undefined,
+                                     inode: :undefined, uid: :undefined,
+                                     gid: :undefined)
+  Record.defrecord(:r_file_descriptor, :file_descriptor, module: :undefined,
+                                           data: :undefined)
   def wildcard(pattern) when is_list(pattern) do
     try do
       do_wildcard(pattern, '.', :file)
@@ -32,9 +21,8 @@ defmodule :m_filelib do
     end
   end
 
-  def wildcard(pattern, cwd)
-      when is_list(pattern) and
-             is_list(cwd) do
+  def wildcard(pattern, cwd) when (is_list(pattern) and
+                               is_list(cwd)) do
     try do
       do_wildcard(pattern, cwd, :file)
     catch
@@ -43,9 +31,8 @@ defmodule :m_filelib do
     end
   end
 
-  def wildcard(pattern, mod)
-      when is_list(pattern) and
-             is_atom(mod) do
+  def wildcard(pattern, mod) when (is_list(pattern) and
+                               is_atom(mod)) do
     try do
       do_wildcard(pattern, '.', mod)
     catch
@@ -54,9 +41,8 @@ defmodule :m_filelib do
     end
   end
 
-  def wildcard(pattern, cwd, mod)
-      when is_list(pattern) and
-             is_list(cwd) and is_atom(mod) do
+  def wildcard(pattern, cwd, mod) when (is_list(pattern) and
+                                    is_list(cwd) and is_atom(mod)) do
     try do
       do_wildcard(pattern, cwd, mod)
     catch
@@ -115,33 +101,29 @@ defmodule :m_filelib do
   end
 
   defp do_is_dir(dir, mod) do
-    case eval_read_file_info(dir, mod) do
+    case (eval_read_file_info(dir, mod)) do
       {:ok, r_file_info(type: :directory)} ->
         true
-
       _ ->
         false
     end
   end
 
   defp do_is_file(file, mod) do
-    case eval_read_file_info(file, mod) do
+    case (eval_read_file_info(file, mod)) do
       {:ok, r_file_info(type: :regular)} ->
         true
-
       {:ok, r_file_info(type: :directory)} ->
         true
-
       _ ->
         false
     end
   end
 
   defp do_is_regular(file, mod) do
-    case eval_read_file_info(file, mod) do
+    case (eval_read_file_info(file, mod)) do
       {:ok, r_file_info(type: :regular)} ->
         true
-
       _ ->
         false
     end
@@ -149,83 +131,83 @@ defmodule :m_filelib do
 
   defp do_fold_files(dir, regExp, recursive, fun, acc, mod) do
     {:ok, re1} = :re.compile(regExp, [:unicode])
-    do_fold_files1(dir, re1, regExp, recursive, fun, acc, mod)
+    do_fold_files1(dir, re1, regExp, recursive, fun, acc,
+                     mod)
   end
 
-  defp do_fold_files1(dir, regExp, origRE, recursive, fun, acc, mod) do
-    case eval_list_dir(dir, mod) do
+  defp do_fold_files1(dir, regExp, origRE, recursive, fun, acc,
+            mod) do
+    case (eval_list_dir(dir, mod)) do
       {:ok, files} ->
-        do_fold_files2(files, dir, regExp, origRE, recursive, fun, acc, mod)
-
+        do_fold_files2(files, dir, regExp, origRE, recursive,
+                         fun, acc, mod)
       {:error, _} ->
         acc
     end
   end
 
-  defp do_fold_files2([], _Dir, _RegExp, _OrigRE, _Recursive, _Fun, acc, _Mod) do
+  defp do_fold_files2([], _Dir, _RegExp, _OrigRE, _Recursive, _Fun,
+            acc, _Mod) do
     acc
   end
 
-  defp do_fold_files2([file | t], dir, regExp, origRE, recursive, fun, acc0, mod) do
+  defp do_fold_files2([file | t], dir, regExp, origRE, recursive, fun,
+            acc0, mod) do
     fullName = :filename.join(dir, file)
-
-    case do_is_regular(fullName, mod) do
+    case (do_is_regular(fullName, mod)) do
       true ->
-        case (try do
-                :re.run(
-                  file,
-                  cond do
-                    is_binary(file) ->
-                      origRE
-
-                    true ->
-                      regExp
-                  end,
-                  [{:capture, :none}]
-                )
+        case ((try do
+                :re.run(file,
+                          cond do
+                            is_binary(file) ->
+                              origRE
+                            true ->
+                              regExp
+                          end,
+                          [{:capture, :none}])
               catch
                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
                 :exit, e -> {:EXIT, e}
                 e -> e
-              end) do
+              end)) do
           :match ->
             acc = fun.(fullName, acc0)
-            do_fold_files2(t, dir, regExp, origRE, recursive, fun, acc, mod)
-
+            do_fold_files2(t, dir, regExp, origRE, recursive, fun,
+                             acc, mod)
           {:EXIT, _} ->
-            do_fold_files2(t, dir, regExp, origRE, recursive, fun, acc0, mod)
-
+            do_fold_files2(t, dir, regExp, origRE, recursive, fun,
+                             acc0, mod)
           :nomatch ->
-            do_fold_files2(t, dir, regExp, origRE, recursive, fun, acc0, mod)
+            do_fold_files2(t, dir, regExp, origRE, recursive, fun,
+                             acc0, mod)
         end
-
       false ->
-        case recursive and do_is_dir(fullName, mod) do
+        case (recursive and do_is_dir(fullName, mod)) do
           true ->
-            acc1 = do_fold_files1(fullName, regExp, origRE, recursive, fun, acc0, mod)
-            do_fold_files2(t, dir, regExp, origRE, recursive, fun, acc1, mod)
-
+            acc1 = do_fold_files1(fullName, regExp, origRE,
+                                    recursive, fun, acc0, mod)
+            do_fold_files2(t, dir, regExp, origRE, recursive, fun,
+                             acc1, mod)
           false ->
-            do_fold_files2(t, dir, regExp, origRE, recursive, fun, acc0, mod)
+            do_fold_files2(t, dir, regExp, origRE, recursive, fun,
+                             acc0, mod)
         end
     end
   end
 
   defp do_last_modified(file, mod) do
-    case eval_read_file_info(file, mod) do
+    case (eval_read_file_info(file, mod)) do
       {:ok, info} ->
         r_file_info(info, :mtime)
-
       _ ->
         0
     end
   end
 
   defp do_file_size(file, mod) do
-    case eval_read_file_info(file, mod) do
+    case (eval_read_file_info(file, mod)) do
       {:ok, info} ->
         r_file_info(info, :size)
-
       _ ->
         0
     end
@@ -237,29 +219,34 @@ defmodule :m_filelib do
 
   def ensure_dir(f) do
     dir = :filename.dirname(f)
+    ensure_path(dir)
+  end
 
-    case do_is_dir(dir, :file) do
+  def ensure_path('/') do
+    :ok
+  end
+
+  def ensure_path(path) do
+    case (do_is_dir(path, :file)) do
       true ->
         :ok
-
-      false when dir === f ->
-        {:error, :einval}
-
       false ->
-        _ = ensure_dir(dir)
-
-        case :file.make_dir(dir) do
-          {:error, :eexist} = eExist ->
-            case do_is_dir(dir, :file) do
-              true ->
-                :ok
-
-              false ->
-                eExist
+        case (:filename.dirname(path)) do
+          parent when parent === path ->
+            {:error, :einval}
+          parent ->
+            _ = ensure_path(parent)
+            case (:file.make_dir(path)) do
+              {:error, :eexist} = eExist ->
+                case (do_is_dir(path, :file)) do
+                  true ->
+                    :ok
+                  false ->
+                    eExist
+                end
+              other ->
+                other
             end
-
-          err ->
-            err
         end
     end
   end
@@ -267,26 +254,21 @@ defmodule :m_filelib do
   defp do_wildcard(pattern, cwd, mod) do
     {compiled, prefixLen} = compile_wildcard(pattern, cwd)
     files0 = do_wildcard_1(compiled, mod)
-
-    files =
-      cond do
-        prefixLen === 0 ->
-          files0
-
-        true ->
-          for file <- files0 do
-            :lists.nthtail(prefixLen, file)
-          end
-      end
-
+    files = (cond do
+               prefixLen === 0 ->
+                 files0
+               true ->
+                 for file <- files0 do
+                   :lists.nthtail(prefixLen, file)
+                 end
+             end)
     :lists.sort(files)
   end
 
   defp do_wildcard_1({:exists, file}, mod) do
-    case exists(file, mod) do
+    case (exists(file, mod)) do
       true ->
         [file]
-
       false ->
         []
     end
@@ -297,7 +279,8 @@ defmodule :m_filelib do
   end
 
   defp do_wildcard_2([file | rest], pattern, result, mod) do
-    do_wildcard_2(rest, pattern, do_wildcard_3(file, pattern, result, mod), mod)
+    do_wildcard_2(rest, pattern,
+                    do_wildcard_3(file, pattern, result, mod), mod)
   end
 
   defp do_wildcard_2([], _, result, _Mod) do
@@ -309,23 +292,21 @@ defmodule :m_filelib do
   end
 
   defp do_wildcard_3(base, ['..' | rest], result, mod) do
-    case do_is_dir(base, mod) do
+    case (do_is_dir(base, mod)) do
       true ->
         matches = [:filename.join(base, '..')]
         do_wildcard_2(matches, rest, result, mod)
-
       false ->
         result
     end
   end
 
   defp do_wildcard_3(base0, [pattern | rest], result, mod) do
-    case do_list_dir(base0, mod) do
+    case (do_list_dir(base0, mod)) do
       {:ok, files} ->
         base = prepare_base(base0)
         matches = do_wildcard_4(pattern, base, files)
         do_wildcard_2(matches, rest, result, mod)
-
       _ ->
         result
     end
@@ -336,12 +317,11 @@ defmodule :m_filelib do
   end
 
   defp do_wildcard_4(pattern, base, files) do
-    case will_always_match(pattern) do
+    case (will_always_match(pattern)) do
       false ->
         for f <- files, match_part(pattern, f) do
           base ++ f
         end
-
       true ->
         for f <- files do
           base ++ f
@@ -366,11 +346,8 @@ defmodule :m_filelib do
   end
 
   defp match_part([{:one_of, ordset} | rest], [c | file]) do
-    :gb_sets.is_element(c, ordset) and
-      match_part(
-        rest,
-        file
-      )
+    :gb_sets.is_element(c, ordset) and match_part(rest,
+                                                    file)
   end
 
   defp match_part([{:alt, alts}], file) do
@@ -381,9 +358,8 @@ defmodule :m_filelib do
     match_part(rest1, rest2)
   end
 
-  defp match_part([x | _], [y | _])
-       when is_integer(x) and
-              is_integer(y) do
+  defp match_part([x | _], [y | _]) when (is_integer(x) and
+                                    is_integer(y)) do
     false
   end
 
@@ -418,42 +394,32 @@ defmodule :m_filelib do
   end
 
   defp do_double_star(base, [h | t], patterns, result0, mod, root) do
-    full =
-      case root do
-        false ->
-          :filename.join(base, h)
-
-        true ->
-          h
-      end
-
-    result1 =
-      case do_list_dir(full, mod) do
-        {:ok, files} ->
-          do_double_star(full, files, patterns, result0, mod, false)
-
-        _ ->
-          result0
-      end
-
-    result2 =
-      case patterns do
-        _ when root ->
-          result1
-
-        [] ->
-          [full | result1]
-
-        [pattern | rest] ->
-          case match_part(pattern, h) do
-            true ->
-              do_wildcard_2([full], rest, result1, mod)
-
-            false ->
-              result1
-          end
-      end
-
+    full = (case (root) do
+              false ->
+                :filename.join(base, h)
+              true ->
+                h
+            end)
+    result1 = (case (do_list_dir(full, mod)) do
+                 {:ok, files} ->
+                   do_double_star(full, files, patterns, result0, mod,
+                                    false)
+                 _ ->
+                   result0
+               end)
+    result2 = (case (patterns) do
+                 _ when root ->
+                   result1
+                 [] ->
+                   [full | result1]
+                 [pattern | rest] ->
+                   case (match_part(pattern, h)) do
+                     true ->
+                       do_wildcard_2([full], rest, result1, mod)
+                     false ->
+                       result1
+                   end
+               end)
     do_double_star(base, t, patterns, result2, mod, root)
   end
 
@@ -483,23 +449,21 @@ defmodule :m_filelib do
 
   def compile_wildcard(pattern) when is_list(pattern) do
     {:compiled_wildcard,
-     try do
-       compile_wildcard(pattern, '.')
-     catch
-       :error, {:badpattern, _} = unUsUalVaRiAbLeNaMe ->
-         :erlang.error(unUsUalVaRiAbLeNaMe)
-     end}
+       try do
+         compile_wildcard(pattern, '.')
+       catch
+         :error, {:badpattern, _} = unUsUalVaRiAbLeNaMe ->
+           :erlang.error(unUsUalVaRiAbLeNaMe)
+       end}
   end
 
   defp compile_wildcard(pattern0, cwd0) do
     pattern = convert_escapes(pattern0)
     [root | rest] = :filename.split(pattern)
-
-    case :filename.pathtype(root) do
+    case (:filename.pathtype(root)) do
       :relative ->
         cwd = prepare_base(cwd0)
         compile_wildcard_2([root | rest], {:cwd, cwd})
-
       _ ->
         compile_wildcard_2(rest, {:root, 0, root})
     end
@@ -507,11 +471,9 @@ defmodule :m_filelib do
 
   defp compile_wildcard_2([part | rest], root) do
     pattern = compile_part(part)
-
-    case is_literal_pattern(pattern) do
+    case (is_literal_pattern(pattern)) do
       true ->
         compile_wildcard_2(rest, compile_join(root, pattern))
-
       false ->
         compile_wildcard_3(rest, [pattern, root])
     end
@@ -534,10 +496,9 @@ defmodule :m_filelib do
   end
 
   defp compile_wildcard_3([], result) do
-    case :lists.reverse(result) do
+    case (:lists.reverse(result)) do
       [{:root, prefixLen, root} | compiled] ->
         {[root | compiled], prefixLen}
-
       [{:cwd, root} | compiled] ->
         {[root | compiled], length(:filename.join(root, 'x')) - 1}
     end
@@ -600,20 +561,18 @@ defmodule :m_filelib do
   end
 
   defp compile_part([?[ | rest], upto, result) do
-    case compile_charset(rest, :ordsets.new()) do
+    case (compile_charset(rest, :ordsets.new())) do
       {:ok, charset, rest1} ->
         compile_part(rest1, upto, [charset | result])
-
       :error ->
         compile_part(rest, upto, [?[ | result])
     end
   end
 
   defp compile_part([?{ | rest], upto, result) do
-    case compile_alt(rest) do
+    case (compile_alt(rest)) do
       {:ok, alt} ->
         :lists.reverse(result, [alt])
-
       :error ->
         compile_part(rest, upto, [?{ | result])
     end
@@ -644,11 +603,9 @@ defmodule :m_filelib do
   end
 
   defp compile_charset1([lower, ?-, upper | rest], ordset)
-       when lower <= upper do
-    compile_charset1(
-      rest,
-      compile_range(lower, upper, ordset)
-    )
+      when lower <= upper do
+    compile_charset1(rest,
+                       compile_range(lower, upper, ordset))
   end
 
   defp compile_charset1([?] | rest], ordset) do
@@ -668,7 +625,8 @@ defmodule :m_filelib do
   end
 
   defp compile_range(lower, current, ordset) when lower <= current do
-    compile_range(lower, current - 1, :ordsets.add_element(current, ordset))
+    compile_range(lower, current - 1,
+                    :ordsets.add_element(current, ordset))
   end
 
   defp compile_range(_, _, ordset) do
@@ -680,20 +638,17 @@ defmodule :m_filelib do
   end
 
   defp compile_alt(pattern, result) do
-    case compile_part_to_sep(pattern) do
+    case (compile_part_to_sep(pattern)) do
       {:ok, ?,, altPattern, rest} ->
         compile_alt(rest, [altPattern | result])
-
       {:ok, ?}, altPattern, rest} ->
         newResult = [altPattern | result]
         restPattern = compile_part(rest)
-
         {:ok,
-         {:alt,
-          for alt <- newResult do
-            alt ++ restPattern
-          end}}
-
+           {:alt,
+              for alt <- newResult do
+                alt ++ restPattern
+              end}}
       ^pattern ->
         :error
     end
@@ -740,15 +695,13 @@ defmodule :m_filelib do
   end
 
   defp exists(file, mod) do
-    case eval_read_link_info(file, mod) do
+    case (eval_read_link_info(file, mod)) do
       {:error, _} ->
         false
-
       {:ok, _Info} ->
-        case :os.type() do
+        case (:os.type()) do
           {:win32, _} ->
             do_exists(:filename.split(file), mod, [])
-
           _ ->
             true
         end
@@ -756,19 +709,15 @@ defmodule :m_filelib do
   end
 
   defp do_exists([p, '..' | ps], mod, acc) do
-    path =
-      case acc do
-        [] ->
-          p
-
-        _ ->
-          :filename.join(:lists.reverse(acc, [p]))
-      end
-
-    case eval_read_link_info(path, mod) do
+    path = (case (acc) do
+              [] ->
+                p
+              _ ->
+                :filename.join(:lists.reverse(acc, [p]))
+            end)
+    case (eval_read_link_info(path, mod)) do
       {:ok, r_file_info(type: :directory)} ->
         do_exists(ps, mod, acc)
-
       _ ->
         false
     end
@@ -787,10 +736,9 @@ defmodule :m_filelib do
   end
 
   defp eval_read_file_info(file, :erl_prim_loader) do
-    case :erl_prim_loader.read_file_info(file) do
+    case (:erl_prim_loader.read_file_info(file)) do
       :error ->
         {:error, :erl_prim_loader}
-
       res ->
         res
     end
@@ -805,10 +753,9 @@ defmodule :m_filelib do
   end
 
   defp eval_read_link_info(file, :erl_prim_loader) do
-    case :erl_prim_loader.read_link_info(file) do
+    case (:erl_prim_loader.read_link_info(file)) do
       :error ->
         {:error, :erl_prim_loader}
-
       res ->
         res
     end
@@ -823,10 +770,9 @@ defmodule :m_filelib do
   end
 
   defp eval_list_dir(dir, :erl_prim_loader) do
-    case :erl_prim_loader.list_dir(dir) do
+    case (:erl_prim_loader.list_dir(dir)) do
       :error ->
         {:error, :erl_prim_loader}
-
       res ->
         res
     end
@@ -837,44 +783,44 @@ defmodule :m_filelib do
   end
 
   defp keep_dir_search_rules(rules) do
-    for {_, _} = t <- rules do
+    for ({_, _} = t) <- rules do
       t
     end
   end
 
   defp keep_suffix_search_rules(rules) do
-    for {_, _, _} = t <- rules do
+    for ({_, _, _} = t) <- rules do
       t
     end
   end
 
   defp get_search_rules() do
-    case :application.get_env(
-           :kernel,
-           :source_search_rules
-         ) do
+    case (:application.get_env(:kernel,
+                                 :source_search_rules)) do
       :undefined ->
         default_search_rules()
-
       {:ok, []} ->
         default_search_rules()
-
       {:ok, r} when is_list(r) ->
         r
     end
   end
 
   defp default_search_rules() do
-    [
-      {'.beam', '.erl', erl_source_search_rules()},
-      {'.erl', '.yrl', []},
-      {'', '.src', erl_source_search_rules()},
-      {'.so', '.c', c_source_search_rules()},
-      {'.o', '.c', c_source_search_rules()},
-      {'', '.c', c_source_search_rules()},
-      {'', '.in', basic_source_search_rules()},
-      {'', ''}
-    ] ++ erl_source_search_rules()
+    [{'.beam', '.erl', erl_source_search_rules()}, {'.erl', '.yrl', []}, {'', '.src',
+                                                       erl_source_search_rules()},
+                                                        {'.so', '.c',
+                                                           c_source_search_rules()},
+                                                            {'.o', '.c',
+                                                               c_source_search_rules()},
+                                                                {'', '.c',
+                                                                   c_source_search_rules()},
+                                                                    {'', '.in',
+                                                                       basic_source_search_rules()},
+                                                                        {'.beam', '.asn1',
+                                                                           asn1_source_search_rules()},
+                                                                            {'',
+                                                                               ''}] ++ erl_source_search_rules()
   end
 
   defp basic_source_search_rules() do
@@ -882,16 +828,16 @@ defmodule :m_filelib do
   end
 
   defp erl_source_search_rules() do
-    [
-      {'ebin', 'src'},
-      {'ebin', 'esrc'},
-      {'ebin', :filename.join('src', '*')},
-      {'ebin', :filename.join('esrc', '*')}
-    ]
+    [{'ebin', 'src'}, {'ebin', 'esrc'}, {'ebin', :filename.join('src', '*')}, {'ebin',
+                                                   :filename.join('esrc', '*')}]
   end
 
   defp c_source_search_rules() do
     [{'priv', 'c_src'}, {'priv', 'src'}, {'bin', 'c_src'}, {'bin', 'src'}, {'', 'src'}]
+  end
+
+  defp asn1_source_search_rules() do
+    [{'ebin', 'src'}, {'ebin', 'asn1'}]
   end
 
   def find_file(filename, dir) do
@@ -903,14 +849,13 @@ defmodule :m_filelib do
   end
 
   def find_file(filename, dir, rules) do
-    try_dir_rules(keep_dir_search_rules(rules), filename, dir)
+    try_dir_rules(keep_dir_search_rules(rules), filename,
+                    dir)
   end
 
   def find_source(filePath) do
-    find_source(
-      :filename.basename(filePath),
-      :filename.dirname(filePath)
-    )
+    find_source(:filename.basename(filePath),
+                  :filename.dirname(filePath))
   end
 
   def find_source(filename, dir) do
@@ -922,20 +867,22 @@ defmodule :m_filelib do
   end
 
   def find_source(filename, dir, rules) do
-    try_suffix_rules(keep_suffix_search_rules(rules), filename, dir)
+    try_suffix_rules(keep_suffix_search_rules(rules),
+                       filename, dir)
   end
 
   defp try_suffix_rules(rules, filename, dir) do
     ext = :filename.extension(filename)
-    try_suffix_rules(rules, :filename.rootname(filename, ext), dir, ext)
+    try_suffix_rules(rules,
+                       :filename.rootname(filename, ext), dir, ext)
   end
 
   defp try_suffix_rules([{ext, src, rules} | rest], root, dir, ext)
-       when is_list(src) and is_list(rules) do
-    case try_dir_rules(add_local_search(rules), root ++ src, dir) do
+      when (is_list(src) and is_list(rules)) do
+    case (try_dir_rules(add_local_search(rules),
+                          root ++ src, dir)) do
       {:ok, file} ->
         {:ok, file}
-
       _Other ->
         try_suffix_rules(rest, root, dir, ext)
     end
@@ -951,22 +898,17 @@ defmodule :m_filelib do
 
   defp add_local_search(rules) do
     local = {'', ''}
-
-    [local] ++
-      :lists.filter(
-        fn x ->
-          x !== local
-        end,
-        rules
-      )
+    [local] ++ :lists.filter(fn x ->
+                                  (x !== local)
+                             end,
+                               rules)
   end
 
   defp try_dir_rules([{from, to} | rest], filename, dir)
-       when is_list(from) and is_list(to) do
-    case try_dir_rule(dir, filename, from, to) do
+      when (is_list(from) and is_list(to)) do
+    case (try_dir_rule(dir, filename, from, to)) do
       {:ok, file} ->
         {:ok, file}
-
       :error ->
         try_dir_rules(rest, filename, dir)
     end
@@ -977,19 +919,17 @@ defmodule :m_filelib do
   end
 
   defp try_dir_rule(dir, filename, from, to) do
-    case :lists.suffix(from, dir) do
+    case (:lists.suffix(from, dir)) do
       true ->
-        newDir = :lists.sublist(dir, 1, length(dir) - length(from)) ++ to
+        newDir = :lists.sublist(dir, 1,
+                                  length(dir) - length(from)) ++ to
         src = :filename.join(newDir, filename)
-
-        case is_regular(src) do
+        case (is_regular(src)) do
           true ->
             {:ok, src}
-
           false ->
             find_regular_file(wildcard(src))
         end
-
       false ->
         :error
     end
@@ -1000,116 +940,87 @@ defmodule :m_filelib do
   end
 
   defp find_regular_file([file | files]) do
-    case is_regular(file) do
+    case (is_regular(file)) do
       true ->
         {:ok, file}
-
       false ->
         find_regular_file(files)
     end
   end
 
+  def safe_relative_path(path, '') do
+    safe_relative_path(path, '.')
+  end
+
   def safe_relative_path(path, cwd) do
-    case :filename.pathtype(path) do
-      :relative ->
-        safe_relative_path(:filename.split(path), cwd, [], '')
-
-      _ ->
-        :unsafe
-    end
+    srp_path(:filename.split(path), cwd,
+               :sets.new([{:version, 2}]), [])
   end
 
-  defp safe_relative_path([], _Cwd, _PrevLinks, acc) do
-    acc
+  defp srp_path([], _Cwd, _Seen, []) do
+    ''
   end
 
-  defp safe_relative_path([segment | segments], cwd, prevLinks, acc) do
-    accSegment = join(acc, segment)
-
-    case safe_relative_path(accSegment) do
-      :unsafe ->
-        :unsafe
-
-      safeAccSegment ->
-        case :file.read_link(join(cwd, safeAccSegment)) do
-          {:ok, linkPath} ->
-            case :lists.member(linkPath, prevLinks) do
-              true ->
-                :unsafe
-
-              false ->
-                case safe_relative_path(
-                       :filename.split(linkPath),
-                       cwd,
-                       [linkPath | prevLinks],
-                       acc
-                     ) do
-                  :unsafe ->
-                    :unsafe
-
-                  newAcc ->
-                    safe_relative_path(segments, cwd, [], newAcc)
-                end
-            end
-
-          {:error, _} ->
-            safe_relative_path(segments, cwd, prevLinks, safeAccSegment)
-        end
-    end
+  defp srp_path([], _Cwd, _Seen, acc) do
+    :filename.join(acc)
   end
 
-  defp join([], path) do
-    path
+  defp srp_path(['.' | segs], cwd, seen, acc) do
+    srp_path(segs, cwd, seen, acc)
   end
 
-  defp join(left, right) do
-    :filename.join(left, right)
+  defp srp_path(["." | segs], cwd, seen, acc) do
+    srp_path(segs, cwd, seen, acc)
   end
 
-  defp safe_relative_path(path) do
-    case :filename.pathtype(path) do
-      :relative ->
-        cs0 = :filename.split(path)
-        safe_relative_path_1(cs0, [])
-
-      _ ->
-        :unsafe
-    end
-  end
-
-  defp safe_relative_path_1(['.' | t], acc) do
-    safe_relative_path_1(t, acc)
-  end
-
-  defp safe_relative_path_1(["." | t], acc) do
-    safe_relative_path_1(t, acc)
-  end
-
-  defp safe_relative_path_1(['..' | t], acc) do
-    climb(t, acc)
-  end
-
-  defp safe_relative_path_1([".." | t], acc) do
-    climb(t, acc)
-  end
-
-  defp safe_relative_path_1([h | t], acc) do
-    safe_relative_path_1(t, [h | acc])
-  end
-
-  defp safe_relative_path_1([], []) do
-    []
-  end
-
-  defp safe_relative_path_1([], acc) do
-    :filename.join(:lists.reverse(acc))
-  end
-
-  defp climb(_, []) do
+  defp srp_path(['..' | _Segs], _Cwd, _Seen, []) do
     :unsafe
   end
 
-  defp climb(t, [_ | acc]) do
-    safe_relative_path_1(t, acc)
+  defp srp_path(['..' | segs], cwd, seen, [_ | _] = acc) do
+    srp_path(segs, cwd, seen, :lists.droplast(acc))
   end
+
+  defp srp_path([".." | _Segs], _Cwd, _Seen, []) do
+    :unsafe
+  end
+
+  defp srp_path([".." | segs], cwd, seen, [_ | _] = acc) do
+    srp_path(segs, cwd, seen, :lists.droplast(acc))
+  end
+
+  defp srp_path([:clear | segs], cwd, _Seen, acc) do
+    srp_path(segs, cwd, :sets.new([{:version, 2}]), acc)
+  end
+
+  defp srp_path([seg | _] = segs, cwd, seen, acc) do
+    case (:filename.pathtype(seg)) do
+      :relative ->
+        srp_segment(segs, cwd, seen, acc)
+      _ ->
+        :unsafe
+    end
+  end
+
+  defp srp_segment([seg | segs], cwd, seen, acc) do
+    path = :filename.join([cwd | acc])
+    case (:file.read_link(:filename.join(path, seg))) do
+      {:ok, linkPath} ->
+        srp_link(path, linkPath, segs, cwd, seen, acc)
+      {:error, _} ->
+        srp_path(segs, cwd, seen, acc ++ [seg])
+    end
+  end
+
+  defp srp_link(path, linkPath, segs, cwd, seen, acc) do
+    fullLinkPath = :filename.join(path, linkPath)
+    case (:sets.is_element(fullLinkPath, seen)) do
+      true ->
+        :unsafe
+      false ->
+        srp_path(:filename.split(linkPath) ++ [:clear | segs],
+                   cwd, :sets.add_element(fullLinkPath, seen), acc)
+    end
+  end
+
 end

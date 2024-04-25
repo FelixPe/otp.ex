@@ -1,6 +1,5 @@
 defmodule :m_sasl_report_tty_h do
   use Bitwise
-
   def init(type) do
     {:ok, type}
   end
@@ -11,7 +10,8 @@ defmodule :m_sasl_report_tty_h do
   end
 
   def handle_event(event, type) do
-    _ = :sasl_report.write_report(:standard_io, type, tag_event(event))
+    _ = :sasl_report.write_report(:standard_io, type,
+                                    tag_event(event))
     {:ok, type}
   end
 
@@ -30,4 +30,5 @@ defmodule :m_sasl_report_tty_h do
   defp tag_event(event) do
     {:calendar.local_time(), event}
   end
+
 end

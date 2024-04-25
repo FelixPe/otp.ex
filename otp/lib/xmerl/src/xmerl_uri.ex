@@ -1,33 +1,25 @@
 defmodule :m_xmerl_uri do
   use Bitwise
-
   def resolve(_Root, _Rel) do
     :ok
   end
 
   def parse(uRI) do
-    case parse_scheme(uRI) do
+    case (parse_scheme(uRI)) do
       {:http, cont} ->
         parse_http(cont, :http)
-
       {:https, cont} ->
         parse_http(cont, :https)
-
       {:ftp, cont} ->
         parse_ftp(cont, :ftp)
-
       {:sip, cont} ->
         parse_sip(cont, :sip)
-
       {:sips, cont} ->
         parse_sip(cont, :sips)
-
       {:sms, cont} ->
         parse_sms(cont, :sms)
-
       {:error, error} ->
         {:error, error}
-
       {scheme, cont} ->
         {scheme, cont}
     end
@@ -37,9 +29,8 @@ defmodule :m_xmerl_uri do
     parse_scheme(uRI, [])
   end
 
-  defp parse_scheme([h | uRI], acc)
-       when (?a <= h and h <= ?z) or
-              (?A <= h and h <= ?Z) do
+  defp parse_scheme([h | uRI], acc) when (?a <= h and h <= ?z) or
+                                 (?A <= h and h <= ?Z) do
     parse_scheme2(uRI, [h | acc])
   end
 
@@ -47,11 +38,10 @@ defmodule :m_xmerl_uri do
     {:error, :no_scheme}
   end
 
-  defp parse_scheme2([h | uRI], acc)
-       when (?a <= h and h <= ?z) or
-              (?A <= h and h <= ?Z) or
-              (?0 <= h and h <= ?9) or h == ?- or h == ?+ or
-              h == ?. do
+  defp parse_scheme2([h | uRI], acc) when (?a <= h and h <= ?z) or
+                                 (?A <= h and h <= ?Z) or
+                                 (?0 <= h and h <= ?9) or h == ?- or h == ?+ or
+                                 h == ?. do
     parse_scheme2(uRI, [h | acc])
   end
 
@@ -64,16 +54,14 @@ defmodule :m_xmerl_uri do
   end
 
   defp parse_http('//' ++ c0, scheme) do
-    case scan_hostport(c0, scheme) do
+    case (scan_hostport(c0, scheme)) do
       {c1, host, port} ->
-        case scan_pathquery(c1) do
+        case (scan_pathquery(c1)) do
           {:error, error} ->
             {:error, error}
-
           {path, query} ->
             {scheme, host, port, path, query}
         end
-
       {:error, error} ->
         {:error, error}
     end
@@ -84,55 +72,45 @@ defmodule :m_xmerl_uri do
   end
 
   defp scan_pathquery(c0) do
-    case scan_abspath(c0) do
+    case (scan_abspath(c0)) do
       {:error, error} ->
         {:error, error}
-
       {[], []} ->
         {'/', ''}
-
       {'?' ++ c1, path} ->
-        case scan_query(c1, []) do
+        case (scan_query(c1, [])) do
           {:error, error} ->
             {:error, error}
-
           query ->
             {path, '?' ++ query}
         end
-
       {'#' ++ c1, path} ->
-        case scan_query(c1, []) do
+        case (scan_query(c1, [])) do
           {:error, error} ->
             {:error, error}
-
           fragment ->
             {path, '#' ++ fragment}
         end
-
       {[], path} ->
         {path, ''}
     end
   end
 
   defp parse_ftp('//' ++ c0, scheme) do
-    case ftp_userinfo(c0) do
+    case (ftp_userinfo(c0)) do
       {:error, error} ->
         {:error, error}
-
       {c1, creds} ->
-        case scan_hostport(c1, scheme) do
+        case (scan_hostport(c1, scheme)) do
           {c2, host, port} ->
-            case scan_abspath(c2) do
+            case (scan_abspath(c2)) do
               {:error, error} ->
                 {:error, error}
-
               {[], []} ->
                 {scheme, creds, host, port, '/'}
-
               {[], path} ->
                 {scheme, creds, host, port, path}
             end
-
           {:error, error} ->
             {:error, error}
         end
@@ -180,14 +158,13 @@ defmodule :m_xmerl_uri do
   end
 
   defp parse_sip(c0, scheme) do
-    case :string.tokens(c0, '@') do
+    case (:string.tokens(c0, '@')) do
       [userinfo, hostport] ->
         {user, pass} = sip_userinfo(userinfo)
         {c1, host, port} = scan_hostport(hostport, scheme)
         {c2, parameters} = scan_parameters(c1)
         headers = scan_headers(c2)
         {scheme, user, pass, host, port, parameters, headers}
-
       [hostport] ->
         {c1, host, port} = scan_hostport(hostport, scheme)
         {c2, parameters} = scan_parameters(c1)
@@ -197,10 +174,9 @@ defmodule :m_xmerl_uri do
   end
 
   defp sip_userinfo(userinfo) do
-    case :string.tokens(userinfo, ':') do
+    case (:string.tokens(userinfo, ':')) do
       [user, pass] ->
         {user, pass}
-
       [user] ->
         {user, :none}
     end
@@ -252,55 +228,49 @@ defmodule :m_xmerl_uri do
   end
 
   defp scan_hostport(c0, scheme) do
-    case scan_host(c0) do
+    case (scan_host(c0)) do
       {:error, error} ->
         {:error, error}
-
       {':' ++ c1, host} ->
         {c2, port} = scan_port(c1, [])
         {c2, host, :erlang.list_to_integer(port)}
-
       {c1, host} when scheme == :http ->
         {c1, host, 80}
-
       {c1, host} when scheme == :https ->
         {c1, host, 443}
-
       {c1, host} when scheme == :ftp ->
         {c1, host, 21}
-
       {c1, host} when scheme == :sip ->
         {c1, host, 5060}
     end
   end
 
   defp scan_host(c0) do
-    case scan_host2(c0, [], 0, [], []) do
+    case (scan_host2(c0, [], 0, [], [])) do
       {c1, iPv4address, [1, 1, 1, 1]} ->
         {c1, :lists.reverse(:lists.append(iPv4address))}
-
       {c1, hostname, [_A | _HostF]} ->
         {c1, :lists.reverse(:lists.append(hostname))}
     end
   end
 
   defp scan_host2([h | c0], acc, curF, host, hostF)
-       when ?0 <= h and h <= ?9 do
+      when (?0 <= h and h <= ?9) do
     scan_host2(c0, [h | acc], curF ||| 1, host, hostF)
   end
 
   defp scan_host2([h | c0], acc, curF, host, hostF)
-       when (?a <= h and h <= ?z) or (?A <= h and h <= ?Z) do
+      when (?a <= h and h <= ?z) or (?A <= h and h <= ?Z) do
     scan_host2(c0, [h | acc], curF ||| 6, host, hostF)
   end
 
   defp scan_host2([?- | c0], acc, curF, host, hostF)
-       when curF !== 0 do
+      when curF !== 0 do
     scan_host2(c0, [?- | acc], curF, host, hostF)
   end
 
   defp scan_host2([?. | c0], acc, curF, host, hostF)
-       when curF !== 0 do
+      when curF !== 0 do
     scan_host2(c0, [], 0, ['.', acc | host], [curF | hostF])
   end
 
@@ -308,7 +278,7 @@ defmodule :m_xmerl_uri do
     {c0, [acc | host], [curF | hostF]}
   end
 
-  defp scan_port([h | c0], acc) when ?0 <= h and h <= ?9 do
+  defp scan_port([h | c0], acc) when (?0 <= h and h <= ?9) do
     scan_port(c0, [h | acc])
   end
 
@@ -329,10 +299,9 @@ defmodule :m_xmerl_uri do
   end
 
   defp scan_pathsegments(c0, acc) do
-    case scan_segment(c0, []) do
+    case (scan_segment(c0, [])) do
       {'/' ++ c1, segment} ->
         scan_pathsegments(c1, ['/', segment | acc])
-
       {c1, segment} ->
         {c1, :lists.reverse(:lists.append([segment | acc]))}
     end
@@ -344,11 +313,10 @@ defmodule :m_xmerl_uri do
   end
 
   defp scan_segment(c0, acc) do
-    case scan_pchars(c0, acc) do
+    case (scan_pchars(c0, acc)) do
       {';' ++ c1, segment} ->
         {c2, paramAcc} = scan_pchars(c1, ';' ++ segment)
         scan_segment(c2, paramAcc)
-
       {c1, segment} ->
         {c1, segment}
     end
@@ -362,29 +330,26 @@ defmodule :m_xmerl_uri do
     scan_query([hex2dec(h1) * 16 + hex2dec(h2) | c0], acc)
   end
 
-  defp scan_query([h | c0], acc)
-       when (?a <= h and h <= ?z) or
-              (?A <= h and h <= ?Z) or
-              (?0 <= h and h <= ?9) do
+  defp scan_query([h | c0], acc) when (?a <= h and h <= ?z) or
+                                (?A <= h and h <= ?Z) or
+                                (?0 <= h and h <= ?9) do
     scan_query(c0, [h | acc])
   end
 
-  defp scan_query([h | c0], acc)
-       when h == ?; or h == ?/ or
-              h == ?? or h == ?: or h == ?@ or h == ?[ or
-              h == ?] or h == ?& or h == ?= or h == ?+ or
-              h == ?$ or h == ?, do
+  defp scan_query([h | c0], acc) when h == ?; or h == ?/ or
+                                h == ?? or h == ?: or h == ?@ or h == ?[ or
+                                h == ?] or h == ?& or h == ?= or h == ?+ or
+                                h == ?$ or h == ?, do
     scan_query(c0, [h | acc])
   end
 
-  defp scan_query([h | c0], acc)
-       when h == ?- or h == ?_ or
-              h == ?. or h == ?! or h == ?~ or h == ?* or
-              h == ?' or h == ?( or h == ?) do
+  defp scan_query([h | c0], acc) when h == ?- or h == ?_ or
+                                h == ?. or h == ?! or h == ?~ or h == ?* or
+                                h == ?' or h == ?( or h == ?) do
     scan_query(c0, [h | acc])
   end
 
-  defp scan_query([h | c0], acc) when 0 <= h and h <= 127 do
+  defp scan_query([h | c0], acc) when (0 <= h and h <= 127) do
     {h1, h2} = dec2hex(h)
     scan_query(c0, [h2, h1, ?% | acc])
   end
@@ -401,31 +366,27 @@ defmodule :m_xmerl_uri do
     scan_pchars([hex2dec(h1) * 16 + hex2dec(h2) | c0], acc)
   end
 
-  defp scan_pchars([h | c0], acc)
-       when (?a <= h and h <= ?z) or
-              (?A <= h and h <= ?Z) or
-              (?0 <= h and h <= ?9) do
+  defp scan_pchars([h | c0], acc) when (?a <= h and h <= ?z) or
+                                (?A <= h and h <= ?Z) or
+                                (?0 <= h and h <= ?9) do
     scan_pchars(c0, [h | acc])
   end
 
-  defp scan_pchars([h | c0], acc)
-       when h == ?- or h == ?_ or
-              h == ?. or h == ?! or h == ?~ or h == ?* or
-              h == ?' or h == ?( or h == ?) do
+  defp scan_pchars([h | c0], acc) when h == ?- or h == ?_ or
+                                h == ?. or h == ?! or h == ?~ or h == ?* or
+                                h == ?' or h == ?( or h == ?) do
     scan_pchars(c0, [h | acc])
   end
 
-  defp scan_pchars([h | c0], acc)
-       when h == ?: or h == ?@ or
-              h == ?& or h == ?= or h == ?+ or h == ?$ or
-              h == ?, do
+  defp scan_pchars([h | c0], acc) when h == ?: or h == ?@ or
+                                h == ?& or h == ?= or h == ?+ or h == ?$ or
+                                h == ?, do
     scan_pchars(c0, [h | acc])
   end
 
-  defp scan_pchars([h | c0], acc)
-       when 0 <= h and h <= 127 and
-              h !== ?? and h !== ?; and h !== ?/ and
-              h !== ?# do
+  defp scan_pchars([h | c0], acc) when (0 <= h and h <= 127 and
+                                 h !== ?? and h !== ?; and h !== ?/ and
+                                 h !== ?#) do
     {h1, h2} = dec2hex(h)
     scan_pchars(c0, [h2, h1, ?% | acc])
   end
@@ -434,24 +395,24 @@ defmodule :m_xmerl_uri do
     {c0, acc}
   end
 
-  defp hex2dec(x) when x >= ?0 and x <= ?9 do
+  defp hex2dec(x) when (x >= ?0 and x <= ?9) do
     x - ?0
   end
 
-  defp hex2dec(x) when x >= ?A and x <= ?F do
+  defp hex2dec(x) when (x >= ?A and x <= ?F) do
     x - ?A + 10
   end
 
-  defp hex2dec(x) when x >= ?a and x <= ?f do
+  defp hex2dec(x) when (x >= ?a and x <= ?f) do
     x - ?a + 10
   end
 
   defp dec2hex(h) when h < 256 do
-    <<h1::size(4), h2::size(4)>> = <<h>>
+    <<h1 :: size(4), h2 :: size(4)>> = <<h>>
     {nibble2hex(h1), nibble2hex(h2)}
   end
 
-  defp nibble2hex(x) when 0 <= x and x <= 9 do
+  defp nibble2hex(x) when (0 <= x and x <= 9) do
     x + ?0
   end
 
@@ -478,4 +439,5 @@ defmodule :m_xmerl_uri do
   defp nibble2hex(15) do
     ?f
   end
+
 end

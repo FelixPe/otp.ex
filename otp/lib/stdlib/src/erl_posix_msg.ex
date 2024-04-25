@@ -1,6 +1,5 @@
 defmodule :m_erl_posix_msg do
   use Bitwise
-
   def message(t) do
     :erlang.binary_to_list(message_1(t))
   end
@@ -446,7 +445,7 @@ defmodule :m_erl_posix_msg do
   end
 
   defp message_1(:eprotonosupport) do
-    "protocol not suppored"
+    "protocol not supported"
   end
 
   defp message_1(:eprototype) do
@@ -558,7 +557,7 @@ defmodule :m_erl_posix_msg do
   end
 
   defp message_1(:exdev) do
-    "cross-domain link"
+    "cross-device link"
   end
 
   defp message_1(:exfull) do
@@ -577,7 +576,8 @@ defmodule :m_erl_posix_msg do
     "inet_drv bad request sequence"
   end
 
-  defp message_1(_) do
-    "unknown POSIX error"
+  defp message_1(other) do
+    <<"unknown POSIX error: ", :erlang.atom_to_binary(other) :: binary>>
   end
+
 end

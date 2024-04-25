@@ -3,37 +3,46 @@ defmodule :m_dialyzer_typesig do
   import :erl_types, only: [t_any: 0, t_atom: 0,
                               t_atom_vals: 1, t_binary: 0, t_bitstr: 0,
                               t_bitstr: 2, t_bitstr_concat: 1, t_boolean: 0,
-                              t_collect_vars: 1, t_cons: 2, t_cons_hd: 1,
+                              t_collect_var_names: 1, t_cons: 2, t_cons_hd: 1,
                               t_cons_tl: 1, t_float: 0, t_from_range: 2,
                               t_from_term: 1, t_fun: 0, t_fun: 2, t_fun_args: 1,
                               t_fun_range: 1, t_has_var: 1, t_inf: 2,
                               t_integer: 0, t_is_any: 1, t_is_any_atom: 2,
                               t_is_atom: 1, t_is_cons: 1, t_is_equal: 2,
-                              t_is_float: 1, t_is_fun: 1, t_is_integer: 1,
-                              t_is_list: 1, t_is_nil: 1, t_is_none: 1,
-                              t_is_none_or_unit: 1, t_is_number: 1,
-                              t_is_singleton: 1, t_is_subtype: 2, t_limit: 2,
-                              t_list: 0, t_list: 1, t_list_elements: 1,
-                              t_map: 0, t_map: 1, t_map_get: 2, t_map_put: 2,
+                              t_is_float: 1, t_is_fun: 1, t_is_impossible: 1,
+                              t_is_integer: 1, t_is_list: 1, t_is_nil: 1,
+                              t_is_none: 1, t_is_number: 1, t_is_singleton: 1,
+                              t_is_subtype: 2, t_limit: 2, t_list: 0, t_list: 1,
+                              t_list_elements: 1, t_map: 0, t_map: 1,
+                              t_map_get: 2, t_map_put: 2,
                               t_maybe_improper_list: 0, t_module: 0,
                               t_non_neg_integer: 0, t_none: 0,
                               t_nonempty_list: 1, t_number: 0, t_number_vals: 1,
                               t_pid: 0, t_port: 0, t_product: 1, t_reference: 0,
                               t_subst: 2, t_subtract: 2, t_subtract_list: 2,
                               t_sup: 1, t_sup: 2, t_timeout: 0, t_tuple: 0,
-                              t_tuple: 1, t_unify: 2, t_unit: 0, t_var: 1,
-                              t_var_name: 1]
+                              t_tuple: 1, t_unify_table_only: 2, t_unit: 0,
+                              t_var: 1, t_var_name: 1]
   require Record
+  Record.defrecord(:r_plt_info, :plt_info, files: :undefined,
+                                    mod_deps: :dict.new())
+  Record.defrecord(:r_iplt_info, :iplt_info, files: :undefined,
+                                     mod_deps: :dict.new(), warning_map: :none,
+                                     legal_warnings: :none)
+  Record.defrecord(:r_plt, :plt, info: :undefined,
+                               types: :undefined, contracts: :undefined,
+                               callbacks: :undefined,
+                               exported_types: :undefined)
   Record.defrecord(:r_analysis, :analysis, analysis_pid: :undefined,
                                     type: :succ_typings, defines: [],
                                     doc_plt: :undefined, files: [],
                                     include_dirs: [], start_from: :byte_code,
                                     plt: :undefined, use_contracts: true,
-                                    race_detection: false,
                                     behaviours_chk: false, timing: false,
                                     timing_server: :none, callgraph_file: '',
-                                    solvers: :undefined)
+                                    mod_deps_file: '', solvers: :undefined)
   Record.defrecord(:r_options, :options, files: [], files_rec: [],
+                                   warning_files: [], warning_files_rec: [],
                                    analysis_type: :succ_typings, timing: false,
                                    defines: [], from: :byte_code,
                                    get_warnings: :maybe, init_plts: [],
@@ -43,9 +52,10 @@ defmodule :m_dialyzer_typesig do
                                    use_contracts: true, output_file: :none,
                                    output_format: :formatted,
                                    filename_opt: :basename, indent_opt: true,
-                                   callgraph_file: '', check_plt: true,
-                                   solvers: [], native: :maybe,
-                                   native_cache: true)
+                                   callgraph_file: '', mod_deps_file: '',
+                                   check_plt: true, error_location: :column,
+                                   metrics_file: :none,
+                                   module_lookup_file: :none, solvers: [])
   Record.defrecord(:r_contract, :contract, contracts: [], args: [],
                                     forms: [])
   Record.defrecord(:r_fun_var, :fun_var, "fun": :undefined,
@@ -64,7 +74,7 @@ defmodule :m_dialyzer_typesig do
                                  in_match: false, in_guard: false,
                                  module: :undefined, name_map: :maps.new(),
                                  next_label: 0, self_rec: :undefined,
-                                 plt: :undefined, prop_types: :dict.new(),
+                                 plt: :undefined, prop_types: %{},
                                  mod_records: [], scc: [], mfas: :undefined,
                                  solvers: [])
   def analyze_scc(sCC, nextLabel, callGraph, cServer, plt,
@@ -73,7 +83,7 @@ defmodule :m_dialyzer_typesig do
     state1 = new_state(sCC, nextLabel, callGraph, cServer,
                          plt, propTypes, solvers)
     defSet = add_def_list(:maps.values(r_state(state1, :name_map)),
-                            :sets.new())
+                            :sets.new([{:version, 2}]))
     state2 = traverse_scc(sCC, cServer, defSet, state1)
     state3 = state__finalize(state2)
     funs = state__scc(state3)
@@ -108,518 +118,6 @@ defmodule :m_dialyzer_typesig do
     accState
   end
 
-  defp traverse(tree, definedVars, state) do
-    :ok
-    case (:cerl.type(tree)) do
-      :alias ->
-        var = :cerl.alias_var(tree)
-        pat = :cerl.alias_pat(tree)
-        definedVars1 = add_def(var, definedVars)
-        {state1, patVar} = traverse(pat, definedVars1, state)
-        state2 = state__store_conj(mk_var(var), :eq, patVar,
-                                     state1)
-        {state2, patVar}
-      :apply ->
-        args = :cerl.apply_args(tree)
-        arity = length(args)
-        op = :cerl.apply_op(tree)
-        {state0, argTypes} = traverse_list(args, definedVars,
-                                             state)
-        {state1, opType} = traverse(op, definedVars, state0)
-        {state2, funType} = state__get_fun_prototype(opType,
-                                                       arity, state1)
-        state3 = state__store_conj(funType, :eq, opType, state2)
-        state4 = state__store_conj(mk_var(tree), :sub,
-                                     t_fun_range(funType), state3)
-        state5 = state__store_conj_lists(argTypes, :sub,
-                                           t_fun_args(funType), state4)
-        case (state__lookup_apply(tree, state)) do
-          :unknown ->
-            {state5, mk_var(tree)}
-          funLabels ->
-            case (get_apply_constr(funLabels, mk_var(tree),
-                                     argTypes, state5)) do
-              :error ->
-                {state5, mk_var(tree)}
-              {:ok, state6} ->
-                {state6, mk_var(tree)}
-            end
-        end
-      :binary ->
-        {state1,
-           segTypes} = traverse_list(:cerl.binary_segments(tree),
-                                       definedVars, state)
-        type = mk_fun_var(fn map ->
-                               tmpSegTypes = lookup_type_list(segTypes, map)
-                               t_bitstr_concat(tmpSegTypes)
-                          end,
-                            segTypes)
-        {state__store_conj(mk_var(tree), :sub, type, state1),
-           mk_var(tree)}
-      :bitstr ->
-        size = :cerl.bitstr_size(tree)
-        unitVal = :cerl.int_val(:cerl.bitstr_unit(tree))
-        val = :cerl.bitstr_val(tree)
-        {state1, [sizeType, valType]} = traverse_list([size,
-                                                           val],
-                                                        definedVars, state)
-        {state2, typeConstr,
-           binValTypeConstr} = (case (:cerl.bitstr_bitsize(tree)) do
-                                  :all ->
-                                    t = t_bitstr(unitVal, 0)
-                                    {state1, t, t}
-                                  :utf ->
-                                    t = t_binary()
-                                    {state1, t, t}
-                                  n when is_integer(n) ->
-                                    {state1, t_bitstr(0, n), t_bitstr(1, n)}
-                                  :any ->
-                                    t1 = mk_fun_var(bitstr_constr(sizeType,
-                                                                    unitVal),
-                                                      [sizeType])
-                                    t2 = mk_fun_var(bitstr_constr(sizeType,
-                                                                    unitVal,
-                                                                    :match),
-                                                      [sizeType])
-                                    {state__store_conj(sizeType, :sub,
-                                                         t_non_neg_integer(),
-                                                         state1),
-                                       t1, t2}
-                                end)
-        valTypeConstr = (case (:cerl.concrete(:cerl.bitstr_type(tree))) do
-                           :binary ->
-                             binValTypeConstr
-                           :float ->
-                             case (state__is_in_match(state1)) do
-                               true ->
-                                 t_float()
-                               false ->
-                                 t_number()
-                             end
-                           :integer ->
-                             case (state__is_in_match(state1)) do
-                               true ->
-                                 flags = :cerl.concrete(:cerl.bitstr_flags(tree))
-                                 mk_fun_var(bitstr_val_constr(sizeType, unitVal,
-                                                                flags),
-                                              [sizeType])
-                               false ->
-                                 t_integer()
-                             end
-                           :utf8 ->
-                             t_integer()
-                           :utf16 ->
-                             t_integer()
-                           :utf32 ->
-                             t_integer()
-                         end)
-        state3 = state__store_conj(valType, :sub, valTypeConstr,
-                                     state2)
-        state4 = state__store_conj(mk_var(tree), :sub,
-                                     typeConstr, state3)
-        {state4, mk_var(tree)}
-      :case ->
-        arg = :cerl.case_arg(tree)
-        clauses = :cerl.case_clauses(tree)
-        {state1, argVar} = traverse(arg, definedVars, state)
-        handle_clauses(clauses, mk_var(tree), argVar,
-                         definedVars, state1)
-      :call ->
-        handle_call(tree, definedVars, state)
-      :catch ->
-        {state, mk_var(tree)}
-      :cons ->
-        hd = :cerl.cons_hd(tree)
-        tl = :cerl.cons_tl(tree)
-        {state1, [hdVar, tlVar]} = traverse_list([hd, tl],
-                                                   definedVars, state)
-        case (:cerl.is_literal(fold_literal_maybe_match(tree,
-                                                          state))) do
-          true ->
-            {state, t_cons(hdVar, tlVar)}
-          false ->
-            consVar = mk_var(tree)
-            consType = mk_fun_var(fn map ->
-                                       t_cons(lookup_type(hdVar, map),
-                                                lookup_type(tlVar, map))
-                                  end,
-                                    [hdVar, tlVar])
-            hdType = mk_fun_var(fn map ->
-                                     cons = lookup_type(consVar, map)
-                                     case (t_is_cons(cons)) do
-                                       false ->
-                                         t_any()
-                                       true ->
-                                         t_cons_hd(cons)
-                                     end
-                                end,
-                                  [consVar])
-            tlType = mk_fun_var(fn map ->
-                                     cons = lookup_type(consVar, map)
-                                     case (t_is_cons(cons)) do
-                                       false ->
-                                         t_any()
-                                       true ->
-                                         t_cons_tl(cons)
-                                     end
-                                end,
-                                  [consVar])
-            state2 = state__store_conj_lists([hdVar, tlVar,
-                                                         consVar],
-                                               :sub, [hdType, tlType, consType],
-                                               state1)
-            {state2, consVar}
-        end
-      :fun ->
-        body = :cerl.fun_body(tree)
-        vars = :cerl.fun_vars(tree)
-        definedVars1 = add_def_list(vars, definedVars)
-        state0 = state__new_constraint_context(state)
-        funFailType = (case (state__prop_domain(:cerl_trees.get_label(tree),
-                                                  state0)) do
-                         :error ->
-                           t_fun(length(vars), t_none())
-                         {:ok, dom} ->
-                           t_fun(dom, t_none())
-                       end)
-        treeVar = mk_var(tree)
-        state2 = (try do
-                    state1 = (case (state__add_prop_constrs(tree,
-                                                              state0)) do
-                                :not_called ->
-                                  state0
-                                propState ->
-                                  propState
-                              end)
-                    {bodyState, bodyVar} = traverse(body, definedVars1,
-                                                      state1)
-                    state__store_conj(treeVar, :eq,
-                                        t_fun(mk_var_list(vars), bodyVar),
-                                        bodyState)
-                  catch
-                    :error ->
-                      state__store_conj(treeVar, :eq, funFailType, state0)
-                  end)
-        cs = state__cs(state2)
-        state3 = state__store_constrs(treeVar, cs, state2)
-        ref = mk_constraint_ref(treeVar, get_deps(cs))
-        oldCs = state__cs(state)
-        state4 = state__new_constraint_context(state3)
-        state5 = state__store_conj_list([oldCs, ref], state4)
-        state6 = state__store_fun_arity(tree, state5)
-        state7 = state__add_fun_to_scc(treeVar, state6)
-        {state7, treeVar}
-      :let ->
-        vars = :cerl.let_vars(tree)
-        arg = :cerl.let_arg(tree)
-        body = :cerl.let_body(tree)
-        {state1, argVars} = traverse(arg, definedVars, state)
-        state2 = state__store_conj(t_product(mk_var_list(vars)),
-                                     :eq, argVars, state1)
-        definedVars1 = add_def_list(vars, definedVars)
-        traverse(body, definedVars1, state2)
-      :letrec ->
-        defs = :cerl.letrec_defs(tree)
-        body = :cerl.letrec_body(tree)
-        funs = (for {_Var, fun} <- defs do
-                  fun
-                end)
-        vars = (for {var, _Fun} <- defs do
-                  var
-                end)
-        state1 = state__store_funs(vars, funs, state)
-        definedVars1 = add_def_list(vars, definedVars)
-        {state2, _} = traverse_list(funs, definedVars1, state1)
-        traverse(body, definedVars1, state2)
-      :literal ->
-        case (state__is_in_match(state)) do
-          true ->
-            tree1 = :dialyzer_utils.refold_pattern(tree)
-            case (:cerl.is_literal(tree1)) do
-              false ->
-                traverse(tree1, definedVars, state)
-              true ->
-                {state, t_from_term(:cerl.concrete(tree))}
-            end
-          _ ->
-            {state, t_from_term(:cerl.concrete(tree))}
-        end
-      :module ->
-        defs = :cerl.module_defs(tree)
-        funs = (for {_Var, fun} <- defs do
-                  fun
-                end)
-        vars = (for {var, _Fun} <- defs do
-                  var
-                end)
-        definedVars1 = add_def_list(vars, definedVars)
-        state1 = state__store_funs(vars, funs, state)
-        foldFun = fn fun, accState ->
-                       {s, _} = traverse(fun, definedVars1,
-                                           state__new_constraint_context(accState))
-                       s
-                  end
-        :lists.foldl(foldFun, state1, funs)
-      :primop ->
-        case (:cerl.atom_val(:cerl.primop_name(tree))) do
-          :match_fail ->
-            throw(:error)
-          :raise ->
-            throw(:error)
-          :bs_init_writable ->
-            {state, t_from_term(<<>>)}
-          :build_stacktrace ->
-            v = mk_var(tree)
-            type = :erl_bif_types.type(:erlang, :build_stacktrace,
-                                         0)
-            state1 = state__store_conj(v, :sub, type, state)
-            {state1, v}
-          :dialyzer_unknown ->
-            {state, mk_var(tree)}
-          :recv_peek_message ->
-            {state1, vars} = state__mk_vars(2, state)
-            {state1, t_product(vars)}
-          :recv_wait_timeout ->
-            [timeout] = :cerl.primop_args(tree)
-            case (:cerl.is_c_atom(timeout) and :cerl.atom_val(timeout) === :infinity) do
-              true ->
-                {state, t_none()}
-              false ->
-                {state1, timeoutVar} = traverse(timeout, definedVars,
-                                                  state)
-                state2 = state__store_conj(timeoutVar, :sub,
-                                             t_timeout(), state1)
-                {state2, mk_var(tree)}
-            end
-          :remove_message ->
-            {state, t_any()}
-          :timeout ->
-            {state, t_any()}
-          other ->
-            :erlang.error({:"Unsupported primop", other})
-        end
-      :receive ->
-        clauses = :cerl.receive_clauses(tree)
-        timeout = :cerl.receive_timeout(tree)
-        case (:cerl.is_c_atom(timeout) and :cerl.atom_val(timeout) === :infinity) do
-          true ->
-            handle_clauses(clauses, mk_var(tree), [], definedVars,
-                             state)
-          false ->
-            action = :cerl.receive_action(tree)
-            {state1, timeoutVar} = traverse(timeout, definedVars,
-                                              state)
-            state2 = state__store_conj(timeoutVar, :sub,
-                                         t_timeout(), state1)
-            handle_clauses(clauses, mk_var(tree), [], action,
-                             definedVars, state2)
-        end
-      :seq ->
-        body = :cerl.seq_body(tree)
-        arg = :cerl.seq_arg(tree)
-        {state1, _} = traverse(arg, definedVars, state)
-        traverse(body, definedVars, state1)
-      :try ->
-        handle_try(tree, definedVars, state)
-      :tuple ->
-        elements = :cerl.tuple_es(tree)
-        {state1, eVars} = traverse_list(elements, definedVars,
-                                          state)
-        {state2,
-           tupleType} = (case (:cerl.is_literal(fold_literal_maybe_match(tree,
-                                                                           state1))) do
-                           true ->
-                             {state, t_tuple(eVars)}
-                           false ->
-                             fun = fn var, accState ->
-                                        case (t_has_var(var)) do
-                                          true ->
-                                            {accState1,
-                                               newVar} = state__mk_var(accState)
-                                            {newVar,
-                                               state__store_conj(var, :eq,
-                                                                   newVar,
-                                                                   accState1)}
-                                          false ->
-                                            {var, accState}
-                                        end
-                                   end
-                             {newEvars, tmpState} = :lists.mapfoldl(fun, state1,
-                                                                      eVars)
-                             {tmpState, t_tuple(newEvars)}
-                         end)
-        case (elements) do
-          [tag | fields] ->
-            case (:cerl.is_c_atom(tag) and is_literal_record(tree)) do
-              true ->
-                arity = length(fields)
-                case (lookup_record(state2, :cerl.atom_val(tag),
-                                      arity)) do
-                  {:error, state3} ->
-                    {state3, tupleType}
-                  {:ok, recType, state3} ->
-                    state4 = state__store_conj(tupleType, :sub, recType,
-                                                 state3)
-                    {state4, tupleType}
-                end
-              false ->
-                {state2, tupleType}
-            end
-          [] ->
-            {state2, tupleType}
-        end
-      :map ->
-        entries = :cerl.map_es(tree)
-        mapFoldFun = fn entry, accState ->
-                          accState1 = state__set_in_match(accState, false)
-                          {accState2,
-                             keyVar} = traverse(:cerl.map_pair_key(entry),
-                                                  definedVars, accState1)
-                          accState3 = state__set_in_match(accState2,
-                                                            state__is_in_match(accState))
-                          {accState4,
-                             valVar} = traverse(:cerl.map_pair_val(entry),
-                                                  definedVars, accState3)
-                          {{keyVar, valVar}, accState4}
-                     end
-        {pairs, state1} = :lists.mapfoldl(mapFoldFun, state,
-                                            entries)
-        {state2, argVar} = (case (state__is_in_match(state)) do
-                              false ->
-                                traverse(:cerl.map_arg(tree), definedVars,
-                                           state1)
-                              true ->
-                                {state1, t_map()}
-                            end)
-        mapVar = mk_var(tree)
-        mapType = mk_fun_var(fn map ->
-                                  :lists.foldl(fn {k, v}, typeAcc ->
-                                                    t_map_put({lookup_type(k,
-                                                                             map),
-                                                                 lookup_type(v,
-                                                                               map)},
-                                                                typeAcc)
-                                               end,
-                                                 t_inf(t_map(),
-                                                         lookup_type(argVar,
-                                                                       map)),
-                                                 pairs)
-                             end,
-                               [argVar | :lists.append(for {k, v} <- pairs do
-                                                         [k, v]
-                                                       end)])
-        fun = fn {keyVar, valVar}, {accState, shadowKeys} ->
-                   typeFun = fn map ->
-                                  keyType = lookup_type(keyVar, map)
-                                  case (t_is_singleton(keyType)) do
-                                    false ->
-                                      t_any()
-                                    true ->
-                                      mT = t_inf(lookup_type(mapVar, map),
-                                                   t_map())
-                                      case (t_is_none_or_unit(mT)) do
-                                        true ->
-                                          t_none()
-                                        false ->
-                                          disjointFromKeyType = fn shadowKey ->
-                                                                     sT = t_inf(lookup_type(shadowKey,
-                                                                                              map),
-                                                                                  keyType)
-                                                                     t_is_none_or_unit(sT)
-                                                                end
-                                          case (:lists.all(disjointFromKeyType,
-                                                             shadowKeys)) do
-                                            true ->
-                                              t_map_get(keyType, mT)
-                                            false ->
-                                              t_any()
-                                          end
-                                      end
-                                  end
-                             end
-                   valType = mk_fun_var(typeFun,
-                                          [keyVar, mapVar | shadowKeys])
-                   {state__store_conj(valVar, :sub, valType, accState),
-                      [keyVar | shadowKeys]}
-              end
-        {state3, _} = :lists.foldr(fun, {state2, []}, pairs)
-        state4 = (case (state__is_in_match(state)) do
-                    true ->
-                      state3
-                    false ->
-                      argFun = fn map ->
-                                    foldFun = fn {{keyVar, _}, entry},
-                                                   {accType, shadowedKeys} ->
-                                                   opTree = :cerl.map_pair_op(entry)
-                                                   keyType = lookup_type(keyVar,
-                                                                           map)
-                                                   accType1 = (case (:cerl.is_literal(opTree) and :cerl.concrete(opTree) === :exact) do
-                                                                 true ->
-                                                                   sT = t_inf(shadowedKeys,
-                                                                                keyType)
-                                                                   case (t_is_none_or_unit(sT)) do
-                                                                     true ->
-                                                                       t_map_put({keyType,
-                                                                                    t_any()},
-                                                                                   accType)
-                                                                     false ->
-                                                                       accType
-                                                                   end
-                                                                 false ->
-                                                                   accType
-                                                               end)
-                                                   {accType1,
-                                                      t_sup(keyType,
-                                                              shadowedKeys)}
-                                              end
-                                    {resType, _} = :lists.foldl(foldFun,
-                                                                  {t_map(),
-                                                                     t_none()},
-                                                                  :lists.zip(pairs,
-                                                                               entries))
-                                    resType
-                               end
-                      argType = mk_fun_var(argFun,
-                                             for {keyVar, _} <- pairs do
-                                               keyVar
-                                             end)
-                      state__store_conj(argVar, :sub, argType, state3)
-                  end)
-        {state__store_conj(mapVar, :sub, mapType, state4),
-           mapVar}
-      :values ->
-        elements = :cerl.values_es(tree)
-        {state1, eVars} = traverse_list(elements, definedVars,
-                                          state)
-        arity = length(eVars)
-        unique = length(:ordsets.from_list(eVars))
-        case (arity === unique) do
-          true ->
-            {state1, t_product(eVars)}
-          false ->
-            {state2, vars} = state__mk_vars(arity, state1)
-            state3 = state__store_conj_lists(vars, :eq, eVars,
-                                               state2)
-            {state3, t_product(vars)}
-        end
-      :var ->
-        case (is_def(tree, definedVars)) do
-          true ->
-            {state, mk_var(tree)}
-          false ->
-            case (state__lookup_undef_var(tree, state)) do
-              :error ->
-                :erlang.error({:"Undefined variable", tree})
-              {:ok, type} ->
-                {state1, newVar} = state__mk_var(state)
-                {state__store_conj(newVar, :sub, type, state1), newVar}
-            end
-        end
-      other ->
-        :erlang.error({:"Unsupported type", other})
-    end
-  end
-
   defp traverse_list(trees, definedVars, state) do
     traverse_list(trees, definedVars, state, [])
   end
@@ -646,16 +144,15 @@ defmodule :m_dialyzer_typesig do
   end
 
   defp add_def_from_tree(t, definedVars) do
-    vars = :cerl_trees.fold(fn x, acc ->
-                                 case (:cerl.is_c_var(x)) do
-                                   true ->
-                                     [x | acc]
-                                   false ->
-                                     acc
-                                 end
-                            end,
-                              [], t)
-    add_def_list(vars, definedVars)
+    :cerl_trees.fold(fn x, set ->
+                          case (:cerl.is_c_var(x)) do
+                            true ->
+                              add_def(x, set)
+                            false ->
+                              set
+                          end
+                     end,
+                       definedVars, t)
   end
 
   defp add_def_from_tree_list([h | t], definedVars) do
@@ -848,17 +345,6 @@ defmodule :m_dialyzer_typesig do
   end
 
   defp handle_clauses(clauses, topVar, arg, definedVars, state) do
-    handle_clauses(clauses, topVar, arg, :none, definedVars,
-                     state)
-  end
-
-  defp handle_clauses([], _, _, action, definedVars, state)
-      when action !== :none do
-    traverse(action, definedVars, state)
-  end
-
-  defp handle_clauses(clauses, topVar, arg, action, definedVars,
-            state) do
     subtrTypeList = (cond do
                        length(clauses) > 15 ->
                          :overflow
@@ -867,32 +353,11 @@ defmodule :m_dialyzer_typesig do
                      end)
     {state1, cList} = handle_clauses_1(clauses, topVar, arg,
                                          definedVars, state, subtrTypeList, [])
-    {newCs, newState} = (case (action) do
-                           :none ->
-                             cond do
-                               cList === [] ->
-                                 throw(:error)
-                               true ->
-                                 {cList, state1}
-                             end
-                           _ ->
-                             try do
-                               {state2, actionVar} = traverse(action,
-                                                                definedVars,
-                                                                state1)
-                               tmpC = mk_constraint(topVar, :eq, actionVar)
-                               actionCs = mk_conj_constraint_list([state__cs(state2),
-                                                                       tmpC])
-                               {[actionCs | cList], state2}
-                             catch
-                               :error ->
-                                 cond do
-                                   cList === [] ->
-                                     throw(:error)
-                                   true ->
-                                     {cList, state1}
-                                 end
-                             end
+    {newCs, newState} = (cond do
+                           cList === [] ->
+                             throw(:error)
+                           true ->
+                             {cList, state1}
                          end)
     oldCs = state__cs(state)
     newCList = mk_disj_constraint_list(newCs)
@@ -907,10 +372,10 @@ defmodule :m_dialyzer_typesig do
     pats = :cerl.clause_pats(clause)
     guard = :cerl.clause_guard(clause)
     body = :cerl.clause_body(clause)
-    newSubtrTypes = (case (subtrTypes === :overflow) do
-                       true ->
+    newSubtrTypes = (case (subtrTypes) do
+                       :overflow ->
                          :overflow
-                       false ->
+                       _ ->
                          :ordsets.add_element(get_safe_underapprox(pats, guard),
                                                 subtrTypes)
                      end)
@@ -919,25 +384,20 @@ defmodule :m_dialyzer_typesig do
       state1 = state__set_in_match(state0, true)
       {state2, patVars} = traverse_list(pats, definedVars1,
                                           state1)
-      state3 = (case (arg === []) do
-                  true ->
-                    state2
-                  false ->
-                    s = state__store_conj(arg, :eq, t_product(patVars),
-                                            state2)
-                    case (subtrTypes === :overflow) do
-                      true ->
-                        s
-                      false ->
-                        subtrPatVar = mk_fun_var(fn map ->
-                                                      tmpType = lookup_type(arg,
-                                                                              map)
-                                                      t_subtract_list(tmpType,
-                                                                        subtrTypes)
-                                                 end,
-                                                   [arg])
-                        state__store_conj(arg, :sub, subtrPatVar, s)
-                    end
+      s = state__store_conj(arg, :eq, t_product(patVars),
+                              state2)
+      state3 = (case (subtrTypes) do
+                  :overflow ->
+                    s
+                  _ ->
+                    subtrPatVar = mk_fun_var(fn map ->
+                                                  tmpType = lookup_type(arg,
+                                                                          map)
+                                                  t_subtract_list(tmpType,
+                                                                    subtrTypes)
+                                             end,
+                                               [arg])
+                    state__store_conj(arg, :sub, subtrPatVar, s)
                 end)
       state4 = handle_guard(guard, definedVars1, state3)
       {state5, bodyVar} = traverse(body, definedVars1,
@@ -1170,7 +630,8 @@ defmodule :m_dialyzer_typesig do
             end)
     fn map ->
          tmpSizeType = lookup_type(sizeType, map)
-         case (t_is_subtype(tmpSizeType, t_non_neg_integer())) do
+         case (t_is_integer(tmpSizeType) and t_is_subtype(tmpSizeType,
+                                                            t_non_neg_integer())) do
            true ->
              case (t_number_vals(tmpSizeType)) do
                [oneSize] ->
@@ -1188,7 +649,8 @@ defmodule :m_dialyzer_typesig do
   defp bitstr_val_constr(sizeType, unitVal, flags) do
     fn map ->
          tmpSizeType = lookup_type(sizeType, map)
-         case (t_is_subtype(tmpSizeType, t_non_neg_integer())) do
+         case (t_is_integer(tmpSizeType) and t_is_subtype(tmpSizeType,
+                                                            t_non_neg_integer())) do
            true ->
              case (:erl_types.number_max(tmpSizeType)) do
                n when (is_integer(n) and n < 128) ->
@@ -1350,7 +812,7 @@ defmodule :m_dialyzer_typesig do
 
   defp get_bif_constr({:erlang, op, 2}, dst, args = [arg1, arg2],
             _State)
-      when op === :"+" or op === :"-" or op === :"*" do
+      when op === :"+" or op === :- or op === :"*" do
     returnType = mk_fun_var(fn map ->
                                  tmpArgTypes = lookup_type_list(args, map)
                                  bif_return(:erlang, op, 2, tmpArgTypes)
@@ -1994,7 +1456,7 @@ defmodule :m_dialyzer_typesig do
   end
 
   defp eval_inv_arith(:"+", _Pos, dst, arg) do
-    bif_return(:erlang, :"-", 2, [dst, arg])
+    bif_return(:erlang, :-, 2, [dst, arg])
   end
 
   defp eval_inv_arith(:"*", _Pos, dst, arg) do
@@ -2013,11 +1475,11 @@ defmodule :m_dialyzer_typesig do
     end
   end
 
-  defp eval_inv_arith(:"-", 1, dst, arg) do
-    bif_return(:erlang, :"-", 2, [arg, dst])
+  defp eval_inv_arith(:-, 1, dst, arg) do
+    bif_return(:erlang, :-, 2, [arg, dst])
   end
 
-  defp eval_inv_arith(:"-", 2, dst, arg) do
+  defp eval_inv_arith(:-, 2, dst, arg) do
     bif_return(:erlang, :"+", 2, [arg, dst])
   end
 
@@ -2077,14 +1539,13 @@ defmodule :m_dialyzer_typesig do
 
   defp solve([fun], state) do
     :ok
-    solve_fun(fun, map_new(), state)
+    solve_fun(fun, %{}, state)
   end
 
   defp solve([_ | _] = sCC, state) do
     :ok
     users = comp_users(sCC, state)
-    solve_scc(sCC, map_new(), state, users, _ToSolve = sCC,
-                false)
+    solve_scc(sCC, %{}, state, users, _ToSolve = sCC, false)
   end
 
   defp comp_users(sCC, state) do
@@ -2103,10 +1564,7 @@ defmodule :m_dialyzer_typesig do
   end
 
   defp solve_fun(fun, funMap, state) do
-    cs = state__get_cs(fun, state)
-    deps = get_deps(cs)
-    ref = mk_constraint_ref(fun, deps)
-    newMap = solve(fun, ref, funMap, state)
+    newMap = solve(fun, funMap, state)
     newType = lookup_type(fun, newMap)
     newFunMap1 = (case (state__get_rec_var(fun, state)) do
                     :error ->
@@ -2182,9 +1640,7 @@ defmodule :m_dialyzer_typesig do
   end
 
   defp scc_fold_fun(f, funMap, state) do
-    deps = get_deps(state__get_cs(f, state))
-    cs = mk_constraint_ref(f, deps)
-    map = solve(f, cs, funMap, state)
+    map = solve(f, funMap, state)
     newType0 = unsafe_lookup_type(f, map)
     newType = t_limit(newType0, 4)
     newFunMap = (case (state__get_rec_var(f, state)) do
@@ -2197,80 +1653,9 @@ defmodule :m_dialyzer_typesig do
     newFunMap
   end
 
-  defp solve(fun, cs, funMap, state) do
-    solvers = r_state(state, :solvers)
-    r = (for s <- solvers do
-           solver(s, solve_fun(s, fun, cs, funMap, state))
-         end)
-    check_solutions(r, fun, :no_solver, :no_map)
-  end
-
-  defp solver(solver, solveFun) do
-    :ok
-    try do
-      :timer.tc(solveFun)
-    catch
-      e, r ->
-        :io.format('Solver ~w failed: ~w:~p\n ~tp\n', [solver, e, r, __STACKTRACE__])
-        throw(:error)
-    else
-      {time, {:ok, map}} ->
-        :ok
-        {solver, map, time}
-      {_, _R} ->
-        :ok
-        throw(:error)
-    end
-  end
-
-  defp solve_fun(:v1, _Fun, cs, funMap, state) do
-    fn () ->
-         {:ok, _MapDict, newMap} = solve_ref_or_list(cs, funMap,
-                                                       map_new(), state)
-         {:ok, newMap}
-    end
-  end
-
-  defp solve_fun(:v2, fun, _Cs, funMap, state) do
-    fn () ->
-         v2_solve_ref(fun, funMap, state)
-    end
-  end
-
-  defp check_solutions([], _Fun, _S, map) do
+  defp solve(fun, funMap, state) do
+    {:ok, map} = v2_solve_ref(fun, funMap, state)
     map
-  end
-
-  defp check_solutions([{s1, map1, _Time1} | maps], fun, s, map) do
-    :ok
-    case (map === :no_map or sane_maps(map, map1, [fun], s,
-                                         s1)) do
-      true ->
-        check_solutions(maps, fun, s1, map1)
-      false ->
-        :ok
-        :ok
-        :ok
-        :io.format('A bug was found. Please report it, and use the option `--solver v1\' until the bug has been fixed.\n')
-        throw(:error)
-    end
-  end
-
-  defp sane_maps(map1, map2, keys, _S1, _S2) do
-    :lists.all(fn key ->
-                    v1 = unsafe_lookup_type(key, map1)
-                    v2 = unsafe_lookup_type(key, map2)
-                    case (t_is_equal(v1, v2)) do
-                      true ->
-                        true
-                      false ->
-                        :ok
-                        :ok
-                        :ok
-                        false
-                    end
-               end,
-                 keys)
   end
 
   Record.defrecord(:r_v2_state, :v2_state, constr_data: :maps.new(),
@@ -2330,21 +1715,23 @@ defmodule :m_dialyzer_typesig do
                                               t_fun(dom, t_none())
                                           end)
                               {funType0, v2State1}
-                            {:ok, newMap, v2State1, u} ->
+                            {:ok, resMap, v2State1, resU} ->
                               :ok
-                              funType0 = lookup_type(id, newMap)
-                              v2State2 = save_local_map(v2State1, id, u, newMap)
+                              funType0 = lookup_type(id, resMap)
+                              v2State2 = save_local_map(v2State1, id, resU,
+                                                          resMap)
                               {funType0, v2State2}
                           end)
     :ok
-    {newMap1, u1} = enter_var_type(id, funType, map)
-    {newMap2, u2} = (case (state__get_rec_var(id, state)) do
-                       {:ok, var} ->
-                         enter_var_type(var, funType, newMap1)
-                       :error ->
-                         {newMap1, []}
-                     end)
-    {:ok, newMap2, v2State, :lists.umerge(u1, u2)}
+    {newMap0, u0} = enter_var_type(id, funType, map)
+    case (state__get_rec_var(id, state)) do
+      {:ok, var} ->
+        {:ok, {newMap, u}} = refine_bindings([{var, funType}],
+                                               newMap0, u0)
+        {:ok, newMap, v2State, u}
+      :error ->
+        {:ok, newMap0, v2State, u0}
+    end
   end
 
   defp v2_solve_self_recursive(cs, map, id, recType0, v2State0) do
@@ -2487,49 +1874,29 @@ defmodule :m_dialyzer_typesig do
                     eval, uneval, failed)
   end
 
-  defp save_local_map(r_v2_state(constr_data: conData) = v2State, id, u,
+  defp save_local_map(r_v2_state(constr_data: conData0) = v2State, id, u,
             map) do
-    part0 = (for v <- u do
-               {v, :maps.get(v, map)}
-             end)
-    part1 = (case (:maps.find(id, conData)) do
-               :error ->
-                 []
-               {:ok, {part2, []}} ->
-                 part2
-             end)
     :ok
-    part = :lists.ukeymerge(1, :lists.keysort(1, part0),
-                              part1)
+    {part0, []} = :maps.get(id, conData0, {%{}, []})
     :ok
+    part = :maps.merge(part0, :maps.with(u, map))
     :ok
-    :ok
-    r_v2_state(v2State, constr_data: :maps.put(id, {part, []},
-                                        conData))
+    conData = Map.put(conData0, id, {part, []})
+    r_v2_state(v2State, constr_data: conData)
   end
 
   defp restore_local_map(r_v2_state(constr_data: conData), id, map0) do
-    case (:maps.find(id, conData)) do
-      :error ->
-        map0
-      {:ok, :failed} ->
-        map0
-      {:ok, {[], _}} ->
-        map0
-      {:ok, {part0, u}} ->
-        part = (for ({k, _V} = kV) <- part0,
-                      not :lists.member(k, u) do
-                  kV
-                end)
+    case (conData) do
+      %{^id => {part0, u}} when map_size(part0) !== 0 ->
         :ok
         :ok
+        part = :maps.without(u, part0)
         :ok
-        map = :lists.foldl(fn {k, v}, d ->
-                                :maps.put(k, v, d)
-                           end,
-                             map0, part)
+        map = :maps.merge(map0, part)
         :ok
         map
+      %{} ->
+        map0
     end
   end
 
@@ -2599,6 +1966,7 @@ defmodule :m_dialyzer_typesig do
         report_detected_loop(conj)
         {:ok, map, v2State, :lists.umerge([u | varsUp])}
       newFlags ->
+        :ok
         r_constraint_list(type: :conj, list: cs) = conj
         v2_solve_conj(newFlags, cs, 1, map, conj, isFlat,
                         v2State, [], [], [u | varsUp], map, newFlags)
@@ -2644,30 +2012,31 @@ defmodule :m_dialyzer_typesig do
   end
 
   defp get_mask(v, masks) do
-    case (:maps.find(v, masks)) do
-      :error ->
-        []
-      {:ok, m} ->
+    case (masks) do
+      %{^v => m} ->
         m
+      %{} ->
+        []
     end
   end
 
-  defp get_flags(r_v2_state(constr_data: conData) = v2State0, c) do
+  defp get_flags(r_v2_state(constr_data: conData0) = v2State0, c) do
     r_constraint_list(id: id, list: cs, masks: masks) = c
-    case (:maps.find(id, conData)) do
-      :error ->
+    case (conData0) do
+      %{^id => {part, u}} ->
+        true = u !== []
         :ok
-        v2State = r_v2_state(v2State0, constr_data: :maps.put(id,
-                                                       {[], []}, conData))
-        {v2State, [:every_i]}
-      {:ok, :failed} ->
-        {v2State0, :failed_list}
-      {:ok, {part, u}} when u !== [] ->
-        :ok
-        v2State = r_v2_state(v2State0, constr_data: :maps.put(id,
-                                                       {part, []}, conData))
+        conData = Map.put(conData0, id, {part, []})
+        v2State = r_v2_state(v2State0, constr_data: conData)
         save_updated_vars_list(cs, vars_per_child(u, masks),
                                  v2State)
+      %{^id => :failed} ->
+        {v2State0, :failed_list}
+      %{} ->
+        :ok
+        conData = Map.put(conData0, id, {%{}, []})
+        v2State = r_v2_state(v2State0, constr_data: conData)
+        {v2State, [:every_i]}
     end
   end
 
@@ -2709,18 +2078,14 @@ defmodule :m_dialyzer_typesig do
     save_updated_vars(cs, u, v2State)
   end
 
-  defp save_updated_vars1(v2State, c, u) do
-    r_v2_state(constr_data: conData) = v2State
-    r_constraint_list(id: id) = c
-    case (:maps.find(id, conData)) do
-      :error ->
+  defp save_updated_vars1(r_v2_state(constr_data: conData0) = v2State, r_constraint_list(id: id),
+            u) do
+    case (conData0) do
+      %{^id => {part, u0}} ->
+        conData = Map.put(conData0, id, {part, u ++ u0})
+        r_v2_state(v2State, constr_data: conData)
+      %{} ->
         v2State
-      {:ok, :failed} ->
-        v2State
-      {:ok, {part, u0}} ->
-        u1 = u ++ u0
-        r_v2_state(v2State, constr_data: :maps.put(id, {part, u1},
-                                            conData))
     end
   end
 
@@ -2728,201 +2093,19 @@ defmodule :m_dialyzer_typesig do
     :ok
   end
 
-  defp failed_list(r_constraint_list(id: id), r_v2_state(constr_data: d) = v2State) do
+  defp failed_list(r_constraint_list(id: id), r_v2_state(constr_data: d0) = v2State) do
     :ok
-    r_v2_state(v2State, constr_data: :maps.put(id, :failed, d))
+    d = Map.put(d0, id, :failed)
+    r_v2_state(v2State, constr_data: d)
   end
 
   defp is_failed_list(r_constraint_list(id: id), r_v2_state(constr_data: d)) do
-    :maps.find(id, d) === {:ok, :failed}
-  end
-
-  defp solve_ref_or_list(r_constraint_ref(id: id, deps: deps), map, mapDict, state) do
-    {oldLocalMap, check} = (case (:maps.find(id,
-                                               mapDict)) do
-                              :error ->
-                                {map_new(), false}
-                              {:ok, m} ->
-                                {m, true}
-                            end)
-    :ok
-    checkDeps = :ordsets.del_element(t_var_name(id), deps)
-    true = checkDeps === deps
-    case (check and maps_are_equal(oldLocalMap, map,
-                                     checkDeps)) do
-      true ->
-        :ok
-        {:ok, mapDict, map}
-      false ->
-        :ok
-        cs = state__get_cs(id, state)
-        res = (case (state__is_self_rec(id, state)) do
-                 true ->
-                   solve_self_recursive(cs, map, mapDict, id, t_none(),
-                                          state)
-                 false ->
-                   solve_ref_or_list(cs, map, mapDict, state)
-               end)
-        {newMapDict, funType} = (case (res) do
-                                   {:error, newMapDict0} ->
-                                     :ok
-                                     arity = state__fun_arity(id, state)
-                                     funType0 = (case (state__prop_domain(t_var_name(id),
-                                                                            state)) do
-                                                   :error ->
-                                                     t_fun(arity, t_none())
-                                                   {:ok, dom} ->
-                                                     t_fun(dom, t_none())
-                                                 end)
-                                     {newMapDict0, funType0}
-                                   {:ok, newMapDict0, newMap} ->
-                                     :ok
-                                     funType0 = lookup_type(id, newMap)
-                                     {newMapDict0, funType0}
-                                 end)
-        :ok
-        newMap1 = enter_type(id, funType, map)
-        newMap2 = (case (state__get_rec_var(id, state)) do
-                     {:ok, var} ->
-                       enter_type(var, funType, newMap1)
-                     :error ->
-                       newMap1
-                   end)
-        {:ok, :maps.put(id, newMap2, newMapDict), newMap2}
+    case (d) do
+      %{^id => :failed} ->
+        true
+      %{} ->
+        false
     end
-  end
-
-  defp solve_ref_or_list(r_constraint_list(type: type, list: cs, deps: deps, id: id),
-            map, mapDict, state) do
-    {oldLocalMap, check} = (case (:maps.find(id,
-                                               mapDict)) do
-                              :error ->
-                                {map_new(), false}
-                              {:ok, m} ->
-                                {m, true}
-                            end)
-    :ok
-    cond do
-      oldLocalMap === :error ->
-        {:error, mapDict}
-      true ->
-        case (check and maps_are_equal(oldLocalMap, map,
-                                         deps)) do
-          true ->
-            :ok
-            {:ok, mapDict, map}
-          false ->
-            :ok
-            solve_clist(cs, type, id, deps, mapDict, map, state)
-        end
-    end
-  end
-
-  defp solve_self_recursive(cs, map, mapDict, id, recType0, state) do
-    :ok
-    {:ok, recVar} = state__get_rec_var(id, state)
-    :ok
-    recType = t_limit(recType0, 4)
-    map1 = enter_type(recVar, recType,
-                        erase_type(t_var_name(id), map))
-    :ok
-    case (solve_ref_or_list(cs, map1, mapDict, state)) do
-      {:error, _} = error ->
-        case (t_is_none(recType0)) do
-          true ->
-            arity = state__fun_arity(id, state)
-            newRecType = t_fun(:lists.duplicate(arity, t_any()),
-                                 t_unit())
-            solve_self_recursive(cs, map, mapDict, id, newRecType,
-                                   state)
-          false ->
-            error
-        end
-      {:ok, newMapDict, newMap} ->
-        :ok
-        newRecType = unsafe_lookup_type(id, newMap)
-        case (is_equal(newRecType, recType0)) do
-          true ->
-            {:ok, newMapDict,
-               enter_type(recVar, newRecType, newMap)}
-          false ->
-            solve_self_recursive(cs, map, mapDict, id, newRecType,
-                                   state)
-        end
-    end
-  end
-
-  defp solve_clist(cs, :conj, id, deps, mapDict, map, state) do
-    case (solve_cs(cs, map, mapDict, state)) do
-      {:error, newMapDict} ->
-        {:error, :maps.put(id, :error, newMapDict)}
-      {:ok, newMapDict, newMap} = ret ->
-        case (cs) do
-          [_] ->
-            ret
-          _ ->
-            case (maps_are_equal(map, newMap, deps)) do
-              true ->
-                {:ok, :maps.put(id, newMap, newMapDict), newMap}
-              false ->
-                solve_clist(cs, :conj, id, deps, newMapDict, newMap,
-                              state)
-            end
-        end
-    end
-  end
-
-  defp solve_clist(cs, :disj, id, _Deps, mapDict, map, state) do
-    fun = fn c, dict ->
-               case (solve_ref_or_list(c, map, dict, state)) do
-                 {:ok, newDict, newMap} ->
-                   {{:ok, newMap}, newDict}
-                 {:error, _NewDict} = error ->
-                   error
-               end
-          end
-    {maps, newMapDict} = :lists.mapfoldl(fun, mapDict, cs)
-    case (for {:ok, x} <- maps do
-            x
-          end) do
-      [] ->
-        {:error, :maps.put(id, :error, newMapDict)}
-      mapList ->
-        newMap = join_maps(mapList)
-        {:ok, :maps.put(id, newMap, newMapDict), newMap}
-    end
-  end
-
-  defp solve_cs([r_constraint_ref() = c | tail], map, mapDict, state) do
-    case (solve_ref_or_list(c, map, mapDict, state)) do
-      {:ok, newMapDict, map1} ->
-        solve_cs(tail, map1, newMapDict, state)
-      {:error, _NewMapDict} = error ->
-        error
-    end
-  end
-
-  defp solve_cs([r_constraint_list() = c | tail], map, mapDict, state) do
-    case (solve_ref_or_list(c, map, mapDict, state)) do
-      {:ok, newMapDict, map1} ->
-        solve_cs(tail, map1, newMapDict, state)
-      {:error, _NewMapDict} = error ->
-        error
-    end
-  end
-
-  defp solve_cs([r_constraint() = c | tail], map, mapDict, state) do
-    case (solve_one_c(c, map)) do
-      :error ->
-        report_failed_constraint(c, map)
-        {:error, mapDict}
-      {:ok, {newMap, _U}} ->
-        solve_cs(tail, newMap, mapDict, state)
-    end
-  end
-
-  defp solve_cs([], map, mapDict, _State) do
-    {:ok, mapDict, map}
   end
 
   defp solve_one_c(r_constraint(lhs: lhs, rhs: rhs, op: op), map) do
@@ -2955,32 +2138,52 @@ defmodule :m_dialyzer_typesig do
 
   defp solve_subtype(type, inf, map) do
     try do
-      t_unify(type, inf)
+      t_unify_table_only(type, inf)
     catch
       {:mismatch, _T1, _T2} ->
         :ok
         :error
     else
-      {_, list} ->
-        {:ok, enter_type_list(list, map)}
+      bindings ->
+        refine_bindings(:maps.to_list(bindings), map, [])
     end
+  end
+
+  defp refine_bindings([{key, val} | tail], map, u0) do
+    :ok
+    case (t_is_equal(val, t_any())) do
+      true ->
+        refine_bindings(tail, :maps.remove(key, map), u0)
+      false ->
+        limitedVal = t_limit(val, 5)
+        case (map) do
+          %{^key => old} ->
+            limitedInf = t_inf(old, limitedVal)
+            case (t_is_none(limitedInf)) do
+              true ->
+                :error
+              false ->
+                case (t_is_equal(old, limitedInf)) do
+                  true ->
+                    refine_bindings(tail, map, u0)
+                  false ->
+                    u = :ordsets.add_element(key, u0)
+                    refine_bindings(tail, Map.put(map, key, limitedInf), u)
+                end
+            end
+          %{} ->
+            u = :ordsets.add_element(key, u0)
+            refine_bindings(tail, Map.put(map, key, limitedVal), u)
+        end
+    end
+  end
+
+  defp refine_bindings([], map, u) do
+    {:ok, {map, u}}
   end
 
   defp report_failed_constraint(_C, _Map) do
     :ok
-  end
-
-  defp map_new() do
-    :maps.new()
-  end
-
-  defp join_maps([map]) do
-    map
-  end
-
-  defp join_maps(maps) do
-    keys = constrained_keys(maps)
-    join_maps(keys, maps, map_new())
   end
 
   defp constrained_keys(maps) do
@@ -3021,45 +2224,6 @@ defmodule :m_dialyzer_typesig do
 
   defp join_one_key(_Key, [], type) do
     type
-  end
-
-  defp maps_are_equal(map1, map2, deps) do
-    newDeps = prune_keys(map1, map2, deps)
-    maps_are_equal_1(map1, map2, newDeps)
-  end
-
-  defp maps_are_equal_1(map1, map2, [h | tail]) do
-    t1 = lookup_type(h, map1)
-    t2 = lookup_type(h, map2)
-    case (is_equal(t1, t2)) do
-      true ->
-        maps_are_equal_1(map1, map2, tail)
-      false ->
-        :ok
-        false
-    end
-  end
-
-  defp maps_are_equal_1(_Map1, _Map2, []) do
-    true
-  end
-
-  defp prune_keys(map1, map2, deps) do
-    nofDeps = length(deps)
-    case (nofDeps > 100) do
-      true ->
-        keys1 = :maps.keys(map1)
-        case (length(keys1) > nofDeps) do
-          true ->
-            set1 = :lists.sort(keys1)
-            set2 = :lists.sort(:maps.keys(map2))
-            :ordsets.intersection(:ordsets.union(set1, set2), deps)
-          false ->
-            deps
-        end
-      false ->
-        deps
-    end
   end
 
   defp enter_type(key, val, map) when is_integer(key) do
@@ -3103,19 +2267,6 @@ defmodule :m_dialyzer_typesig do
     map
   end
 
-  defp enter_type_list(keyVals, map) do
-    enter_type_list(keyVals, map, [])
-  end
-
-  defp enter_type_list([{key, val} | tail], map, u0) do
-    {map1, u1} = enter_type2(key, val, map)
-    enter_type_list(tail, map1, u1 ++ u0)
-  end
-
-  defp enter_type_list([], map, u) do
-    {map, :ordsets.from_list(u)}
-  end
-
   defp enter_type2(key, val, map) do
     map1 = enter_type(key, val, map)
     {map1,
@@ -3155,17 +2306,17 @@ defmodule :m_dialyzer_typesig do
     end
   end
 
-  defp lookup_type(key, map) when is_integer(key) do
-    case (:maps.find(key, map)) do
-      :error ->
-        t_any()
-      {:ok, val} ->
-        val
-    end
-  end
-
   defp lookup_type(r_fun_var("fun": fun), map) do
     fun.(map)
+  end
+
+  defp lookup_type(key, map) when is_integer(key) do
+    case (map) do
+      %{^key => val} ->
+        val
+      %{} ->
+        t_any()
+    end
   end
 
   defp lookup_type(key, map) do
@@ -3246,7 +2397,7 @@ defmodule :m_dialyzer_typesig do
                  _Many ->
                    false
                end)
-    propTypes = :dict.from_list(propTypes0)
+    propTypes = :maps.from_list(propTypes0)
     r_state(callgraph: callGraph, name_map: nameMap,
         next_label: nextLabel, prop_types: propTypes, plt: plt,
         scc: :ordsets.from_list(sCC), mfas: mFAs,
@@ -3382,35 +2533,33 @@ defmodule :m_dialyzer_typesig do
   end
 
   defp state__prop_domain(funLabel, r_state(prop_types: propTypes)) do
-    case (:dict.find(funLabel, propTypes)) do
-      :error ->
-        :error
-      {:ok, {_Range_Fun, dom}} ->
-        {:ok, dom}
-      {:ok, funType} ->
+    case (propTypes) do
+      %{^funLabel => funType} ->
         {:ok, t_fun_args(funType)}
+      %{} ->
+        :error
     end
   end
 
   defp state__add_prop_constrs(tree, r_state(prop_types: propTypes) = state) do
     label = :cerl_trees.get_label(tree)
-    case (:dict.find(label, propTypes)) do
-      :error ->
-        state
-      {:ok, funType} ->
+    case (propTypes) do
+      %{^label => funType} ->
         case (t_fun_args(funType)) do
           :unknown ->
             state
           argTypes ->
             case (:erl_types.any_none(argTypes)) do
               true ->
-                :not_called
+                state
               false ->
                 :ok
                 funVar = mk_var(tree)
                 state__store_conj(funVar, :sub, funType, state)
             end
         end
+      %{} ->
+        state
     end
   end
 
@@ -3523,7 +2672,7 @@ defmodule :m_dialyzer_typesig do
         c = mk_constraint_1(lhs, op, rhs, deps)
         case (deps === []) do
           true ->
-            case (solve_one_c(c, map_new())) do
+            case (solve_one_c(c, %{})) do
               :error ->
                 throw(:error)
               _R ->
@@ -3550,10 +2699,8 @@ defmodule :m_dialyzer_typesig do
   end
 
   defp mk_fun_var(fun, types) do
-    deps = (for var <- t_collect_vars(t_product(types)) do
-              t_var_name(var)
-            end)
-    r_fun_var("fun": fun, deps: :ordsets.from_list(deps))
+    deps = t_collect_var_names(t_product(types))
+    r_fun_var("fun": fun, deps: deps)
   end
 
   defp get_deps(r_constraint(deps: d)) do
@@ -3569,23 +2716,20 @@ defmodule :m_dialyzer_typesig do
   end
 
   defp find_constraint_deps(list) do
-    :ordsets.from_list(find_constraint_deps(list, []))
+    find_constraint_deps(list, [])
   end
 
   defp find_constraint_deps([r_fun_var(deps: deps) | tail], acc) do
-    find_constraint_deps(tail, [deps | acc])
+    find_constraint_deps(tail, :ordsets.union(deps, acc))
   end
 
-  defp find_constraint_deps([type | tail], acc) do
-    newAcc = [for d <- t_collect_vars(type) do
-                t_var_name(d)
-              end |
-                  acc]
-    find_constraint_deps(tail, newAcc)
+  defp find_constraint_deps([type | tail], acc0) do
+    acc = :ordsets.union(t_collect_var_names(type), acc0)
+    find_constraint_deps(tail, acc)
   end
 
   defp find_constraint_deps([], acc) do
-    :lists.append(acc)
+    acc
   end
 
   defp mk_constraint_1(lhs, :eq, rhs, deps) when lhs < rhs do
@@ -4060,14 +3204,9 @@ defmodule :m_dialyzer_typesig do
     find_constraint(tuple, cs)
   end
 
-  defp fold_literal_maybe_match(tree0, state) do
-    tree1 = :cerl.fold_literal(tree0)
-    case (state__is_in_match(state)) do
-      false ->
-        tree1
-      true ->
-        :dialyzer_utils.refold_pattern(tree1)
-    end
+  defp is_foldable(tree, state) do
+    :dialyzer_utils.is_foldable(tree,
+                                  state__is_in_match(state))
   end
 
   defp lookup_record(state, tag, arity) do

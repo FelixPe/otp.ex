@@ -1,39 +1,50 @@
 defmodule :m_ftp_response do
   use Bitwise
-
-  def parse_lines(bin, lines, :start) when :erlang.size(bin) < 4 do
+  def parse_lines(bin, lines, :start) when (is_binary(bin) and
+                                     byte_size(bin) < 4) do
     {:continue, {bin, lines, :start}}
   end
 
-  def parse_lines(<<c1, c2, c3, ?-, rest::binary>>, lines, :start) do
-    parse_lines(rest, [?-, c3, c2, c1 | lines], {c1, c2, c3})
+  def parse_lines(<<c1, c2, c3, ?-, rest :: binary>>, lines,
+           :start) do
+    parse_lines(rest, [?-, c3, c2, c1 | lines],
+                  {c1, c2, c3})
   end
 
-  def parse_lines(<<c1, c2, c3, ?\s, bin::binary>>, lines, :start) do
+  def parse_lines(<<c1, c2, c3, ?\s, bin :: binary>>, lines,
+           :start) do
     parse_lines(bin, [?\s, c3, c2, c1 | lines], :finish)
   end
 
-  def parse_lines(<<?\r, ?\n, c1, c2, c3, ?\s, rest::binary>>, lines, {c1, c2, c3}) do
-    parse_lines(rest, [?\s, c3, c2, c1, ?\n, ?\r | lines], :finish)
+  def parse_lines(<<?\r, ?\n, c1, c2, c3, ?\s, rest :: binary>>,
+           lines, {c1, c2, c3}) do
+    parse_lines(rest, [?\s, c3, c2, c1, ?\n, ?\r | lines],
+                  :finish)
   end
 
-  def parse_lines(<<?\r, ?\n, c1, c2, c3>> = bin, lines, {c1, c2, c3}) do
+  def parse_lines(<<?\r, ?\n, c1, c2, c3>> = bin, lines,
+           {c1, c2, c3}) do
     {:continue, {bin, lines, {c1, c2, c3}}}
   end
 
-  def parse_lines(<<?\r, ?\n, c1, c2, c3, rest::binary>>, lines, {c1, c2, c3}) do
-    parse_lines(rest, [c3, c2, c1, ?\n, ?\r | lines], {c1, c2, c3})
+  def parse_lines(<<?\r, ?\n, c1, c2, c3, rest :: binary>>, lines,
+           {c1, c2, c3}) do
+    parse_lines(rest, [c3, c2, c1, ?\n, ?\r | lines],
+                  {c1, c2, c3})
   end
 
-  def parse_lines(<<?\r, ?\n, c1, c2>> = data, lines, {c1, c2, _} = statusCode) do
+  def parse_lines(<<?\r, ?\n, c1, c2>> = data, lines,
+           {c1, c2, _} = statusCode) do
     {:continue, {data, lines, statusCode}}
   end
 
-  def parse_lines(<<?\r, ?\n, c1>> = data, lines, {c1, _, _} = statusCode) do
+  def parse_lines(<<?\r, ?\n, c1>> = data, lines,
+           {c1, _, _} = statusCode) do
     {:continue, {data, lines, statusCode}}
   end
 
-  def parse_lines(<<?\r, ?\n>> = data, lines, {_, _, _} = statusCode) do
+  def parse_lines(<<?\r, ?\n>> = data, lines,
+           {_, _, _} = statusCode) do
     {:continue, {data, lines, statusCode}}
   end
 
@@ -45,7 +56,8 @@ defmodule :m_ftp_response do
     {:continue, {data, lines, statusCode}}
   end
 
-  def parse_lines(<<octet, rest::binary>>, lines, {_, _, _} = statusCode) do
+  def parse_lines(<<octet, rest :: binary>>, lines,
+           {_, _, _} = statusCode) do
     parse_lines(rest, [octet | lines], statusCode)
   end
 
@@ -53,7 +65,7 @@ defmodule :m_ftp_response do
     {:ok, :lists.reverse([?\n, ?\r | lines]), <<>>}
   end
 
-  def parse_lines(<<?\r, ?\n, rest::binary>>, lines, :finish) do
+  def parse_lines(<<?\r, ?\n, rest :: binary>>, lines, :finish) do
     {:ok, :lists.reverse([?\n, ?\r | lines]), rest}
   end
 
@@ -65,7 +77,7 @@ defmodule :m_ftp_response do
     {:continue, {data, lines, :finish}}
   end
 
-  def parse_lines(<<octet, rest::binary>>, lines, :finish) do
+  def parse_lines(<<octet, rest :: binary>>, lines, :finish) do
     parse_lines(rest, [octet | lines], :finish)
   end
 
@@ -191,4 +203,5 @@ defmodule :m_ftp_response do
   defp interpret_status(5, _, _) do
     :perm_neg_compl
   end
+
 end

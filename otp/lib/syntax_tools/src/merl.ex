@@ -1,27 +1,24 @@
 defmodule :m_merl do
   use Bitwise
-
   def compile(code) do
     compile(code, [])
   end
 
   def compile(code, options) when not is_list(code) do
-    case type(code) do
+    case (type(code)) do
       :form_list ->
         compile(:erl_syntax.form_list_elements(code))
-
       _ ->
         compile([code], options)
     end
   end
 
   def compile(code, options0) when is_list(options0) do
-    forms =
-      for f <- code do
-        :erl_syntax.revert(f)
-      end
-
-    options = [:verbose, :report_errors, :report_warnings, :binary | options0]
+    forms = (for f <- code do
+               :erl_syntax.revert(f)
+             end)
+    options = [:verbose, :report_errors, :report_warnings,
+                                             :binary | options0]
     :compile.noenv_forms(forms, options)
   end
 
@@ -30,11 +27,10 @@ defmodule :m_merl do
   end
 
   def compile_and_load(code, options) do
-    case compile(code, options) do
+    case (compile(code, options)) do
       {:ok, moduleName, binary} ->
         _ = :code.load_binary(moduleName, '', binary)
         {:ok, binary}
-
       other ->
         other
     end
@@ -67,32 +63,16 @@ defmodule :m_merl do
   end
 
   defp pp(t, i) do
-    [
-      :lists.duplicate(i, ?\s),
-      limit(
-        :lists.flatten([
-          :erlang.atom_to_list(type(t)),
-          ': ',
-          :erl_prettypr.format(
-            :erl_syntax_lib.limit(
-              t,
-              3
-            )
-          )
-        ]),
-        79 - i
-      ),
-      ?\n,
-      pp_1(
-        :lists.filter(
-          fn x ->
-            x !== []
-          end,
-          subtrees(t)
-        ),
-        i + 2
-      )
-    ]
+    [:lists.duplicate(i, ?\s),
+         limit(:lists.flatten([:erlang.atom_to_list(type(t)), ': ',
+                                                                  :erl_prettypr.format(:erl_syntax_lib.limit(t,
+                                                                                                               3))]),
+                 79 - i),
+             ?\n, pp_1(:lists.filter(fn x ->
+                                          x !== []
+                                     end,
+                                       subtrees(t)),
+                         i + 2)]
   end
 
   defp pp_1([g], i) do
@@ -181,9 +161,8 @@ defmodule :m_merl do
     quote(1, text)
   end
 
-  def quote({line, col}, text)
-      when is_integer(line) and
-             is_integer(col) do
+  def quote({line, col}, text) when (is_integer(line) and
+                                    is_integer(col)) do
     quote_1(line, col, text)
   end
 
@@ -192,34 +171,28 @@ defmodule :m_merl do
   end
 
   defp quote_1(startLine, startCol, text) do
-    startPos =
-      case :erlang.system_info(:version) do
-        '5.6' ++ _ ->
-          startLine
-
-        '5.7' ++ _ ->
-          startLine
-
-        '5.8' ++ _ ->
-          startLine
-
-        _ when startCol === :undefined ->
-          startLine
-
-        _ ->
-          {startLine, startCol}
-      end
-
+    startPos = (case (:erlang.system_info(:version)) do
+                  '5.6' ++ _ ->
+                    startLine
+                  '5.7' ++ _ ->
+                    startLine
+                  '5.8' ++ _ ->
+                    startLine
+                  _ when startCol === :undefined ->
+                    startLine
+                  _ ->
+                    {startLine, startCol}
+                end)
     flatText = flatten_text(text)
     {:ok, ts, _} = :erl_scan.string(flatText, startPos)
-    merge_comments(startLine, :erl_comment_scan.string(flatText), parse_1(ts))
+    merge_comments(startLine,
+                     :erl_comment_scan.string(flatText), parse_1(ts))
   end
 
   defp parse_1(ts) do
-    case split_forms(ts) do
+    case (split_forms(ts)) do
       {:ok, fs} ->
         parse_forms(fs)
-
       :error ->
         parse_2(ts)
     end
@@ -250,10 +223,9 @@ defmodule :m_merl do
   end
 
   defp parse_forms([ts | tss]) do
-    case :erl_parse.parse_form(ts) do
+    case (:erl_parse.parse_form(ts)) do
       {:ok, form} ->
         [form | parse_forms(tss)]
-
       {:error, r} ->
         parse_error(r)
     end
@@ -265,11 +237,9 @@ defmodule :m_merl do
 
   defp parse_2(ts) do
     a = a0()
-
-    case :erl_parse.parse_exprs(ts ++ [{:dot, a}]) do
+    case (:erl_parse.parse_exprs(ts ++ [{:dot, a}])) do
       {:ok, exprs} ->
         exprs
-
       {:error, e} ->
         parse_3(ts ++ [{:end, a}, {:dot, a}], [e])
     end
@@ -277,11 +247,11 @@ defmodule :m_merl do
 
   defp parse_3(ts, es) do
     a = a0()
-
-    case :erl_parse.parse_exprs([{:try, a}, {:atom, a, true}, {:catch, a} | ts]) do
+    case (:erl_parse.parse_exprs([{:try, a}, {:atom, a,
+                                                true},
+                                                 {:catch, a} | ts])) do
       {:ok, [{:try, _, _, _, _, _} = x]} ->
         :erl_syntax.try_expr_handlers(x)
-
       {:error, e} ->
         parse_4(ts, [e | es])
     end
@@ -289,11 +259,9 @@ defmodule :m_merl do
 
   defp parse_4(ts, es) do
     a = a0()
-
-    case :erl_parse.parse_exprs([{:fun, a} | ts]) do
+    case (:erl_parse.parse_exprs([{:fun, a} | ts])) do
       {:ok, [{:fun, _, {:clauses, cs}}]} ->
         cs
-
       {:error, e} ->
         parse_5(ts, [e | es])
     end
@@ -301,25 +269,23 @@ defmodule :m_merl do
 
   defp parse_5(ts, es) do
     a = a0()
-
-    case :erl_parse.parse_exprs([{:case, a}, {:atom, a, true}, {:of, a} | ts]) do
+    case (:erl_parse.parse_exprs([{:case, a}, {:atom, a,
+                                                 true},
+                                                  {:of, a} | ts])) do
       {:ok, [{:case, _, _, cs}]} ->
         cs
-
       {:error, e} ->
         parse_error(:lists.last(:lists.sort([e | es])))
     end
   end
 
-  defp parse_error({l, m, r})
-       when is_atom(m) and
-              is_integer(l) do
+  defp parse_error({l, m, r}) when (is_atom(m) and
+                             is_integer(l)) do
     fail('~w: ~ts', [l, m.format_error(r)])
   end
 
-  defp parse_error({{l, c}, m, r})
-       when is_atom(m) and
-              is_integer(l) and is_integer(c) do
+  defp parse_error({{l, c}, m, r}) when (is_atom(m) and
+                                  is_integer(l) and is_integer(c)) do
     fail('~w:~w: ~ts', [l, c, m.format_error(r)])
   end
 
@@ -345,7 +311,7 @@ defmodule :m_merl do
     template
   end
 
-  defp template_0({:*, _} = template) do
+  defp template_0({:"*", _} = template) do
     template
   end
 
@@ -354,49 +320,40 @@ defmodule :m_merl do
   end
 
   defp template_0(tree) do
-    case template_1(tree) do
+    case (template_1(tree)) do
       false ->
         tree
-
       {name} when is_list(name) ->
         fail('bad metavariable: \'~s\'', [tl(name)])
-
       template ->
         template
     end
   end
 
   defp template_1(tree) do
-    case subtrees(tree) do
+    case (subtrees(tree)) do
       [] ->
-        case metavar(tree) do
+        case (metavar(tree)) do
           {'v_' ++ cs} = v when cs !== [] ->
             v
-
           {'n0' ++ cs} = v when cs !== [] ->
             v
-
           {'v@' ++ cs} when cs !== [] ->
-            {:*, :erlang.list_to_atom(cs)}
-
+            {:"*", :erlang.list_to_atom(cs)}
           {'n9' ++ cs} when cs !== [] ->
-            {:*, :erlang.list_to_integer(cs)}
-
+            {:"*", :erlang.list_to_integer(cs)}
           {'v' ++ cs} ->
             {:erlang.list_to_atom(cs)}
-
           {'n' ++ cs} ->
             {:erlang.list_to_integer(cs)}
-
           false ->
             false
         end
-
       gs ->
-        case template_2(gs, [], false) do
+        case (template_2(gs, [], false)) do
           gs1 when is_list(gs1) ->
-            {:template, type(tree), :erl_syntax.get_attrs(tree), gs1}
-
+            {:template, type(tree), :erl_syntax.get_attrs(tree),
+               gs1}
           other ->
             other
         end
@@ -404,28 +361,21 @@ defmodule :m_merl do
   end
 
   defp template_2([g | gs], as, bool) do
-    case template_3(g, [], false) do
+    case (template_3(g, [], false)) do
       {'v_' ++ cs} = v when cs !== [] ->
         v
-
       {'n0' ++ cs} = v when cs !== [] ->
         v
-
       {'v@' ++ cs} when cs !== [] ->
-        {:*, :erlang.list_to_atom(cs)}
-
+        {:"*", :erlang.list_to_atom(cs)}
       {'n9' ++ cs} when cs !== [] ->
-        {:*, :erlang.list_to_integer(cs)}
-
+        {:"*", :erlang.list_to_integer(cs)}
       {'v' ++ cs} when is_list(cs) ->
         {:erlang.list_to_atom(cs)}
-
       {'n' ++ cs} when is_list(cs) ->
         {:erlang.list_to_integer(cs)}
-
       false ->
         template_2(gs, [g | as], bool)
-
       g1 ->
         template_2(gs, [g1 | as], true)
     end
@@ -440,16 +390,13 @@ defmodule :m_merl do
   end
 
   defp template_3([t | ts], as, bool) do
-    case template_1(t) do
+    case (template_1(t)) do
       {'v_' ++ cs} when cs !== [] ->
         {'v' ++ cs}
-
       {'n0' ++ cs} when cs !== [] ->
         {'n' ++ cs}
-
       false ->
         template_3(ts, [t | as], bool)
-
       t1 ->
         template_3(ts, [t1 | as], true)
     end
@@ -474,27 +421,20 @@ defmodule :m_merl do
   end
 
   defp meta_template_1({:template, type, attrs, groups}) do
-    :erl_syntax.tuple([
-      :erl_syntax.atom(:template),
-      :erl_syntax.atom(type),
-      :erl_syntax.abstract(attrs),
-      :erl_syntax.list(
-        for g <- groups do
-          :erl_syntax.list(
-            for t <- g do
-              meta_template_1(t)
-            end
-          )
-        end
-      )
-    ])
+    :erl_syntax.tuple([:erl_syntax.atom(:template),
+                           :erl_syntax.atom(type), :erl_syntax.abstract(attrs),
+                                                       :erl_syntax.list(for g <- groups do
+                                                                          :erl_syntax.list(for t <- g do
+                                                                                             meta_template_1(t)
+                                                                                           end)
+                                                                        end)])
   end
 
   defp meta_template_1({var} = v) do
     meta_template_2(var, v)
   end
 
-  defp meta_template_1({:*, var} = v) do
+  defp meta_template_1({:"*", var} = v) do
     meta_template_2(var, v)
   end
 
@@ -503,24 +443,19 @@ defmodule :m_merl do
   end
 
   defp meta_template_2(var, v) when is_atom(var) do
-    case :erlang.atom_to_list(var) do
-      [c | _] = name
-      when (c >= ?A and c <= ?Z) or
-             (c >= 195 and c <= 195 and c != 195) ->
-        case :lists.reverse(name) do
+    case (:erlang.atom_to_list(var)) do
+      [c | _] = name when (c >= ?A and c <= ?Z) or
+                            (c >= 195 and c <= 195 and c != 195)
+                          ->
+        case (:lists.reverse(name)) do
           '@' ++ ([_ | _] = revRealName) ->
             realName = :lists.reverse(revRealName)
-
-            :erl_syntax.application(
-              :erl_syntax.atom(:merl),
-              :erl_syntax.atom(:term),
-              [:erl_syntax.variable(realName)]
-            )
-
+            :erl_syntax.application(:erl_syntax.atom(:merl),
+                                      :erl_syntax.atom(:term),
+                                      [:erl_syntax.variable(realName)])
           _ ->
             :erl_syntax.variable(name)
         end
-
       _ ->
         :erl_syntax.abstract(v)
     end
@@ -528,22 +463,17 @@ defmodule :m_merl do
 
   defp meta_template_2(var, v) when is_integer(var) do
     cond do
-      var > 9 and rem(var, 10) === 9 ->
+      (var > 9 and rem(var, 10) === 9) ->
         cond do
-          var > 99 and rem(var, 100) === 99 ->
+          (var > 99 and rem(var, 100) === 99) ->
             name = 'Q' ++ :erlang.integer_to_list(div(var, 100))
-
-            :erl_syntax.application(
-              :erl_syntax.atom(:merl),
-              :erl_syntax.atom(:term),
-              [:erl_syntax.variable(name)]
-            )
-
+            :erl_syntax.application(:erl_syntax.atom(:merl),
+                                      :erl_syntax.atom(:term),
+                                      [:erl_syntax.variable(name)])
           true ->
             name = :erlang.integer_to_list(div(var, 10))
             :erl_syntax.variable('Q' ++ name)
         end
-
       true ->
         :erl_syntax.abstract(v)
     end
@@ -562,20 +492,17 @@ defmodule :m_merl do
   end
 
   defp template_vars_1({:template, _, _, groups}, vars) do
-    :lists.foldl(
-      fn g, v ->
-        :lists.foldl(&template_vars_1/2, v, g)
-      end,
-      vars,
-      groups
-    )
+    :lists.foldl(fn g, v ->
+                      :lists.foldl(&template_vars_1/2, v, g)
+                 end,
+                   vars, groups)
   end
 
   defp template_vars_1({var}, vars) do
     :ordsets.add_element(var, vars)
   end
 
-  defp template_vars_1({:*, var}, vars) do
+  defp template_vars_1({:"*", var}, vars) do
     :ordsets.add_element(var, vars)
   end
 
@@ -594,15 +521,11 @@ defmodule :m_merl do
   end
 
   defp tree_1({:template, type, attrs, groups}) do
-    gs =
-      for g <- groups do
-        :lists.flatten(
-          for t <- g do
-            tree_1(t)
-          end
-        )
-      end
-
+    gs = (for g <- groups do
+            :lists.flatten(for t <- g do
+                             tree_1(t)
+                           end)
+          end)
     :erl_syntax.set_attrs(make_tree(type, gs), attrs)
   end
 
@@ -614,11 +537,11 @@ defmodule :m_merl do
     :erl_syntax.integer(:erlang.list_to_integer('909' ++ :erlang.integer_to_list(var)))
   end
 
-  defp tree_1({:*, var}) when is_atom(var) do
+  defp tree_1({:"*", var}) when is_atom(var) do
     :erl_syntax.atom(:erlang.list_to_atom('@@' ++ :erlang.atom_to_list(var)))
   end
 
-  defp tree_1({:*, var}) when is_integer(var) do
+  defp tree_1({:"*", var}) when is_integer(var) do
     :erl_syntax.integer(:erlang.list_to_integer('9099' ++ :erlang.integer_to_list(var)))
   end
 
@@ -651,33 +574,27 @@ defmodule :m_merl do
   end
 
   defp subst_1({:template, type, attrs, groups}, env) do
-    gs1 =
-      for g <- groups do
-        :lists.flatten(
-          for t <- g do
-            subst_1(t, env)
-          end
-        )
-      end
-
+    gs1 = (for g <- groups do
+             :lists.flatten(for t <- g do
+                              subst_1(t, env)
+                            end)
+           end)
     {:template, type, attrs, gs1}
   end
 
   defp subst_1({var} = v, env) do
-    case :lists.keyfind(var, 1, env) do
+    case (:lists.keyfind(var, 1, env)) do
       {^var, treeOrTrees} ->
         treeOrTrees
-
       false ->
         v
     end
   end
 
-  defp subst_1({:*, var} = v, env) do
-    case :lists.keyfind(var, 1, env) do
+  defp subst_1({:"*", var} = v, env) do
+    case (:lists.keyfind(var, 1, env)) do
       {^var, treeOrTrees} ->
         treeOrTrees
-
       false ->
         v
     end
@@ -698,33 +615,27 @@ defmodule :m_merl do
   end
 
   defp alpha_1({:template, type, attrs, groups}, env) do
-    gs1 =
-      for g <- groups do
-        :lists.flatten(
-          for t <- g do
-            alpha_1(t, env)
-          end
-        )
-      end
-
+    gs1 = (for g <- groups do
+             :lists.flatten(for t <- g do
+                              alpha_1(t, env)
+                            end)
+           end)
     {:template, type, attrs, gs1}
   end
 
   defp alpha_1({var} = v, env) do
-    case :lists.keyfind(var, 1, env) do
+    case (:lists.keyfind(var, 1, env)) do
       {^var, newVar} ->
         {newVar}
-
       false ->
         v
     end
   end
 
-  defp alpha_1({:*, var} = v, env) do
-    case :lists.keyfind(var, 1, env) do
+  defp alpha_1({:"*", var} = v, env) do
+    case (:lists.keyfind(var, 1, env)) do
       {^var, newVar} ->
-        {:*, newVar}
-
+        {:"*", newVar}
       false ->
         v
     end
@@ -734,9 +645,8 @@ defmodule :m_merl do
     leaf
   end
 
-  def match(patterns, trees)
-      when is_list(patterns) and
-             is_list(trees) do
+  def match(patterns, trees) when (is_list(patterns) and
+                                  is_list(trees)) do
     try do
       {:ok, match_1(patterns, trees, [])}
     catch
@@ -775,18 +685,16 @@ defmodule :m_merl do
   end
 
   defp match_template({:template, type, _, gs}, tree, dict) do
-    case type(tree) do
+    case (type(tree)) do
       ^type ->
         match_template_1(gs, subtrees(tree), dict)
-
       _ ->
         throw(:error)
     end
   end
 
-  defp match_template({var}, _Tree, dict)
-       when var === :_ or
-              var === 0 do
+  defp match_template({var}, _Tree, dict) when var === :_ or
+                                     var === 0 do
     dict
   end
 
@@ -795,17 +703,17 @@ defmodule :m_merl do
   end
 
   defp match_template(tree1, tree2, dict) do
-    case compare_trees(tree1, tree2) do
+    case (compare_trees(tree1, tree2)) do
       true ->
         dict
-
       false ->
         throw(:error)
     end
   end
 
   defp match_template_1([g1 | gs1], [g2 | gs2], dict) do
-    match_template_2(g1, g2, match_template_1(gs1, gs2, dict))
+    match_template_2(g1, g2,
+                       match_template_1(gs1, gs2, dict))
   end
 
   defp match_template_1([], [], dict) do
@@ -817,16 +725,18 @@ defmodule :m_merl do
   end
 
   defp match_template_2([{var} | ts1], [_ | ts2], dict)
-       when var === :_ or var === 0 do
+      when var === :_ or var === 0 do
     match_template_2(ts1, ts2, dict)
   end
 
   defp match_template_2([{var} | ts1], [tree | ts2], dict) do
-    match_template_2(ts1, ts2, :orddict.store(var, tree, dict))
+    match_template_2(ts1, ts2,
+                       :orddict.store(var, tree, dict))
   end
 
-  defp match_template_2([{:*, var} | ts1], ts2, dict) do
-    match_glob(:lists.reverse(ts1), :lists.reverse(ts2), var, dict)
+  defp match_template_2([{:"*", var} | ts1], ts2, dict) do
+    match_glob(:lists.reverse(ts1), :lists.reverse(ts2),
+                 var, dict)
   end
 
   defp match_template_2([t1 | ts1], [t2 | ts2], dict) do
@@ -841,7 +751,7 @@ defmodule :m_merl do
     throw(:error)
   end
 
-  defp match_glob([{:*, var} | _], _, _, _) do
+  defp match_glob([{:"*", var} | _], _, _, _) do
     fail('multiple glob variables in same match group: ~w', [var])
   end
 
@@ -849,9 +759,8 @@ defmodule :m_merl do
     match_glob(ts1, ts2, var, match_template(t1, t2, dict))
   end
 
-  defp match_glob([], _Group, var, dict)
-       when var === :_ or
-              var === 0 do
+  defp match_glob([], _Group, var, dict) when var === :_ or
+                                        var === 0 do
     dict
   end
 
@@ -865,29 +774,24 @@ defmodule :m_merl do
 
   defp compare_trees(t1, t2) do
     type1 = type(t1)
-
-    case type(t2) do
+    case (type(t2)) do
       ^type1 ->
-        case subtrees(t1) do
+        case (subtrees(t1)) do
           [] ->
-            case subtrees(t2) do
+            case (subtrees(t2)) do
               [] ->
                 compare_leaves(type1, t1, t2)
-
               _Gs2 ->
                 false
             end
-
           gs1 ->
-            case subtrees(t2) do
+            case (subtrees(t2)) do
               [] ->
                 false
-
               gs2 ->
                 compare_trees_1(gs1, gs2)
             end
         end
-
       _Type2 ->
         false
     end
@@ -918,31 +822,23 @@ defmodule :m_merl do
   end
 
   defp compare_leaves(type, t1, t2) do
-    case type do
+    case (type) do
       :atom ->
         :erl_syntax.atom_value(t1) === :erl_syntax.atom_value(t2)
-
       :char ->
         :erl_syntax.char_value(t1) === :erl_syntax.char_value(t2)
-
       :float ->
         :erl_syntax.float_value(t1) === :erl_syntax.float_value(t2)
-
       :integer ->
         :erl_syntax.integer_value(t1) === :erl_syntax.integer_value(t2)
-
       :string ->
         :erl_syntax.string_value(t1) === :erl_syntax.string_value(t2)
-
       :operator ->
         :erl_syntax.operator_name(t1) === :erl_syntax.operator_name(t2)
-
       :text ->
         :erl_syntax.text_string(t1) === :erl_syntax.text_string(t2)
-
       :variable ->
         :erl_syntax.variable_name(t1) === :erl_syntax.variable_name(t2)
-
       _ ->
         true
     end
@@ -975,29 +871,27 @@ defmodule :m_merl do
   end
 
   defp switch_1(trees, patterns, guardedActions, cs) do
-    case match(patterns, trees) do
+    case (match(patterns, trees)) do
       {:ok, env} ->
         switch_2(env, guardedActions, trees, cs)
-
       :error ->
         switch(trees, cs)
     end
   end
 
   defp switch_2(env, [{guard, action} | bs], trees, cs)
-       when is_function(guard, 1) and
-              is_function(action, 1) do
-    case guard.(env) do
+      when (is_function(guard, 1) and
+              is_function(action, 1)) do
+    case (guard.(env)) do
       true ->
         action.(env)
-
       false ->
         switch_2(env, bs, trees, cs)
     end
   end
 
   defp switch_2(env, [action | _Bs], _Trees, _Cs)
-       when is_function(action, 1) do
+      when is_function(action, 1) do
     action.(env)
   end
 
@@ -1018,23 +912,17 @@ defmodule :m_merl do
   end
 
   defp flatten_text([l | _] = lines) when is_list(l) do
-    :lists.foldr(
-      fn s, t ->
-        s ++ [?\n | t]
-      end,
-      '',
-      lines
-    )
+    :lists.foldr(fn s, t ->
+                      s ++ [?\n | t]
+                 end,
+                   '', lines)
   end
 
   defp flatten_text([b | _] = lines) when is_binary(b) do
-    :lists.foldr(
-      fn s, t ->
-        :erlang.binary_to_list(s) ++ [?\n | t]
-      end,
-      '',
-      lines
-    )
+    :lists.foldr(fn s, t ->
+                      :erlang.binary_to_list(s) ++ [?\n | t]
+                 end,
+                   '', lines)
   end
 
   defp flatten_text(text) when is_binary(text) do
@@ -1046,120 +934,103 @@ defmodule :m_merl do
   end
 
   defp metavar(tree) do
-    case type(tree) do
+    case (type(tree)) do
       :atom ->
-        case :erl_syntax.atom_name(tree) do
+        case (:erl_syntax.atom_name(tree)) do
           '@' ++ cs when cs !== [] ->
             {'v' ++ cs}
-
           _ ->
             false
         end
-
       :variable ->
-        case :erl_syntax.variable_literal(tree) do
+        case (:erl_syntax.variable_literal(tree)) do
           '_@' ++ cs when cs !== [] ->
             {'v' ++ cs}
-
           _ ->
             false
         end
-
       :integer ->
-        case :erl_syntax.integer_value(tree) do
+        case (:erl_syntax.integer_value(tree)) do
           n when n >= 9090 ->
-            case :erlang.integer_to_list(n) do
+            case (:erlang.integer_to_list(n)) do
               '909' ++ cs ->
                 {'n' ++ cs}
-
               _ ->
                 false
             end
-
           _ ->
             false
         end
-
       :string ->
-        case :erl_syntax.string_value(tree) do
+        case (:erl_syntax.string_value(tree)) do
           '\'@' ++ cs ->
             {'v' ++ cs}
-
           _ ->
             false
         end
-
       _ ->
         false
     end
   end
 
   defp type(t) do
-    case :erl_syntax.type(t) do
+    case (:erl_syntax.type(t)) do
       nil ->
         :list
-
       type ->
         type
     end
   end
 
   defp subtrees(t) do
-    case :erl_syntax.type(t) do
+    case (:erl_syntax.type(t)) do
       :tuple ->
         [:erl_syntax.tuple_elements(t)]
-
       nil ->
         [[], []]
-
       :list ->
-        case :erl_syntax.list_suffix(t) do
+        case (:erl_syntax.list_suffix(t)) do
           :none ->
             [:erl_syntax.list_prefix(t), []]
-
           s ->
             [:erl_syntax.list_prefix(t), [s]]
         end
-
       :binary_field ->
-        [[:erl_syntax.binary_field_body(t)], :erl_syntax.binary_field_types(t)]
-
+        [[:erl_syntax.binary_field_body(t)],
+             :erl_syntax.binary_field_types(t)]
       :clause ->
-        case :erl_syntax.clause_guard(t) do
+        case (:erl_syntax.clause_guard(t)) do
           :none ->
-            [:erl_syntax.clause_patterns(t), [], :erl_syntax.clause_body(t)]
-
+            [:erl_syntax.clause_patterns(t), [],
+                                                 :erl_syntax.clause_body(t)]
           g ->
-            [:erl_syntax.clause_patterns(t), [g], :erl_syntax.clause_body(t)]
+            [:erl_syntax.clause_patterns(t), [g],
+                                                 :erl_syntax.clause_body(t)]
         end
-
       :receive_expr ->
-        case :erl_syntax.receive_expr_timeout(t) do
+        case (:erl_syntax.receive_expr_timeout(t)) do
           :none ->
             [:erl_syntax.receive_expr_clauses(t), [], []]
-
           e ->
-            [:erl_syntax.receive_expr_clauses(t), [e], :erl_syntax.receive_expr_action(t)]
+            [:erl_syntax.receive_expr_clauses(t), [e],
+                                                      :erl_syntax.receive_expr_action(t)]
         end
-
       :record_expr ->
-        case :erl_syntax.record_expr_argument(t) do
+        case (:erl_syntax.record_expr_argument(t)) do
           :none ->
-            [[], [:erl_syntax.record_expr_type(t)], :erl_syntax.record_expr_fields(t)]
-
+            [[], [:erl_syntax.record_expr_type(t)],
+                     :erl_syntax.record_expr_fields(t)]
           v ->
-            [[v], [:erl_syntax.record_expr_type(t)], :erl_syntax.record_expr_fields(t)]
+            [[v], [:erl_syntax.record_expr_type(t)],
+                      :erl_syntax.record_expr_fields(t)]
         end
-
       :record_field ->
-        case :erl_syntax.record_field_value(t) do
+        case (:erl_syntax.record_field_value(t)) do
           :none ->
             [[:erl_syntax.record_field_name(t)], []]
-
           v ->
             [[:erl_syntax.record_field_name(t)], [v]]
         end
-
       _ ->
         :erl_syntax.subtrees(t)
     end
@@ -1242,53 +1113,28 @@ defmodule :m_merl do
   end
 
   defp merge_comments(startLine, cs, [], acc) do
-    merge_comments(
-      startLine,
-      [],
-      [],
-      for {line, _, indent, text} <- cs do
-        :erl_syntax.set_pos(
-          :erl_syntax.comment(indent, text),
-          anno(startLine + line - 1)
-        )
-      end ++ acc
-    )
+    merge_comments(startLine, [], [],
+                     (for {line, _, indent, text} <- cs do
+                        :erl_syntax.set_pos(:erl_syntax.comment(indent, text),
+                                              anno(startLine + line - 1))
+                      end) ++ acc)
   end
 
   defp merge_comments(startLine, [c | cs], [t | ts], acc) do
     {line, _Col, indent, text} = c
     commentLine = startLine + line - 1
-
-    case :erl_syntax.get_pos(t) do
+    case (get_line(t)) do
       pos when pos < commentLine ->
         merge_comments(startLine, [c | cs], ts, [t | acc])
-
       ^commentLine ->
-        tc =
-          :erl_syntax.add_postcomments(
-            [
-              :erl_syntax.comment(
-                indent,
-                text
-              )
-            ],
-            t
-          )
-
+        tc = :erl_syntax.add_postcomments([:erl_syntax.comment(indent,
+                                                                 text)],
+                                            t)
         merge_comments(startLine, cs, [tc | ts], acc)
-
       _ ->
-        tc =
-          :erl_syntax.add_precomments(
-            [
-              :erl_syntax.comment(
-                indent,
-                text
-              )
-            ],
-            t
-          )
-
+        tc = :erl_syntax.add_precomments([:erl_syntax.comment(indent,
+                                                                text)],
+                                           t)
         merge_comments(startLine, cs, [tc | ts], acc)
     end
   end
@@ -1300,4 +1146,10 @@ defmodule :m_merl do
   defp anno(location) do
     :erl_anno.new(location)
   end
+
+  defp get_line(tree) do
+    anno = :erl_syntax.get_pos(tree)
+    :erl_anno.line(anno)
+  end
+
 end

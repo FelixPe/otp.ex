@@ -1,6 +1,5 @@
 defmodule :m_ct_rpc do
   use Bitwise
-
   def app_node(app, candidates) do
     app_node(app, candidates, true, [])
   end
@@ -13,23 +12,21 @@ defmodule :m_ct_rpc do
     :ct.fail({:application_not_running, app})
   end
 
-  def app_node(app, _Candidates = [candidateNode | nodes], failOnBadRPC, cookie) do
+  def app_node(app, _Candidates = [candidateNode | nodes],
+           failOnBadRPC, cookie) do
     cookie0 = set_the_cookie(cookie)
-    result = :rpc.call(candidateNode, :application, :which_applications, [])
+    result = :rpc.call(candidateNode, :application,
+                         :which_applications, [])
     _ = set_the_cookie(cookie0)
-
-    case result do
+    case (result) do
       {:badrpc, reason} when failOnBadRPC == true ->
         :ct.fail({reason, candidateNode})
-
       {:badrpc, _} when failOnBadRPC == false ->
         app_node(app, nodes, failOnBadRPC)
-
       apps ->
-        case :lists.keysearch(app, 1, apps) do
+        case (:lists.keysearch(app, 1, apps)) do
           {:value, _} ->
             candidateNode
-
           _ ->
             app_node(app, nodes, failOnBadRPC)
         end
@@ -44,7 +41,8 @@ defmodule :m_ct_rpc do
     call(node, module, function, args, timeOut, [])
   end
 
-  def call({fun, funArgs}, module, function, args, timeOut, cookie) do
+  def call({fun, funArgs}, module, function, args, timeOut,
+           cookie) do
     node = fun.(funArgs)
     call(node, module, function, args, timeOut, cookie)
   end
@@ -52,7 +50,8 @@ defmodule :m_ct_rpc do
   def call(node, module, function, args, timeOut, cookie)
       when is_atom(node) do
     cookie0 = set_the_cookie(cookie)
-    result = :rpc.call(node, module, function, args, timeOut)
+    result = :rpc.call(node, module, function, args,
+                         timeOut)
     _ = set_the_cookie(cookie0)
     result
   end
@@ -61,7 +60,8 @@ defmodule :m_ct_rpc do
     cast(node, module, function, args, [])
   end
 
-  def cast({fun, funArgs}, module, function, args, cookie) do
+  def cast({fun, funArgs}, module, function, args,
+           cookie) do
     node = fun.(funArgs)
     cast(node, module, function, args, cookie)
   end
@@ -83,4 +83,5 @@ defmodule :m_ct_rpc do
     :erlang.set_cookie(node(), cookie)
     cookie0
   end
+
 end

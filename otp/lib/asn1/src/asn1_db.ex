@@ -1,34 +1,22 @@
 defmodule :m_asn1_db do
   use Bitwise
   require Record
-
-  Record.defrecord(:r_state, :state,
-    parent: :undefined,
-    monitor: :undefined,
-    includes: :undefined,
-    table: :undefined
-  )
-
+  Record.defrecord(:r_state, :state, parent: :undefined,
+                                 monitor: :undefined, includes: :undefined,
+                                 table: :undefined)
   def dbstart(includes0) do
-    includes =
-      case includes0 do
-        [] ->
-          ['.']
-
-        [_ | _] ->
-          includes0
-      end
-
+    includes = (case (includes0) do
+                  [] ->
+                    ['.']
+                  [_ | _] ->
+                    includes0
+                end)
     parent = self()
     :undefined = :erlang.get(:asn1_db)
-
-    :erlang.put(
-      :asn1_db,
-      spawn_link(fn ->
-        init(parent, includes)
-      end)
-    )
-
+    :erlang.put(:asn1_db,
+                  spawn_link(fn () ->
+                                  init(parent, includes)
+                             end))
     :ok
   end
 
@@ -70,12 +58,10 @@ defmodule :m_asn1_db do
     dbPid = :erlang.get(:asn1_db)
     ref = :erlang.monitor(:process, dbPid)
     send(:erlang.get(:asn1_db), {{ref, self()}, request})
-
     receive do
       {{^ref, :asn1_db}, reply} ->
         :erlang.demonitor(ref, [:flush])
         reply
-
       {:DOWN, ^ref, _, _, info} ->
         exit({:db_error, info})
     end
@@ -93,105 +79,77 @@ defmodule :m_asn1_db do
 
   defp init(parent, includes) do
     mRef = :erlang.monitor(:process, parent)
-
-    loop(
-      r_state(parent: parent, monitor: mRef, includes: includes, table: :ets.new(:asn1_db, []))
-    )
+    loop(r_state(parent: parent, monitor: mRef,
+             includes: includes, table: :ets.new(:asn1_db, [])))
   end
 
-  defp loop(r_state(parent: parent, monitor: mRef, table: table, includes: includes) = state) do
+  defp loop(r_state(parent: parent, monitor: mRef, table: table,
+              includes: includes) = state) do
     receive do
       {:set, mod, k2, v} ->
-        [{_, modtab}] = :ets.lookup(table, mod)
+        modtab = :ets.lookup_element(table, mod, 2)
         :ets.insert(modtab, {k2, v})
         loop(state)
-
       {:set, mod, kvs} ->
-        [{_, modtab}] = :ets.lookup(table, mod)
+        modtab = :ets.lookup_element(table, mod, 2)
         :ets.insert(modtab, kvs)
         loop(state)
-
       {from, {:get, mod, k2}} ->
-        case get_table(table, mod, includes) do
+        case (get_table(table, mod, includes)) do
           {:ok, tab} ->
             reply(from, lookup(tab, k2))
-
           :error ->
             reply(from, :undefined)
         end
-
         loop(state)
-
       {:save, outFile, mod} ->
-        [{_, mtab}] = :ets.lookup(table, mod)
+        mtab = :ets.lookup_element(table, mod, 2)
         tempFile = outFile ++ '.#temp'
         :ok = :ets.tab2file(mtab, tempFile)
         :ok = :file.rename(tempFile, outFile)
         loop(state)
-
       {from, {:new, mod, eruleMaps}} ->
         [] = :ets.lookup(table, mod)
-
-        modTableId =
-          :ets.new(
-            :erlang.list_to_atom(:lists.concat(['asn1_', mod])),
-            []
-          )
-
+        modTableId = :ets.new(:erlang.list_to_atom(:lists.concat(['asn1_',
+                                                                      mod])),
+                                [])
         :ets.insert(table, {mod, modTableId})
-
-        :ets.insert(
-          modTableId,
-          {:__version_and_erule__, info(eruleMaps)}
-        )
-
+        :ets.insert(modTableId,
+                      {:__version_and_erule__, info(eruleMaps)})
         reply(from, :ok)
         loop(state)
-
       {from, {:load, mod, eruleMaps, mtime}} ->
-        case :ets.member(table, mod) do
+        case (:ets.member(table, mod)) do
           true ->
             reply(from, :ok)
-
           false ->
-            case load_table(mod, eruleMaps, mtime, includes) do
+            case (load_table(mod, eruleMaps, mtime, includes)) do
               {:ok, modTableId} ->
                 :ets.insert(table, {mod, modTableId})
                 reply(from, :ok)
-
               :error ->
                 reply(from, :error)
             end
         end
-
         loop(state)
-
       {from, :stop} ->
         reply(from, :stopped)
-
       {:DOWN, ^mRef, :process, ^parent, reason} ->
         exit(reason)
     end
   end
 
   defp get_table(table, mod, includes) do
-    case :ets.lookup(table, mod) do
+    case (:ets.lookup(table, mod)) do
       [{^mod, tab}] ->
         {:ok, tab}
-
       [] ->
         load_table(mod, :any, {{0, 0, 0}, {0, 0, 0}}, includes)
     end
   end
 
   defp lookup(tab, k) do
-    case :ets.lookup(tab, k) do
-      [] ->
-        :undefined
-
-      [{^k, v}] ->
-        v
-    end
+    :ets.lookup_element(tab, k, 2, :undefined)
   end
 
   defp info(eruleMaps) do
@@ -200,21 +158,16 @@ defmodule :m_asn1_db do
 
   defp load_table(mod, eruleMaps, mtime, includes) do
     base = :lists.concat([mod, '.asn1db'])
-
-    case path_find(includes, mtime, base) do
+    case (path_find(includes, mtime, base)) do
       :error ->
         :error
-
       {:ok, modTab} when eruleMaps === :any ->
         {:ok, modTab}
-
       {:ok, modTab} ->
         vsn = :asn1ct.vsn()
-
-        case :ets.lookup(modTab, :__version_and_erule__) do
+        case (:ets.lookup(modTab, :__version_and_erule__)) do
           [{_, {^vsn, ^eruleMaps}}] ->
             {:ok, modTab}
-
           _ ->
             :ets.delete(modTab)
             :error
@@ -224,20 +177,16 @@ defmodule :m_asn1_db do
 
   defp path_find([h | t], mtime, base) do
     file = :filename.join(h, base)
-
-    case :filelib.last_modified(file) do
+    case (:filelib.last_modified(file)) do
       0 ->
         path_find(t, mtime, base)
-
       dbMtime when dbMtime >= mtime ->
-        case :ets.file2tab(file) do
+        case (:ets.file2tab(file)) do
           {:ok, _} = ret ->
             ret
-
           _ ->
             path_find(t, mtime, base)
         end
-
       _ ->
         path_find(t, mtime, base)
     end
@@ -246,4 +195,5 @@ defmodule :m_asn1_db do
   defp path_find([], _, _) do
     :error
   end
+
 end

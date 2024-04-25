@@ -1,92 +1,52 @@
 defmodule :m_mnesia_recover do
   use Bitwise
-  import :mnesia_lib, only: [error: 2, fatal: 2, set: 2, verbose: 2]
+  import :mnesia_lib, only: [error: 2, fatal: 2, set: 2,
+                               verbose: 2]
   @behaviour :gen_server
   require Record
-
-  Record.defrecord(:r_tid, :tid,
-    counter: :undefined,
-    pid: :undefined
-  )
-
-  Record.defrecord(:r_tidstore, :tidstore, store: :undefined, up_stores: [], level: 1)
-
-  Record.defrecord(:r_cstruct, :cstruct,
-    name: :undefined,
-    type: :set,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    external_copies: [],
-    load_order: 0,
-    access_mode: :read_write,
-    majority: false,
-    index: [],
-    snmp: [],
-    local_content: false,
-    record_name: {:bad_record_name},
-    attributes: [:key, :val],
-    user_properties: [],
-    frag_properties: [],
-    storage_properties: [],
-    cookie:
-      {{:erlang.monotonic_time() + :erlang.time_offset(), :erlang.unique_integer(), 1}, node()},
-    version: {{2, 0}, []}
-  )
-
-  Record.defrecord(:r_log_header, :log_header,
-    log_kind: :undefined,
-    log_version: :undefined,
-    mnesia_version: :undefined,
-    node: :undefined,
-    now: :undefined
-  )
-
-  Record.defrecord(:r_commit, :commit,
-    node: :undefined,
-    decision: :undefined,
-    ram_copies: [],
-    disc_copies: [],
-    disc_only_copies: [],
-    ext: [],
-    schema_ops: []
-  )
-
-  Record.defrecord(:r_decision, :decision,
-    tid: :undefined,
-    outcome: :undefined,
-    disc_nodes: :undefined,
-    ram_nodes: :undefined
-  )
-
-  Record.defrecord(:r_cyclic, :cyclic,
-    node: node(),
-    oid: :undefined,
-    op: :undefined,
-    lock: :undefined,
-    lucky: :undefined
-  )
-
-  Record.defrecord(:r_state, :state,
-    supervisor: :undefined,
-    unclear_pid: :undefined,
-    unclear_decision: :undefined,
-    unclear_waitfor: :undefined,
-    tm_queue_len: 0,
-    log_dump_overload: false,
-    initiated: false,
-    early_msgs: []
-  )
-
-  Record.defrecord(:r_transient_decision, :transient_decision,
-    tid: :undefined,
-    outcome: :undefined
-  )
-
+  Record.defrecord(:r_tid, :tid, counter: :undefined,
+                               pid: :undefined)
+  Record.defrecord(:r_tidstore, :tidstore, store: :undefined,
+                                    up_stores: [], level: 1)
+  Record.defrecord(:r_cstruct, :cstruct, name: :undefined,
+                                   type: :set, ram_copies: [], disc_copies: [],
+                                   disc_only_copies: [], external_copies: [],
+                                   load_order: 0, access_mode: :read_write,
+                                   majority: false, index: [], snmp: [],
+                                   local_content: false,
+                                   record_name: {:bad_record_name},
+                                   attributes: [:key, :val],
+                                   user_properties: [], frag_properties: [],
+                                   storage_properties: [],
+                                   cookie: {{:erlang.monotonic_time() + :erlang.time_offset(),
+                                               :erlang.unique_integer(), 1},
+                                              node()},
+                                   version: {{2, 0}, []})
+  Record.defrecord(:r_log_header, :log_header, log_kind: :undefined,
+                                      log_version: :undefined,
+                                      mnesia_version: :undefined,
+                                      node: :undefined, now: :undefined)
+  Record.defrecord(:r_commit, :commit, node: :undefined,
+                                  decision: :undefined, ram_copies: [],
+                                  disc_copies: [], disc_only_copies: [],
+                                  ext: [], schema_ops: [])
+  Record.defrecord(:r_decision, :decision, tid: :undefined,
+                                    outcome: :undefined, disc_nodes: :undefined,
+                                    ram_nodes: :undefined)
+  Record.defrecord(:r_cyclic, :cyclic, node: node(),
+                                  oid: :undefined, op: :undefined,
+                                  lock: :undefined, lucky: :undefined)
+  Record.defrecord(:r_state, :state, supervisor: :undefined,
+                                 unclear_pid: :undefined,
+                                 unclear_decision: :undefined,
+                                 unclear_waitfor: :undefined, tm_queue_len: 0,
+                                 log_dump_overload: false, initiated: false,
+                                 early_msgs: [])
+  Record.defrecord(:r_transient_decision, :transient_decision, tid: :undefined,
+                                              outcome: :undefined)
   def start() do
-    :gen_server.start_link({:local, :mnesia_recover}, :mnesia_recover, [self()], [
-      {:timeout, :infinity}
-    ])
+    :gen_server.start_link({:local, :mnesia_recover},
+                             :mnesia_recover, [self()], [{:timeout, :infinity}])
   end
 
   def init() do
@@ -95,41 +55,36 @@ defmodule :m_mnesia_recover do
 
   def next_garb() do
     pid = :erlang.whereis(:mnesia_recover)
-    :erlang.send_after(:timer.minutes(2), pid, :garb_decisions)
+    :erlang.send_after(:timer.minutes(2), pid,
+                         :garb_decisions)
   end
 
   def next_check_overload() do
     pid = :erlang.whereis(:mnesia_recover)
-    :erlang.send_after(:timer.seconds(10), pid, :check_overload)
+    :erlang.send_after(:timer.seconds(10), pid,
+                         :check_overload)
   end
 
   defp do_check_overload(s) do
-    case :erlang.whereis(:mnesia_tm) do
+    case (:erlang.whereis(:mnesia_tm)) do
       pid when is_pid(pid) ->
         threshold = 100
         prev = r_state(s, :tm_queue_len)
-
-        {:message_queue_len, len} =
-          :erlang.process_info(
-            pid,
-            :message_queue_len
-          )
-
+        {:message_queue_len, len} = :erlang.process_info(pid,
+                                                           :message_queue_len)
         cond do
-          len > threshold and prev > threshold ->
+          (len > threshold and prev > threshold) ->
             what = {:mnesia_tm, :message_queue_len, [prev, len]}
-            :mnesia_lib.report_system_event({:mnesia_overload, what})
+            :mnesia_lib.report_system_event({:mnesia_overload,
+                                               what})
             :mnesia_lib.overload_set(:mnesia_tm, true)
             r_state(s, tm_queue_len: 0)
-
           len > threshold ->
             r_state(s, tm_queue_len: len)
-
           true ->
             :mnesia_lib.overload_set(:mnesia_tm, false)
             r_state(s, tm_queue_len: 0)
         end
-
       :undefined ->
         s
     end
@@ -141,20 +96,16 @@ defmodule :m_mnesia_recover do
 
   defp do_allow_garb() do
     curr = val(:latest_transient_decision)
-
-    case :ets.info(curr, :size) > 20 do
+    case (:ets.info(curr, :size) > 20) do
       true ->
         old = val(:previous_transient_decisions)
         next = create_transient_decision()
         {prev, reallyOld} = sublist([curr | old], 10, [])
-
         for tab <- reallyOld do
           :ets.delete(tab)
         end
-
         set(:previous_transient_decisions, prev)
         set(:latest_transient_decision, next)
-
       false ->
         :ignore
     end
@@ -169,14 +120,12 @@ defmodule :m_mnesia_recover do
   end
 
   defp do_garb_decisions() do
-    case val(:previous_transient_decisions) do
+    case (val(:previous_transient_decisions)) do
       [first, second | rest] ->
         set(:previous_transient_decisions, [first, second])
-
         for tab <- rest do
           :ets.delete(tab)
         end
-
       _ ->
         :ignore
     end
@@ -203,7 +152,6 @@ defmodule :m_mnesia_recover do
           end) do
       {:EXIT, stacktrace} ->
         :mnesia_lib.other_val(var, stacktrace)
-
       value ->
         value
     end
@@ -211,22 +159,18 @@ defmodule :m_mnesia_recover do
 
   def call(msg) do
     pid = :erlang.whereis(:mnesia_recover)
-
-    case pid do
+    case (pid) do
       :undefined ->
         {:error, {:node_not_running, node()}}
-
       ^pid ->
         :erlang.link(pid)
         res = :gen_server.call(pid, msg, :infinity)
         :erlang.unlink(pid)
-
         receive do
           {:EXIT, ^pid, _Reason} ->
             {:error, {:node_not_running, node()}}
-        after
-          0 ->
-            res
+        after 0 ->
+          res
         end
     end
   end
@@ -236,10 +180,9 @@ defmodule :m_mnesia_recover do
   end
 
   defp cast(msg) do
-    case :erlang.whereis(:mnesia_recover) do
+    case (:erlang.whereis(:mnesia_recover)) do
       :undefined ->
         :ignore
-
       pid ->
         :gen_server.cast(pid, msg)
     end
@@ -259,10 +202,8 @@ defmodule :m_mnesia_recover do
   end
 
   defp note_down(node, date, time) do
-    :ets.insert(
-      :mnesia_decision,
-      {:mnesia_down, node, date, time}
-    )
+    :ets.insert(:mnesia_decision,
+                  {:mnesia_down, node, date, time})
   end
 
   defp note_master_nodes(tab, []) do
@@ -275,11 +216,8 @@ defmodule :m_mnesia_recover do
   end
 
   defp note_outcome(d) when r_decision(d, :disc_nodes) == [] do
-    note_decision(
-      r_decision(d, :tid),
-      filter_outcome(r_decision(d, :outcome))
-    )
-
+    note_decision(r_decision(d, :tid),
+                    filter_outcome(r_decision(d, :outcome)))
     :ets.delete(:mnesia_decision, r_decision(d, :tid))
   end
 
@@ -300,36 +238,27 @@ defmodule :m_mnesia_recover do
   defp do_log_decision(d, doTell, nodeD) do
     discNs = r_decision(d, :disc_nodes) -- [node()]
     outcome = r_decision(d, :outcome)
-
-    d2 =
-      case outcome do
-        :aborted ->
-          r_decision(d, disc_nodes: discNs)
-
-        :committed ->
-          r_decision(d, disc_nodes: discNs)
-
-        _ ->
-          d
-      end
-
+    d2 = (case (outcome) do
+            :aborted ->
+              r_decision(d, disc_nodes: discNs)
+            :committed ->
+              r_decision(d, disc_nodes: discNs)
+            _ ->
+              d
+          end)
     note_outcome(d2)
-
-    case :mnesia_monitor.use_dir() do
+    case (:mnesia_monitor.use_dir()) do
       true ->
         cond do
-          doTell == true and outcome != :unclear ->
+          (doTell == true and outcome != :unclear) ->
             tell_im_certain(r_decision(nodeD, :disc_nodes) -- [node()], d2)
             tell_im_certain(r_decision(nodeD, :ram_nodes) -- [node()], d2)
             :mnesia_log.log(d2)
-
           outcome != :unclear ->
             :mnesia_log.log(d2)
-
           true ->
             :ignore
         end
-
       false ->
         :ignore
     end
@@ -360,17 +289,15 @@ defmodule :m_mnesia_recover do
     tab = :mnesia_decision
     pat = {:mnesia_down, :_, :_, :_}
     downs = :ets.match_object(tab, pat)
-
     for {:mnesia_down, node, _Date, _Time} <- downs do
       node
     end
   end
 
   def has_mnesia_down(node) do
-    case :ets.lookup(:mnesia_decision, node) do
+    case (:ets.lookup(:mnesia_decision, node)) do
       [{:mnesia_down, ^node, _Date, _Time}] ->
         true
-
       [] ->
         false
     end
@@ -385,7 +312,6 @@ defmodule :m_mnesia_recover do
           end) do
       {:EXIT, _} ->
         :ignore
-
       _ ->
         :mnesia_lib.del(:recover_nodes, node)
         cast({:mnesia_down, node})
@@ -400,62 +326,55 @@ defmodule :m_mnesia_recover do
     cond do
       isRunning == :yes ->
         log_master_nodes2(args, useDir, isRunning, :ok)
-
       useDir == false ->
         :ok
-
       true ->
         name = :latest_log
         fname = :mnesia_log.latest_log_file()
         exists = :mnesia_lib.exists(fname)
         repair = :mnesia.system_info(:auto_repair)
-        openArgs = [{:file, fname}, {:name, name}, {:repair, repair}]
-
-        case :disk_log.open(openArgs) do
+        openArgs = [{:file, fname}, {:name, name}, {:repair,
+                                                      repair}]
+        case (:disk_log.open(openArgs)) do
           {:ok, ^name} ->
             log_master_nodes2(args, useDir, isRunning, :ok)
-
           {:repaired, ^name, {:recovered, _R}, {:badbytes, _B}}
-          when exists == true ->
+              when exists == true ->
             log_master_nodes2(args, useDir, isRunning, :ok)
-
           {:repaired, ^name, {:recovered, _R}, {:badbytes, _B}}
-          when exists == false ->
+              when exists == false ->
             :mnesia_log.write_trans_log_header()
             log_master_nodes2(args, useDir, isRunning, :ok)
-
           {:error, reason} ->
             {:error, reason}
         end
     end
   end
 
-  defp log_master_nodes2([{tab, nodes} | tail], useDir, isRunning, worstRes) do
-    res =
-      case isRunning do
-        :yes ->
-          r = call({:log_master_nodes, tab, nodes, useDir, isRunning})
-          :mnesia_controller.master_nodes_updated(tab, nodes)
-          r
-
-        _ ->
-          do_log_master_nodes(tab, nodes, useDir, isRunning)
-      end
-
-    case res do
+  defp log_master_nodes2([{tab, nodes} | tail], useDir, isRunning,
+            worstRes) do
+    res = (case (isRunning) do
+             :yes ->
+               r = call({:log_master_nodes, tab, nodes, useDir,
+                           isRunning})
+               :mnesia_controller.master_nodes_updated(tab, nodes)
+               r
+             _ ->
+               do_log_master_nodes(tab, nodes, useDir, isRunning)
+           end)
+    case (res) do
       :ok ->
         log_master_nodes2(tail, useDir, isRunning, worstRes)
-
       {:error, reason} ->
-        log_master_nodes2(tail, useDir, isRunning, {:error, reason})
+        log_master_nodes2(tail, useDir, isRunning,
+                            {:error, reason})
     end
   end
 
   defp log_master_nodes2([], _UseDir, isRunning, worstRes) do
-    case isRunning do
+    case (isRunning) do
       :yes ->
         worstRes
-
       _ ->
         :disk_log.close(:latest_log)
         worstRes
@@ -465,7 +384,6 @@ defmodule :m_mnesia_recover do
   def get_master_node_info() do
     tab = :mnesia_decision
     pat = {:master_nodes, :_, :_}
-
     try do
       :mnesia_lib.db_match_object(:ram_copies, tab, pat)
     catch
@@ -476,7 +394,6 @@ defmodule :m_mnesia_recover do
 
   def get_master_node_tables() do
     masters = get_master_node_info()
-
     for {:master_nodes, tab, _Nodes} <- masters do
       tab
     end
@@ -492,65 +409,49 @@ defmodule :m_mnesia_recover do
   end
 
   def what_happened(tid, protocol, nodes) do
-    default =
-      case protocol do
-        :asym_trans ->
-          :aborted
-
-        _ ->
-          :unclear
-      end
-
+    default = (case (protocol) do
+                 :asym_trans ->
+                   :aborted
+                 _ ->
+                   :unclear
+               end)
     this = node()
-
-    case :lists.member(this, nodes) do
+    case (:lists.member(this, nodes)) do
       true ->
         {:ok, outcome} = call({:what_happened, default, tid})
         others = nodes -- [this]
-
-        case filter_outcome(outcome) do
+        case (filter_outcome(outcome)) do
           :unclear ->
             what_happened_remotely(tid, default, others)
-
           :aborted ->
             :aborted
-
           :committed ->
             :committed
         end
-
       false ->
         what_happened_remotely(tid, default, nodes)
     end
   end
 
   defp what_happened_remotely(tid, default, nodes) do
-    {replies, _} =
-      multicall(
-        nodes,
-        {:what_happened, default, tid}
-      )
-
+    {replies, _} = multicall(nodes,
+                               {:what_happened, default, tid})
     check_what_happened(replies, 0, 0)
   end
 
   defp check_what_happened([h | t], aborts, commits) do
-    case h do
+    case (h) do
       {:ok, r} ->
-        case filter_outcome(r) do
+        case (filter_outcome(r)) do
           :committed ->
             check_what_happened(t, aborts, commits + 1)
-
           :aborted ->
             check_what_happened(t, aborts + 1, commits)
-
           :unclear ->
             check_what_happened(t, aborts, commits)
         end
-
       {:error, _} ->
         check_what_happened(t, aborts, commits)
-
       {:badrpc, _} ->
         check_what_happened(t, aborts, commits)
     end
@@ -558,13 +459,11 @@ defmodule :m_mnesia_recover do
 
   defp check_what_happened([], aborts, commits) do
     cond do
-      aborts == 0 and commits == 0 ->
+      (aborts == 0 and commits == 0) ->
         :aborted
-
       aborts > 0 ->
         :aborted
-
-      aborts == 0 and commits > 0 ->
+      (aborts == 0 and commits > 0) ->
         :committed
     end
   end
@@ -582,28 +481,22 @@ defmodule :m_mnesia_recover do
     tid = r_decision(d, :tid)
     max = 10
     outcome = outcome(tid, r_decision(d, :outcome))
-
     cond do
       outcome === :committed ->
         {tid, :committed}
-
       outcome === :aborted ->
         {tid, :aborted}
-
       initBy == :startup ->
         {:ok, res} = call({:wait_for_decision, d})
         {tid, res}
-
       outcome === :presume_abort ->
-        case n > max do
+        case (n > max) do
           true ->
             {tid, :aborted}
-
           false ->
             :timer.sleep(10)
             wait_for_decision(d, initBy, n + 1)
         end
-
       initBy != :startup ->
         :timer.sleep(100)
         wait_for_decision(d, initBy, n)
@@ -611,10 +504,9 @@ defmodule :m_mnesia_recover do
   end
 
   def still_pending([tid | pending]) do
-    case filter_outcome(outcome(tid, :unclear)) do
+    case (filter_outcome(outcome(tid, :unclear))) do
       :unclear ->
         [tid | still_pending(pending)]
-
       _ ->
         still_pending(pending)
     end
@@ -631,24 +523,19 @@ defmodule :m_mnesia_recover do
   end
 
   defp load_decision_tab(cont, initBy) do
-    case :mnesia_log.chunk_decision_tab(cont) do
+    case (:mnesia_log.chunk_decision_tab(cont)) do
       {cont2, decisions} ->
         note_log_decisions(decisions, initBy)
         load_decision_tab(cont2, initBy)
-
       :eof ->
         :ok
     end
   end
 
   defp convert_old() do
-    hasOldStuff =
-      :erlang.or(
-        :mnesia_lib.exists(:mnesia_log.previous_decision_log_file()),
-        :mnesia_lib.exists(:mnesia_log.decision_log_file())
-      )
-
-    case hasOldStuff do
+    hasOldStuff = :erlang.or(:mnesia_lib.exists(:mnesia_log.previous_decision_log_file()),
+                               :mnesia_lib.exists(:mnesia_log.decision_log_file()))
+    case (hasOldStuff) do
       true ->
         :mnesia_log.open_decision_log()
         dump_decision_log(:startup)
@@ -656,7 +543,6 @@ defmodule :m_mnesia_recover do
         :mnesia_log.close_decision_log()
         latest = :mnesia_log.decision_log_file()
         :ok = :file.delete(latest)
-
       false ->
         :ignore
     end
@@ -668,11 +554,10 @@ defmodule :m_mnesia_recover do
   end
 
   defp perform_dump_decision_log(cont, initBy) when initBy == :startup do
-    case :mnesia_log.chunk_decision_log(cont) do
+    case (:mnesia_log.chunk_decision_log(cont)) do
       {cont2, decisions} ->
         note_log_decisions(decisions, initBy)
         perform_dump_decision_log(cont2, initBy)
-
       :eof ->
         confirm_decision_log_dump()
     end
@@ -737,15 +622,12 @@ defmodule :m_mnesia_recover do
   def note_log_decision(h, _InitBy)
       when r_log_header(h, :log_kind) == :decision_log do
     v = :mnesia_log.decision_log_version()
-
     cond do
       r_log_header(h, :log_version) == v ->
         :ok
-
       r_log_header(h, :log_version) == '2.0' ->
         verbose('Accepting an old version format of decision log: ~p~n', [v])
         :ok
-
       true ->
         fatal('Bad version of decision log: ~p~n', [h])
     end
@@ -754,11 +636,9 @@ defmodule :m_mnesia_recover do
   def note_log_decision(h, _InitBy)
       when r_log_header(h, :log_kind) == :decision_tab do
     v = :mnesia_log.decision_tab_version()
-
     cond do
       v == r_log_header(h, :log_version) ->
         :ok
-
       true ->
         fatal('Bad version of decision tab: ~p~n', [h])
     end
@@ -777,10 +657,8 @@ defmodule :m_mnesia_recover do
   end
 
   defp set_trans_tid_serial(val) do
-    :ets.insert(
-      :mnesia_decision,
-      {:trans_tid, :serial, val}
-    )
+    :ets.insert(:mnesia_decision,
+                  {:trans_tid, :serial, val})
   end
 
   def incr_trans_tid_serial() do
@@ -789,11 +667,9 @@ defmodule :m_mnesia_recover do
 
   def sync_trans_tid_serial(thatCounter) when is_integer(thatCounter) do
     thisCounter = trans_tid_serial()
-
     cond do
       thatCounter > thisCounter ->
         set_trans_tid_serial(thatCounter + 1)
-
       true ->
         :ignore
     end
@@ -806,12 +682,8 @@ defmodule :m_mnesia_recover do
   def init([parent]) do
     :erlang.process_flag(:trap_exit, true)
     :mnesia_lib.verbose('~p starting: ~p~n', [:mnesia_recover, self()])
-
-    set(
-      :latest_transient_decision,
-      create_transient_decision()
-    )
-
+    set(:latest_transient_decision,
+          create_transient_decision())
     set(:previous_transient_decisions, [])
     set(:recover_nodes, [])
     state = r_state(supervisor: parent)
@@ -819,46 +691,38 @@ defmodule :m_mnesia_recover do
   end
 
   defp create_transient_decision() do
-    _ =
-      :ets.new(
-        :mnesia_transient_decision,
-        [{:keypos, 2}, :set, :public]
-      )
+    _ = :ets.new(:mnesia_transient_decision,
+                   [{:keypos, 2}, :set, :public])
   end
 
   def handle_call(:init, from, state)
       when r_state(state, :initiated) == false do
     args = [{:keypos, 2}, :set, :public, :named_table]
-
-    case :mnesia_monitor.use_dir() do
+    case (:mnesia_monitor.use_dir()) do
       true ->
         _ = :ets.new(:mnesia_decision, args)
         set_trans_tid_serial(0)
         tabFile = :mnesia_log.decision_tab_file()
-
-        case :mnesia_lib.exists(tabFile) do
+        case (:mnesia_lib.exists(tabFile)) do
           true ->
             load_decision_tab()
-
           false ->
             :ignore
         end
-
         convert_old()
         :mnesia_dumper.opt_dump_log(:scan_decisions)
-
       false ->
         _ = :ets.new(:mnesia_decision, args)
         set_trans_tid_serial(0)
     end
-
     handle_early_msgs(state, from)
   end
 
   def handle_call(msg, from, state)
       when r_state(state, :initiated) == false do
     msgs = r_state(state, :early_msgs)
-    {:noreply, r_state(state, early_msgs: [{:call, msg, from} | msgs])}
+    {:noreply,
+       r_state(state, early_msgs: [{:call, msg, from} | msgs])}
   end
 
   def handle_call({:disconnect, node}, _From, state) do
@@ -871,39 +735,31 @@ defmodule :m_mnesia_recover do
     alreadyConnected = val(:recover_nodes)
     {_, nodes} = :mnesia_lib.search_delete(node(), ns)
     check = nodes -- alreadyConnected
-
-    case :mnesia_monitor.negotiate_protocol(check) do
+    case (:mnesia_monitor.negotiate_protocol(check)) do
       :busy ->
-        :erlang.send_after(2, self(), {:connect_nodes, ns, from})
+        :erlang.send_after(2, self(),
+                             {:connect_nodes, ns, from})
         {:noreply, state}
-
       [] ->
         :gen_server.reply(from, {[], alreadyConnected})
         {:noreply, state}
-
       probablyGoodNodes ->
         verify = fn n ->
-          run = :mnesia_lib.is_running(n)
-          run === :yes or run === :starting
-        end
-
-        goodNodes =
-          for n <- probablyGoodNodes, verify.(n) do
-            n
-          end
-
+                      run = :mnesia_lib.is_running(n)
+                      run === :yes or run === :starting
+                 end
+        goodNodes = (for n <- probablyGoodNodes, verify.(n) do
+                       n
+                     end)
         :mnesia_lib.add_list(:recover_nodes, goodNodes)
         cast({:announce_all, goodNodes})
-
-        case get_master_nodes(:schema) do
+        case (get_master_nodes(:schema)) do
           [] ->
             context = :starting_partitioned_network
             :mnesia_monitor.detect_inconcistency(goodNodes, context)
-
           _ ->
             :ignore
         end
-
         :gen_server.reply(from, {goodNodes, alreadyConnected})
         {:noreply, state}
     end
@@ -917,47 +773,28 @@ defmodule :m_mnesia_recover do
 
   def handle_call({:wait_for_decision, d}, from, state) do
     recov = val(:recover_nodes)
-
-    aliveRam =
-      :mnesia_lib.intersect(
-        r_decision(d, :ram_nodes),
-        recov
-      ) -- [node()]
-
+    aliveRam = :mnesia_lib.intersect(r_decision(d, :ram_nodes),
+                                       recov) -- [node()]
     remoteDisc = r_decision(d, :disc_nodes) -- [node()]
-
     cond do
-      aliveRam == [] and remoteDisc == [] ->
+      (aliveRam == [] and remoteDisc == []) ->
         {:reply, {:ok, :aborted}, state}
-
       true ->
-        verbose('Transaction ~p is unclear. Wait for disc nodes: ~w ram: ~w~n', [
-          r_decision(d, :tid),
-          remoteDisc,
-          aliveRam
-        ])
-
+        verbose('Transaction ~p is unclear. Wait for disc nodes: ~w ram: ~w~n', [r_decision(d, :tid), remoteDisc, aliveRam])
         aliveDisc = :mnesia_lib.intersect(remoteDisc, recov)
         msg = {:what_decision, node(), d}
         abcast(aliveRam, msg)
         abcast(aliveDisc, msg)
-
-        case val(:max_wait_for_decision) do
+        case (val(:max_wait_for_decision)) do
           :infinity ->
             :ignore
-
           maxWait ->
             forceMsg = {:force_decision, r_decision(d, :tid)}
             {:ok, _} = :timer.send_after(maxWait, forceMsg)
         end
-
-        state2 =
-          r_state(state,
-            unclear_pid: from,
-            unclear_decision: d,
-            unclear_waitfor: remoteDisc ++ aliveRam
-          )
-
+        state2 = r_state(state, unclear_pid: from, 
+                            unclear_decision: d, 
+                            unclear_waitfor: remoteDisc ++ aliveRam)
         {:noreply, state2}
     end
   end
@@ -972,7 +809,9 @@ defmodule :m_mnesia_recover do
     {:reply, :ok, state}
   end
 
-  def handle_call({:log_master_nodes, tab, nodes, useDir, isRunning}, _From, state) do
+  def handle_call({:log_master_nodes, tab, nodes, useDir,
+            isRunning},
+           _From, state) do
     do_log_master_nodes(tab, nodes, useDir, isRunning)
     {:reply, :ok, state}
   end
@@ -987,57 +826,47 @@ defmodule :m_mnesia_recover do
   end
 
   defp do_log_mnesia_up(node) do
-    yoyo = {:mnesia_up, node, date = :erlang.date(), time = :erlang.time()}
-
-    case :mnesia_monitor.use_dir() do
+    yoyo = {:mnesia_up, node, date = :erlang.date(),
+              time = :erlang.time()}
+    case (:mnesia_monitor.use_dir()) do
       true ->
         :mnesia_log.append(:latest_log, yoyo)
         :disk_log.sync(:latest_log)
-
       false ->
         :ignore
     end
-
     note_up(node, date, time)
   end
 
   defp do_log_mnesia_down(node) do
-    yoyo = {:mnesia_down, node, date = :erlang.date(), time = :erlang.time()}
-
-    case :mnesia_monitor.use_dir() do
+    yoyo = {:mnesia_down, node, date = :erlang.date(),
+              time = :erlang.time()}
+    case (:mnesia_monitor.use_dir()) do
       true ->
         :mnesia_log.append(:latest_log, yoyo)
         :disk_log.sync(:latest_log)
-
       false ->
         :ignore
     end
-
     note_down(node, date, time)
   end
 
   defp do_log_master_nodes(tab, nodes, useDir, isRunning) do
     master = {:master_nodes, tab, nodes}
-
-    res =
-      case useDir do
-        true ->
-          logRes = :mnesia_log.append(:latest_log, master)
-          :disk_log.sync(:latest_log)
-          logRes
-
-        false ->
-          :ok
-      end
-
-    case isRunning do
+    res = (case (useDir) do
+             true ->
+               logRes = :mnesia_log.append(:latest_log, master)
+               :disk_log.sync(:latest_log)
+               logRes
+             false ->
+               :ok
+           end)
+    case (isRunning) do
       :yes ->
         note_master_nodes(tab, nodes)
-
       _NotRunning ->
         :ignore
     end
-
     res
   end
 
@@ -1072,32 +901,25 @@ defmodule :m_mnesia_recover do
   def handle_cast({:what_decision, node, otherD}, state) do
     tid = r_decision(otherD, :tid)
     sync_trans_tid_serial(tid)
-
-    decision =
-      case decision(tid) do
-        :no_decision ->
-          otherD
-
-        myD when elem(myD, 0) === :decision ->
-          myD
-      end
-
+    decision = (case (decision(tid)) do
+                  :no_decision ->
+                    otherD
+                  myD when elem(myD, 0) === :decision ->
+                    myD
+                end)
     announce([node], [decision], [], true)
     {:noreply, state}
   end
 
   def handle_cast({:mnesia_down, node}, state) do
     :mnesia_lib.del(:recover_nodes, node)
-
-    case r_state(state, :unclear_decision) do
+    case (r_state(state, :unclear_decision)) do
       :undefined ->
         {:noreply, state}
-
       d ->
-        case :lists.member(node, r_decision(d, :ram_nodes)) do
+        case (:lists.member(node, r_decision(d, :ram_nodes))) do
           false ->
             {:noreply, state}
-
           true ->
             state2 = add_remote_decision(node, d, state)
             {:noreply, state2}
@@ -1140,17 +962,12 @@ defmodule :m_mnesia_recover do
   end
 
   def handle_info({:force_decision, tid}, state) do
-    case r_state(state, :unclear_decision) do
+    case (r_state(state, :unclear_decision)) do
       u when r_decision(u, :tid) == tid ->
-        verbose(
-          'Decided to abort transaction ~p since max_wait_for_decision has been exceeded~n',
-          [tid]
-        )
-
+        verbose('Decided to abort transaction ~p since max_wait_for_decision has been exceeded~n', [tid])
         d = r_decision(u, outcome: :aborted)
         state2 = add_remote_decision(node(), d, state)
         {:noreply, state2}
-
       _ ->
         {:noreply, state}
     end
@@ -1168,25 +985,20 @@ defmodule :m_mnesia_recover do
   end
 
   def terminate(reason, state) do
-    :mnesia_monitor.terminate_proc(:mnesia_recover, reason, state)
+    :mnesia_monitor.terminate_proc(:mnesia_recover, reason,
+                                     state)
   end
 
-  def code_change(
-        _OldVsn,
-        {:state, supervisor, unclear_pid, unclear_decision, unclear_waitfor, tm_queue_len,
-         initiated, early_msgs},
-        _Extra
-      ) do
+  def code_change(_OldVsn,
+           {:state, supervisor, unclear_pid, unclear_decision,
+              unclear_waitfor, tm_queue_len, initiated, early_msgs},
+           _Extra) do
     {:ok,
-     r_state(
-       supervisor: supervisor,
-       unclear_pid: unclear_pid,
-       unclear_decision: unclear_decision,
-       unclear_waitfor: unclear_waitfor,
-       tm_queue_len: tm_queue_len,
-       initiated: initiated,
-       early_msgs: early_msgs
-     )}
+       r_state(supervisor: supervisor, unclear_pid: unclear_pid,
+           unclear_decision: unclear_decision,
+           unclear_waitfor: unclear_waitfor,
+           tm_queue_len: tm_queue_len, initiated: initiated,
+           early_msgs: early_msgs)}
   end
 
   def code_change(_OldVsn, r_state() = state, _Extra) do
@@ -1194,21 +1006,16 @@ defmodule :m_mnesia_recover do
   end
 
   defp handle_early_msgs(state, from) do
-    res =
-      do_handle_early_msgs(
-        r_state(state, :early_msgs),
-        r_state(state, early_msgs: [], initiated: true)
-      )
-
+    res = do_handle_early_msgs(r_state(state, :early_msgs),
+                                 r_state(state, early_msgs: [],  initiated: true))
     :gen_server.reply(from, :ok)
     res
   end
 
   defp do_handle_early_msgs([msg | msgs], state) do
-    case do_handle_early_msgs(msgs, state) do
+    case (do_handle_early_msgs(msgs, state)) do
       {:stop, reason, state2} ->
         {:stop, reason, state2}
-
       {:noreply, state2} ->
         handle_early_msg(msg, state2)
     end
@@ -1219,11 +1026,10 @@ defmodule :m_mnesia_recover do
   end
 
   defp handle_early_msg({:call, msg, from}, state) do
-    case handle_call(msg, from, state) do
+    case (handle_call(msg, from, state)) do
       {:reply, r, s} ->
         :gen_server.reply(from, r)
         {:noreply, s}
-
       other ->
         other
     end
@@ -1256,15 +1062,9 @@ defmodule :m_mnesia_recover do
     else
       [d] when elem(d, 0) === :decision ->
         d
-
       [c] when elem(c, 0) === :transient_decision ->
-        r_decision(
-          tid: r_transient_decision(c, :tid),
-          outcome: r_transient_decision(c, :outcome),
-          disc_nodes: [],
-          ram_nodes: []
-        )
-
+        r_decision(tid: r_transient_decision(c, :tid), outcome: r_transient_decision(c, :outcome),
+            disc_nodes: [], ram_nodes: [])
       [] ->
         decision(tid, tabs)
     end
@@ -1292,19 +1092,15 @@ defmodule :m_mnesia_recover do
   end
 
   defp filter_outcome(val) do
-    case val do
+    case (val) do
       :unclear ->
         :unclear
-
       :aborted ->
         :aborted
-
       :presume_abort ->
         :aborted
-
       :committed ->
         :committed
-
       :pre_commit ->
         :unclear
     end
@@ -1320,90 +1116,72 @@ defmodule :m_mnesia_recover do
 
   defp merge_decisions(node, d, newD0) do
     newD = filter_aborted(newD0)
-
     cond do
-      d == :no_decision and node() != node ->
+      (d == :no_decision and node() != node) ->
         r_decision(newD, disc_nodes: [])
-
       d == :no_decision ->
         newD
-
       elem(d, 0) === :decision ->
         discNs = r_decision(d, :disc_nodes) -- [node(), node]
         oldD = filter_aborted(r_decision(d, disc_nodes: discNs))
-
         cond do
-          r_decision(oldD, :outcome) == :unclear and
-              r_decision(newD, :outcome) == :unclear ->
+          (r_decision(oldD, :outcome) == :unclear and
+             r_decision(newD, :outcome) == :unclear) ->
             d
-
           r_decision(oldD, :outcome) == r_decision(newD, :outcome) ->
             oldD
-
-          r_decision(oldD, :outcome) == :committed and
-              r_decision(newD, :outcome) == :aborted ->
+          (r_decision(oldD, :outcome) == :committed and
+             r_decision(newD, :outcome) == :aborted) ->
             msg = {:inconsistent_database, :bad_decision, node}
             :mnesia_lib.report_system_event(msg)
             r_decision(oldD, outcome: :aborted)
-
           r_decision(oldD, :outcome) == :aborted ->
             r_decision(oldD, outcome: :aborted)
-
           r_decision(newD, :outcome) == :aborted ->
             r_decision(oldD, outcome: :aborted)
-
-          r_decision(oldD, :outcome) == :committed and
-              r_decision(newD, :outcome) == :unclear ->
+          (r_decision(oldD, :outcome) == :committed and
+             r_decision(newD, :outcome) == :unclear) ->
             r_decision(oldD, outcome: :committed)
-
-          r_decision(oldD, :outcome) == :unclear and
-              r_decision(newD, :outcome) == :committed ->
+          (r_decision(oldD, :outcome) == :unclear and
+             r_decision(newD, :outcome) == :committed) ->
             r_decision(oldD, outcome: :committed)
         end
     end
   end
 
   defp add_remote_decisions(node, [d | tail], state)
-       when elem(d, 0) === :decision do
+      when elem(d, 0) === :decision do
     state2 = add_remote_decision(node, d, state)
     add_remote_decisions(node, tail, state2)
   end
 
   defp add_remote_decisions(node, [c | tail], state)
-       when elem(c, 0) === :transient_decision do
-    d =
-      r_decision(
-        tid: r_transient_decision(c, :tid),
-        outcome: r_transient_decision(c, :outcome),
-        disc_nodes: [],
-        ram_nodes: []
-      )
-
+      when elem(c, 0) === :transient_decision do
+    d = r_decision(tid: r_transient_decision(c, :tid), outcome: r_transient_decision(c, :outcome),
+            disc_nodes: [], ram_nodes: [])
     state2 = add_remote_decision(node, d, state)
     add_remote_decisions(node, tail, state2)
   end
 
-  defp add_remote_decisions(node, [{:mnesia_down, _, _, _} | tail], state) do
+  defp add_remote_decisions(node, [{:mnesia_down, _, _, _} | tail],
+            state) do
     add_remote_decisions(node, tail, state)
   end
 
-  defp add_remote_decisions(node, [{:trans_tid, :serial, serial} | tail], state) do
+  defp add_remote_decisions(node, [{:trans_tid, :serial, serial} | tail],
+            state) do
     sync_trans_tid_serial(serial)
-
-    case r_state(state, :unclear_decision) do
+    case (r_state(state, :unclear_decision)) do
       :undefined ->
         :ignored
-
       d ->
-        case :lists.member(node, r_decision(d, :ram_nodes)) do
+        case (:lists.member(node, r_decision(d, :ram_nodes))) do
           true ->
             :ignore
-
           false ->
             abcast([node], {:what_decision, node(), d})
         end
     end
-
     add_remote_decisions(node, tail, state)
   end
 
@@ -1417,76 +1195,48 @@ defmodule :m_mnesia_recover do
     d = merge_decisions(node, oldD, newD)
     do_log_decision(d, false, :undefined)
     outcome = r_decision(d, :outcome)
-
     cond do
       oldD == :no_decision ->
         :ignore
-
       outcome == :unclear ->
         :ignore
-
       true ->
-        case :erlang.or(
-               :lists.member(
-                 node(),
-                 r_decision(newD, :disc_nodes)
-               ),
-               :lists.member(node(), r_decision(newD, :ram_nodes))
-             ) do
+        case (:erlang.or(:lists.member(node(),
+                                         r_decision(newD, :disc_nodes)),
+                           :lists.member(node(), r_decision(newD, :ram_nodes)))) do
           true ->
             tell_im_certain([node], d)
-
           false ->
             :ignore
         end
     end
-
-    case r_state(state, :unclear_decision) do
+    case (r_state(state, :unclear_decision)) do
       u when r_decision(u, :tid) == tid ->
         waitFor = r_state(state, :unclear_waitfor) -- [node]
-
         cond do
-          outcome == :unclear and waitFor == [] ->
+          (outcome == :unclear and waitFor == []) ->
             newOutcome = :aborted
-            certainD = r_decision(d, outcome: newOutcome, disc_nodes: [], ram_nodes: [])
+            certainD = r_decision(d, outcome: newOutcome,  disc_nodes: [], 
+                              ram_nodes: [])
             tell_im_certain(r_decision(d, :disc_nodes), certainD)
             tell_im_certain(r_decision(d, :ram_nodes), certainD)
             do_log_decision(certainD, false, :undefined)
-
-            verbose('Decided to abort transaction ~p since everybody are uncertain ~p~n', [
-              tid,
-              certainD
-            ])
-
-            :gen_server.reply(
-              r_state(state, :unclear_pid),
-              {:ok, newOutcome}
-            )
-
-            r_state(state,
-              unclear_pid: :undefined,
-              unclear_decision: :undefined,
-              unclear_waitfor: :undefined
-            )
-
+            verbose('Decided to abort transaction ~p since everybody are uncertain ~p~n', [tid, certainD])
+            :gen_server.reply(r_state(state, :unclear_pid),
+                                {:ok, newOutcome})
+            r_state(state, unclear_pid: :undefined, 
+                       unclear_decision: :undefined, 
+                       unclear_waitfor: :undefined)
           outcome != :unclear ->
             verbose('~p told us that transaction ~p was ~p~n', [node, tid, outcome])
-
-            :gen_server.reply(
-              r_state(state, :unclear_pid),
-              {:ok, outcome}
-            )
-
-            r_state(state,
-              unclear_pid: :undefined,
-              unclear_decision: :undefined,
-              unclear_waitfor: :undefined
-            )
-
+            :gen_server.reply(r_state(state, :unclear_pid),
+                                {:ok, outcome})
+            r_state(state, unclear_pid: :undefined, 
+                       unclear_decision: :undefined, 
+                       unclear_waitfor: :undefined)
           outcome == :unclear ->
             r_state(state, unclear_waitfor: waitFor)
         end
-
       _ ->
         state
     end
@@ -1498,7 +1248,8 @@ defmodule :m_mnesia_recover do
 
   defp announce_all(toNodes) do
     tid = trans_tid_serial()
-    announce(toNodes, [{:trans_tid, :serial, tid}], [], false)
+    announce(toNodes, [{:trans_tid, :serial, tid}], [],
+               false)
   end
 
   defp announce(toNodes, [head | tail], acc, forceSend) do
@@ -1520,29 +1271,25 @@ defmodule :m_mnesia_recover do
   end
 
   defp arrange([to | toNodes], d, acc, forceSend)
-       when elem(d, 0) === :decision do
-    needsAdd =
-      :erlang.or(
-        :erlang.or(
-          forceSend,
-          :lists.member(to, r_decision(d, :disc_nodes))
-        ),
-        :lists.member(to, r_decision(d, :ram_nodes))
-      )
-
-    case needsAdd do
+      when elem(d, 0) === :decision do
+    needsAdd = :erlang.or(:erlang.or(forceSend,
+                                       :lists.member(to, r_decision(d, :disc_nodes))),
+                            :lists.member(to, r_decision(d, :ram_nodes)))
+    case (needsAdd) do
       true ->
         acc2 = add_decision(to, d, acc)
         arrange(toNodes, d, acc2, forceSend)
-
       false ->
         arrange(toNodes, d, acc, forceSend)
     end
   end
 
-  defp arrange([to | toNodes], {:trans_tid, :serial, serial}, acc, forceSend) do
-    acc2 = add_decision(to, {:trans_tid, :serial, serial}, acc)
-    arrange(toNodes, {:trans_tid, :serial, serial}, acc2, forceSend)
+  defp arrange([to | toNodes], {:trans_tid, :serial, serial},
+            acc, forceSend) do
+    acc2 = add_decision(to, {:trans_tid, :serial, serial},
+                          acc)
+    arrange(toNodes, {:trans_tid, :serial, serial}, acc2,
+              forceSend)
   end
 
   defp arrange([], _Decision, acc, _ForceSend) do
@@ -1560,4 +1307,5 @@ defmodule :m_mnesia_recover do
   defp add_decision(node, decision, []) do
     [{node, [decision]}]
   end
+
 end

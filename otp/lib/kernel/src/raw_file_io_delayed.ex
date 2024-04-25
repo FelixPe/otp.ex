@@ -2,35 +2,24 @@ defmodule :m_raw_file_io_delayed do
   use Bitwise
   @behaviour :gen_statem
   require Record
-
-  Record.defrecord(:r_file_info, :file_info,
-    size: :undefined,
-    type: :undefined,
-    access: :undefined,
-    atime: :undefined,
-    mtime: :undefined,
-    ctime: :undefined,
-    mode: :undefined,
-    links: :undefined,
-    major_device: :undefined,
-    minor_device: :undefined,
-    inode: :undefined,
-    uid: :undefined,
-    gid: :undefined
-  )
-
-  Record.defrecord(:r_file_descriptor, :file_descriptor,
-    module: :undefined,
-    data: :undefined
-  )
-
+  Record.defrecord(:r_file_info, :file_info, size: :undefined,
+                                     type: :undefined, access: :undefined,
+                                     atime: :undefined, mtime: :undefined,
+                                     ctime: :undefined, mode: :undefined,
+                                     links: :undefined,
+                                     major_device: :undefined,
+                                     minor_device: :undefined,
+                                     inode: :undefined, uid: :undefined,
+                                     gid: :undefined)
+  Record.defrecord(:r_file_descriptor, :file_descriptor, module: :undefined,
+                                           data: :undefined)
   def open_layer(filename, modes, options) do
     secret = make_ref()
-
-    case :gen_statem.start(:raw_file_io_delayed, {self(), secret, options}, []) do
+    case (:gen_statem.start(:raw_file_io_delayed,
+                              {self(), secret, options}, [])) do
       {:ok, pid} ->
-        :gen_statem.call(pid, {:"$open", secret, filename, modes}, :infinity)
-
+        :gen_statem.call(pid, {:"$open", secret, filename, modes},
+                           :infinity)
       other ->
         other
     end
@@ -42,18 +31,10 @@ defmodule :m_raw_file_io_delayed do
 
   def init({owner, secret, options}) do
     monitor = :erlang.monitor(:process, owner)
-
-    defaults = %{
-      owner: owner,
-      monitor: monitor,
-      secret: secret,
-      timer: :none,
-      pid: self(),
-      buffer: :prim_buffer.new(),
-      delay_size: 64 <<< 10,
-      delay_time: 2000
-    }
-
+    defaults = %{owner: owner, monitor: monitor,
+                   secret: secret, timer: :none, pid: self(),
+                   buffer: :prim_buffer.new(), delay_size: 64 <<< 10,
+                   delay_time: 2000}
     data = fill_delay_values(defaults, options)
     {:ok, :opening, data}
   end
@@ -62,39 +43,30 @@ defmodule :m_raw_file_io_delayed do
     data
   end
 
-  defp fill_delay_values(
-         data,
-         [{:delayed_write, size, time} | options]
-       ) do
-    fill_delay_values(
-      Map.merge(data, %{delay_size: size, delay_time: time}),
-      options
-    )
+  defp fill_delay_values(data,
+            [{:delayed_write, size, time} | options]) do
+    fill_delay_values(Map.merge(data, %{delay_size: size,
+                                          delay_time: time}),
+                        options)
   end
 
   defp fill_delay_values(data, [_ | options]) do
     fill_delay_values(data, options)
   end
 
-  def opening({:call, from}, {:"$open", secret, filename, modes}, %{secret: secret} = data) do
-    case :raw_file_io.open(filename, modes) do
+  def opening({:call, from}, {:"$open", secret, filename, modes},
+           %{secret: secret} = data) do
+    case (:raw_file_io.open(filename, modes)) do
       {:ok, privateFd} ->
-        publicData =
-          :maps.with(
-            [:owner, :buffer, :delay_size, :pid],
-            data
-          )
-
-        publicFd =
-          r_file_descriptor(
-            module: :raw_file_io_delayed,
-            data: publicData
-          )
-
+        publicData = :maps.with([:owner, :buffer, :delay_size,
+                                                      :pid],
+                                  data)
+        publicFd = r_file_descriptor(module: :raw_file_io_delayed,
+                       data: publicData)
         newData = Map.put(data, :handle, privateFd)
         response = {:ok, publicFd}
-        {:next_state, :opened, newData, [{:reply, from, response}]}
-
+        {:next_state, :opened, newData,
+           [{:reply, from, response}]}
       other ->
         {:stop_and_reply, :normal, [{:reply, from, other}]}
     end
@@ -105,30 +77,24 @@ defmodule :m_raw_file_io_delayed do
   end
 
   def opened(:info, {:"$timed_out", secret}, %{secret: secret} = data) do
-    case try_flush_write_buffer(data) do
+    case (try_flush_write_buffer(data)) do
       :busy ->
         :gen_statem.cast(self(), :"$reset_timeout")
-
       :ok ->
         :ok
     end
-
     {:keep_state, Map.put(data, :timer, :none), []}
   end
 
-  def opened(
-        :info,
-        {:DOWN, monitor, :process, _Owner, reason},
-        %{monitor: monitor} = data
-      ) do
+  def opened(:info,
+           {:DOWN, monitor, :process, _Owner, reason},
+           %{monitor: monitor} = data) do
     cond do
       reason !== :kill ->
         try_flush_write_buffer(data)
-
       reason === :kill ->
         :ignored
     end
-
     {:stop, :shutdown}
   end
 
@@ -136,38 +102,39 @@ defmodule :m_raw_file_io_delayed do
     :keep_state_and_data
   end
 
-  def opened({:call, {owner, _Tag} = from}, [:close], %{owner: owner} = data) do
-    case flush_write_buffer(data) do
+  def opened({:call, {owner, _Tag} = from}, [:close],
+           %{owner: owner} = data) do
+    case (flush_write_buffer(data)) do
       :ok ->
         %{handle: privateFd} = data
-        response = apply(r_file_descriptor(privateFd, :module), :close, [privateFd])
+        response = apply(r_file_descriptor(privateFd, :module), :close,
+                           [privateFd])
         {:stop_and_reply, :normal, [{:reply, from, response}]}
-
       other ->
         {:stop_and_reply, :normal, [{:reply, from, other}]}
     end
   end
 
-  def opened({:call, {owner, _Tag} = from}, :"$wait", %{owner: owner}) do
+  def opened({:call, {owner, _Tag} = from}, :"$wait",
+           %{owner: owner}) do
     {:keep_state_and_data, [{:reply, from, :ok}]}
   end
 
-  def opened({:call, {owner, _Tag} = from}, :"$synchronous_flush", %{owner: owner} = data) do
+  def opened({:call, {owner, _Tag} = from}, :"$synchronous_flush",
+           %{owner: owner} = data) do
     cancel_flush_timeout(data)
     response = flush_write_buffer(data)
     {:keep_state_and_data, [{:reply, from, response}]}
   end
 
-  def opened({:call, {owner, _Tag} = from}, command, %{owner: owner} = data) do
-    response =
-      case flush_write_buffer(data) do
-        :ok ->
-          dispatch_command(data, command)
-
-        other ->
-          other
-      end
-
+  def opened({:call, {owner, _Tag} = from}, command,
+           %{owner: owner} = data) do
+    response = (case (flush_write_buffer(data)) do
+                  :ok ->
+                    dispatch_command(data, command)
+                  other ->
+                    other
+                end)
     {:keep_state_and_data, [{:reply, from, response}]}
   end
 
@@ -175,9 +142,11 @@ defmodule :m_raw_file_io_delayed do
     {:shutdown, :protocol_violation}
   end
 
-  def opened(:cast, :"$reset_timeout", %{delay_time: timeout, secret: secret} = data) do
+  def opened(:cast, :"$reset_timeout",
+           %{delay_time: timeout, secret: secret} = data) do
     cancel_flush_timeout(data)
-    timer = :erlang.send_after(timeout, self(), {:"$timed_out", secret})
+    timer = :erlang.send_after(timeout, self(),
+                                 {:"$timed_out", secret})
     {:keep_state, Map.put(data, :timer, timer), []}
   end
 
@@ -201,12 +170,11 @@ defmodule :m_raw_file_io_delayed do
   end
 
   defp try_flush_write_buffer(%{buffer: buffer, handle: privateFd}) do
-    case :prim_buffer.try_lock(buffer) do
+    case (:prim_buffer.try_lock(buffer)) do
       :acquired ->
         flush_write_buffer_1(buffer, privateFd)
         :prim_buffer.unlock(buffer)
         :ok
-
       :busy ->
         :busy
     end
@@ -220,13 +188,10 @@ defmodule :m_raw_file_io_delayed do
   end
 
   defp flush_write_buffer_1(buffer, privateFd) do
-    case :prim_buffer.size(buffer) do
+    case (:prim_buffer.size(buffer)) do
       size when size > 0 ->
-        apply(r_file_descriptor(privateFd, :module), :write, [
-          privateFd,
-          :prim_buffer.read_iovec(buffer, size)
-        ])
-
+        apply(r_file_descriptor(privateFd, :module), :write,
+                [privateFd, :prim_buffer.read_iovec(buffer, size)])
       0 ->
         :ok
     end
@@ -250,12 +215,11 @@ defmodule :m_raw_file_io_delayed do
   end
 
   defp enqueue_write(fd, iOVec) do
-    %{delay_size: delaySize, buffer: buffer, pid: pid} = get_fd_data(fd)
-
-    case :prim_buffer.try_lock(buffer) do
+    %{delay_size: delaySize, buffer: buffer,
+        pid: pid} = get_fd_data(fd)
+    case (:prim_buffer.try_lock(buffer)) do
       :acquired ->
         enqueue_write_locked(pid, buffer, delaySize, iOVec)
-
       :busy ->
         :gen_statem.call(pid, :"$wait")
         enqueue_write(fd, iOVec)
@@ -264,25 +228,19 @@ defmodule :m_raw_file_io_delayed do
 
   defp enqueue_write_locked(pid, buffer, delaySize, iOVec) do
     bufSize = :prim_buffer.size(buffer)
-
-    case is_iovec_smaller_than(
-           iOVec,
-           delaySize - bufSize
-         ) do
+    case (is_iovec_smaller_than(iOVec,
+                                  delaySize - bufSize)) do
       true when bufSize > 0 ->
         :prim_buffer.write(buffer, iOVec)
         :prim_buffer.unlock(buffer)
-
       true ->
         :prim_buffer.write(buffer, iOVec)
         :prim_buffer.unlock(buffer)
         :gen_statem.cast(pid, :"$reset_timeout")
-
       false when bufSize > 0 ->
         :prim_buffer.write(buffer, iOVec)
         :prim_buffer.unlock(buffer)
         :gen_statem.call(pid, :"$synchronous_flush")
-
       false ->
         :prim_buffer.unlock(buffer)
         :gen_statem.call(pid, [:write, iOVec])
@@ -302,8 +260,9 @@ defmodule :m_raw_file_io_delayed do
   end
 
   defp is_iovec_smaller_than_1([binary | rest], max, acc)
-       when is_binary(binary) do
-    is_iovec_smaller_than_1(rest, max, acc + byte_size(binary))
+      when is_binary(binary) do
+    is_iovec_smaller_than_1(rest, max,
+                              acc + byte_size(binary))
   end
 
   def close(fd) do
@@ -346,11 +305,9 @@ defmodule :m_raw_file_io_delayed do
 
   def pwrite(fd, locBytes) do
     try do
-      compactedLocBytes =
-        for {offset, iOData} <- locBytes do
-          {offset, :erlang.iolist_to_iovec(iOData)}
-        end
-
+      compactedLocBytes = (for {offset, iOData} <- locBytes do
+                             {offset, :erlang.iolist_to_iovec(iOData)}
+                           end)
       wrap_call(fd, [:pwrite, compactedLocBytes])
     catch
       :error, :badarg ->
@@ -382,19 +339,21 @@ defmodule :m_raw_file_io_delayed do
     {:error, :enotsup}
   end
 
+  def internal_get_nif_resource(_) do
+    {:error, :enotsup}
+  end
+
   def read_handle_info(fd, opts) do
     wrap_call(fd, [opts])
   end
 
   defp wrap_call(fd, command) do
     %{pid: pid} = get_fd_data(fd)
-
     try do
       :gen_statem.call(pid, command, :infinity)
     catch
       :exit, {:normal, _StackTrace} ->
         {:error, :einval}
-
       :exit, {:noproc, _StackTrace} ->
         {:error, :einval}
     else
@@ -405,13 +364,12 @@ defmodule :m_raw_file_io_delayed do
 
   defp get_fd_data(r_file_descriptor(data: data)) do
     %{owner: owner} = data
-
-    case self() do
+    case (self()) do
       ^owner ->
         data
-
       _ ->
         :erlang.error(:not_on_controlling_process)
     end
   end
+
 end

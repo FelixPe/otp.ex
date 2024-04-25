@@ -2,10 +2,9 @@ defmodule :m_mnesia_app do
   use Bitwise
   @behaviour :application
   def start(:normal, args) do
-    case :mnesia_sup.start_link(args) do
+    case (:mnesia_sup.start_link(args)) do
       {:ok, pid} ->
         {:ok, pid, {:normal, args}}
-
       error ->
         error
     end
@@ -18,4 +17,5 @@ defmodule :m_mnesia_app do
   def stop(_StartArgs) do
     :ok
   end
+
 end

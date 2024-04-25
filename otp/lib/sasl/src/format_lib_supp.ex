@@ -1,6 +1,5 @@
 defmodule :m_format_lib_supp do
   use Bitwise
-
   def print_info(device, format) do
     print_info(device, 79, format)
   end
@@ -91,11 +90,9 @@ defmodule :m_format_lib_supp do
     :io.format(device, format1, [strKey])
     try = term_to_string(value, modifier)
     length = :string.length(try)
-
     cond do
       length < valueLen ->
         :io.format(device, format2, [try])
-
       true ->
         :io.format(device, '~n         ', [])
         format3 = :lists.concat(['~', line, '.9', modifier, 'p~n'])
@@ -112,10 +109,9 @@ defmodule :m_format_lib_supp do
   end
 
   defp get_format(value, modifier) do
-    case :io_lib.printable_list(value) do
+    case (:io_lib.printable_list(value)) do
       true ->
         '~' ++ modifier ++ 's'
-
       false ->
         '~' ++ modifier ++ 'p'
     end
@@ -131,7 +127,9 @@ defmodule :m_format_lib_supp do
   end
 
   defp print_item_elements(device, line, [{key, value} | t]) do
-    print_one_line(device, line, :lists.concat(['   ', key]), value)
+    print_one_line(device, line, :lists.concat(['   ', key]),
+                     value)
     print_item_elements(device, line, t)
   end
+
 end

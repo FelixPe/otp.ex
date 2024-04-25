@@ -1,6 +1,5 @@
 defmodule :m_erl_internal do
   use Bitwise
-
   def guard_bif(:abs, 1) do
     true
   end
@@ -54,6 +53,14 @@ defmodule :m_erl_internal do
   end
 
   def guard_bif(:map_get, 2) do
+    true
+  end
+
+  def guard_bif(:max, 2) do
+    true
+  end
+
+  def guard_bif(:min, 2) do
     true
   end
 
@@ -165,9 +172,8 @@ defmodule :m_erl_internal do
     true
   end
 
-  def new_type_test(name, a)
-      when is_atom(name) and
-             is_integer(a) do
+  def new_type_test(name, a) when (is_atom(name) and
+                          is_integer(a)) do
     false
   end
 
@@ -219,13 +225,12 @@ defmodule :m_erl_internal do
     true
   end
 
-  def old_type_test(name, a)
-      when is_atom(name) and
-             is_integer(a) do
+  def old_type_test(name, a) when (is_atom(name) and
+                          is_integer(a)) do
     false
   end
 
-  def arith_op(:+, 1) do
+  def arith_op(:"+", 1) do
     true
   end
 
@@ -233,15 +238,15 @@ defmodule :m_erl_internal do
     true
   end
 
-  def arith_op(:*, 2) do
+  def arith_op(:"*", 2) do
     true
   end
 
-  def arith_op(:/, 2) do
+  def arith_op(:"/", 2) do
     true
   end
 
-  def arith_op(:+, 2) do
+  def arith_op(:"+", 2) do
     true
   end
 
@@ -281,7 +286,7 @@ defmodule :m_erl_internal do
     true
   end
 
-  def arith_op(op, a) when is_atom(op) and is_integer(a) do
+  def arith_op(op, a) when (is_atom(op) and is_integer(a)) do
     false
   end
 
@@ -301,11 +306,11 @@ defmodule :m_erl_internal do
     true
   end
 
-  def bool_op(op, a) when is_atom(op) and is_integer(a) do
+  def bool_op(op, a) when (is_atom(op) and is_integer(a)) do
     false
   end
 
-  def comp_op(:==, 2) do
+  def comp_op(:"==", 2) do
     true
   end
 
@@ -317,15 +322,15 @@ defmodule :m_erl_internal do
     true
   end
 
-  def comp_op(:<, 2) do
+  def comp_op(:"<", 2) do
     true
   end
 
-  def comp_op(:>=, 2) do
+  def comp_op(:">=", 2) do
     true
   end
 
-  def comp_op(:>, 2) do
+  def comp_op(:">", 2) do
     true
   end
 
@@ -337,31 +342,31 @@ defmodule :m_erl_internal do
     true
   end
 
-  def comp_op(op, a) when is_atom(op) and is_integer(a) do
+  def comp_op(op, a) when (is_atom(op) and is_integer(a)) do
     false
   end
 
-  def list_op(:++, 2) do
+  def list_op(:"++", 2) do
     true
   end
 
-  def list_op(:--, 2) do
+  def list_op(:"--", 2) do
     true
   end
 
-  def list_op(op, a) when is_atom(op) and is_integer(a) do
+  def list_op(op, a) when (is_atom(op) and is_integer(a)) do
     false
   end
 
-  def send_op(:!, 2) do
+  def send_op(:"!", 2) do
     true
   end
 
-  def send_op(op, a) when is_atom(op) and is_integer(a) do
+  def send_op(op, a) when (is_atom(op) and is_integer(a)) do
     false
   end
 
-  def op_type(:+, 1) do
+  def op_type(:"+", 1) do
     :arith
   end
 
@@ -369,15 +374,15 @@ defmodule :m_erl_internal do
     :arith
   end
 
-  def op_type(:*, 2) do
+  def op_type(:"*", 2) do
     :arith
   end
 
-  def op_type(:/, 2) do
+  def op_type(:"/", 2) do
     :arith
   end
 
-  def op_type(:+, 2) do
+  def op_type(:"+", 2) do
     :arith
   end
 
@@ -433,7 +438,7 @@ defmodule :m_erl_internal do
     :bool
   end
 
-  def op_type(:==, 2) do
+  def op_type(:"==", 2) do
     :comp
   end
 
@@ -445,15 +450,15 @@ defmodule :m_erl_internal do
     :comp
   end
 
-  def op_type(:<, 2) do
+  def op_type(:"<", 2) do
     :comp
   end
 
-  def op_type(:>=, 2) do
+  def op_type(:">=", 2) do
     :comp
   end
 
-  def op_type(:>, 2) do
+  def op_type(:">", 2) do
     :comp
   end
 
@@ -465,15 +470,15 @@ defmodule :m_erl_internal do
     :comp
   end
 
-  def op_type(:++, 2) do
+  def op_type(:"++", 2) do
     :list
   end
 
-  def op_type(:--, 2) do
+  def op_type(:"--", 2) do
     :list
   end
 
-  def op_type(:!, 2) do
+  def op_type(:"!", 2) do
     :send
   end
 
@@ -481,13 +486,20 @@ defmodule :m_erl_internal do
     bif(name, arity)
   end
 
-  def bif(m, f, a)
-      when is_atom(m) and is_atom(f) and
-             is_integer(a) do
+  def bif(m, f, a) when (is_atom(m) and is_atom(f) and
+                          is_integer(a)) do
     false
   end
 
   def bif(:abs, 1) do
+    true
+  end
+
+  def bif(:alias, 0) do
+    true
+  end
+
+  def bif(:alias, 1) do
     true
   end
 
@@ -632,6 +644,10 @@ defmodule :m_erl_internal do
   end
 
   def bif(:error, 2) do
+    true
+  end
+
+  def bif(:error, 3) do
     true
   end
 
@@ -907,6 +923,10 @@ defmodule :m_erl_internal do
     true
   end
 
+  def bif(:monitor, 3) do
+    true
+  end
+
   def bif(:monitor_node, 2) do
     true
   end
@@ -924,6 +944,10 @@ defmodule :m_erl_internal do
   end
 
   def bif(:nodes, 1) do
+    true
+  end
+
+  def bif(:nodes, 2) do
     true
   end
 
@@ -1159,6 +1183,10 @@ defmodule :m_erl_internal do
     true
   end
 
+  def bif(:unalias, 1) do
+    true
+  end
+
   def bif(:unlink, 1) do
     true
   end
@@ -1171,9 +1199,8 @@ defmodule :m_erl_internal do
     true
   end
 
-  def bif(name, a)
-      when is_atom(name) and
-             is_integer(a) do
+  def bif(name, a) when (is_atom(name) and
+                          is_integer(a)) do
     false
   end
 
@@ -1665,9 +1692,8 @@ defmodule :m_erl_internal do
     true
   end
 
-  def old_bif(name, a)
-      when is_atom(name) and
-             is_integer(a) do
+  def old_bif(name, a) when (is_atom(name) and
+                          is_integer(a)) do
     false
   end
 
@@ -1704,6 +1730,10 @@ defmodule :m_erl_internal do
   end
 
   def is_type(:char, 0) do
+    true
+  end
+
+  def is_type(:dynamic, 0) do
     true
   end
 
@@ -1783,6 +1813,14 @@ defmodule :m_erl_internal do
     true
   end
 
+  def is_type(:nonempty_binary, 0) do
+    true
+  end
+
+  def is_type(:nonempty_bitstring, 0) do
+    true
+  end
+
   def is_type(:nonempty_improper_list, 2) do
     true
   end
@@ -1852,54 +1890,37 @@ defmodule :m_erl_internal do
   end
 
   defp predefined_functions(forms) do
-    attrs =
-      for {:attribute, _, name, val} <- forms do
-        {name, val}
-      end
-
+    attrs = (for {:attribute, _, name, val} <- forms do
+               {name, val}
+             end)
     {:module, mod} = :lists.keyfind(:module, 1, attrs)
-
-    callbacks =
-      for {:callback, callback} <- attrs do
-        callback
-      end
-
+    callbacks = (for {:callback, callback} <- attrs do
+                   callback
+                 end)
     optionalCallbacks = get_optional_callbacks(attrs)
-
-    mpf1 =
-      module_predef_func_beh_info(
-        callbacks,
-        optionalCallbacks
-      )
-
+    mpf1 = module_predef_func_beh_info(callbacks,
+                                         optionalCallbacks)
     mpf2 = module_predef_funcs_mod_info(mod)
-
-    mpf =
-      for f <- mpf1 ++ mpf2 do
-        :erl_parse.new_anno(f)
-      end
-
-    exp =
-      for {:function, _, f, a, _} <- mpf do
-        {f, a}
-      end
-
+    mpf = (for f <- mpf1 ++ mpf2 do
+             :erl_parse.new_anno(f)
+           end)
+    exp = (for {:function, _, f, a, _} <- mpf do
+             {f, a}
+           end)
     [{:attribute, 0, :export, exp} | mpf]
   end
 
   defp get_optional_callbacks(attrs) do
-    l =
-      for {:optional_callbacks, o} <- attrs,
-          is_fa_list(o) do
-        o
-      end
-
+    l = (for {:optional_callbacks, o} <- attrs,
+               is_fa_list(o) do
+           o
+         end)
     :lists.append(l)
   end
 
   defp is_fa_list([{funcName, arity} | l])
-       when is_atom(funcName) and is_integer(arity) and
-              arity >= 0 do
+      when (is_atom(funcName) and is_integer(arity) and
+              arity >= 0) do
     is_fa_list(l)
   end
 
@@ -1916,21 +1937,15 @@ defmodule :m_erl_internal do
   end
 
   defp module_predef_func_beh_info(callbacks0, optionalCallbacks) do
-    callbacks =
-      for {{_, _} = fA, _} <- callbacks0 do
-        fA
-      end
-
+    callbacks = (for {{_, _} = fA, _} <- callbacks0 do
+                   fA
+                 end)
     list = make_list(callbacks)
     optionalList = make_list(optionalCallbacks)
-
-    [
-      {:function, 0, :behaviour_info, 1,
-       [
-         {:clause, 0, [{:atom, 0, :callbacks}], [], [list]},
-         {:clause, 0, [{:atom, 0, :optional_callbacks}], [], [optionalList]}
-       ]}
-    ]
+    [{:function, 0, :behaviour_info, 1,
+        [{:clause, 0, [{:atom, 0, :callbacks}], [], [list]},
+             {:clause, 0, [{:atom, 0, :optional_callbacks}], [],
+                [optionalList]}]}]
   end
 
   defp make_list([]) do
@@ -1938,26 +1953,25 @@ defmodule :m_erl_internal do
   end
 
   defp make_list([{name, arity} | rest]) do
-    {:cons, 0, {:tuple, 0, [{:atom, 0, name}, {:integer, 0, arity}]}, make_list(rest)}
+    {:cons, 0,
+       {:tuple, 0, [{:atom, 0, name}, {:integer, 0, arity}]},
+       make_list(rest)}
   end
 
   defp module_predef_funcs_mod_info(mod) do
     modAtom = {:atom, 0, mod}
-
-    [
-      {:function, 0, :module_info, 0,
-       [
-         {:clause, 0, [], [],
-          [{:call, 0, {:remote, 0, {:atom, 0, :erlang}, {:atom, 0, :get_module_info}}, [modAtom]}]}
-       ]},
-      {:function, 0, :module_info, 1,
-       [
-         {:clause, 0, [{:var, 0, :X}], [],
-          [
-            {:call, 0, {:remote, 0, {:atom, 0, :erlang}, {:atom, 0, :get_module_info}},
-             [modAtom, {:var, 0, :X}]}
-          ]}
-       ]}
-    ]
+    [{:function, 0, :module_info, 0,
+        [{:clause, 0, [], [],
+            [{:call, 0,
+                {:remote, 0, {:atom, 0, :erlang},
+                   {:atom, 0, :get_module_info}},
+                [modAtom]}]}]},
+         {:function, 0, :module_info, 1,
+            [{:clause, 0, [{:var, 0, :X}], [],
+                [{:call, 0,
+                    {:remote, 0, {:atom, 0, :erlang},
+                       {:atom, 0, :get_module_info}},
+                    [modAtom, {:var, 0, :X}]}]}]}]
   end
+
 end

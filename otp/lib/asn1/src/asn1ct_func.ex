@@ -1,8 +1,8 @@
 defmodule :m_asn1ct_func do
   use Bitwise
-
   def start_link() do
-    {:ok, pid} = :gen_server.start_link(:asn1ct_func, [], [])
+    {:ok, pid} = :gen_server.start_link(:asn1ct_func, [],
+                                          [])
     :erlang.put(:asn1ct_func, pid)
     :ok
   end
@@ -11,11 +11,9 @@ defmodule :m_asn1ct_func do
     a = length(args)
     mFA = {m, f, a}
     need(mFA)
-
-    case m do
+    case (m) do
       :binary ->
         :asn1ct_gen.emit(['binary:', f, '(', call_args(args, ''), ')'])
-
       _ ->
         :asn1ct_gen.emit([f, '(', call_args(args, ''), ')'])
     end
@@ -34,11 +32,8 @@ defmodule :m_asn1ct_func do
     cast({:need, mFA})
   end
 
-  def call_gen(prefix, key, gen, args)
-      when is_function(
-             gen,
-             2
-           ) do
+  def call_gen(prefix, key, gen, args) when is_function(gen,
+                                                    2) do
     f = req({:gen_func, prefix, key, gen})
     :asn1ct_gen.emit([{:asis, f}, '(', call_args(args, ''), ')'])
   end
@@ -52,26 +47,21 @@ defmodule :m_asn1ct_func do
     used0 = req(:get_used)
     :erlang.erase(:asn1ct_func)
     used = :sofs.set(used0, [:mfa])
-
-    code =
-      :sofs.relation(
-        :asn1ct_rtt.code(),
-        [{:mfa, :code}]
-      )
-
+    code = :sofs.relation(:asn1ct_rtt.code(),
+                            [{:mfa, :code}])
     funcs0 = :sofs.image(code, used)
     funcs = :sofs.to_external(funcs0)
     :ok = :file.write(fd, funcs)
   end
 
-  def is_used({m, f, a} = mFA)
-      when is_atom(m) and
-             is_atom(f) and is_integer(a) do
+  def is_used({m, f, a} = mFA) when (is_atom(m) and
+                                  is_atom(f) and is_integer(a)) do
     req({:is_used, mFA})
   end
 
   defp req(req) do
-    :gen_server.call(:erlang.get(:asn1ct_func), req, :infinity)
+    :gen_server.call(:erlang.get(:asn1ct_func), req,
+                       :infinity)
   end
 
   defp cast(req) do
@@ -79,19 +69,18 @@ defmodule :m_asn1ct_func do
   end
 
   require Record
-  Record.defrecord(:r_st, :st, used: :undefined, gen: :undefined, gc: 1)
-
+  Record.defrecord(:r_st, :st, used: :undefined,
+                              gen: :undefined, gc: 1)
   def init([]) do
     st = r_st(used: :gb_sets.empty(), gen: :gb_trees.empty())
     {:ok, st}
   end
 
   def handle_cast({:need, mFA}, r_st(used: used0) = st) do
-    case :gb_sets.is_member(mFA, used0) do
+    case (:gb_sets.is_member(mFA, used0)) do
       false ->
         used = pull_in_deps(:gb_sets.singleton(mFA), used0)
         {:noreply, r_st(st, used: used)}
-
       true ->
         {:noreply, st}
     end
@@ -106,14 +95,14 @@ defmodule :m_asn1ct_func do
     {:reply, l, r_st(st, gen: :gb_trees.from_orddict(g))}
   end
 
-  def handle_call({:gen_func, prefix, key, genFun}, _From, r_st(gen: g0, gc: gc0) = st) do
-    case :gb_trees.lookup(key, g0) do
+  def handle_call({:gen_func, prefix, key, genFun}, _From,
+           r_st(gen: g0, gc: gc0) = st) do
+    case (:gb_trees.lookup(key, g0)) do
       :none ->
         name = :erlang.list_to_atom(prefix ++ :erlang.integer_to_list(gc0))
         gc = gc0 + 1
         g = :gb_trees.insert(key, {name, genFun}, g0)
-        {:reply, name, r_st(st, gen: g, gc: gc)}
-
+        {:reply, name, r_st(st, gen: g,  gc: gc)}
       {:value, {name, _}} ->
         {:reply, name, st}
     end
@@ -136,10 +125,9 @@ defmodule :m_asn1ct_func do
   end
 
   defp pull_in_deps(ws0, used0) do
-    case :gb_sets.is_empty(ws0) do
+    case (:gb_sets.is_empty(ws0)) do
       true ->
         used0
-
       false ->
         {mFA, ws1} = :gb_sets.take_smallest(ws0)
         used = :gb_sets.add(mFA, used0)
@@ -150,10 +138,9 @@ defmodule :m_asn1ct_func do
   end
 
   defp update_worklist([h | t], used, ws) do
-    case :gb_sets.is_member(h, used) do
+    case (:gb_sets.is_member(h, used)) do
       false ->
         update_worklist(t, used, :gb_sets.add(h, ws))
-
       true ->
         update_worklist(t, used, ws)
     end
@@ -176,18 +163,18 @@ defmodule :m_asn1ct_func do
   end
 
   defp do_generate(fd) do
-    case req(:get_gen) do
+    case (req(:get_gen)) do
       [] ->
         :ok
-
       [_ | _] = gen ->
-        _ =
-          for {name, genFun} <- gen do
-            :ok = :file.write(fd, '\n')
-            genFun.(fd, name)
-          end
-
+        _ = (for {name, genFun} <- gen do
+               (
+                 :ok = :file.write(fd, '\n')
+                 genFun.(fd, name)
+               )
+             end)
         do_generate(fd)
     end
   end
+
 end

@@ -1,70 +1,58 @@
 defmodule :m_erl_comment_scan do
   use Bitwise
-
   def file(name) do
     name1 = filename(name)
-
-    case (try do
+    case ((try do
             {:ok, :file.read_file(name1)}
           catch
             :error, e -> {:EXIT, {e, __STACKTRACE__}}
             :exit, e -> {:EXIT, e}
             e -> e
-          end) do
+          end)) do
       {:ok, v} ->
-        case v do
+        case (v) do
           {:ok, b} ->
             encoding = :epp.read_encoding_from_binary(b)
-
-            enc =
-              case encoding do
-                :none ->
-                  :epp.default_encoding()
-
-                enc0 ->
-                  enc0
-              end
-
-            case (try do
+            enc = (case (encoding) do
+                     :none ->
+                       :epp.default_encoding()
+                     enc0 ->
+                       enc0
+                   end)
+            case ((try do
                     :unicode.characters_to_list(b, enc)
                   catch
                     :error, e -> {:EXIT, {e, __STACKTRACE__}}
                     :exit, e -> {:EXIT, e}
                     e -> e
-                  end) do
+                  end)) do
               string when is_list(string) ->
                 string(string)
-
               r when encoding === :none ->
-                case (try do
+                case ((try do
                         :unicode.characters_to_list(b, :latin1)
                       catch
                         :error, e -> {:EXIT, {e, __STACKTRACE__}}
                         :exit, e -> {:EXIT, e}
                         e -> e
-                      end) do
+                      end)) do
                   string when is_list(string) ->
                     string(string)
-
                   _ ->
                     error_read_file(name1)
                     exit(r)
                 end
-
               r ->
                 error_read_file(name1)
                 exit(r)
             end
-
           {:error, e} ->
             error_read_file(name1)
             exit({:read, e})
         end
-
       {:EXIT, e} ->
         error_read_file(name1)
         exit(e)
-
       r ->
         error_read_file(name1)
         throw(r)
@@ -227,13 +215,14 @@ defmodule :m_erl_comment_scan do
     []
   end
 
-  defp join_lines([{l1, col1, ind1, txt1} | lines], txt, l, col, ind) do
+  defp join_lines([{l1, col1, ind1, txt1} | lines], txt, l, col,
+            ind) do
     cond do
-      l1 === l - 1 and col1 === col and ind + 1 === col ->
+      (l1 === l - 1 and col1 === col and ind + 1 === col) ->
         join_lines(lines, [txt1 | txt], l1, col1, ind1)
-
       true ->
-        [{l, col, ind, txt} | join_lines(lines, [txt1], l1, col1, ind1)]
+        [{l, col, ind, txt} | join_lines(lines, [txt1], l1,
+                                           col1, ind1)]
     end
   end
 
@@ -241,7 +230,7 @@ defmodule :m_erl_comment_scan do
     [{l, col, ind, txt}]
   end
 
-  defp filename([c | t]) when is_integer(c) and c > 0 do
+  defp filename([c | t]) when (is_integer(c) and c > 0) do
     [c | filename(t)]
   end
 
@@ -259,9 +248,9 @@ defmodule :m_erl_comment_scan do
   end
 
   defp report_error(s, vs) do
-    :error_logger.error_msg(
-      :lists.concat([:erl_comment_scan, ': ', s, '\n']),
-      vs
-    )
+    :error_logger.error_msg(:lists.concat([:erl_comment_scan,
+                                               ': ', s, '\n']),
+                              vs)
   end
+
 end

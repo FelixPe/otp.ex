@@ -1,44 +1,20 @@
 defmodule :m_sofs do
   use Bitwise
-
-  import :lists,
-    only: [
-      any: 2,
-      append: 1,
-      flatten: 1,
-      foreach: 2,
-      keysort: 2,
-      last: 1,
-      map: 2,
-      mapfoldl: 3,
-      member: 2,
-      merge: 2,
-      reverse: 1,
-      reverse: 2,
-      sort: 1,
-      umerge: 1,
-      umerge: 2,
-      usort: 1
-    ]
-
+  import :lists, only: [any: 2, append: 1, flatten: 1,
+                          foreach: 2, keysort: 2, last: 1, map: 2, mapfoldl: 3,
+                          member: 2, merge: 2, reverse: 1, reverse: 2, sort: 1,
+                          umerge: 1, umerge: 2, usort: 1]
   require Record
   Record.defrecord(:r_Set, :Set, data: [], type: :type)
-
-  Record.defrecord(:r_OrdSet, :OrdSet,
-    orddata: {},
-    ordtype: :type
-  )
-
+  Record.defrecord(:r_OrdSet, :OrdSet, orddata: {},
+                                  ordtype: :type)
   def from_term(t) do
-    type =
-      case t do
-        _ when is_list(t) ->
-          [:_]
-
-        _ ->
-          :_
-      end
-
+    type = (case (t) do
+              _ when is_list(t) ->
+                [:_]
+              _ ->
+                :_
+            end)
     try do
       setify(t, type)
     catch
@@ -48,7 +24,7 @@ defmodule :m_sofs do
   end
 
   def from_term(l, t) do
-    case is_type(t) do
+    case (is_type(t)) do
       true ->
         try do
           setify(l, t)
@@ -56,7 +32,6 @@ defmodule :m_sofs do
           _, _ ->
             :erlang.error(:badarg)
         end
-
       false ->
         :erlang.error(:badarg)
     end
@@ -74,7 +49,7 @@ defmodule :m_sofs do
     r_Set(data: [], type: :_)
   end
 
-  def is_type(atom) when is_atom(atom) and atom !== :_ do
+  def is_type(atom) when (is_atom(atom) and atom !== :_) do
     true
   end
 
@@ -102,9 +77,8 @@ defmodule :m_sofs do
     end
   end
 
-  def set(l, [type])
-      when is_atom(type) and
-             type !== :_ do
+  def set(l, [type]) when (is_atom(type) and
+                            type !== :_) do
     try do
       usort(l)
     catch
@@ -130,20 +104,19 @@ defmodule :m_sofs do
   end
 
   def from_sets(ss) when is_list(ss) do
-    case set_of_sets(ss, [], :_) do
+    case (set_of_sets(ss, [], :_)) do
       {:error, error} ->
         :erlang.error(error)
-
       set ->
         set
     end
   end
 
   def from_sets(tuple) when is_tuple(tuple) do
-    case ordset_of_sets(:erlang.tuple_to_list(tuple), [], []) do
+    case (ordset_of_sets(:erlang.tuple_to_list(tuple), [],
+                           [])) do
       :error ->
         :erlang.error(:badarg)
-
       set ->
         set
     end
@@ -188,7 +161,6 @@ defmodule :m_sofs do
     else
       bad when is_atom(bad) ->
         :erlang.error(bad)
-
       set ->
         set
     end
@@ -203,7 +175,6 @@ defmodule :m_sofs do
     else
       bad when is_atom(bad) ->
         :erlang.error(bad)
-
       set ->
         set
     end
@@ -218,7 +189,6 @@ defmodule :m_sofs do
     else
       bad when is_atom(bad) ->
         :erlang.error(bad)
-
       set ->
         set
     end
@@ -233,7 +203,6 @@ defmodule :m_sofs do
     else
       bad when is_atom(bad) ->
         :erlang.error(bad)
-
       set ->
         set
     end
@@ -256,23 +225,18 @@ defmodule :m_sofs do
   end
 
   def to_sets(s) when elem(s, 0) === :Set do
-    case r_Set(s, :type) do
+    case (r_Set(s, :type)) do
       [type] ->
         list_of_sets(r_Set(s, :data), type, [])
-
       type ->
         list_of_ordsets(r_Set(s, :data), type, [])
     end
   end
 
-  def to_sets(s)
-      when elem(s, 0) === :OrdSet and
-             is_tuple(r_OrdSet(s, :ordtype)) do
-    tuple_of_sets(
-      :erlang.tuple_to_list(r_OrdSet(s, :orddata)),
-      :erlang.tuple_to_list(r_OrdSet(s, :ordtype)),
-      []
-    )
+  def to_sets(s) when (elem(s, 0) === :OrdSet and
+                    is_tuple(r_OrdSet(s, :ordtype))) do
+    tuple_of_sets(:erlang.tuple_to_list(r_OrdSet(s, :orddata)),
+                    :erlang.tuple_to_list(r_OrdSet(s, :ordtype)), [])
   end
 
   def to_sets(s) when elem(s, 0) === :OrdSet do
@@ -283,9 +247,8 @@ defmodule :m_sofs do
     length(r_Set(s, :data))
   end
 
-  def no_elements(s)
-      when elem(s, 0) === :OrdSet and
-             is_tuple(r_OrdSet(s, :ordtype)) do
+  def no_elements(s) when (elem(s, 0) === :OrdSet and
+                    is_tuple(r_OrdSet(s, :ordtype))) do
     tuple_size(r_OrdSet(s, :orddata))
   end
 
@@ -295,119 +258,88 @@ defmodule :m_sofs do
 
   def specification(fun, s) when elem(s, 0) === :Set do
     type = r_Set(s, :type)
-
-    r =
-      case external_fun(fun) do
-        false ->
-          spec(r_Set(s, :data), fun, element_type(type), [])
-
-        xFun ->
-          specification(r_Set(s, :data), xFun, [])
-      end
-
-    case r do
+    r = (case (external_fun(fun)) do
+           false ->
+             spec(r_Set(s, :data), fun, element_type(type), [])
+           xFun ->
+             specification(r_Set(s, :data), xFun, [])
+         end)
+    case (r) do
       sL when is_list(sL) ->
         r_Set(data: sL, type: type)
-
       bad ->
         :erlang.error(bad)
     end
   end
 
-  def union(s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
-    case unify_types(r_Set(s1, :type), r_Set(s2, :type)) do
+  def union(s1, s2) when (elem(s1, 0) === :Set and
+                         elem(s2, 0) === :Set) do
+    case (unify_types(r_Set(s1, :type), r_Set(s2, :type))) do
       [] ->
         :erlang.error(:type_mismatch)
-
       type ->
         r_Set(data: umerge(r_Set(s1, :data), r_Set(s2, :data)), type: type)
     end
   end
 
-  def intersection(s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
-    case unify_types(r_Set(s1, :type), r_Set(s2, :type)) do
+  def intersection(s1, s2) when (elem(s1, 0) === :Set and
+                         elem(s2, 0) === :Set) do
+    case (unify_types(r_Set(s1, :type), r_Set(s2, :type))) do
       [] ->
         :erlang.error(:type_mismatch)
-
       type ->
-        r_Set(
-          data: intersection(r_Set(s1, :data), r_Set(s2, :data), []),
-          type: type
-        )
+        r_Set(data: intersection(r_Set(s1, :data), r_Set(s2, :data), []),
+            type: type)
     end
   end
 
-  def difference(s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
-    case unify_types(r_Set(s1, :type), r_Set(s2, :type)) do
+  def difference(s1, s2) when (elem(s1, 0) === :Set and
+                         elem(s2, 0) === :Set) do
+    case (unify_types(r_Set(s1, :type), r_Set(s2, :type))) do
       [] ->
         :erlang.error(:type_mismatch)
-
       type ->
-        r_Set(
-          data: difference(r_Set(s1, :data), r_Set(s2, :data), []),
-          type: type
-        )
+        r_Set(data: difference(r_Set(s1, :data), r_Set(s2, :data), []),
+            type: type)
     end
   end
 
-  def symdiff(s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
-    case unify_types(r_Set(s1, :type), r_Set(s2, :type)) do
+  def symdiff(s1, s2) when (elem(s1, 0) === :Set and
+                         elem(s2, 0) === :Set) do
+    case (unify_types(r_Set(s1, :type), r_Set(s2, :type))) do
       [] ->
         :erlang.error(:type_mismatch)
-
       type ->
-        r_Set(
-          data: symdiff(r_Set(s1, :data), r_Set(s2, :data), []),
-          type: type
-        )
+        r_Set(data: symdiff(r_Set(s1, :data), r_Set(s2, :data), []),
+            type: type)
     end
   end
 
-  def symmetric_partition(s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
-    case unify_types(r_Set(s1, :type), r_Set(s2, :type)) do
+  def symmetric_partition(s1, s2) when (elem(s1, 0) === :Set and
+                         elem(s2, 0) === :Set) do
+    case (unify_types(r_Set(s1, :type), r_Set(s2, :type))) do
       [] ->
         :erlang.error(:type_mismatch)
-
       type ->
         sympart(r_Set(s1, :data), r_Set(s2, :data), [], [], [], type)
     end
   end
 
-  def product(s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
+  def product(s1, s2) when (elem(s1, 0) === :Set and
+                         elem(s2, 0) === :Set) do
     cond do
       r_Set(s1, :type) === :_ ->
         s1
-
       r_Set(s2, :type) === :_ ->
         s2
-
       true ->
         f = fn e ->
-          {0, e}
-        end
-
+                 {0, e}
+            end
         t = {r_Set(s1, :type), r_Set(s2, :type)}
-
-        r_Set(
-          data:
-            relprod(
-              map(f, r_Set(s1, :data)),
-              map(f, r_Set(s2, :data))
-            ),
-          type: t
-        )
+        r_Set(data: relprod(map(f, r_Set(s1, :data)),
+                          map(f, r_Set(s2, :data))),
+            type: t)
     end
   end
 
@@ -417,7 +349,6 @@ defmodule :m_sofs do
 
   def product(t) when is_tuple(t) do
     ss = :erlang.tuple_to_list(t)
-
     try do
       sets_to_list(ss)
     catch
@@ -426,14 +357,11 @@ defmodule :m_sofs do
     else
       [] ->
         :erlang.error(:badarg)
-
       l ->
         type = types(ss, [])
-
-        case member([], l) do
+        case (member([], l)) do
           true ->
             empty_set()
-
           false ->
             r_Set(data: reverse(prod(l, [], [])), type: type)
         end
@@ -441,18 +369,14 @@ defmodule :m_sofs do
   end
 
   def constant_function(s, e) when elem(s, 0) === :Set do
-    case {r_Set(s, :type), is_sofs_set(e)} do
+    case ({r_Set(s, :type), is_sofs_set(e)}) do
       {:_, true} ->
         s
-
       {type, true} ->
         nType = {type, type(e)}
-
-        r_Set(
-          data: constant_function(r_Set(s, :data), to_external(e), []),
-          type: nType
-        )
-
+        r_Set(data: constant_function(r_Set(s, :data), to_external(e),
+                                    []),
+            type: nType)
       _ ->
         :erlang.error(:badarg)
     end
@@ -462,49 +386,41 @@ defmodule :m_sofs do
     :erlang.error(:badarg)
   end
 
-  def is_equal(s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
-    case match_types(r_Set(s1, :type), r_Set(s2, :type)) do
+  def is_equal(s1, s2) when (elem(s1, 0) === :Set and
+                         elem(s2, 0) === :Set) do
+    case (match_types(r_Set(s1, :type), r_Set(s2, :type))) do
       true ->
         r_Set(s1, :data) == r_Set(s2, :data)
-
       false ->
         :erlang.error(:type_mismatch)
     end
   end
 
-  def is_equal(s1, s2)
-      when elem(s1, 0) === :OrdSet and
-             elem(s2, 0) === :OrdSet do
-    case match_types(r_OrdSet(s1, :ordtype), r_OrdSet(s2, :ordtype)) do
+  def is_equal(s1, s2) when (elem(s1, 0) === :OrdSet and
+                         elem(s2, 0) === :OrdSet) do
+    case (match_types(r_OrdSet(s1, :ordtype), r_OrdSet(s2, :ordtype))) do
       true ->
         r_OrdSet(s1, :orddata) == r_OrdSet(s2, :orddata)
-
       false ->
         :erlang.error(:type_mismatch)
     end
   end
 
-  def is_equal(s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :OrdSet do
+  def is_equal(s1, s2) when (elem(s1, 0) === :Set and
+                         elem(s2, 0) === :OrdSet) do
     :erlang.error(:type_mismatch)
   end
 
-  def is_equal(s1, s2)
-      when elem(s1, 0) === :OrdSet and
-             elem(s2, 0) === :Set do
+  def is_equal(s1, s2) when (elem(s1, 0) === :OrdSet and
+                         elem(s2, 0) === :Set) do
     :erlang.error(:type_mismatch)
   end
 
-  def is_subset(s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
-    case match_types(r_Set(s1, :type), r_Set(s2, :type)) do
+  def is_subset(s1, s2) when (elem(s1, 0) === :Set and
+                         elem(s2, 0) === :Set) do
+    case (match_types(r_Set(s1, :type), r_Set(s2, :type))) do
       true ->
         subset(r_Set(s1, :data), r_Set(s2, :data))
-
       false ->
         :erlang.error(:type_mismatch)
     end
@@ -538,47 +454,40 @@ defmodule :m_sofs do
     false
   end
 
-  def is_disjoint(s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
-    case match_types(r_Set(s1, :type), r_Set(s2, :type)) do
+  def is_disjoint(s1, s2) when (elem(s1, 0) === :Set and
+                         elem(s2, 0) === :Set) do
+    case (match_types(r_Set(s1, :type), r_Set(s2, :type))) do
       true ->
-        case r_Set(s1, :data) do
+        case (r_Set(s1, :data)) do
           [] ->
             true
-
           [a | as] ->
             disjoint(r_Set(s2, :data), a, as)
         end
-
       false ->
         :erlang.error(:type_mismatch)
     end
   end
 
   def union(sets) when elem(sets, 0) === :Set do
-    case r_Set(sets, :type) do
+    case (r_Set(sets, :type)) do
       [type] ->
         r_Set(data: lunion(r_Set(sets, :data)), type: type)
-
       :_ ->
         sets
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   def intersection(sets) when elem(sets, 0) === :Set do
-    case r_Set(sets, :data) do
+    case (r_Set(sets, :data)) do
       [] ->
         :erlang.error(:badarg)
-
       [l | ls] ->
-        case r_Set(sets, :type) do
+        case (r_Set(sets, :type)) do
           [type] ->
             r_Set(data: lintersection(ls, l), type: type)
-
           _ ->
             :erlang.error(:badarg)
         end
@@ -587,17 +496,13 @@ defmodule :m_sofs do
 
   def canonical_relation(sets) when elem(sets, 0) === :Set do
     sT = r_Set(sets, :type)
-
-    case sT do
+    case (sT) do
       [:_] ->
         empty_set()
-
       [type] ->
         r_Set(data: can_rel(r_Set(sets, :data), []), type: {type, sT})
-
       :_ ->
         sets
-
       _ ->
         :erlang.error(:badarg)
     end
@@ -608,39 +513,33 @@ defmodule :m_sofs do
   end
 
   def relation_to_family(r) when elem(r, 0) === :Set do
-    case r_Set(r, :type) do
+    case (r_Set(r, :type)) do
       {dT, rT} ->
         r_Set(data: rel2family(r_Set(r, :data)), type: {dT, [rT]})
-
       :_ ->
         r
-
       _Else ->
         :erlang.error(:badarg)
     end
   end
 
   def domain(r) when elem(r, 0) === :Set do
-    case r_Set(r, :type) do
+    case (r_Set(r, :type)) do
       {dT, _} ->
         r_Set(data: dom(r_Set(r, :data)), type: dT)
-
       :_ ->
         r
-
       _Else ->
         :erlang.error(:badarg)
     end
   end
 
   def range(r) when elem(r, 0) === :Set do
-    case r_Set(r, :type) do
+    case (r_Set(r, :type)) do
       {_, rT} ->
         r_Set(data: ran(r_Set(r, :data), []), type: rT)
-
       :_ ->
         r
-
       _ ->
         :erlang.error(:badarg)
     end
@@ -655,242 +554,189 @@ defmodule :m_sofs do
   end
 
   def relative_product(rL) when is_list(rL) do
-    case relprod_n(rL, :foo, false, false) do
+    case (relprod_n(rL, :foo, false, false)) do
       {:error, reason} ->
         :erlang.error(reason)
-
       reply ->
         reply
     end
   end
 
-  def relative_product(r1, r2)
-      when elem(r1, 0) === :Set and
-             elem(r2, 0) === :Set do
+  def relative_product(r1, r2) when (elem(r1, 0) === :Set and
+                         elem(r2, 0) === :Set) do
     relative_product1(converse(r1), r2)
   end
 
-  def relative_product(rT, r)
-      when is_tuple(rT) and
-             elem(r, 0) === :Set do
+  def relative_product(rT, r) when (is_tuple(rT) and
+                        elem(r, 0) === :Set) do
     relative_product(:erlang.tuple_to_list(rT), r)
   end
 
-  def relative_product(rL, r)
-      when is_list(rL) and
-             elem(r, 0) === :Set do
-    emptyR =
-      case r_Set(r, :type) do
-        {_, _} ->
-          r_Set(r, :data) === []
-
-        :_ ->
-          true
-
-        _ ->
-          :erlang.error(:badarg)
-      end
-
-    case relprod_n(rL, r, emptyR, true) do
+  def relative_product(rL, r) when (is_list(rL) and
+                        elem(r, 0) === :Set) do
+    emptyR = (case (r_Set(r, :type)) do
+                {_, _} ->
+                  r_Set(r, :data) === []
+                :_ ->
+                  true
+                _ ->
+                  :erlang.error(:badarg)
+              end)
+    case (relprod_n(rL, r, emptyR, true)) do
       {:error, reason} ->
         :erlang.error(reason)
-
       reply ->
         reply
     end
   end
 
-  def relative_product1(r1, r2)
-      when elem(r1, 0) === :Set and
-             elem(r2, 0) === :Set do
-    {dTR1, rTR1} =
-      case r_Set(r1, :type) do
-        {_, _} = r1T ->
-          r1T
-
-        :_ ->
-          {:_, :_}
-
-        _ ->
-          :erlang.error(:badarg)
-      end
-
-    {dTR2, rTR2} =
-      case r_Set(r2, :type) do
-        {_, _} = r2T ->
-          r2T
-
-        :_ ->
-          {:_, :_}
-
-        _ ->
-          :erlang.error(:badarg)
-      end
-
-    case match_types(dTR1, dTR2) do
+  def relative_product1(r1, r2) when (elem(r1, 0) === :Set and
+                         elem(r2, 0) === :Set) do
+    {dTR1, rTR1} = (case (r_Set(r1, :type)) do
+                      {_, _} = r1T ->
+                        r1T
+                      :_ ->
+                        {:_, :_}
+                      _ ->
+                        :erlang.error(:badarg)
+                    end)
+    {dTR2, rTR2} = (case (r_Set(r2, :type)) do
+                      {_, _} = r2T ->
+                        r2T
+                      :_ ->
+                        {:_, :_}
+                      _ ->
+                        :erlang.error(:badarg)
+                    end)
+    case (match_types(dTR1, dTR2)) do
       true when dTR1 === :_ ->
         r1
-
       true when dTR2 === :_ ->
         r2
-
       true ->
-        r_Set(
-          data: relprod(r_Set(r1, :data), r_Set(r2, :data)),
-          type: {rTR1, rTR2}
-        )
-
+        r_Set(data: relprod(r_Set(r1, :data), r_Set(r2, :data)),
+            type: {rTR1, rTR2})
       false ->
         :erlang.error(:type_mismatch)
     end
   end
 
   def converse(r) when elem(r, 0) === :Set do
-    case r_Set(r, :type) do
+    case (r_Set(r, :type)) do
       {dT, rT} ->
         r_Set(data: converse(r_Set(r, :data), []), type: {rT, dT})
-
       :_ ->
         r
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
-  def image(r, s)
-      when elem(r, 0) === :Set and
-             elem(s, 0) === :Set do
-    case r_Set(r, :type) do
+  def image(r, s) when (elem(r, 0) === :Set and
+                       elem(s, 0) === :Set) do
+    case (r_Set(r, :type)) do
       {dT, rT} ->
-        case match_types(dT, r_Set(s, :type)) do
+        case (match_types(dT, r_Set(s, :type))) do
           true ->
-            r_Set(
-              data: usort(restrict(r_Set(s, :data), r_Set(r, :data))),
-              type: rT
-            )
-
+            r_Set(data: usort(restrict(r_Set(s, :data), r_Set(r, :data))),
+                type: rT)
           false ->
             :erlang.error(:type_mismatch)
         end
-
       :_ ->
         r
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
-  def inverse_image(r, s)
-      when elem(r, 0) === :Set and
-             elem(s, 0) === :Set do
-    case r_Set(r, :type) do
+  def inverse_image(r, s) when (elem(r, 0) === :Set and
+                       elem(s, 0) === :Set) do
+    case (r_Set(r, :type)) do
       {dT, rT} ->
-        case match_types(rT, r_Set(s, :type)) do
+        case (match_types(rT, r_Set(s, :type))) do
           true ->
             nL = restrict(r_Set(s, :data), converse(r_Set(r, :data), []))
             r_Set(data: usort(nL), type: dT)
-
           false ->
             :erlang.error(:type_mismatch)
         end
-
       :_ ->
         r
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   def strict_relation(r) when elem(r, 0) === :Set do
-    case r_Set(r, :type) do
+    case (r_Set(r, :type)) do
       type = {_, _} ->
         r_Set(data: strict(r_Set(r, :data), []), type: type)
-
       :_ ->
         r
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   def weak_relation(r) when elem(r, 0) === :Set do
-    case r_Set(r, :type) do
+    case (r_Set(r, :type)) do
       {dT, rT} ->
-        case unify_types(dT, rT) do
+        case (unify_types(dT, rT)) do
           [] ->
             :erlang.error(:badarg)
-
           type ->
             r_Set(data: weak(r_Set(r, :data)), type: {type, type})
         end
-
       :_ ->
         r
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
-  def extension(r, s, e)
-      when elem(r, 0) === :Set and
-             elem(s, 0) === :Set do
-    case {r_Set(r, :type), r_Set(s, :type), is_sofs_set(e)} do
+  def extension(r, s, e) when (elem(r, 0) === :Set and
+                          elem(s, 0) === :Set) do
+    case ({r_Set(r, :type), r_Set(s, :type), is_sofs_set(e)}) do
       {t = {dT, rT}, sT, true} ->
-        case :erlang.and(
-               match_types(dT, sT),
-               match_types(rT, type(e))
-             ) do
+        case (:erlang.and(match_types(dT, sT),
+                            match_types(rT, type(e)))) do
           false ->
             :erlang.error(:type_mismatch)
-
           true ->
             rL = r_Set(r, :data)
-
-            case extc([], r_Set(s, :data), to_external(e), rL) do
+            case (extc([], r_Set(s, :data), to_external(e), rL)) do
               [] ->
                 r
-
               l ->
                 r_Set(data: merge(rL, reverse(l)), type: t)
             end
         end
-
       {:_, :_, true} ->
         r
-
       {:_, sT, true} ->
-        case type(e) do
+        case (type(e)) do
           [:_] ->
             r
-
           eT ->
             r_Set(data: [], type: {sT, eT})
         end
-
       {_, _, true} ->
         :erlang.error(:badarg)
     end
   end
 
   def is_a_function(r) when elem(r, 0) === :Set do
-    case r_Set(r, :type) do
+    case (r_Set(r, :type)) do
       {_, _} ->
-        case r_Set(r, :data) do
+        case (r_Set(r, :data)) do
           [] ->
             true
-
           [{v, _} | es] ->
             is_a_func(es, v)
         end
-
       :_ ->
         true
-
       _ ->
         :erlang.error(:badarg)
     end
@@ -904,147 +750,112 @@ defmodule :m_sofs do
     drestriction(1, relation, set)
   end
 
-  def composite(fn1, fn2)
-      when elem(fn1, 0) === :Set and
-             elem(fn2, 0) === :Set do
-    {dTF1, rTF1} =
-      case r_Set(fn1, :type) do
-        {_, _} = f1T ->
-          f1T
-
-        :_ ->
-          {:_, :_}
-
-        _ ->
-          :erlang.error(:badarg)
-      end
-
-    {dTF2, rTF2} =
-      case r_Set(fn2, :type) do
-        {_, _} = f2T ->
-          f2T
-
-        :_ ->
-          {:_, :_}
-
-        _ ->
-          :erlang.error(:badarg)
-      end
-
-    case match_types(rTF1, dTF2) do
+  def composite(fn1, fn2) when (elem(fn1, 0) === :Set and
+                           elem(fn2, 0) === :Set) do
+    {dTF1, rTF1} = (case (r_Set(fn1, :type)) do
+                      {_, _} = f1T ->
+                        f1T
+                      :_ ->
+                        {:_, :_}
+                      _ ->
+                        :erlang.error(:badarg)
+                    end)
+    {dTF2, rTF2} = (case (r_Set(fn2, :type)) do
+                      {_, _} = f2T ->
+                        f2T
+                      :_ ->
+                        {:_, :_}
+                      _ ->
+                        :erlang.error(:badarg)
+                    end)
+    case (match_types(rTF1, dTF2)) do
       true when dTF1 === :_ ->
         fn1
-
       true when dTF2 === :_ ->
         fn2
-
       true ->
-        case comp(r_Set(fn1, :data), r_Set(fn2, :data)) do
+        case (comp(r_Set(fn1, :data), r_Set(fn2, :data))) do
           sL when is_list(sL) ->
             r_Set(data: sort(sL), type: {dTF1, rTF2})
-
           bad ->
             :erlang.error(bad)
         end
-
       false ->
         :erlang.error(:type_mismatch)
     end
   end
 
   def inverse(fn__) when elem(fn__, 0) === :Set do
-    case r_Set(fn__, :type) do
+    case (r_Set(fn__, :type)) do
       {dT, rT} ->
-        case inverse1(r_Set(fn__, :data)) do
+        case (inverse1(r_Set(fn__, :data))) do
           sL when is_list(sL) ->
             r_Set(data: sL, type: {rT, dT})
-
           bad ->
             :erlang.error(bad)
         end
-
       :_ ->
         fn__
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
-  def restriction(i, r, s)
-      when is_integer(i) and
-             elem(r, 0) === :Set and elem(s, 0) === :Set do
+  def restriction(i, r, s) when (is_integer(i) and
+                          elem(r, 0) === :Set and elem(s, 0) === :Set) do
     rT = r_Set(r, :type)
     sT = r_Set(s, :type)
-
-    case check_for_sort(rT, i) do
+    case (check_for_sort(rT, i)) do
       :empty ->
         r
-
       :error ->
         :erlang.error(:badarg)
-
       sort ->
         rL = r_Set(r, :data)
-
-        case {match_types(:erlang.element(i, rT), sT), r_Set(s, :data)} do
+        case ({match_types(:erlang.element(i, rT), sT),
+                 r_Set(s, :data)}) do
           {true, _SL} when rL === [] ->
             r
-
           {true, []} ->
             r_Set(data: [], type: rT)
-
           {true, [e | es]} when sort === false ->
             r_Set(data: reverse(restrict_n(i, rL, e, es, [])), type: rT)
-
           {true, [e | es]} ->
-            r_Set(
-              data: sort(restrict_n(i, keysort(i, rL), e, es, [])),
-              type: rT
-            )
-
+            r_Set(data: sort(restrict_n(i, keysort(i, rL), e, es, [])),
+                type: rT)
           {false, _SL} ->
             :erlang.error(:type_mismatch)
         end
     end
   end
 
-  def restriction(setFun, s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
+  def restriction(setFun, s1, s2) when (elem(s1, 0) === :Set and
+                                 elem(s2, 0) === :Set) do
     type1 = r_Set(s1, :type)
     type2 = r_Set(s2, :type)
     sL1 = r_Set(s1, :data)
-
-    case external_fun(setFun) do
+    case (external_fun(setFun)) do
       false when type2 === :_ ->
         s2
-
       false ->
-        case subst(sL1, setFun, element_type(type1)) do
+        case (subst(sL1, setFun, element_type(type1))) do
           {nSL, newType} ->
-            case match_types(newType, type2) do
+            case (match_types(newType, type2)) do
               true ->
                 nL = sort(restrict(r_Set(s2, :data), converse(nSL, [])))
                 r_Set(data: nL, type: type1)
-
               false ->
                 :erlang.error(:type_mismatch)
             end
-
           bad ->
             :erlang.error(bad)
         end
-
       _ when type1 === :_ ->
         s1
-
       _XFun when is_list(type1) ->
         :erlang.error(:badarg)
-
       xFun ->
         funT = xFun.(type1)
-
         try do
           check_fun(type1, xFun, funT)
         catch
@@ -1052,15 +863,11 @@ defmodule :m_sofs do
             :erlang.error(:badarg)
         else
           sort ->
-            case match_types(funT, type2) do
+            case (match_types(funT, type2)) do
               true ->
                 r1 = inverse_substitution(sL1, xFun, sort)
-
-                r_Set(
-                  data: sort(sort, restrict(r_Set(s2, :data), r1)),
-                  type: type1
-                )
-
+                r_Set(data: sort(sort, restrict(r_Set(s2, :data), r1)),
+                    type: type1)
               false ->
                 :erlang.error(:type_mismatch)
             end
@@ -1068,81 +875,62 @@ defmodule :m_sofs do
     end
   end
 
-  def drestriction(i, r, s)
-      when is_integer(i) and
-             elem(r, 0) === :Set and elem(s, 0) === :Set do
+  def drestriction(i, r, s) when (is_integer(i) and
+                          elem(r, 0) === :Set and elem(s, 0) === :Set) do
     rT = r_Set(r, :type)
     sT = r_Set(s, :type)
-
-    case check_for_sort(rT, i) do
+    case (check_for_sort(rT, i)) do
       :empty ->
         r
-
       :error ->
         :erlang.error(:badarg)
-
       sort ->
         rL = r_Set(r, :data)
-
-        case {match_types(:erlang.element(i, rT), sT), r_Set(s, :data)} do
+        case ({match_types(:erlang.element(i, rT), sT),
+                 r_Set(s, :data)}) do
           {true, []} ->
             r
-
           {true, _SL} when rL === [] ->
             r
-
           {true, [e | es]} when sort === false ->
             r_Set(data: diff_restrict_n(i, rL, e, es, []), type: rT)
-
           {true, [e | es]} ->
-            r_Set(
-              data: diff_restrict_n(i, keysort(i, rL), e, es, []),
-              type: rT
-            )
-
+            r_Set(data: diff_restrict_n(i, keysort(i, rL), e, es, []),
+                type: rT)
           {false, _SL} ->
             :erlang.error(:type_mismatch)
         end
     end
   end
 
-  def drestriction(setFun, s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
+  def drestriction(setFun, s1, s2) when (elem(s1, 0) === :Set and
+                                 elem(s2, 0) === :Set) do
     type1 = r_Set(s1, :type)
     type2 = r_Set(s2, :type)
     sL1 = r_Set(s1, :data)
-
-    case external_fun(setFun) do
+    case (external_fun(setFun)) do
       false when type2 === :_ ->
         s1
-
       false ->
-        case subst(sL1, setFun, element_type(type1)) do
+        case (subst(sL1, setFun, element_type(type1))) do
           {nSL, newType} ->
-            case match_types(newType, type2) do
+            case (match_types(newType, type2)) do
               true ->
                 sL2 = r_Set(s2, :data)
                 nL = sort(diff_restrict(sL2, converse(nSL, [])))
                 r_Set(data: nL, type: type1)
-
               false ->
                 :erlang.error(:type_mismatch)
             end
-
           bad ->
             :erlang.error(bad)
         end
-
       _ when type1 === :_ ->
         s1
-
       _XFun when is_list(type1) ->
         :erlang.error(:badarg)
-
       xFun ->
         funT = xFun.(type1)
-
         try do
           check_fun(type1, xFun, funT)
         catch
@@ -1150,12 +938,11 @@ defmodule :m_sofs do
             :erlang.error(:badarg)
         else
           sort ->
-            case match_types(funT, type2) do
+            case (match_types(funT, type2)) do
               true ->
                 r1 = inverse_substitution(sL1, xFun, sort)
                 sL2 = r_Set(s2, :data)
                 r_Set(data: sort(sort, diff_restrict(sL2, r1)), type: type1)
-
               false ->
                 :erlang.error(:type_mismatch)
             end
@@ -1163,29 +950,20 @@ defmodule :m_sofs do
     end
   end
 
-  def projection(i, set)
-      when is_integer(i) and
-             elem(set, 0) === :Set do
+  def projection(i, set) when (is_integer(i) and
+                         elem(set, 0) === :Set) do
     type = r_Set(set, :type)
-
-    case check_for_sort(type, i) do
+    case (check_for_sort(type, i)) do
       :empty ->
         set
-
       :error ->
         :erlang.error(:badarg)
-
       _ when i === 1 ->
-        r_Set(
-          data: projection1(r_Set(set, :data)),
-          type: :erlang.element(i, type)
-        )
-
+        r_Set(data: projection1(r_Set(set, :data)),
+            type: :erlang.element(i, type))
       _ ->
-        r_Set(
-          data: projection_n(r_Set(set, :data), i, []),
-          type: :erlang.element(i, type)
-        )
+        r_Set(data: projection_n(r_Set(set, :data), i, []),
+            type: :erlang.element(i, type))
     end
   end
 
@@ -1193,18 +971,14 @@ defmodule :m_sofs do
     range(substitution(fun, set))
   end
 
-  def substitution(i, set)
-      when is_integer(i) and
-             elem(set, 0) === :Set do
+  def substitution(i, set) when (is_integer(i) and
+                         elem(set, 0) === :Set) do
     type = r_Set(set, :type)
-
-    case check_for_sort(type, i) do
+    case (check_for_sort(type, i)) do
       :empty ->
         set
-
       :error ->
         :erlang.error(:badarg)
-
       _Sort ->
         nType = :erlang.element(i, type)
         nSL = substitute_element(r_Set(set, :data), i, [])
@@ -1215,29 +989,22 @@ defmodule :m_sofs do
   def substitution(setFun, set) when elem(set, 0) === :Set do
     type = r_Set(set, :type)
     l = r_Set(set, :data)
-
-    case external_fun(setFun) do
+    case (external_fun(setFun)) do
       false when l !== [] ->
-        case subst(l, setFun, element_type(type)) do
+        case (subst(l, setFun, element_type(type))) do
           {sL, newType} ->
             r_Set(data: reverse(sL), type: {type, newType})
-
           bad ->
             :erlang.error(bad)
         end
-
       false ->
         empty_set()
-
       _ when type === :_ ->
         empty_set()
-
       _XFun when is_list(type) ->
         :erlang.error(:badarg)
-
       xFun ->
         funT = xFun.(type)
-
         try do
           check_fun(type, xFun, funT)
         catch
@@ -1257,26 +1024,19 @@ defmodule :m_sofs do
     range(f2)
   end
 
-  def partition(i, set)
-      when is_integer(i) and
-             elem(set, 0) === :Set do
+  def partition(i, set) when (is_integer(i) and
+                         elem(set, 0) === :Set) do
     type = r_Set(set, :type)
-
-    case check_for_sort(type, i) do
+    case (check_for_sort(type, i)) do
       :empty ->
         set
-
       :error ->
         :erlang.error(:badarg)
-
       false ->
         r_Set(data: partition_n(i, r_Set(set, :data)), type: [type])
-
       true ->
-        r_Set(
-          data: partition_n(i, keysort(i, r_Set(set, :data))),
-          type: [type]
-        )
+        r_Set(data: partition_n(i, keysort(i, r_Set(set, :data))),
+            type: [type])
     end
   end
 
@@ -1284,80 +1044,65 @@ defmodule :m_sofs do
     range(partition_family(fun, set))
   end
 
-  def partition(i, r, s)
-      when is_integer(i) and
-             elem(r, 0) === :Set and elem(s, 0) === :Set do
+  def partition(i, r, s) when (is_integer(i) and
+                          elem(r, 0) === :Set and elem(s, 0) === :Set) do
     rT = r_Set(r, :type)
     sT = r_Set(s, :type)
-
-    case check_for_sort(rT, i) do
+    case (check_for_sort(rT, i)) do
       :empty ->
         {r, r}
-
       :error ->
         :erlang.error(:badarg)
-
       sort ->
         rL = r_Set(r, :data)
-
-        case {match_types(:erlang.element(i, rT), sT), r_Set(s, :data)} do
+        case ({match_types(:erlang.element(i, rT), sT),
+                 r_Set(s, :data)}) do
           {true, _SL} when rL === [] ->
             {r, r}
-
           {true, []} ->
             {r_Set(data: [], type: rT), r}
-
           {true, [e | es]} when sort === false ->
             [l1 | l2] = partition3_n(i, rL, e, es, [], [])
             {r_Set(data: l1, type: rT), r_Set(data: l2, type: rT)}
-
           {true, [e | es]} ->
-            [l1 | l2] = partition3_n(i, keysort(i, rL), e, es, [], [])
+            [l1 | l2] = partition3_n(i, keysort(i, rL), e, es, [],
+                                       [])
             {r_Set(data: l1, type: rT), r_Set(data: l2, type: rT)}
-
           {false, _SL} ->
             :erlang.error(:type_mismatch)
         end
     end
   end
 
-  def partition(setFun, s1, s2)
-      when elem(s1, 0) === :Set and
-             elem(s2, 0) === :Set do
+  def partition(setFun, s1, s2) when (elem(s1, 0) === :Set and
+                                 elem(s2, 0) === :Set) do
     type1 = r_Set(s1, :type)
     type2 = r_Set(s2, :type)
     sL1 = r_Set(s1, :data)
-
-    case external_fun(setFun) do
+    case (external_fun(setFun)) do
       false when type2 === :_ ->
         {s2, s1}
-
       false ->
-        case subst(sL1, setFun, element_type(type1)) do
+        case (subst(sL1, setFun, element_type(type1))) do
           {nSL, newType} ->
-            case match_types(newType, type2) do
+            case (match_types(newType, type2)) do
               true ->
                 r1 = converse(nSL, [])
                 [l1 | l2] = partition3(r_Set(s2, :data), r1)
-                {r_Set(data: sort(l1), type: type1), r_Set(data: sort(l2), type: type1)}
-
+                {r_Set(data: sort(l1), type: type1),
+                   r_Set(data: sort(l2), type: type1)}
               false ->
                 :erlang.error(:type_mismatch)
             end
-
           bad ->
             :erlang.error(bad)
         end
-
       _ when type1 === :_ ->
         {s1, s1}
-
       _XFun when is_list(type1) ->
         :erlang.error(:badarg)
-
       xFun ->
         funT = xFun.(type1)
-
         try do
           check_fun(type1, xFun, funT)
         catch
@@ -1365,12 +1110,12 @@ defmodule :m_sofs do
             :erlang.error(:badarg)
         else
           sort ->
-            case match_types(funT, type2) do
+            case (match_types(funT, type2)) do
               true ->
                 r1 = inverse_substitution(sL1, xFun, sort)
                 [l1 | l2] = partition3(r_Set(s2, :data), r1)
-                {r_Set(data: sort(l1), type: type1), r_Set(data: sort(l2), type: type1)}
-
+                {r_Set(data: sort(l1), type: type1),
+                   r_Set(data: sort(l2), type: type1)}
               false ->
                 :erlang.error(:type_mismatch)
             end
@@ -1378,79 +1123,61 @@ defmodule :m_sofs do
     end
   end
 
-  def multiple_relative_product(t, r)
-      when is_tuple(t) and
-             elem(r, 0) === :Set do
-    case test_rel(r, tuple_size(t), :eq) do
+  def multiple_relative_product(t, r) when (is_tuple(t) and
+                       elem(r, 0) === :Set) do
+    case (test_rel(r, tuple_size(t), :eq)) do
       true when r_Set(r, :type) === :_ ->
         empty_set()
-
       true ->
         mProd = mul_relprod(:erlang.tuple_to_list(t), 1, r)
         relative_product(mProd)
-
       false ->
         :erlang.error(:badarg)
     end
   end
 
-  def join(r1, i1, r2, i2)
-      when elem(r1, 0) === :Set and
-             elem(r2, 0) === :Set and is_integer(i1) and
-             is_integer(i2) do
-    case :erlang.and(
-           test_rel(r1, i1, :lte),
-           test_rel(r2, i2, :lte)
-         ) do
+  def join(r1, i1, r2, i2) when (elem(r1, 0) === :Set and
+                                 elem(r2, 0) === :Set and is_integer(i1) and
+                                 is_integer(i2)) do
+    case (:erlang.and(test_rel(r1, i1, :lte),
+                        test_rel(r2, i2, :lte))) do
       false ->
         :erlang.error(:badarg)
-
       true when r_Set(r1, :type) === :_ ->
         r1
-
       true when r_Set(r2, :type) === :_ ->
         r2
-
       true ->
         l1 = r_Set(raise_element(r1, i1), :data)
         l2 = r_Set(raise_element(r2, i2), :data)
         t = relprod1(l1, l2)
-
-        f =
-          case :erlang.and(i1 === 1, i2 === 1) do
-            true ->
-              fn {x, y} ->
-                join_element(x, y)
-              end
-
-            false ->
-              fn {x, y} ->
-                :erlang.list_to_tuple(join_element(x, y, i2))
-              end
-          end
-
-        r_Set(
-          data: replace(t, f, []),
-          type: f.({r_Set(r1, :type), r_Set(r2, :type)})
-        )
+        f = (case (:erlang.and(i1 === 1, i2 === 1)) do
+               true ->
+                 fn {x, y} ->
+                      join_element(x, y)
+                 end
+               false ->
+                 fn {x, y} ->
+                      :erlang.list_to_tuple(join_element(x, y, i2))
+                 end
+             end)
+        r_Set(data: replace(t, f, []),
+            type: f.({r_Set(r1, :type), r_Set(r2, :type)}))
     end
   end
 
   defp test_rel(r, i, c) do
-    case r_Set(r, :type) do
-      rel
-      when is_tuple(rel) and c === :eq and
-             i === tuple_size(rel) ->
+    case (r_Set(r, :type)) do
+      rel when (is_tuple(rel) and c === :eq and
+                  i === tuple_size(rel))
+               ->
         true
-
-      rel
-      when is_tuple(rel) and c === :lte and i >= 1 and
-             i <= tuple_size(rel) ->
+      rel when (is_tuple(rel) and c === :lte and i >= 1 and
+                  i <= tuple_size(rel))
+               ->
         true
-
       :_ ->
         true
-
       _ ->
         false
     end
@@ -1461,134 +1188,111 @@ defmodule :m_sofs do
   end
 
   def family_to_relation(f) when elem(f, 0) === :Set do
-    case r_Set(f, :type) do
+    case (r_Set(f, :type)) do
       {dT, [rT]} ->
         r_Set(data: family2rel(r_Set(f, :data), []), type: {dT, rT})
-
       :_ ->
         f
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   def family_specification(fun, f) when elem(f, 0) === :Set do
-    case r_Set(f, :type) do
+    case (r_Set(f, :type)) do
       {_DT, [type]} = fType ->
-        r =
-          case external_fun(fun) do
-            false ->
-              fam_spec(r_Set(f, :data), fun, type, [])
-
-            xFun ->
-              fam_specification(r_Set(f, :data), xFun, [])
-          end
-
-        case r do
+        r = (case (external_fun(fun)) do
+               false ->
+                 fam_spec(r_Set(f, :data), fun, type, [])
+               xFun ->
+                 fam_specification(r_Set(f, :data), xFun, [])
+             end)
+        case (r) do
           sL when is_list(sL) ->
             r_Set(data: sL, type: fType)
-
           bad ->
             :erlang.error(bad)
         end
-
       :_ ->
         f
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   def union_of_family(f) when elem(f, 0) === :Set do
-    case r_Set(f, :type) do
+    case (r_Set(f, :type)) do
       {_DT, [type]} ->
         r_Set(data: un_of_fam(r_Set(f, :data), []), type: type)
-
       :_ ->
         f
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   def intersection_of_family(f) when elem(f, 0) === :Set do
-    case r_Set(f, :type) do
+    case (r_Set(f, :type)) do
       {_DT, [type]} ->
-        case int_of_fam(r_Set(f, :data)) do
+        case (int_of_fam(r_Set(f, :data))) do
           fU when is_list(fU) ->
             r_Set(data: fU, type: type)
-
           bad ->
             :erlang.error(bad)
         end
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   def family_union(f) when elem(f, 0) === :Set do
-    case r_Set(f, :type) do
+    case (r_Set(f, :type)) do
       {dT, [[type]]} ->
         r_Set(data: fam_un(r_Set(f, :data), []), type: {dT, [type]})
-
       :_ ->
         f
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   def family_intersection(f) when elem(f, 0) === :Set do
-    case r_Set(f, :type) do
+    case (r_Set(f, :type)) do
       {dT, [[type]]} ->
-        case fam_int(r_Set(f, :data), []) do
+        case (fam_int(r_Set(f, :data), [])) do
           fU when is_list(fU) ->
             r_Set(data: fU, type: {dT, [type]})
-
           bad ->
             :erlang.error(bad)
         end
-
       :_ ->
         f
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   def family_domain(f) when elem(f, 0) === :Set do
-    case r_Set(f, :type) do
+    case (r_Set(f, :type)) do
       {fDT, [{dT, _}]} ->
         r_Set(data: fam_dom(r_Set(f, :data), []), type: {fDT, [dT]})
-
       :_ ->
         f
-
       {_, [:_]} ->
         f
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   def family_range(f) when elem(f, 0) === :Set do
-    case r_Set(f, :type) do
+    case (r_Set(f, :type)) do
       {dT, [{_, rT}]} ->
         r_Set(data: fam_ran(r_Set(f, :data), []), type: {dT, [rT]})
-
       :_ ->
         f
-
       {_, [:_]} ->
         f
-
       _ ->
         :erlang.error(:badarg)
     end
@@ -1610,77 +1314,57 @@ defmodule :m_sofs do
     fam_binop(f1, f2, &fam_difference/3)
   end
 
-  defp fam_binop(f1, f2, fF)
-       when elem(f1, 0) === :Set and
-              elem(f2, 0) === :Set do
-    case unify_types(r_Set(f1, :type), r_Set(f2, :type)) do
+  defp fam_binop(f1, f2, fF) when (elem(f1, 0) === :Set and
+                              elem(f2, 0) === :Set) do
+    case (unify_types(r_Set(f1, :type), r_Set(f2, :type))) do
       [] ->
         :erlang.error(:type_mismatch)
-
       :_ ->
         f1
-
       type = {_, [_]} ->
         r_Set(data: fF.(r_Set(f1, :data), r_Set(f2, :data), []), type: type)
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
-  def partition_family(i, set)
-      when is_integer(i) and
-             elem(set, 0) === :Set do
+  def partition_family(i, set) when (is_integer(i) and
+                         elem(set, 0) === :Set) do
     type = r_Set(set, :type)
-
-    case check_for_sort(type, i) do
+    case (check_for_sort(type, i)) do
       :empty ->
         set
-
       :error ->
         :erlang.error(:badarg)
-
       false ->
-        r_Set(
-          data: fam_partition_n(i, r_Set(set, :data)),
-          type: {:erlang.element(i, type), [type]}
-        )
-
+        r_Set(data: fam_partition_n(i, r_Set(set, :data)),
+            type: {:erlang.element(i, type), [type]})
       true ->
-        r_Set(
-          data: fam_partition_n(i, keysort(i, r_Set(set, :data))),
-          type: {:erlang.element(i, type), [type]}
-        )
+        r_Set(data: fam_partition_n(i, keysort(i, r_Set(set, :data))),
+            type: {:erlang.element(i, type), [type]})
     end
   end
 
   def partition_family(setFun, set) when elem(set, 0) === :Set do
     type = r_Set(set, :type)
     sL = r_Set(set, :data)
-
-    case external_fun(setFun) do
+    case (external_fun(setFun)) do
       false when sL !== [] ->
-        case subst(sL, setFun, element_type(type)) do
+        case (subst(sL, setFun, element_type(type))) do
           {nSL, newType} ->
             p = fam_partition(converse(nSL, []), true)
             r_Set(data: reverse(p), type: {newType, [type]})
-
           bad ->
             :erlang.error(bad)
         end
-
       false ->
         empty_set()
-
       _ when type === :_ ->
         empty_set()
-
       _XFun when is_list(type) ->
         :erlang.error(:badarg)
-
       xFun ->
         dType = xFun.(type)
-
         try do
           check_fun(type, xFun, dType)
         catch
@@ -1696,58 +1380,48 @@ defmodule :m_sofs do
   end
 
   def family_projection(setFun, f) when elem(f, 0) === :Set do
-    case r_Set(f, :type) do
+    case (r_Set(f, :type)) do
       {_, [_]} when [] === r_Set(f, :data) ->
         empty_set()
-
       {dT, [type]} ->
-        case external_fun(setFun) do
+        case (external_fun(setFun)) do
           false ->
-            case fam_proj(r_Set(f, :data), setFun, type, :_, []) do
+            case (fam_proj(r_Set(f, :data), setFun, type, :_, [])) do
               {sL, newType} ->
                 r_Set(data: sL, type: {dT, newType})
-
               bad ->
                 :erlang.error(bad)
             end
-
           _ ->
             :erlang.error(:badarg)
         end
-
       :_ ->
         f
-
       _ ->
         :erlang.error(:badarg)
     end
   end
 
   def family_to_digraph(f) when elem(f, 0) === :Set do
-    case r_Set(f, :type) do
+    case (r_Set(f, :type)) do
       {_, [_]} ->
         fam2digraph(f, :digraph.new())
-
       :_ ->
         :digraph.new()
-
       _Else ->
         :erlang.error(:badarg)
     end
   end
 
   def family_to_digraph(f, type) when elem(f, 0) === :Set do
-    case r_Set(f, :type) do
+    case (r_Set(f, :type)) do
       {_, [_]} ->
         :ok
-
       :_ ->
         :ok
-
       _Else ->
         :erlang.error(:badarg)
     end
-
     try do
       :digraph.new(type)
     catch
@@ -1755,17 +1429,16 @@ defmodule :m_sofs do
         :erlang.error(:badarg)
     else
       g ->
-        case (try do
+        case ((try do
                 fam2digraph(f, g)
               catch
                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
                 :exit, e -> {:EXIT, e}
                 e -> e
-              end) do
+              end)) do
           {:error, reason} ->
             true = :digraph.delete(g)
             :erlang.error(reason)
-
           _ ->
             g
         end
@@ -1785,7 +1458,7 @@ defmodule :m_sofs do
   end
 
   def digraph_to_family(g, t) do
-    case {is_type(t), t} do
+    case ({is_type(t), t}) do
       {true, [{_, [_]} = type]} ->
         try do
           digraph_family(g)
@@ -1796,7 +1469,6 @@ defmodule :m_sofs do
           l ->
             r_Set(data: l, type: type)
         end
-
       _ ->
         :erlang.error(:badarg)
     end
@@ -1807,10 +1479,9 @@ defmodule :m_sofs do
   end
 
   defp is_types(i, t) do
-    case is_type(:erlang.element(i, t)) do
+    case (is_type(:erlang.element(i, t))) do
       true ->
         is_types(i - 1, t)
-
       false ->
         false
     end
@@ -1825,20 +1496,18 @@ defmodule :m_sofs do
   end
 
   defp set_of_sets([s | ss], l, t0) when elem(s, 0) === :Set do
-    case unify_types([r_Set(s, :type)], t0) do
+    case (unify_types([r_Set(s, :type)], t0)) do
       [] ->
         {:error, :type_mismatch}
-
       type ->
         set_of_sets(ss, [r_Set(s, :data) | l], type)
     end
   end
 
   defp set_of_sets([s | ss], l, t0) when elem(s, 0) === :OrdSet do
-    case unify_types(r_OrdSet(s, :ordtype), t0) do
+    case (unify_types(r_OrdSet(s, :ordtype), t0)) do
       [] ->
         {:error, :type_mismatch}
-
       type ->
         set_of_sets(ss, [r_OrdSet(s, :orddata) | l], type)
     end
@@ -1853,18 +1522,18 @@ defmodule :m_sofs do
   end
 
   defp ordset_of_sets([s | ss], l, t) when elem(s, 0) === :Set do
-    ordset_of_sets(ss, [r_Set(s, :data) | l], [[r_Set(s, :type)] | t])
+    ordset_of_sets(ss, [r_Set(s, :data) | l],
+                     [[r_Set(s, :type)] | t])
   end
 
   defp ordset_of_sets([s | ss], l, t) when elem(s, 0) === :OrdSet do
-    ordset_of_sets(ss, [r_OrdSet(s, :orddata) | l], [r_OrdSet(s, :ordtype) | t])
+    ordset_of_sets(ss, [r_OrdSet(s, :orddata) | l],
+                     [r_OrdSet(s, :ordtype) | t])
   end
 
   defp ordset_of_sets([], l, t) do
-    r_OrdSet(
-      orddata: :erlang.list_to_tuple(reverse(l)),
-      ordtype: :erlang.list_to_tuple(reverse(t))
-    )
+    r_OrdSet(orddata: :erlang.list_to_tuple(reverse(l)),
+        ordtype: :erlang.list_to_tuple(reverse(t)))
   end
 
   defp ordset_of_sets(_, _L, _T) do
@@ -1872,13 +1541,10 @@ defmodule :m_sofs do
   end
 
   defp rel(ts, [type]) do
-    case :erlang.and(
-           is_type(type),
-           atoms_only(type, 1)
-         ) do
+    case (:erlang.and(is_type(type),
+                        atoms_only(type, 1))) do
       true ->
         rel(ts, tuple_size(type), type)
-
       false ->
         rel_type(ts, [], type)
     end
@@ -1888,19 +1554,13 @@ defmodule :m_sofs do
     rel(ts, sz, :erlang.make_tuple(sz, :atom))
   end
 
-  defp atoms_only(type, i)
-       when is_atom(
-              :erlang.element(
-                i,
-                type
-              )
-            ) do
+  defp atoms_only(type, i) when is_atom(:erlang.element(i,
+                                                  type)) do
     atoms_only(type, i + 1)
   end
 
-  defp atoms_only(type, i)
-       when i > tuple_size(type) and
-              is_tuple(type) do
+  defp atoms_only(type, i) when (i > tuple_size(type) and
+                           is_tuple(type)) do
     true
   end
 
@@ -1914,7 +1574,7 @@ defmodule :m_sofs do
   end
 
   defp rel([t | ts], l, sz, type)
-       when tuple_size(t) === sz do
+      when tuple_size(t) === sz do
     rel(ts, l, sz, type)
   end
 
@@ -1936,16 +1596,16 @@ defmodule :m_sofs do
   end
 
   defp a_func(ts, t) do
-    case {t, is_type(t)} do
-      {[{dT, rT} = type], true}
-      when is_atom(dT) and
-             is_atom(rT) ->
+    case ({t, is_type(t)}) do
+      {[{dT, rT} = type], true} when (is_atom(dT) and
+                                        is_atom(rT))
+                                     ->
         func(ts, type)
-
       {[type], true} ->
-        func_type(ts, [], type, fn {_, _} ->
-          true
-        end)
+        func_type(ts, [], type,
+                    fn {_, _} ->
+                         true
+                    end)
     end
   end
 
@@ -1967,16 +1627,16 @@ defmodule :m_sofs do
   end
 
   defp fam(ts, t) do
-    case {t, is_type(t)} do
-      {[{dT, [rT]} = type], true}
-      when is_atom(dT) and
-             is_atom(rT) ->
+    case ({t, is_type(t)}) do
+      {[{dT, [rT]} = type], true} when (is_atom(dT) and
+                                          is_atom(rT))
+                                       ->
         fam2(ts, type)
-
       {[type], true} ->
-        func_type(ts, [], type, fn {_, [_]} ->
-          true
-        end)
+        func_type(ts, [], type,
+                    fn {_, [_]} ->
+                         true
+                    end)
     end
   end
 
@@ -1993,10 +1653,9 @@ defmodule :m_sofs do
   end
 
   defp fam2([{i, l} | t], i0, sL, type) when i == i0 do
-    case {usort(l), sL} do
+    case ({usort(l), sL}) do
       {nL, [{_I, nL1} | _]} when nL == nL1 ->
         fam2(t, i0, sL, type)
-
       _ ->
         :bad_function
     end
@@ -2021,9 +1680,8 @@ defmodule :m_sofs do
     check_function(nL, r_Set(data: nL, type: type))
   end
 
-  defp setify(l, [atom])
-       when is_atom(atom) and
-              atom !== :_ do
+  defp setify(l, [atom]) when (is_atom(atom) and
+                             atom !== :_) do
     r_Set(data: usort(l), type: atom)
   end
 
@@ -2037,7 +1695,6 @@ defmodule :m_sofs do
     else
       n when is_integer(n) ->
         rel(l, n, type0)
-
       sizes ->
         make_oset(l, sizes, l, type0)
     end
@@ -2061,18 +1718,14 @@ defmodule :m_sofs do
     {sz, l}
   end
 
-  defp is_no_lists(t, i, sz, l)
-       when is_atom(
-              :erlang.element(
-                i,
-                t
-              )
-            ) do
+  defp is_no_lists(t, i, sz, l) when is_atom(:erlang.element(i,
+                                                      t)) do
     is_no_lists(t, i - 1, sz, l)
   end
 
   defp is_no_lists(t, i, sz, l) do
-    is_no_lists(t, i - 1, sz, [{i, is_no_lists(:erlang.element(i, t))} | l])
+    is_no_lists(t, i - 1, sz,
+                  [{i, is_no_lists(:erlang.element(i, t))} | l])
   end
 
   defp create([e | es], t, t0, l) do
@@ -2088,9 +1741,8 @@ defmodule :m_sofs do
     make_element(c)
   end
 
-  defp make_element(c, atom, :_)
-       when is_atom(atom) and
-              not is_list(c) and not is_tuple(c) do
+  defp make_element(c, atom, :_) when (is_atom(atom) and
+                               not is_list(c) and not is_tuple(c)) do
     {atom, c}
   end
 
@@ -2099,19 +1751,16 @@ defmodule :m_sofs do
   end
 
   defp make_element(t, tT, :_)
-       when tuple_size(t) === tuple_size(tT) do
-    make_tuple(:erlang.tuple_to_list(t), :erlang.tuple_to_list(tT), [], [], :_)
+      when tuple_size(t) === tuple_size(tT) do
+    make_tuple(:erlang.tuple_to_list(t),
+                 :erlang.tuple_to_list(tT), [], [], :_)
   end
 
   defp make_element(t, tT, t0)
-       when tuple_size(t) === tuple_size(tT) do
-    make_tuple(
-      :erlang.tuple_to_list(t),
-      :erlang.tuple_to_list(tT),
-      [],
-      [],
-      :erlang.tuple_to_list(t0)
-    )
+      when tuple_size(t) === tuple_size(tT) do
+    make_tuple(:erlang.tuple_to_list(t),
+                 :erlang.tuple_to_list(tT), [], [],
+                 :erlang.tuple_to_list(t0))
   end
 
   defp make_element(l, [lT], :_) when is_list(l) do
@@ -2133,10 +1782,11 @@ defmodule :m_sofs do
   end
 
   defp make_tuple([], [], nT, l, _T0s) when nT !== [] do
-    {:erlang.list_to_tuple(reverse(nT)), :erlang.list_to_tuple(reverse(l))}
+    {:erlang.list_to_tuple(reverse(nT)),
+       :erlang.list_to_tuple(reverse(l))}
   end
 
-  defp make_element(c) when not is_list(c) and not is_tuple(c) do
+  defp make_element(c) when (not is_list(c) and not is_tuple(c)) do
     {:atom, c}
   end
 
@@ -2154,7 +1804,8 @@ defmodule :m_sofs do
   end
 
   defp make_tuple([], t, l) when t !== [] do
-    {:erlang.list_to_tuple(reverse(t)), :erlang.list_to_tuple(reverse(l))}
+    {:erlang.list_to_tuple(reverse(t)),
+       :erlang.list_to_tuple(reverse(l))}
   end
 
   defp make_oset([t | ts], szs, l, type) do
@@ -2192,7 +1843,8 @@ defmodule :m_sofs do
   end
 
   defp list_of_ordsets([s | ss], type, l) do
-    list_of_ordsets(ss, type, [r_OrdSet(orddata: s, ordtype: type) | l])
+    list_of_ordsets(ss, type,
+                      [r_OrdSet(orddata: s, ordtype: type) | l])
   end
 
   defp list_of_ordsets([], _Type, l) do
@@ -2204,7 +1856,8 @@ defmodule :m_sofs do
   end
 
   defp tuple_of_sets([s | ss], [type | types], l) do
-    tuple_of_sets(ss, types, [r_OrdSet(orddata: s, ordtype: type) | l])
+    tuple_of_sets(ss, types,
+                    [r_OrdSet(orddata: s, ordtype: type) | l])
   end
 
   defp tuple_of_sets([], [], l) do
@@ -2212,13 +1865,11 @@ defmodule :m_sofs do
   end
 
   defp spec([e | es], fun, type, l) do
-    case fun.(term2set(e, type)) do
+    case (fun.(term2set(e, type))) do
       true ->
         spec(es, fun, type, [e | l])
-
       false ->
         spec(es, fun, type, l)
-
       _ ->
         :badarg
     end
@@ -2229,13 +1880,11 @@ defmodule :m_sofs do
   end
 
   defp specification([e | es], fun, l) do
-    case fun.(e) do
+    case (fun.(e)) do
       true ->
         specification(es, fun, [e | l])
-
       false ->
         specification(es, fun, l)
-
       _ ->
         :badarg
     end
@@ -2382,12 +2031,12 @@ defmodule :m_sofs do
   end
 
   defp sympart([h1 | t1], [h2 | t2], l1, l12, l2, t)
-       when h1 < h2 do
+      when h1 < h2 do
     sympart1(t1, t2, [h1 | l1], l12, l2, t, h2)
   end
 
   defp sympart([h1 | t1], [h2 | t2], l1, l12, l2, t)
-       when h1 == h2 do
+      when h1 == h2 do
     sympart(t1, t2, l1, [h1 | l12], l2, t)
   end
 
@@ -2396,22 +2045,24 @@ defmodule :m_sofs do
   end
 
   defp sympart(s1, [], l1, l12, l2, t) do
-    {r_Set(data: reverse(l1, s1), type: t), r_Set(data: reverse(l12), type: t),
-     r_Set(data: reverse(l2), type: t)}
+    {r_Set(data: reverse(l1, s1), type: t),
+       r_Set(data: reverse(l12), type: t),
+       r_Set(data: reverse(l2), type: t)}
   end
 
   defp sympart(_, s2, l1, l12, l2, t) do
-    {r_Set(data: reverse(l1), type: t), r_Set(data: reverse(l12), type: t),
-     r_Set(data: reverse(l2, s2), type: t)}
+    {r_Set(data: reverse(l1), type: t),
+       r_Set(data: reverse(l12), type: t),
+       r_Set(data: reverse(l2, s2), type: t)}
   end
 
   defp sympart1([h1 | t1], t2, l1, l12, l2, t, h2)
-       when h1 < h2 do
+      when h1 < h2 do
     sympart1(t1, t2, [h1 | l1], l12, l2, t, h2)
   end
 
   defp sympart1([h1 | t1], t2, l1, l12, l2, t, h2)
-       when h1 == h2 do
+      when h1 == h2 do
     sympart(t1, t2, l1, [h1 | l12], l2, t)
   end
 
@@ -2420,17 +2071,18 @@ defmodule :m_sofs do
   end
 
   defp sympart1(_, t2, l1, l12, l2, t, h2) do
-    {r_Set(data: reverse(l1), type: t), r_Set(data: reverse(l12), type: t),
-     r_Set(data: reverse(l2, [h2 | t2]), type: t)}
+    {r_Set(data: reverse(l1), type: t),
+       r_Set(data: reverse(l12), type: t),
+       r_Set(data: reverse(l2, [h2 | t2]), type: t)}
   end
 
   defp sympart2(t1, [h2 | t2], l1, l12, l2, t, h1)
-       when h1 > h2 do
+      when h1 > h2 do
     sympart2(t1, t2, l1, l12, [h2 | l2], t, h1)
   end
 
   defp sympart2(t1, [h2 | t2], l1, l12, l2, t, h1)
-       when h1 == h2 do
+      when h1 == h2 do
     sympart(t1, t2, l1, [h1 | l12], l2, t)
   end
 
@@ -2439,8 +2091,9 @@ defmodule :m_sofs do
   end
 
   defp sympart2(t1, _, l1, l12, l2, t, h1) do
-    {r_Set(data: reverse(l1, [h1 | t1]), type: t), r_Set(data: reverse(l12), type: t),
-     r_Set(data: reverse(l2), type: t)}
+    {r_Set(data: reverse(l1, [h1 | t1]), type: t),
+       r_Set(data: reverse(l12), type: t),
+       r_Set(data: reverse(l2), type: t)}
   end
 
   defp prod([[e | es] | xs], t, l) do
@@ -2664,7 +2317,7 @@ defmodule :m_sofs do
   end
 
   defp relprod(b0, bx0, by0, a0, l, ax, [{bx, by} | b], ay)
-       when ay == bx do
+      when ay == bx do
     relprod(b0, bx0, by0, a0, [{ax, by} | l], ax, b, ay)
   end
 
@@ -2677,38 +2330,29 @@ defmodule :m_sofs do
   end
 
   defp relprod_n(rL, r, emptyR, isR) do
-    case domain_type(rL, :_) do
+    case (domain_type(rL, :_)) do
       error = {:error, _Reason} ->
         error
-
       dType ->
         empty = :erlang.or(any(&is_empty_set/1, rL), emptyR)
         rType = range_type(rL, [])
         type = {dType, rType}
-
-        prod =
-          case empty do
-            true when dType === :_ or rType === :_ ->
-              empty_set()
-
-            true ->
-              r_Set(data: [], type: type)
-
-            false ->
-              tL = r_Set(relprod_n(rL), :data)
-              sz = length(rL)
-
-              fun = fn {x, a} ->
-                {x, flat(sz, a, [])}
-              end
-
-              r_Set(data: map(fun, tL), type: type)
-          end
-
-        case isR do
+        prod = (case (empty) do
+                  true when dType === :_ or rType === :_ ->
+                    empty_set()
+                  true ->
+                    r_Set(data: [], type: type)
+                  false ->
+                    tL = r_Set(relprod_n(rL), :data)
+                    sz = length(rL)
+                    fun = fn {x, a} ->
+                               {x, flat(sz, a, [])}
+                          end
+                    r_Set(data: map(fun, tL), type: type)
+                end)
+        case (isR) do
           true ->
             relative_product(prod, r)
-
           false ->
             prod
         end
@@ -2726,16 +2370,11 @@ defmodule :m_sofs do
   defp relprod_n([r | rs], r0) do
     t = raise_element(r0, 1)
     r1 = relative_product1(t, r)
-
-    nR =
-      projection(
-        {:external,
-         fn {{x, a}, aS} ->
-           {x, {a, aS}}
-         end},
-        r1
-      )
-
+    nR = projection({:external,
+                       fn {{x, a}, aS} ->
+                            {x, {a, aS}}
+                       end},
+                      r1)
     relprod_n(rs, nR)
   end
 
@@ -2748,19 +2387,16 @@ defmodule :m_sofs do
   end
 
   defp domain_type([t | ts], t0) when elem(t, 0) === :Set do
-    case r_Set(t, :type) do
+    case (r_Set(t, :type)) do
       {dT, _RT} ->
-        case unify_types(dT, t0) do
+        case (unify_types(dT, t0)) do
           [] ->
             {:error, :type_mismatch}
-
           t1 ->
             domain_type(ts, t1)
         end
-
       :_ ->
         domain_type(ts, t0)
-
       _ ->
         {:error, :badarg}
     end
@@ -2771,10 +2407,9 @@ defmodule :m_sofs do
   end
 
   defp range_type([t | ts], l) do
-    case r_Set(t, :type) do
+    case (r_Set(t, :type)) do
       {_DT, rT} ->
         range_type(ts, [rT | l])
-
       :_ ->
         :_
     end
@@ -2836,15 +2471,13 @@ defmodule :m_sofs do
     reverse(l)
   end
 
-  defp weak1([e = {x, y} | es], ys, l, x0)
-       when x > y and
-              x == x0 do
+  defp weak1([e = {x, y} | es], ys, l, x0) when (x > y and
+                                                x == x0) do
     weak1(es, ys, [e | l], x)
   end
 
-  defp weak1([e = {x, y} | es], ys, l, x0)
-       when x == y and
-              x == x0 do
+  defp weak1([e = {x, y} | es], ys, l, x0) when (x == y and
+                                                x == x0) do
     weak2(es, ys, [e | l], x)
   end
 
@@ -2921,13 +2554,11 @@ defmodule :m_sofs do
   end
 
   defp restrict_n(i, [t | ts], key, keys, l) do
-    case :erlang.element(i, t) do
+    case (:erlang.element(i, t)) do
       k when k < key ->
         restrict_n(i, ts, key, keys, l)
-
       k when k == key ->
         restrict_n(i, ts, key, keys, [t | l])
-
       k ->
         restrict_n(i, k, ts, keys, l, t)
     end
@@ -2994,13 +2625,11 @@ defmodule :m_sofs do
   end
 
   defp diff_restrict_n(i, [t | ts], key, keys, l) do
-    case :erlang.element(i, t) do
+    case (:erlang.element(i, t)) do
       k when k < key ->
         diff_restrict_n(i, ts, key, keys, [t | l])
-
       k when k == key ->
         diff_restrict_n(i, ts, key, keys, l)
-
       k ->
         diff_restrict_n(i, k, ts, keys, l, t)
     end
@@ -3104,7 +2733,7 @@ defmodule :m_sofs do
   end
 
   defp comp1([{ay, _Ax} | _A], _B, _L, bx, _By)
-       when ay < bx do
+      when ay < bx do
     :bad_function
   end
 
@@ -3113,12 +2742,12 @@ defmodule :m_sofs do
   end
 
   defp comp2(a, [{bx, _By} | b], l, bx0, ay, ax)
-       when ay > bx and bx != bx0 do
+      when (ay > bx and bx != bx0) do
     comp2(a, b, l, bx, ay, ax)
   end
 
   defp comp2(a, [{bx, by} | b], l, _Bx0, ay, ax)
-       when ay == bx do
+      when ay == bx do
     comp1(a, b, [{ax, by} | l], bx, by)
   end
 
@@ -3143,12 +2772,10 @@ defmodule :m_sofs do
   end
 
   defp inverse([], _A0, l) do
-    sL = [{v, _} | es] = sort(l)
-
-    case is_a_func(es, v) do
+    sL = ([{v, _} | es] = sort(l))
+    case (is_a_func(es, v)) do
       true ->
         sL
-
       false ->
         :bad_function
     end
@@ -3179,10 +2806,9 @@ defmodule :m_sofs do
   end
 
   defp subst([t | ts], fun, type, nType, l) do
-    case setfun(t, fun, type, nType) do
+    case (setfun(t, fun, type, nType)) do
       {sD, sT} ->
         subst(ts, fun, type, sT, [{t, sD} | l])
-
       bad ->
         bad
     end
@@ -3201,10 +2827,9 @@ defmodule :m_sofs do
   end
 
   defp projection1(l, x, [e | es]) do
-    case :erlang.element(1, e) do
+    case (:erlang.element(1, e)) do
       x1 when x == x1 ->
         projection1(l, x, es)
-
       x1 ->
         projection1([x | l], x1, es)
     end
@@ -3223,7 +2848,8 @@ defmodule :m_sofs do
   end
 
   defp substitute_element([t | ts], i, l) do
-    substitute_element(ts, i, [{t, :erlang.element(i, t)} | l])
+    substitute_element(ts, i,
+                         [{t, :erlang.element(i, t)} | l])
   end
 
   defp substitute_element(_, _I, l) do
@@ -3247,13 +2873,11 @@ defmodule :m_sofs do
   end
 
   defp partition_n(i, [e | ts], k, es, p) do
-    case {:erlang.element(i, e), es} do
+    case ({:erlang.element(i, e), es}) do
       {k1, _} when k == k1 ->
         partition_n(i, ts, k, [e | es], p)
-
       {k1, [_]} ->
         partition_n(i, ts, k1, [e], [es | p])
-
       {k1, _} ->
         partition_n(i, ts, k1, [e], [reverse(es) | p])
     end
@@ -3272,13 +2896,11 @@ defmodule :m_sofs do
   end
 
   defp partition3_n(i, [t | ts], key, keys, l1, l2) do
-    case :erlang.element(i, t) do
+    case (:erlang.element(i, t)) do
       k when k < key ->
         partition3_n(i, ts, key, keys, l1, [t | l2])
-
       k when k == key ->
         partition3_n(i, ts, key, keys, [t | l1], l2)
-
       k ->
         partition3_n(i, k, ts, keys, l1, l2, t)
     end
@@ -3293,12 +2915,12 @@ defmodule :m_sofs do
   end
 
   defp partition3_n(i, k, ts, [key | keys], l1, l2, t)
-       when k > key do
+      when k > key do
     partition3_n(i, k, ts, keys, l1, l2, t)
   end
 
   defp partition3_n(i, k, ts, [key | keys], l1, l2, t)
-       when k == key do
+      when k == key do
     partition3_n(i, ts, key, keys, [t | l1], l2)
   end
 
@@ -3323,12 +2945,12 @@ defmodule :m_sofs do
   end
 
   defp partition3([{k, e} | ts], key, keys, l1, l2)
-       when k < key do
+      when k < key do
     partition3(ts, key, keys, l1, [e | l2])
   end
 
   defp partition3([{k, e} | ts], key, keys, l1, l2)
-       when k == key do
+      when k == key do
     partition3(ts, key, keys, [e | l1], l2)
   end
 
@@ -3402,7 +3024,8 @@ defmodule :m_sofs do
   end
 
   defp join_element(e1, e2, i2) do
-    :erlang.tuple_to_list(e1) ++ join_element2(:erlang.tuple_to_list(e2), 1, i2)
+    :erlang.tuple_to_list(e1) ++ join_element2(:erlang.tuple_to_list(e2),
+                                                 1, i2)
   end
 
   defp join_element2([b | bs], c, i2) when c !== i2 do
@@ -3430,13 +3053,11 @@ defmodule :m_sofs do
   end
 
   defp fam_spec([{_, s} = e | f], fun, type, l) do
-    case fun.(r_Set(data: s, type: type)) do
+    case (fun.(r_Set(data: s, type: type))) do
       true ->
         fam_spec(f, fun, type, [e | l])
-
       false ->
         fam_spec(f, fun, type, l)
-
       _ ->
         :badarg
     end
@@ -3447,13 +3068,11 @@ defmodule :m_sofs do
   end
 
   defp fam_specification([{_, s} = e | f], fun, l) do
-    case fun.(s) do
+    case (fun.(s)) do
       true ->
         fam_specification(f, fun, [e | l])
-
       false ->
         fam_specification(f, fun, l)
-
       _ ->
         :badarg
     end
@@ -3524,12 +3143,12 @@ defmodule :m_sofs do
   end
 
   defp fam_union(f1 = [{a, _AS} | _AL], [b1 = {b, _BS} | bL], l)
-       when a > b do
+      when a > b do
     fam_union(f1, bL, [b1 | l])
   end
 
   defp fam_union([{a, aS} | aL], [{b, bS} | bL], l)
-       when a == b do
+      when a == b do
     fam_union(aL, bL, [{a, umerge(aS, bS)} | l])
   end
 
@@ -3542,13 +3161,14 @@ defmodule :m_sofs do
   end
 
   defp fam_intersect(f1 = [{a, _AS} | _AL], [{b, _BS} | bL], l)
-       when a > b do
+      when a > b do
     fam_intersect(f1, bL, l)
   end
 
   defp fam_intersect([{a, aS} | aL], [{b, bS} | bL], l)
-       when a == b do
-    fam_intersect(aL, bL, [{a, intersection(aS, bS, [])} | l])
+      when a == b do
+    fam_intersect(aL, bL,
+                    [{a, intersection(aS, bS, [])} | l])
   end
 
   defp fam_intersect([_A1 | aL], f2, l) do
@@ -3560,13 +3180,14 @@ defmodule :m_sofs do
   end
 
   defp fam_difference(f1 = [{a, _AS} | _AL], [{b, _BS} | bL], l)
-       when a > b do
+      when a > b do
     fam_difference(f1, bL, l)
   end
 
   defp fam_difference([{a, aS} | aL], [{b, bS} | bL], l)
-       when a == b do
-    fam_difference(aL, bL, [{a, difference(aS, bS, [])} | l])
+      when a == b do
+    fam_difference(aL, bL,
+                     [{a, difference(aS, bS, [])} | l])
   end
 
   defp fam_difference([a1 | aL], f2, l) do
@@ -3606,13 +3227,11 @@ defmodule :m_sofs do
   end
 
   defp fam_partition_n(i, [e | ts], k, es, p) do
-    case {:erlang.element(i, e), es} do
+    case ({:erlang.element(i, e), es}) do
       {k1, _} when k == k1 ->
         fam_partition_n(i, ts, k, [e | es], p)
-
       {k1, [_]} ->
         fam_partition_n(i, ts, k1, [e], [{k, es} | p])
-
       {k1, _} ->
         fam_partition_n(i, ts, k1, [e], [{k, reverse(es)} | p])
     end
@@ -3655,10 +3274,9 @@ defmodule :m_sofs do
   end
 
   defp fam_proj([{x, s} | f], fun, type, nType, l) do
-    case setfun(s, fun, type, nType) do
+    case (setfun(s, fun, type, nType)) do
       {sD, sT} ->
         fam_proj(f, fun, type, sT, [{x, sD} | l])
-
       bad ->
         bad
     end
@@ -3669,25 +3287,21 @@ defmodule :m_sofs do
   end
 
   defp setfun(t, fun, type, nType) do
-    case fun.(term2set(t, type)) do
+    case (fun.(term2set(t, type))) do
       nS when elem(nS, 0) === :Set ->
-        case unify_types(nType, [r_Set(nS, :type)]) do
+        case (unify_types(nType, [r_Set(nS, :type)])) do
           [] ->
             :type_mismatch
-
           nT ->
             {r_Set(nS, :data), nT}
         end
-
       nS when elem(nS, 0) === :OrdSet ->
-        case unify_types(nType, nT = r_OrdSet(nS, :ordtype)) do
+        case (unify_types(nType, nT = r_OrdSet(nS, :ordtype))) do
           [] ->
             :type_mismatch
-
           ^nT ->
             {r_OrdSet(nS, :orddata), nT}
         end
-
       _ ->
         :badarg
     end
@@ -3703,23 +3317,18 @@ defmodule :m_sofs do
 
   defp fam2digraph(f, g) do
     fun = fn {from, toL} ->
-      :digraph.add_vertex(g, from)
-
-      fun2 = fn to ->
-        :digraph.add_vertex(g, to)
-
-        case :digraph.add_edge(g, from, to) do
-          {:error, {:bad_edge, _}} ->
-            throw({:error, :cyclic})
-
-          _ ->
-            true
-        end
-      end
-
-      foreach(fun2, toL)
-    end
-
+               :digraph.add_vertex(g, from)
+               fun2 = fn to ->
+                           :digraph.add_vertex(g, to)
+                           case (:digraph.add_edge(g, from, to)) do
+                             {:error, {:bad_edge, _}} ->
+                               throw({:error, :cyclic})
+                             _ ->
+                               true
+                           end
+                      end
+               foreach(fun2, toL)
+          end
     foreach(fun, to_external(f))
     g
   end
@@ -3746,7 +3355,8 @@ defmodule :m_sofs do
   end
 
   defp number_tuples(t, n) when is_tuple(t) do
-    {l, nN} = mapfoldl(&number_tuples/2, n, :erlang.tuple_to_list(t))
+    {l, nN} = mapfoldl(&number_tuples/2, n,
+                         :erlang.tuple_to_list(t))
     {:erlang.list_to_tuple(l), nN}
   end
 
@@ -3774,9 +3384,8 @@ defmodule :m_sofs do
     :empty
   end
 
-  defp check_for_sort(t, i)
-       when is_tuple(t) and
-              i <= tuple_size(t) and i >= 1 do
+  defp check_for_sort(t, i) when (is_tuple(t) and
+                        i <= tuple_size(t) and i >= 1) do
     i > 1
   end
 
@@ -3797,12 +3406,10 @@ defmodule :m_sofs do
   end
 
   defp sets_to_list(ss) do
-    map(
-      fn s when elem(s, 0) === :Set ->
-        r_Set(s, :data)
-      end,
-      ss
-    )
+    map(fn s when elem(s, 0) === :Set ->
+             r_Set(s, :data)
+        end,
+          ss)
   end
 
   defp types([], l) do
@@ -3822,13 +3429,13 @@ defmodule :m_sofs do
   end
 
   defp unify_types(type1, type2) do
-    try do
+    (try do
       unify_types1(type1, type2)
     catch
       :error, e -> {:EXIT, {e, __STACKTRACE__}}
       :exit, e -> {:EXIT, e}
       e -> e
-    end
+    end)
   end
 
   defp unify_types1(atom, atom) when is_atom(atom) do
@@ -3848,7 +3455,7 @@ defmodule :m_sofs do
   end
 
   defp unify_types1(t1, t2)
-       when tuple_size(t1) === tuple_size(t2) do
+      when tuple_size(t1) === tuple_size(t2) do
     unify_typesl(tuple_size(t1), t1, t2, [])
   end
 
@@ -3861,12 +3468,8 @@ defmodule :m_sofs do
   end
 
   defp unify_typesl(n, t1, t2, l) do
-    t =
-      unify_types1(
-        :erlang.element(n, t1),
-        :erlang.element(n, t2)
-      )
-
+    t = unify_types1(:erlang.element(n, t1),
+                       :erlang.element(n, t2))
     unify_typesl(n - 1, t1, t2, [t | l])
   end
 
@@ -3895,7 +3498,7 @@ defmodule :m_sofs do
   end
 
   defp match_types1(t1, t2)
-       when tuple_size(t1) === tuple_size(t2) do
+      when tuple_size(t1) === tuple_size(t2) do
     match_typesl(tuple_size(t1), t1, t2)
   end
 
@@ -3908,13 +3511,10 @@ defmodule :m_sofs do
   end
 
   defp match_typesl(n, t1, t2) do
-    case match_types1(
-           :erlang.element(n, t1),
-           :erlang.element(n, t2)
-         ) do
+    case (match_types1(:erlang.element(n, t1),
+                         :erlang.element(n, t2))) do
       true ->
         match_typesl(n - 1, t1, t2)
-
       false ->
         false
     end
@@ -3927,4 +3527,5 @@ defmodule :m_sofs do
   defp sort(false, l) do
     reverse(l)
   end
+
 end

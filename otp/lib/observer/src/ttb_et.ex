@@ -2,29 +2,19 @@ defmodule :m_ttb_et do
   use Bitwise
   @author :"siri@erix.ericsson.se"
   require Record
-
-  Record.defrecord(:r_event, :event,
-    detail_level: :undefined,
-    trace_ts: :undefined,
-    event_ts: :undefined,
-    from: :undefined,
-    to: :undefined,
-    label: :undefined,
-    contents: :undefined
-  )
-
+  Record.defrecord(:r_event, :event, detail_level: :undefined,
+                                 trace_ts: :undefined, event_ts: :undefined,
+                                 from: :undefined, to: :undefined,
+                                 label: :undefined, contents: :undefined)
   def handler(out, trace, traci, :initial) do
     s = self()
-
-    spawn(fn ->
-      init_et(s)
-    end)
-
+    spawn(fn () ->
+               init_et(s)
+          end)
     receive do
       {:et_started, collector} ->
         :ok
     end
-
     handler(out, trace, traci, collector)
   end
 
@@ -48,57 +38,56 @@ defmodule :m_ttb_et do
 
   defp get_returns(col) do
     fun = fn event, acc ->
-      collect_return_info(event, acc, col)
-    end
-
-    :et_collector.iterate(col, :last, :"-infinity", fun, :dict.new())
+               collect_return_info(event, acc, col)
+          end
+    :et_collector.iterate(col, :last, :-infinity, fun,
+                            :dict.new())
   end
 
   defp collect_return_info(r_event(label: l, from: pid) = e, acc, _Col)
-       when l == :return_to or l == :return_from do
-    :dict.update(
-      pid,
-      fn old ->
-        [e | old]
-      end,
-      [e],
-      acc
-    )
+      when l == :return_to or l == :return_from do
+    :dict.update(pid,
+                   fn old ->
+                        [e | old]
+                   end,
+                   [e], acc)
   end
 
-  defp collect_return_info(r_event(label: :call, from: pid, contents: contents) = e, acc, col) do
+  defp collect_return_info(r_event(label: :call, from: pid,
+              contents: contents) = e,
+            acc, col) do
     mFA = get_mfarity(contents)
-
-    {caller, newAcc} =
-      case :dict.find(pid, acc) do
-        {:ok, [r_event(label: :return_from) = retFrom, r_event(label: :return_to) = retTo | rets]} ->
-          retToCont = r_event(retTo, :contents)
-          c = get_mfarity(retToCont)
-          newRetTo = r_event(retTo, contents: retToCont ++ [{:return_from, mFA}])
-          retFromCont = r_event(retFrom, :contents)
-          newRetFrom = r_event(retFrom, contents: retFromCont ++ [{:return_to, c}])
-          :et_collector.report(col, newRetTo)
-          :et_collector.report(col, newRetFrom)
-          {c, :dict.store(pid, rets, acc)}
-
-        {:ok, [r_event(label: :return_to) = retTo | rets]} ->
-          retToCont = r_event(retTo, :contents)
-          c = get_mfarity(retToCont)
-          newRetTo = r_event(retTo, contents: retToCont ++ [{:return_from, mFA}])
-          :et_collector.report(col, newRetTo)
-          {c, :dict.store(pid, rets, acc)}
-
-        {:ok, [r_event(label: :return_from) = retFrom | rets]} ->
-          c = get_caller(contents)
-          retFromCont = r_event(retFrom, :contents)
-          newRetFrom = r_event(retFrom, contents: retFromCont ++ [{:return_to, c}])
-          :et_collector.report(col, newRetFrom)
-          {c, :dict.store(pid, rets, acc)}
-
-        _noreturn ->
-          {:nocaller, acc}
-      end
-
+    {caller, newAcc} = (case (:dict.find(pid, acc)) do
+                          {:ok,
+                             [r_event(label: :return_from) = retFrom,
+                                  r_event(label: :return_to) = retTo | rets]} ->
+                            retToCont = r_event(retTo, :contents)
+                            c = get_mfarity(retToCont)
+                            newRetTo = r_event(retTo, contents: retToCont ++ [{:return_from,
+                                                                           mFA}])
+                            retFromCont = r_event(retFrom, :contents)
+                            newRetFrom = r_event(retFrom, contents: retFromCont ++ [{:return_to,
+                                                                                 c}])
+                            :et_collector.report(col, newRetTo)
+                            :et_collector.report(col, newRetFrom)
+                            {c, :dict.store(pid, rets, acc)}
+                          {:ok, [r_event(label: :return_to) = retTo | rets]} ->
+                            retToCont = r_event(retTo, :contents)
+                            c = get_mfarity(retToCont)
+                            newRetTo = r_event(retTo, contents: retToCont ++ [{:return_from,
+                                                                           mFA}])
+                            :et_collector.report(col, newRetTo)
+                            {c, :dict.store(pid, rets, acc)}
+                          {:ok, [r_event(label: :return_from) = retFrom | rets]} ->
+                            c = get_caller(contents)
+                            retFromCont = r_event(retFrom, :contents)
+                            newRetFrom = r_event(retFrom, contents: retFromCont ++ [{:return_to,
+                                                                                 c}])
+                            :et_collector.report(col, newRetFrom)
+                            {c, :dict.store(pid, rets, acc)}
+                          _noreturn ->
+                            {:nocaller, acc}
+                        end)
     newE = r_event(e, contents: contents ++ [{:caller, caller}])
     :et_collector.report(col, newE)
     newAcc
@@ -110,24 +99,36 @@ defmodule :m_ttb_et do
 
   defp init_et(parent) do
     :erlang.process_flag(:trap_exit, true)
-
-    etOpt = [
-      {:active_filter, :processes},
-      {:dict_insert, {:filter, :collector}, &collector/1},
-      {:dict_insert, {:filter, :processes}, &processes/1},
-      {:dict_insert, {:filter, :modules}, &modules/1},
-      {:dict_insert, {:filter, :mods_and_procs}, &mods_and_procs/1},
-      {:dict_insert, {:filter, :functions}, &functions/1},
-      {:dict_insert, {:filter, :funcs_and_procs}, &funcs_and_procs/1},
-      {:hide_actions, false},
-      {:max_events, :infinity},
-      {:max_actors, :infinity}
-    ]
-
+    etOpt = [{:active_filter, :processes}, {:dict_insert,
+                                              {:filter, :collector},
+                                              &collector/1},
+                                               {:dict_insert,
+                                                  {:filter, :processes},
+                                                  &processes/1},
+                                                   {:dict_insert,
+                                                      {:filter, :modules},
+                                                      &modules/1},
+                                                       {:dict_insert,
+                                                          {:filter,
+                                                             :mods_and_procs},
+                                                          &mods_and_procs/1},
+                                                           {:dict_insert,
+                                                              {:filter,
+                                                                 :functions},
+                                                              &functions/1},
+                                                               {:dict_insert,
+                                                                  {:filter,
+                                                                     :funcs_and_procs},
+                                                                  &funcs_and_procs/1},
+                                                                   {:hide_actions,
+                                                                      false},
+                                                                       {:max_events,
+                                                                          :infinity},
+                                                                           {:max_actors,
+                                                                              :infinity}]
     {:ok, viewer} = :et_viewer.start_link(etOpt)
     collector = :et_viewer.get_collector_pid(viewer)
     send(parent, {:et_started, collector})
-
     receive do
       {:EXIT, ^viewer, :shutdown} ->
         :ok
@@ -136,44 +137,38 @@ defmodule :m_ttb_et do
 
   defp processes(e0) do
     e = label(e0)
-    {{fromProc, fromNode}, {toProc, toNode}} = get_actors(r_event(e, :from), r_event(e, :to))
-
+    {{fromProc, fromNode},
+       {toProc, toNode}} = get_actors(r_event(e, :from), r_event(e, :to))
     {true,
-     r_event(e,
-       from: :io_lib.format('~tw~n~w', [fromProc, fromNode]),
-       to: :io_lib.format('~tw~n~w', [toProc, toNode])
-     )}
+       r_event(e, from: :io_lib.format('~tw~n~w', [fromProc, fromNode]), 
+              to: :io_lib.format('~tw~n~w', [toProc, toNode]))}
   end
 
   defp mods_and_procs(e) do
     actorFun = fn {m, _F, _A}, {proc, node} ->
-      :io_lib.format('~w~n~tw~n~w', [m, proc, node])
-    end
-
+                    :io_lib.format('~w~n~tw~n~w', [m, proc, node])
+               end
     calltrace_filter(e, actorFun)
   end
 
   defp modules(e) do
     actorFun = fn {m, _F, _A}, {_Proc, node} ->
-      :io_lib.format('~w~n~w', [m, node])
-    end
-
+                    :io_lib.format('~w~n~w', [m, node])
+               end
     calltrace_filter(e, actorFun)
   end
 
   defp funcs_and_procs(e) do
     actorFun = fn {m, f, a}, {proc, node} ->
-      :io_lib.format('~ts~n~tw~n~w', [mfa(m, f, a), proc, node])
-    end
-
+                    :io_lib.format('~ts~n~tw~n~w', [mfa(m, f, a), proc, node])
+               end
     calltrace_filter(e, actorFun)
   end
 
   defp functions(e) do
     actorFun = fn {m, f, a}, {_Proc, node} ->
-      :io_lib.format('~ts~n~w', [mfa(m, f, a), node])
-    end
-
+                    :io_lib.format('~ts~n~w', [mfa(m, f, a), node])
+               end
     calltrace_filter(e, actorFun)
   end
 
@@ -185,65 +180,49 @@ defmodule :m_ttb_et do
   defp calltrace_filter(r_event(label: :call) = e, from, to, actorFun) do
     cont = r_event(e, :contents)
     mFA = get_mfarity(cont)
-
-    case :lists.keysearch(:caller, 1, cont) do
+    case (:lists.keysearch(:caller, 1, cont)) do
       {:value, {_, {_CM, _CF, _CA} = caller}} ->
         {true,
-         r_event(e,
-           label: label(:call, mFA),
-           from: actorFun.(caller, from),
-           to: actorFun.(mFA, to)
-         )}
-
+           r_event(e, label: label(:call, mFA), 
+                  from: actorFun.(caller, from),  to: actorFun.(mFA, to))}
       {:value, {_, _}} ->
         {true,
-         r_event(e, label: label(:call, mFA), from: actorFun.(mFA, from), to: actorFun.(mFA, to))}
+           r_event(e, label: label(:call, mFA), 
+                  from: actorFun.(mFA, from),  to: actorFun.(mFA, to))}
     end
   end
 
-  defp calltrace_filter(r_event(label: :return_from) = e, from, to, actorFun) do
+  defp calltrace_filter(r_event(label: :return_from) = e, from, to,
+            actorFun) do
     cont = r_event(e, :contents)
     mFA = get_mfarity(cont)
-
-    case :lists.keysearch(:return_to, 1, cont) do
+    case (:lists.keysearch(:return_to, 1, cont)) do
       {:value, {_, {_M2, _F2, _A2} = mFA2}} ->
         {true,
-         r_event(e,
-           label: label(:return_from, mFA),
-           from: actorFun.(mFA, from),
-           to: actorFun.(mFA2, to)
-         )}
-
+           r_event(e, label: label(:return_from, mFA), 
+                  from: actorFun.(mFA, from),  to: actorFun.(mFA2, to))}
       {:value, {_, _}} ->
         {true,
-         r_event(e,
-           label: label(:return_from, mFA),
-           from: actorFun.(mFA, from),
-           to: actorFun.(mFA, to)
-         )}
+           r_event(e, label: label(:return_from, mFA), 
+                  from: actorFun.(mFA, from),  to: actorFun.(mFA, to))}
     end
   end
 
   defp calltrace_filter(r_event(label: :return_to) = e, from, to, actorFun) do
     cont = r_event(e, :contents)
-    {:value, {_, {_M2, _F2, _A2} = mFA2}} = :lists.keysearch(:return_from, 1, cont)
-
-    case get_mfarity(cont) do
+    {:value,
+       {_,
+          {_M2, _F2,
+             _A2} = mFA2}} = :lists.keysearch(:return_from, 1, cont)
+    case (get_mfarity(cont)) do
       {_M, _F, _A} = mFA ->
         {true,
-         r_event(e,
-           label: label(:return_to, mFA),
-           from: actorFun.(mFA2, from),
-           to: actorFun.(mFA, to)
-         )}
-
+           r_event(e, label: label(:return_to, mFA), 
+                  from: actorFun.(mFA2, from),  to: actorFun.(mFA, to))}
       :undefined ->
         {true,
-         r_event(e,
-           label: 'return_to unknown',
-           from: actorFun.(mFA2, from),
-           to: actorFun.(mFA2, to)
-         )}
+           r_event(e, label: 'return_to unknown',  from: actorFun.(mFA2, from), 
+                  to: actorFun.(mFA2, to))}
     end
   end
 
@@ -252,10 +231,9 @@ defmodule :m_ttb_et do
   end
 
   defp label(event = r_event(label: l, contents: c)) do
-    case :lists.keysearch(:mfa, 1, c) do
+    case (:lists.keysearch(:mfa, 1, c)) do
       {:value, {:mfa, mFA}} ->
         r_event(event, label: label(l, mFA))
-
       false ->
         event
     end
@@ -310,16 +288,13 @@ defmodule :m_ttb_et do
   end
 
   defp get_actors(from, to) do
-    case {get_proc(from), get_proc(to)} do
+    case ({get_proc(from), get_proc(to)}) do
       {{_FP, _FN}, {_TP, _TN}} = r ->
         r
-
       {{fP, fN}, t} ->
         {{fP, fN}, {t, fN}}
-
       {f, {tP, tN}} ->
         {{f, tN}, {tP, tN}}
-
       {f, t} ->
         {{f, :unknown}, {t, :unknown}}
     end
@@ -342,10 +317,9 @@ defmodule :m_ttb_et do
   end
 
   defp get_mfarity(list) do
-    case get_mfa(list) do
+    case (get_mfa(list)) do
       {m, f, a} ->
         {m, f, arity(a)}
-
       other ->
         other
     end
@@ -357,18 +331,16 @@ defmodule :m_ttb_et do
   end
 
   defp get_caller(list) do
-    case :lists.keysearch(:pam_result, 1, list) do
+    case (:lists.keysearch(:pam_result, 1, list)) do
       {:value, {:pam_result, {m, f, a}}} ->
         {m, f, arity(a)}
-
       {:value, {:pam_result, :undefined}} ->
         :undefined
-
       {:value, {:pam_result, _Other}} ->
         :nocaller
-
       false ->
         :nocaller
     end
   end
+
 end

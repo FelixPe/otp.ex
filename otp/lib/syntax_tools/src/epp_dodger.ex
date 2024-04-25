@@ -1,6 +1,5 @@
 defmodule :m_epp_dodger do
   use Bitwise
-
   def parse_file(file) do
     parse_file(file, [])
   end
@@ -18,48 +17,43 @@ defmodule :m_epp_dodger do
   end
 
   defp parse_file(file, parser, options) do
-    case do_parse_file(:utf8, file, parser, options) do
+    case (do_parse_file(:utf8, file, parser, options)) do
       {:ok, forms} = ret ->
-        case find_invalid_unicode(forms) do
+        case (find_invalid_unicode(forms)) do
           :none ->
             ret
-
           :invalid_unicode ->
-            case :epp.read_encoding(file) do
+            case (:epp.read_encoding(file)) do
               :utf8 ->
                 ret
-
               _ ->
                 do_parse_file(:latin1, file, parser, options)
             end
         end
-
       else__ ->
         else__
     end
   end
 
   defp do_parse_file(defEncoding, file, parser, options) do
-    case :file.open(file, [:read]) do
+    case (:file.open(file, [:read])) do
       {:ok, dev} ->
         _ = :epp.set_encoding(dev, defEncoding)
-
         try do
           parser.(dev, 1, options)
         after
           :ok = :file.close(dev)
         end
-
       {:error, error} ->
         {:error, {0, :file, error}}
     end
   end
 
   defp find_invalid_unicode([h | t]) do
-    case h do
-      {:error, {_Line, :file_io_server, :invalid_unicode}} ->
+    case (h) do
+      {:error,
+         {_Location, :file_io_server, :invalid_unicode}} ->
         :invalid_unicode
-
       _Other ->
         find_invalid_unicode(t)
     end
@@ -98,16 +92,13 @@ defmodule :m_epp_dodger do
   end
 
   defp parse(dev, l0, fs, parser, options) do
-    case parser.(dev, l0, options) do
+    case (parser.(dev, l0, options)) do
       {:ok, :none, l1} ->
         parse(dev, l1, fs, parser, options)
-
       {:ok, f, l1} ->
         parse(dev, l1, [f | fs], parser, options)
-
       {:error, ioErr, l1} ->
         parse(dev, l1, [{:error, ioErr} | fs], parser, options)
-
       {:eof, _L1} ->
         {:ok, :lists.reverse(fs)}
     end
@@ -131,47 +122,42 @@ defmodule :m_epp_dodger do
 
   require Record
   Record.defrecord(:r_opt, :opt, clever: false)
-
   defp parse_form(dev, l0, parser, options) do
     noFail = :proplists.get_bool(:no_fail, options)
     opt = r_opt(clever: :proplists.get_bool(:clever, options))
-
-    case :io.scan_erl_form(dev, '', l0) do
+    {:ok,
+       {_Ftrs,
+          resWordFun}} = :erl_features.keyword_fun(options,
+                                                     &:erl_scan.f_reserved_word/1)
+    case (:io.scan_erl_form(dev, '', l0,
+                              [{:reserved_word_fun, resWordFun}])) do
       {:ok, ts, l1} ->
-        case (try do
+        case ((try do
                 {:ok, parser.(ts, opt)}
               catch
                 :error, e -> {:EXIT, {e, __STACKTRACE__}}
                 :exit, e -> {:EXIT, e}
                 e -> e
-              end) do
+              end)) do
           {:EXIT, term} ->
             {:error, io_error(l1, {:unknown, term}), l1}
-
           {:error, term} ->
             ioErr = io_error(l1, term)
             {:error, ioErr, l1}
-
           {:parse_error, _IoErr} when noFail ->
             {:ok,
-             :erl_syntax.set_pos(
-               :erl_syntax.text(tokens_to_string(ts)),
-               start_pos(ts, l1)
-             ), l1}
-
+               :erl_syntax.set_pos(:erl_syntax.text(tokens_to_string(ts)),
+                                     :erl_anno.new(start_pos(ts, l1))),
+               l1}
           {:parse_error, ioErr} ->
             {:error, ioErr, l1}
-
           {:ok, f} ->
             {:ok, f, l1}
         end
-
       {:error, _IoErr, _L1} = err ->
         err
-
       {:error, _Reason} ->
         {:eof, l0}
-
       {:eof, _L1} = eof ->
         eof
     end
@@ -182,7 +168,7 @@ defmodule :m_epp_dodger do
   end
 
   defp start_pos([t | _Ts], _L) do
-    :erl_anno.line(:erlang.element(2, t))
+    :erl_anno.location(:erlang.element(2, t))
   end
 
   defp start_pos([], l) do
@@ -194,18 +180,15 @@ defmodule :m_epp_dodger do
   end
 
   defp parse_tokens(ts, fix) do
-    case :erl_parse.parse_form(ts) do
+    case (:erl_parse.parse_form(ts)) do
       {:ok, form} ->
         form
-
       {:error, ioErr} ->
-        case fix.(ts) do
+        case (fix.(ts)) do
           {:form, form} ->
             form
-
           {:retry, ts1, fix1} ->
             parse_tokens(ts1, fix1)
-
           :error ->
             throw({:parse_error, ioErr})
         end
@@ -216,68 +199,67 @@ defmodule :m_epp_dodger do
     filter_form(parse_tokens(quickscan_form(ts)))
   end
 
-  defp quickscan_form([{:-, _L}, {:atom, la, :define} | _Ts]) do
-    kill_form(la)
+  defp quickscan_form([{:-, _Anno}, {:atom, annoA, :define} | _Ts]) do
+    kill_form(annoA)
   end
 
-  defp quickscan_form([{:-, _L}, {:atom, la, :undef} | _Ts]) do
-    kill_form(la)
+  defp quickscan_form([{:-, _Anno}, {:atom, annoA, :undef} | _Ts]) do
+    kill_form(annoA)
   end
 
-  defp quickscan_form([{:-, _L}, {:atom, la, :include} | _Ts]) do
-    kill_form(la)
+  defp quickscan_form([{:-, _Anno}, {:atom, annoA, :include} |
+                            _Ts]) do
+    kill_form(annoA)
   end
 
-  defp quickscan_form([{:-, _L}, {:atom, la, :include_lib} | _Ts]) do
-    kill_form(la)
+  defp quickscan_form([{:-, _Anno}, {:atom, annoA, :include_lib} |
+                            _Ts]) do
+    kill_form(annoA)
   end
 
-  defp quickscan_form([{:-, _L}, {:atom, la, :ifdef} | _Ts]) do
-    kill_form(la)
+  defp quickscan_form([{:-, _Anno}, {:atom, annoA, :ifdef} | _Ts]) do
+    kill_form(annoA)
   end
 
-  defp quickscan_form([{:-, _L}, {:atom, la, :ifndef} | _Ts]) do
-    kill_form(la)
+  defp quickscan_form([{:-, _Anno}, {:atom, annoA, :ifndef} | _Ts]) do
+    kill_form(annoA)
   end
 
-  defp quickscan_form([{:-, _L}, {:if, la} | _Ts]) do
-    kill_form(la)
+  defp quickscan_form([{:-, _Anno}, {:if, annoA} | _Ts]) do
+    kill_form(annoA)
   end
 
-  defp quickscan_form([{:-, _L}, {:atom, la, :elif} | _Ts]) do
-    kill_form(la)
+  defp quickscan_form([{:-, _Anno}, {:atom, annoA, :elif} | _Ts]) do
+    kill_form(annoA)
   end
 
-  defp quickscan_form([{:-, _L}, {:atom, la, :else} | _Ts]) do
-    kill_form(la)
+  defp quickscan_form([{:-, _Anno}, {:atom, annoA, :else} | _Ts]) do
+    kill_form(annoA)
   end
 
-  defp quickscan_form([{:-, _L}, {:atom, la, :endif} | _Ts]) do
-    kill_form(la)
+  defp quickscan_form([{:-, _Anno}, {:else, annoA} | _Ts]) do
+    kill_form(annoA)
   end
 
-  defp quickscan_form([
-         {:-, l},
-         {:"?", _},
-         {type, _, _} = n
-         | [
-             {:"(", _}
-             | _
-           ] = ts
-       ])
-       when type === :atom or type === :var do
-    quickscan_macros_1(n, ts, [{:-, l}])
+  defp quickscan_form([{:-, _Anno}, {:atom, annoA, :endif} | _Ts]) do
+    kill_form(annoA)
   end
 
-  defp quickscan_form([
-         {:"?", _L},
-         {type, _, _} = n
-         | [
-             {:"(", _}
-             | _
-           ] = ts
-       ])
-       when type === :atom or type === :var do
+  defp quickscan_form([{:-, _Anno}, {:atom, annoA, :feature} |
+                            _Ts]) do
+    kill_form(annoA)
+  end
+
+  defp quickscan_form([{:-, anno}, {:"?", _}, {type, _, _} = n | [{:"(",
+                                                       _} |
+                                                        _] = ts])
+      when type === :atom or type === :var do
+    quickscan_macros_1(n, ts, [{:-, anno}])
+  end
+
+  defp quickscan_form([{:"?", _Anno}, {type, _, _} = n | [{:"(", _} |
+                                                _] = ts])
+      when type === :atom or type === :var do
     quickscan_macros_1(n, ts, [])
   end
 
@@ -285,60 +267,43 @@ defmodule :m_epp_dodger do
     quickscan_macros(ts)
   end
 
-  defp kill_form(l) do
-    [
-      {:atom, l, :"?preprocessor declaration?"},
-      {:"(", l},
-      {:")", l},
-      {:->, l},
-      {:atom, l, :kill},
-      {:dot, l}
-    ]
+  defp kill_form(a) do
+    [{:atom, a, :"?preprocessor declaration?"}, {:"(", a}, {:")", a}, {:"->", a}, {:atom, a,
+                                                   :kill},
+                                                    {:dot, a}]
   end
 
   defp quickscan_macros(ts) do
     quickscan_macros(ts, [])
   end
 
-  defp quickscan_macros(
-         [{:"?", _}, {type, _, a} | ts],
-         [{:string, l, s} | as]
-       )
-       when type === :atom or type === :var do
+  defp quickscan_macros([{:"?", _}, {type, _, a} | ts],
+            [{:string, annoS, s} | as])
+      when type === :atom or type === :var do
     {_, ts1} = skip_macro_args(ts)
     s1 = s ++ quick_macro_string(a)
-    quickscan_macros(ts1, [{:string, l, s1} | as])
+    quickscan_macros(ts1, [{:string, annoS, s1} | as])
   end
 
-  defp quickscan_macros(
-         [
-           {:"?", _},
-           {type, _, _} = n
-           | [
-               {:"(", _}
-               | _
-             ] = ts
-         ],
-         [{:":", _} | _] = as
-       )
-       when type === :atom or type === :var do
-    ts1 =
-      case skip_macro_args(ts) do
-        {_, [{:->, _} | _] = ts2} ->
-          ts2
-
-        {_, [{:when, _} | _] = ts2} ->
-          ts2
-
-        _ ->
-          ts
-      end
-
+  defp quickscan_macros([{:"?", _}, {type, _, _} = n | [{:"(", _} |
+                                            _] = ts],
+            [{:":", _} | _] = as)
+      when type === :atom or type === :var do
+    ts1 = (case (skip_macro_args(ts)) do
+             {_, [{:"->", _} | _] = ts2} ->
+               ts2
+             {_, [{:when, _} | _] = ts2} ->
+               ts2
+             {_, [{:":", _} | _] = ts2} ->
+               ts2
+             _ ->
+               ts
+           end)
     quickscan_macros_1(n, ts1, as)
   end
 
   defp quickscan_macros([{:"?", _}, {type, _, _} = n | ts], as)
-       when type === :atom or type === :var do
+      when type === :atom or type === :var do
     {_, ts1} = skip_macro_args(ts)
     quickscan_macros_1(n, ts1, as)
   end
@@ -351,16 +316,15 @@ defmodule :m_epp_dodger do
     :lists.reverse(as)
   end
 
-  defp quickscan_macros_1({_Type, _, a}, [{:string, l, s} | ts], as) do
+  defp quickscan_macros_1({_Type, _, a}, [{:string, annoS, s} | ts],
+            as) do
     s1 = quick_macro_string(a) ++ s
-    quickscan_macros(ts, [{:string, l, s1} | as])
+    quickscan_macros(ts, [{:string, annoS, s1} | as])
   end
 
-  defp quickscan_macros_1({_Type, l, a}, ts, as) do
-    quickscan_macros(
-      ts,
-      [{:atom, l, quick_macro_atom(a)} | as]
-    )
+  defp quickscan_macros_1({_Type, annoA, a}, ts, as) do
+    quickscan_macros(ts,
+                       [{:atom, annoA, quick_macro_atom(a)} | as])
   end
 
   defp quick_macro_atom(a) do
@@ -431,10 +395,8 @@ defmodule :m_epp_dodger do
     throw({:error, :macro_args})
   end
 
-  defp filter_form(
-         {:function, _, :"?preprocessor declaration?", _,
-          [{:clause, _, [], [], [{:atom, _, :kill}]}]}
-       ) do
+  defp filter_form({:function, _, :"?preprocessor declaration?", _,
+             [{:clause, _, [], [], [{:atom, _, :kill}]}]}) do
     :none
   end
 
@@ -443,169 +405,132 @@ defmodule :m_epp_dodger do
   end
 
   defp normal_parser(ts0, opt) do
-    case scan_form(ts0, opt) do
+    case (scan_form(ts0, opt)) do
       ts when is_list(ts) ->
         rewrite_form(parse_tokens(ts))
-
       node ->
         node
     end
   end
 
-  defp scan_form([{:-, _L}, {:atom, la, :define} | ts], opt) do
-    [
-      {:atom, la, :"?preprocessor declaration?"},
-      {:"(", la},
-      {:")", la},
-      {:->, la},
-      {:atom, la, :define}
-      | scan_macros(ts, opt)
-    ]
+  defp scan_form([{:-, _Anno}, {:atom, annoA, :define} | ts],
+            opt) do
+    [{:atom, annoA, :"?preprocessor declaration?"}, {:"(", annoA}, {:")", annoA}, {:"->",
+                                                      annoA},
+                                                       {:atom, annoA, :define} |
+                                                           scan_macros(ts, opt)]
   end
 
-  defp scan_form([{:-, _L}, {:atom, la, :undef} | ts], opt) do
-    [
-      {:atom, la, :"?preprocessor declaration?"},
-      {:"(", la},
-      {:")", la},
-      {:->, la},
-      {:atom, la, :undef}
-      | scan_macros(ts, opt)
-    ]
+  defp scan_form([{:-, _Anno}, {:atom, annoA, :undef} | ts],
+            opt) do
+    [{:atom, annoA, :"?preprocessor declaration?"}, {:"(", annoA}, {:")", annoA}, {:"->",
+                                                      annoA},
+                                                       {:atom, annoA, :undef} |
+                                                           scan_macros(ts, opt)]
   end
 
-  defp scan_form([{:-, _L}, {:atom, la, :include} | ts], opt) do
-    [
-      {:atom, la, :"?preprocessor declaration?"},
-      {:"(", la},
-      {:")", la},
-      {:->, la},
-      {:atom, la, :include}
-      | scan_macros(ts, opt)
-    ]
+  defp scan_form([{:-, _Anno}, {:atom, annoA, :include} | ts],
+            opt) do
+    [{:atom, annoA, :"?preprocessor declaration?"}, {:"(", annoA}, {:")", annoA}, {:"->",
+                                                      annoA},
+                                                       {:atom, annoA,
+                                                          :include} |
+                                                           scan_macros(ts, opt)]
   end
 
-  defp scan_form(
-         [{:-, _L}, {:atom, la, :include_lib} | ts],
-         opt
-       ) do
-    [
-      {:atom, la, :"?preprocessor declaration?"},
-      {:"(", la},
-      {:")", la},
-      {:->, la},
-      {:atom, la, :include_lib}
-      | scan_macros(ts, opt)
-    ]
+  defp scan_form([{:-, _Anno}, {:atom, annoA, :include_lib} |
+                            ts],
+            opt) do
+    [{:atom, annoA, :"?preprocessor declaration?"}, {:"(", annoA}, {:")", annoA}, {:"->",
+                                                      annoA},
+                                                       {:atom, annoA,
+                                                          :include_lib} |
+                                                           scan_macros(ts, opt)]
   end
 
-  defp scan_form([{:-, _L}, {:atom, la, :ifdef} | ts], opt) do
-    [
-      {:atom, la, :"?preprocessor declaration?"},
-      {:"(", la},
-      {:")", la},
-      {:->, la},
-      {:atom, la, :ifdef}
-      | scan_macros(ts, opt)
-    ]
+  defp scan_form([{:-, _Anno}, {:atom, annoA, :ifdef} | ts],
+            opt) do
+    [{:atom, annoA, :"?preprocessor declaration?"}, {:"(", annoA}, {:")", annoA}, {:"->",
+                                                      annoA},
+                                                       {:atom, annoA, :ifdef} |
+                                                           scan_macros(ts, opt)]
   end
 
-  defp scan_form([{:-, _L}, {:atom, la, :ifndef} | ts], opt) do
-    [
-      {:atom, la, :"?preprocessor declaration?"},
-      {:"(", la},
-      {:")", la},
-      {:->, la},
-      {:atom, la, :ifndef}
-      | scan_macros(ts, opt)
-    ]
+  defp scan_form([{:-, _Anno}, {:atom, annoA, :ifndef} | ts],
+            opt) do
+    [{:atom, annoA, :"?preprocessor declaration?"}, {:"(", annoA}, {:")", annoA}, {:"->",
+                                                      annoA},
+                                                       {:atom, annoA, :ifndef} |
+                                                           scan_macros(ts, opt)]
   end
 
-  defp scan_form([{:-, _L}, {:if, la} | ts], opt) do
-    [
-      {:atom, la, :"?preprocessor declaration?"},
-      {:"(", la},
-      {:")", la},
-      {:->, la},
-      {:atom, la, :if}
-      | scan_macros(ts, opt)
-    ]
+  defp scan_form([{:-, _Anno}, {:if, annoA} | ts], opt) do
+    [{:atom, annoA, :"?preprocessor declaration?"}, {:"(", annoA}, {:")", annoA}, {:"->",
+                                                      annoA},
+                                                       {:atom, annoA, :if} |
+                                                           scan_macros(ts, opt)]
   end
 
-  defp scan_form([{:-, _L}, {:atom, la, :elif} | ts], opt) do
-    [
-      {:atom, la, :"?preprocessor declaration?"},
-      {:"(", la},
-      {:")", la},
-      {:->, la},
-      {:atom, la, :elif}
-      | scan_macros(ts, opt)
-    ]
+  defp scan_form([{:-, _Anno}, {:atom, annoA, :elif} | ts],
+            opt) do
+    [{:atom, annoA, :"?preprocessor declaration?"}, {:"(", annoA}, {:")", annoA}, {:"->",
+                                                      annoA},
+                                                       {:atom, annoA, :elif} |
+                                                           scan_macros(ts, opt)]
   end
 
-  defp scan_form([{:-, _L}, {:atom, la, :else} | ts], opt) do
-    [
-      {:atom, la, :"?preprocessor declaration?"},
-      {:"(", la},
-      {:")", la},
-      {:->, la},
-      {:atom, la, :else}
-      | scan_macros(ts, opt)
-    ]
+  defp scan_form([{:-, _Anno}, {:atom, annoA, :else} | ts],
+            opt) do
+    [{:atom, annoA, :"?preprocessor declaration?"}, {:"(", annoA}, {:")", annoA}, {:"->",
+                                                      annoA},
+                                                       {:atom, annoA, :else} |
+                                                           scan_macros(ts, opt)]
   end
 
-  defp scan_form([{:-, _L}, {:atom, la, :endif} | ts], opt) do
-    [
-      {:atom, la, :"?preprocessor declaration?"},
-      {:"(", la},
-      {:")", la},
-      {:->, la},
-      {:atom, la, :endif}
-      | scan_macros(ts, opt)
-    ]
+  defp scan_form([{:-, _Anno}, {:else, annoA} | ts], opt) do
+    [{:atom, annoA, :"?preprocessor declaration?"}, {:"(", annoA}, {:")", annoA}, {:"->",
+                                                      annoA},
+                                                       {:atom, annoA, :else} |
+                                                           scan_macros(ts, opt)]
   end
 
-  defp scan_form([{:-, _L}, {:atom, la, :error} | ts], _Opt) do
+  defp scan_form([{:-, _Anno}, {:atom, annoA, :endif} | ts],
+            opt) do
+    [{:atom, annoA, :"?preprocessor declaration?"}, {:"(", annoA}, {:")", annoA}, {:"->",
+                                                      annoA},
+                                                       {:atom, annoA, :endif} |
+                                                           scan_macros(ts, opt)]
+  end
+
+  defp scan_form([{:-, _Anno}, {:atom, annoA, :error} | ts],
+            _Opt) do
     desc = build_info_string('-error', ts)
-    errorInfo = {la, :epp_dodger, {:error, desc}}
+    errorInfo = {:erl_anno.location(annoA), :epp_dodger,
+                   {:error, desc}}
     :erl_syntax.error_marker(errorInfo)
   end
 
-  defp scan_form([{:-, _L}, {:atom, la, :warning} | ts], _Opt) do
+  defp scan_form([{:-, _Anno}, {:atom, annoA, :warning} | ts],
+            _Opt) do
     desc = build_info_string('-warning', ts)
-    errorInfo = {la, :epp_dodger, {:warning, desc}}
+    errorInfo = {:erl_anno.location(annoA), :epp_dodger,
+                   {:warning, desc}}
     :erl_syntax.error_marker(errorInfo)
   end
 
-  defp scan_form(
-         [
-           {:-, l},
-           {:"?", l1},
-           {type, _, _} = n
-           | [
-               {:"(", _}
-               | _
-             ] = ts
-         ],
-         opt
-       )
-       when type === :atom or type === :var do
-    macro(l1, n, ts, [{:-, l}], opt)
+  defp scan_form([{:-, a}, {:"?", a1}, {type, _, _} = n | [{:"(",
+                                                     _} |
+                                                      _] = ts],
+            opt)
+      when type === :atom or type === :var do
+    macro(a1, n, ts, [{:-, a}], opt)
   end
 
-  defp scan_form(
-         [
-           {:"?", l},
-           {type, _, _} = n
-           | [
-               {:"(", _}
-               | _
-             ] = ts
-         ],
-         opt
-       )
-       when type === :atom or type === :var do
-    macro(l, n, ts, [], opt)
+  defp scan_form([{:"?", a}, {type, _, _} = n | [{:"(", _} |
+                                            _] = ts],
+            opt)
+      when type === :atom or type === :var do
+    macro(a, n, ts, [], opt)
   end
 
   defp scan_form(ts, opt) do
@@ -622,62 +547,40 @@ defmodule :m_epp_dodger do
     scan_macros(ts, [], opt)
   end
 
-  defp scan_macros(
-         [{:"?", _} = m, {type, _, _} = n | ts],
-         [{:string, l, _} = s | as],
-         r_opt(clever: true) = opt
-       )
-       when type === :atom or type === :var do
-    scan_macros([m, n | ts], [{:++, l}, s | as], opt)
+  defp scan_macros([{:"?", _} = m, {type, _, _} = n | ts],
+            [{:string, annoS, _} = s | as], r_opt(clever: true) = opt)
+      when type === :atom or type === :var do
+    scan_macros([m, n | ts], [{:"++", annoS}, s | as], opt)
   end
 
-  defp scan_macros(
-         [
-           {:"?", l},
-           {type, _, _} = n
-           | [
-               {:"(", _}
-               | _
-             ] = ts
-         ],
-         [{:":", _} | _] = as,
-         opt
-       )
-       when type === :atom or type === :var do
+  defp scan_macros([{:"?", anno}, {type, _, _} = n | [{:"(", _} |
+                                               _] = ts],
+            [{:":", _} | _] = as, opt)
+      when type === :atom or type === :var do
     {args, rest} = skip_macro_args(ts)
-
-    case rest do
-      [{:->, _} | _] ->
-        macro_call(args, l, n, rest, as, opt)
-
+    case (rest) do
+      [{:"->", _} | _] ->
+        macro_call(args, anno, n, rest, as, opt)
       [{:when, _} | _] ->
-        macro_call(args, l, n, rest, as, opt)
-
+        macro_call(args, anno, n, rest, as, opt)
+      [{:":", _} | _] ->
+        macro_call(args, anno, n, rest, as, opt)
       _ ->
-        macro(l, n, ts, as, opt)
+        macro(anno, n, ts, as, opt)
     end
   end
 
-  defp scan_macros(
-         [
-           {:"?", l},
-           {type, _, _} = n
-           | [
-               {:"(", _}
-               | _
-             ] = ts
-         ],
-         as,
-         opt
-       )
-       when type === :atom or type === :var do
+  defp scan_macros([{:"?", anno}, {type, _, _} = n | [{:"(", _} |
+                                               _] = ts],
+            as, opt)
+      when type === :atom or type === :var do
     {args, rest} = skip_macro_args(ts)
-    macro_call(args, l, n, rest, as, opt)
+    macro_call(args, anno, n, rest, as, opt)
   end
 
-  defp scan_macros([{:"?", l}, {type, _, _} = n | ts], as, opt)
-       when type === :atom or type === :var do
-    macro(l, n, ts, as, opt)
+  defp scan_macros([{:"?", anno}, {type, _, _} = n | ts], as, opt)
+      when type === :atom or type === :var do
+    macro(anno, n, ts, as, opt)
   end
 
   defp scan_macros([t | ts], as, opt) do
@@ -688,36 +591,33 @@ defmodule :m_epp_dodger do
     :lists.reverse(as)
   end
 
-  defp macro(l, {type, _, a}, rest, as, opt) do
-    scan_macros_1([], rest, [{:atom, l, macro_atom(type, a)} | as], opt)
+  defp macro(anno, {type, _, a}, rest, as, opt) do
+    scan_macros_1([], rest,
+                    [{:atom, anno, macro_atom(type, a)} | as], opt)
   end
 
-  defp macro_call([{:"(", _}, {:")", _}], l, {_, ln, _} = n, rest, as, opt) do
+  defp macro_call([{:"(", _}, {:")", _}], anno, {_, annoN, _} = n,
+            rest, as, opt) do
     {open, close} = parentheses(as)
-
-    scan_macros_1(
-      [],
-      rest,
-      :lists.reverse(
-        open ++ [{:atom, l, :"? <macro> ("}, {:"(", l}, n, {:")", ln}] ++ close,
-        as
-      ),
-      opt
-    )
+    scan_macros_1([], rest,
+                    :lists.reverse(open ++ [{:"{", anno}, {:atom, anno, :"? <macro> ("},
+                                                            {:",", anno}, n, {:"}",
+                                                                              annoN}] ++ close,
+                                     as),
+                    opt)
   end
 
-  defp macro_call([{:"(", _} | args], l, {_, ln, _} = n, rest, as, opt) do
+  defp macro_call([{:"(", _} | args], anno, {_, annoN, _} = n, rest,
+            as, opt) do
     {open, close} = parentheses(as)
-
-    scan_macros_1(
-      args ++ close,
-      rest,
-      :lists.reverse(
-        open ++ [{:atom, l, :"? <macro> ("}, {:"(", l}, n, {:",", ln}],
-        as
-      ),
-      opt
-    )
+    {:")", _} = :lists.last(args)
+    args1 = :lists.droplast(args)
+    scan_macros_1(args1 ++ [{:"}", annoN} | close], rest,
+                    :lists.reverse(open ++ [{:"{", anno}, {:atom, anno, :"? <macro> ("},
+                                                            {:",", anno}, n, {:",",
+                                                                              annoN}],
+                                     as),
+                    opt)
   end
 
   defp macro_atom(:atom, a) do
@@ -736,29 +636,25 @@ defmodule :m_epp_dodger do
     {[{:"(", 0}], [{:")", 0}]}
   end
 
-  defp scan_macros_1(args, [{:string, l, _} | _] = rest, as, r_opt(clever: true) = opt) do
-    scan_macros(args ++ [{:++, l} | rest], as, opt)
+  defp scan_macros_1(args, [{:string, annoS, _} | _] = rest, as,
+            r_opt(clever: true) = opt) do
+    scan_macros(args ++ [{:"++", annoS} | rest], as, opt)
   end
 
   defp scan_macros_1(args, rest, as, opt) do
     scan_macros(args ++ rest, as, opt)
   end
 
-  defp rewrite_form(
-         {:function, l, :"?preprocessor declaration?", _,
-          [{:clause, _, [], [], [{:call, _, a, as}]}]}
-       ) do
-    :erl_syntax.set_pos(
-      :erl_syntax.attribute(
-        a,
-        rewrite_list(as)
-      ),
-      l
-    )
+  defp rewrite_form({:function, anno, :"?preprocessor declaration?", _,
+             [{:clause, _, [], [], [{:call, _, a, as}]}]}) do
+    :erl_syntax.set_pos(:erl_syntax.attribute(a,
+                                                rewrite_list(as)),
+                          anno)
   end
 
-  defp rewrite_form({:function, l, :"?preprocessor declaration?", _, [{:clause, _, [], [], [a]}]}) do
-    :erl_syntax.set_pos(:erl_syntax.attribute(a), l)
+  defp rewrite_form({:function, anno, :"?preprocessor declaration?", _,
+             [{:clause, _, [], [], [a]}]}) do
+    :erl_syntax.set_pos(:erl_syntax.attribute(a), anno)
   end
 
   defp rewrite_form(t) do
@@ -774,86 +670,67 @@ defmodule :m_epp_dodger do
   end
 
   defp rewrite(node) do
-    case :erl_syntax.type(node) do
+    case (:erl_syntax.type(node)) do
       :atom ->
-        case :erlang.atom_to_list(:erl_syntax.atom_value(node)) do
+        case (:erlang.atom_to_list(:erl_syntax.atom_value(node))) do
           '? ' ++ as ->
             a1 = :erlang.list_to_atom(as)
             n = :erl_syntax.copy_pos(node, :erl_syntax.atom(a1))
             :erl_syntax.copy_pos(node, :erl_syntax.macro(n))
-
           '?,' ++ as ->
             a1 = :erlang.list_to_atom(as)
             n = :erl_syntax.copy_pos(node, :erl_syntax.variable(a1))
             :erl_syntax.copy_pos(node, :erl_syntax.macro(n))
-
           _ ->
             node
         end
-
-      :application ->
-        f = :erl_syntax.application_operator(node)
-
-        case :erl_syntax.type(f) do
-          :atom ->
-            case :erl_syntax.atom_value(f) do
-              :"? <macro> (" ->
-                [a | as] = :erl_syntax.application_arguments(node)
-                m = :erl_syntax.macro(a, rewrite_list(as))
-                :erl_syntax.copy_pos(node, m)
-
+      :tuple ->
+        case (:erl_syntax.tuple_elements(node)) do
+          [magicWord, a | as] ->
+            case (:erl_syntax.type(magicWord)) do
+              :atom ->
+                case (:erl_syntax.atom_value(magicWord)) do
+                  :"? <macro> (" ->
+                    m = :erl_syntax.macro(a, rewrite_list(as))
+                    :erl_syntax.copy_pos(node, m)
+                  _ ->
+                    rewrite_1(node)
+                end
               _ ->
                 rewrite_1(node)
             end
-
           _ ->
             rewrite_1(node)
         end
-
       _ ->
         rewrite_1(node)
     end
   end
 
   defp rewrite_1(node) do
-    case :erl_syntax.subtrees(node) do
+    case (:erl_syntax.subtrees(node)) do
       [] ->
         node
-
       gs ->
-        node1 =
-          :erl_syntax.make_tree(
-            :erl_syntax.type(node),
-            for ts <- gs do
-              for t <- ts do
-                rewrite(t)
-              end
-            end
-          )
-
+        node1 = :erl_syntax.make_tree(:erl_syntax.type(node),
+                                        for ts <- gs do
+                                          for t <- ts do
+                                            rewrite(t)
+                                          end
+                                        end)
         :erl_syntax.copy_pos(node, node1)
     end
   end
 
-  defp fix_form(
-         [
-           {:atom, _, :"?preprocessor declaration?"},
-           {:"(", _},
-           {:")", _},
-           {:->, _},
-           {:atom, _, :define},
-           {:"(", _}
-           | _
-         ] = ts
-       ) do
-    case :lists.reverse(ts) do
+  defp fix_form([{:atom, _, :"?preprocessor declaration?"}, {:"(", _}, {:")", _}, {:"->", _},
+                                                 {:atom, _, :define}, {:"(", _} |
+                                                                          _] = ts) do
+    case (:lists.reverse(ts)) do
       [{:dot, _}, {:")", _} | _] ->
         {:retry, ts, &fix_define/1}
-
-      [{:dot, l} | ts1] ->
-        ts2 = :lists.reverse([{:dot, l}, {:")", l} | ts1])
+      [{:dot, anno} | ts1] ->
+        ts2 = :lists.reverse([{:dot, anno}, {:")", anno} | ts1])
         {:retry, ts2, &fix_define/1}
-
       _ ->
         :error
     end
@@ -863,27 +740,18 @@ defmodule :m_epp_dodger do
     :error
   end
 
-  defp fix_define([
-         {:atom, l, :"?preprocessor declaration?"},
-         {:"(", _},
-         {:")", _},
-         {:->, _},
-         {:atom, la, :define},
-         {:"(", _},
-         n,
-         {:",", _}
-         | ts
-       ]) do
+  defp fix_define([{:atom, anno, :"?preprocessor declaration?"}, {:"(", _}, {:")", _}, {:"->", _},
+                                                    {:atom, annoA, :define},
+                                                        {:"(", _}, n, {:",", _} |
+                                                                        ts]) do
     [{:dot, _}, {:")", _} | ts1] = :lists.reverse(ts)
     s = tokens_to_string(:lists.reverse(ts1))
-    a = :erl_syntax.set_pos(:erl_syntax.atom(:define), la)
-    txt = :erl_syntax.set_pos(:erl_syntax.text(s), la)
-
+    a = :erl_syntax.set_pos(:erl_syntax.atom(:define),
+                              annoA)
+    txt = :erl_syntax.set_pos(:erl_syntax.text(s), annoA)
     {:form,
-     :erl_syntax.set_pos(
-       :erl_syntax.attribute(a, [n, txt]),
-       l
-     )}
+       :erl_syntax.set_pos(:erl_syntax.attribute(a, [n, txt]),
+                             anno)}
   end
 
   defp fix_define(_Ts) do
@@ -945,4 +813,5 @@ defmodule :m_epp_dodger do
   defp errormsg(string) do
     :io_lib.format('~s: ~ts', [:epp_dodger, string])
   end
+
 end
