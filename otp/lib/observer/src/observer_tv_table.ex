@@ -331,7 +331,9 @@ defmodule :m_observer_tv_table do
     shiftDown: :undefined,
     altDown: :undefined,
     metaDown: :undefined,
-    cmdDown: :undefined
+    cmdDown: :undefined,
+    aux1Down: :undefined,
+    aux2Down: :undefined
   )
 
   Record.defrecord(:r_wxHtmlLinkInfo, :wxHtmlLinkInfo,

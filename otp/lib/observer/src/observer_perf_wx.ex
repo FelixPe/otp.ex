@@ -288,7 +288,9 @@ defmodule :m_observer_perf_wx do
     shiftDown: :undefined,
     altDown: :undefined,
     metaDown: :undefined,
-    cmdDown: :undefined
+    cmdDown: :undefined,
+    aux1Down: :undefined,
+    aux2Down: :undefined
   )
 
   Record.defrecord(:r_wxHtmlLinkInfo, :wxHtmlLinkInfo,
@@ -1282,7 +1284,7 @@ defmodule :m_observer_perf_wx do
   end
 
   defp strip([{x, _} | rest], drop, n)
-       when x > 1.0e-4 and
+       when x > 0.0001 and
               n > 0 do
     strip(rest, drop, n)
   end

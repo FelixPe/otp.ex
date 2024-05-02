@@ -153,7 +153,7 @@ defmodule :m_reltool_fgraph do
 
         {_, r_fg_v(p: p1, q: q1)}, {fx, fy} ->
           {r, {cx, cy}} = composition(p0, p1)
-          f = 1.0e3 * (q1 * q0) / (r * r + 1.0e-4)
+          f = 1.0e3 * (q1 * q0) / (r * r + 0.0001)
           {fx + cx * f, fy + cy * f}
 
         _, f ->

@@ -1,6 +1,6 @@
 defmodule :m_lists do
   use Bitwise
-  import Kernel, except: [max: 2, min: 2]
+  import Kernel, except: [min: 2, max: 2]
 
   def keyfind(_, _, _) do
     :erlang.nif_error(:undef)

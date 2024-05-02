@@ -182,7 +182,8 @@ defmodule :m_edoc_types do
     quiet: false,
     col: 1,
     line: 1,
-    common_data: []
+    common_data: [],
+    allow_entities: true
   )
 
   Record.defrecord(:r_xmerl_event, :xmerl_event,

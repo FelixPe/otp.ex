@@ -286,7 +286,9 @@ defmodule :m_cdv_proc_cb do
     shiftDown: :undefined,
     altDown: :undefined,
     metaDown: :undefined,
-    cmdDown: :undefined
+    cmdDown: :undefined,
+    aux1Down: :undefined,
+    aux2Down: :undefined
   )
 
   Record.defrecord(:r_wxHtmlLinkInfo, :wxHtmlLinkInfo,

@@ -1,6 +1,6 @@
 defmodule :m_lcnt do
   use Bitwise
-  import Kernel, except: [apply: 2, apply: 3, inspect: 2]
+  import Kernel, except: [inspect: 2, apply: 2, apply: 3]
   @behaviour :gen_server
   @author "BjÃ¶rn-Egil Dahlberg"
   require Record

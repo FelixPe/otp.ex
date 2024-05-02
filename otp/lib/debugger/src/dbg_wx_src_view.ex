@@ -286,7 +286,9 @@ defmodule :m_dbg_wx_src_view do
     shiftDown: :undefined,
     altDown: :undefined,
     metaDown: :undefined,
-    cmdDown: :undefined
+    cmdDown: :undefined,
+    aux1Down: :undefined,
+    aux2Down: :undefined
   )
 
   Record.defrecord(:r_wxHtmlLinkInfo, :wxHtmlLinkInfo,

@@ -63,7 +63,7 @@ defmodule :m_edlin_key do
       ?\e ->
         get_valid_escape_key(rest, :meta)
 
-      ^c when (?\0 <= c and c <= 31) or c === 31 ->
+      ^c when (?\0 <= c and c <= 31) or c === ?\d ->
         {:key, [c], rest}
 
       _ ->
@@ -85,7 +85,7 @@ defmodule :m_edlin_key do
       _ when ?! <= c and c <= ?~ ->
         get_valid_escape_key(rest, {:finished, ~c"\e" ++ [c]})
 
-      _ when (?\0 <= c and c <= 31) or c === 31 ->
+      _ when (?\0 <= c and c <= 31) or c === ?\d ->
         get_valid_escape_key(rest, {:finished, ~c"\e" ++ [c]})
 
       _ ->
@@ -298,7 +298,7 @@ defmodule :m_edlin_key do
         ~c"\n" => :search_found,
         ~c"\r" => :search_found,
         ~c"\b" => :backward_delete_char,
-        ~c"\037" => :backward_delete_char,
+        ~c"\d" => :backward_delete_char,
         default: :search_quit
       },
       tab_expand: %{~c"\t" => :tab_expand_full, default: :tab_expand_quit}
@@ -343,8 +343,8 @@ defmodule :m_edlin_key do
       ~c"\et" => :transpose_word,
       ~c"\e<" => :beginning_of_expression,
       ~c"\e>" => :end_of_expression,
-      ~c"\037" => :backward_delete_char,
-      ~c"\e\037" => :backward_kill_word,
+      ~c"\d" => :backward_delete_char,
+      ~c"\e\d" => :backward_kill_word,
       ~c"\e[3~" => :forward_delete_char,
       ~c"\e[3;5~" => :forward_delete_word,
       ~c"\e[H" => :beginning_of_line,

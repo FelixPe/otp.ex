@@ -141,7 +141,8 @@ defmodule :m_edoc_doclet do
     quiet: false,
     col: 1,
     line: 1,
-    common_data: []
+    common_data: [],
+    allow_entities: true
   )
 
   Record.defrecord(:r_xmerl_event, :xmerl_event,

@@ -1,6 +1,6 @@
 defmodule :m_proc_lib do
   use Bitwise
-  import Kernel, except: [spawn_link: 1, spawn_link: 3, spawn: 3, spawn: 1]
+  import Kernel, except: [spawn_link: 1, spawn: 3, spawn_link: 3, spawn: 1]
 
   def spawn(f) when is_function(f) do
     parent = get_my_name()

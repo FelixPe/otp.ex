@@ -743,6 +743,16 @@ defmodule :m_dtls_socket do
     values: :undefined
   )
 
+  Record.defrecord(:r_OTPNoticeReference, :OTPNoticeReference,
+    organization: :undefined,
+    noticeNumbers: :undefined
+  )
+
+  Record.defrecord(:r_OTPUserNotice, :OTPUserNotice,
+    noticeRef: :asn1_NOVALUE,
+    explicitText: :asn1_NOVALUE
+  )
+
   Record.defrecord(:r_Extension_Any, :"Extension-Any",
     extnID: :undefined,
     critical: :asn1_DEFAULT,
@@ -978,9 +988,16 @@ defmodule :m_dtls_socket do
 
   Record.defrecord(:r_path_validation_state, :path_validation_state,
     valid_policy_tree: :undefined,
+    user_initial_policy_set: :undefined,
     explicit_policy: :undefined,
     inhibit_any_policy: :undefined,
-    policy_mapping: :undefined,
+    inhibit_policy_mapping: :undefined,
+    policy_mapping_ext: :undefined,
+    policy_constraint_ext: :undefined,
+    policy_inhibitany_ext: :undefined,
+    policy_ext_present: :undefined,
+    policy_ext_any: :undefined,
+    current_any_policy_qualifiers: :undefined,
     cert_num: :undefined,
     last_cert: false,
     permitted_subtrees: :no_constraints,
@@ -994,13 +1011,6 @@ defmodule :m_dtls_socket do
     user_state: :undefined
   )
 
-  Record.defrecord(:r_policy_tree_node, :policy_tree_node,
-    valid_policy: :undefined,
-    qualifier_set: :undefined,
-    criticality_indicator: :undefined,
-    expected_policy_set: :undefined
-  )
-
   Record.defrecord(:r_revoke_state, :revoke_state,
     reasons_mask: :undefined,
     cert_status: :undefined,
@@ -1010,6 +1020,11 @@ defmodule :m_dtls_socket do
   )
 
   Record.defrecord(:r_ECPoint, :ECPoint, point: :undefined)
+
+  Record.defrecord(:r_cert, :cert,
+    der: :undefined,
+    otp: :undefined
+  )
 
   Record.defrecord(:r_socket_options, :socket_options,
     mode: :list,

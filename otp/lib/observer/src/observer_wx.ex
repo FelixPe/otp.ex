@@ -287,7 +287,9 @@ defmodule :m_observer_wx do
     shiftDown: :undefined,
     altDown: :undefined,
     metaDown: :undefined,
-    cmdDown: :undefined
+    cmdDown: :undefined,
+    aux1Down: :undefined,
+    aux2Down: :undefined
   )
 
   Record.defrecord(:r_wxHtmlLinkInfo, :wxHtmlLinkInfo,
@@ -574,6 +576,250 @@ defmodule :m_observer_wx do
 
     :erlang.put({:font, :fixed}, fixed)
     updState
+  end
+
+  def handle_event(
+        r_wx(
+          event:
+            r_wxBookCtrl(
+              type: :command_notebook_page_changed,
+              nSel: next
+            )
+        ),
+        r_state(active_tab: previous, node: node, panels: panels, status_bar: sB) = state
+      ) do
+    {_, obj, _} = :lists.nth(next + 1, panels)
+
+    case :wx_object.get_pid(obj) do
+      ^previous ->
+        {:noreply, state}
+
+      pid ->
+        :wxStatusBar.setStatusText(sB, ~c"")
+        send(previous, :not_active)
+        send(pid, {:active, node})
+        {:noreply, r_state(state, active_tab: pid)}
+    end
+  end
+
+  def handle_event(
+        r_wx(id: 4, event: r_wxCommand(type: :command_menu_selected)),
+        state
+      ) do
+    spawn(:crashdump_viewer, :start, [])
+    {:noreply, state}
+  end
+
+  def handle_event(r_wx(event: r_wxClose()), state) do
+    stop_servers(state)
+    {:noreply, state}
+  end
+
+  def handle_event(
+        r_wx(
+          id: 5006,
+          event: r_wxCommand(type: :command_menu_selected)
+        ),
+        state
+      ) do
+    stop_servers(state)
+    {:noreply, state}
+  end
+
+  def handle_event(
+        r_wx(
+          id: 5009,
+          event: r_wxCommand(type: :command_menu_selected)
+        ),
+        state
+      ) do
+    external = ~c"http://www.erlang.org/doc/apps/observer/index.html"
+    internal = :filename.join([:code.lib_dir(:observer), ~c"doc", ~c"html", ~c"index.html"])
+
+    help =
+      case :filelib.is_file(internal) do
+        true ->
+          internal
+
+        false ->
+          external
+      end
+
+    :wx_misc.launchDefaultBrowser(help) or
+      create_txt_dialog(
+        r_state(state, :frame),
+        ~c"Could not launch browser: ~n " ++ help,
+        ~c"Error",
+        512
+      )
+
+    {:noreply, state}
+  end
+
+  def handle_event(
+        r_wx(
+          id: 5014,
+          event: r_wxCommand(type: :command_menu_selected)
+        ),
+        state = r_state(frame: frame)
+      ) do
+    aboutString =
+      ~c"Observe an erlang system\nAuthors: Olle Mattson & Magnus Eriksson & Dan Gudmundsson"
+
+    style = [{:style, 4 ||| 32768}, {:caption, ~c"About"}]
+    :wxMessageDialog.showModal(:wxMessageDialog.new(frame, aboutString, style))
+    {:noreply, state}
+  end
+
+  def handle_event(
+        r_wx(id: 2, event: r_wxCommand(type: :command_menu_selected)),
+        r_state(frame: frame) = state
+      ) do
+    updState =
+      case create_connect_dialog(
+             :connect,
+             state
+           ) do
+        :cancel ->
+          state
+
+        {:value, [], _, _} ->
+          create_txt_dialog(frame, ~c"Node must have a name", ~c"Error", 512)
+          state
+
+        {:value, nodeName, longOrShort, cookie} ->
+          try do
+            case connect(
+                   :erlang.list_to_atom(nodeName),
+                   longOrShort,
+                   :erlang.list_to_atom(cookie)
+                 ) do
+              {:ok, :set_cookie} ->
+                change_node_view(node(), state)
+
+              {:error, :set_cookie} ->
+                create_txt_dialog(frame, ~c"Could not set cookie", ~c"Error", 512)
+                state
+
+              {:error, :net_kernel, _Reason} ->
+                create_txt_dialog(frame, ~c"Could not enable node", ~c"Error", 512)
+                state
+            end
+          catch
+            _, _ ->
+              create_txt_dialog(frame, ~c"Could not enable node", ~c"Error", 512)
+              state
+          end
+      end
+
+    {:noreply, updState}
+  end
+
+  def handle_event(
+        r_wx(id: 1, event: r_wxCommand(type: :command_menu_selected)),
+        r_state(frame: frame) = state
+      ) do
+    updState =
+      case create_connect_dialog(
+             :ping,
+             state
+           ) do
+        :cancel ->
+          state
+
+        {:value, value} when is_list(value) ->
+          try do
+            node = :erlang.list_to_atom(value)
+
+            case :net_adm.ping(node) do
+              :pang ->
+                create_txt_dialog(frame, ~c"Connect failed", ~c"Pang", 256)
+                r_state(state, prev_node: value)
+
+              :pong ->
+                state1 = change_node_view(node, state)
+                r_state(state1, prev_node: value)
+            end
+          catch
+            _, _ ->
+              create_txt_dialog(frame, ~c"Connect failed", ~c"Pang", 256)
+              r_state(state, prev_node: value)
+          end
+      end
+
+    {:noreply, updState}
+  end
+
+  def handle_event(
+        r_wx(id: 5, event: r_wxCommand(type: :command_menu_selected)),
+        r_state(frame: frame, log: prevLog, node: node) = state
+      ) do
+    try do
+      :ok = ensure_sasl_started(node)
+      :ok = ensure_mf_h_handler_used(node)
+      :ok = ensure_rb_mode(node, prevLog)
+
+      case prevLog do
+        false ->
+          :rpc.block_call(node, :rb, :start, [])
+          set_status(~c"Observer - " ++ :erlang.atom_to_list(node) ++ ~c" (rb_server started)")
+          {:noreply, r_state(state, log: true)}
+
+        true ->
+          :rpc.block_call(node, :rb, :stop, [])
+          set_status(~c"Observer - " ++ :erlang.atom_to_list(node) ++ ~c" (rb_server stopped)")
+          {:noreply, r_state(state, log: false)}
+      end
+    catch
+      reason ->
+        create_txt_dialog(frame, reason, ~c"Log view status", 512)
+        {:noreply, state}
+    end
+  end
+
+  def handle_event(
+        r_wx(
+          id: id,
+          event: r_wxCommand(type: :command_menu_selected)
+        ),
+        r_state(nodes: ns, node: prevNode, log: prevLog) = state
+      )
+      when id > 1000 and id < 2000 do
+    node = :lists.nth(id - 1000, ns)
+
+    lState =
+      case prevLog do
+        true ->
+          case node == prevNode do
+            false ->
+              :rpc.block_call(prevNode, :rb, :stop, [])
+              r_state(state, log: false)
+
+            true ->
+              state
+          end
+
+        false ->
+          state
+      end
+
+    {:noreply, change_node_view(node, lState)}
+  end
+
+  def handle_event(
+        r_wx(
+          id: id,
+          event: r_wxCommand(type: :command_menu_selected)
+        ),
+        state
+      )
+      when id >= 5250 and id <= 5250 + 3 do
+    {:noreply, state}
+  end
+
+  def handle_event(event, r_state(active_tab: pid) = state) do
+    send(pid, event)
+    {:noreply, state}
   end
 
   def handle_cast({:status_bar, msg}, state = r_state(status_bar: sB)) do
